@@ -1,0 +1,69 @@
+﻿"Phrases"
+{
+	"map rotation vote"
+	{
+		"en"			"During the finale, say !mapvote at any time to vote for the next campaign!"
+	}
+	"vote submission"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{2} has submitted a vote for {1}."
+	}
+	"change map"
+	{
+		"#format"		"{1:s},{2:i}"
+		"en"			"The next map, {1}, will load in {2} seconds."
+	}
+	"c1m1_hotel"
+	{
+		"en"			"dead center"
+	}
+	"c2m1_highway"
+	{
+		"en"			"dark carnival"
+	}
+	"c3m1_plankcountry"
+	{
+		"en"			"swamp fever"
+	}
+	"c4m1_milltown_a"
+	{
+		"en"			"hard rain"
+	}
+	"c5m1_waterfront"
+	{
+		"en"			"the parish"
+	}
+	"c6m1_riverbank"
+	{
+		"en"			"the passing"
+	}
+	"c7m1_docks"
+	{
+		"en"			"the sacrifice"
+	}
+	"c8m1_apartment"
+	{
+		"en"			"no mercy"
+	}
+	"c9m1_alleys"
+	{
+		"en"			"crash course"
+	}
+	"c10m1_caves"
+	{
+		"en"			"death toll"
+	}
+	"c11m1_greenhouse"
+	{
+		"en"			"dead air"
+	}
+	"c12m1_hilltop"
+	{
+		"en"			"blood harvest"
+	}
+	"c13m1_alpinecreek"
+	{
+		"en"			"cold stream"
+	}
+}

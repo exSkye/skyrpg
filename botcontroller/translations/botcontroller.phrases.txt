@@ -1,0 +1,12 @@
+﻿"Phrases"
+{
+	"slot reservation"
+	{
+		"en"	"no available slots"
+	}
+	"slot management delay"
+	{
+		"#format"	"{1:i}"
+		"en"		"{1}\nYou will be removed shortly\nto make room for a reserve player"
+	}
+}
