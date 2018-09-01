@@ -1,0 +1,26 @@
+﻿// The last 6 format variables are (from right to left)
+// lb, rb, white, blue, green, orange
+
+"Phrases"
+{
+	"Lagging Behind"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Please {2}stay within an acceptable range {3}of your team."
+	}
+	"Rushing Warning"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Please {2}return to your team"
+	}
+	"Rushing Notice"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:i},{7:i}"
+		"en"				"{1}Rushing {2}is against the server rules. {3}{6} {4}/ {5}{7}"
+	}
+	"Rushing Violation"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}{4} {2}was punished {3}for rushing."
+	}
+}
