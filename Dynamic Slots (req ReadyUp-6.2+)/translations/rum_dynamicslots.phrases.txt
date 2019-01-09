@@ -1,0 +1,15 @@
+﻿"Phrases"
+{
+	"reservation kick"
+	{
+		"en"			"No playable slots available. Buy a reserve slot!"
+	}
+	"no reservation available"
+	{
+		"en"			"No eligible players to remove. Please try again."
+	}
+	"reservation fill"
+	{
+		"en"			"Removed for a reserved player. Buy a reserve slot!"
+	}
+}

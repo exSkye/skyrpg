@@ -1,0 +1,2330 @@
+﻿// The last 6 format variables are (from right to left)
+// lb, rb, white, blue, green, orange
+
+"Phrases"
+{
+	"playing in server name"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s}"
+		"es"				"{1}Estás jugando en {2}{3}\n{4}Di {5}!{6} {7}al chat para abrir el Panel de control"
+	}
+	"tellah"
+	{
+		"es"				"Tellah"
+	}
+	"talent level requirement not met"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s},{6:s}"
+		"es"				"{1}Debes estar en el nivel {2}{3} {4}para acceder al talento {5}{6}"
+	}
+	"class level requirement not met"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s},{6:s}"
+		"es"				"{1}Debes estar en el nivel {2}{3} {4}para acceder a la clase {5}{6}"
+	}
+	"loading class profile"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Espera mientras carga el perfil para ... {2}{3}"
+	}
+	"class profile loaded"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}carga los datos de la clase con éxito para {2}{3}"
+	}
+	"rejoining too fast"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}Volverás a aparecer en un armario, o al comienzo de la siguiente ronda."
+	}
+	"rejoining too fast survival"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}Reaparecerás con todos los jugadores muertos en el siguiente intervalo de 5 minutos."
+	}
+	"Leaderboards Top Page"
+	{
+		"es"				"Tablas de clasificación - Ir a la página superior"
+	}
+	"Leaderboards Next Page"
+	{
+		"es"				"Tablas de clasificación - Página siguiente"
+	}
+	"View My Ranking"
+	{
+		"es"				"Ver mi ranking"
+	}
+	"the leaderboards"
+	{
+		"es"				"Tablas de clasificación \nVer el tuyo y los mejores jugadores"
+	}
+	"respec"
+	{
+		"es"				"Memory Wipe \nRefunda todos sus talentos (no atributos de clase)"
+	}
+	"collected bonus container"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"es"				"{1}{2} {3}recolectó su contenedor de bonificación para {4}{6} {5}experiencia"
+	}
+	"raid lock penalty warning"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Ahora estás bloqueado para la ronda.\n{2}Salir antes de que termine la ronda perderá la experiencia ganada en esta ronda."
+	}
+	"raid lock penalty enacted"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"es"				"{1}{2} {3}se fue durante una ronda en vivo.\n{4}Su progreso en esta ronda no se guardó, y el nivel de raid (o solo) se restableció."
+	}
+	"bonus container burst"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s}"
+		"es"				"{1}{2}s {3}contenedor se disuelve ... {4}{5} experiencia {6}perdido en un abrir y cerrar de ojos..."
+	}
+	"bonus experience waiting"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:3.2f},{11:s}"
+		"es"				"{1}Tienes {2}{3} experiencia {4}disponible.\nTipo {5}!collect {6} a {7}recibe el bono ahora {8}y restablece el multiplicador.\nMúltiplo actual: {9} {10}{11}"
+	}
+	"teammate bonus experience"
+	{
+		"#format"			"{1:s},{2:s},{3:3.2f},{4:s}"
+		"es"				"{1}Bonificación de experiencia de equipo: {2}{3}{4}"
+	}
+	"teammate has died"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:3.2f},{6:s}"
+		"es"				"{1}{2} {3} ha muerto; Los monstruos se debilitan...\nResultador de la experiencia del equipo: {4}{5}{6}"
+	}
+	"you are doomed"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}El hechizo Doom ha sido lanzado sobre ti."
+	}
+	"survivors are doomed"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}Los sobrevivientes fueron condenados..."
+	}
+	"Team Points"
+	{
+		"es"				"Puntos de equipo:"
+	}
+	"Share Points Syntax"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"!{3} <client> <points>"
+	}
+	"Share Points Given"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:3.2f},{6:s},{7:s},{8:s}"
+		"es"				"{1}{2} {3}ha regalado {4}{5} {6}punto(s) a {7}{8}"
+	}
+	"chainsaw damage increase"
+	{
+		"es"				"Daño de la motosierra+"
+	}
+	"chainsaw damage increase info"
+	{
+		"es"				"Se aumenta el daño de la motosierra."
+	}
+	"explosion damage increase"
+	{
+		"es"				"Daño de Explosión+"
+	}
+	"explosion damage increase info"
+	{
+		"es"				"Las explosiones (tuberías, propano, etc.) causan más daño."
+	}
+	"blunt damage increase"
+	{
+		"es"				"Daño de cuerpo a cuerpo contundente+"
+	}
+	"blunt damage increase info"
+	{
+		"es"				"Blunt Melee Las armas infligen más daño."
+	}
+	"sharp damage increase"
+	{
+		"es"				"Daño cuerpo a cuerpo afilado+"
+	}
+	"sharp damage increase info"
+	{
+		"es"				"Las armas de ataque cuerpo a cuerpo infligen más daño."
+	}
+	"special ammo target selected"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Objetivo de munición especial: {2}{3}"
+	}
+	"special ammo targeted"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Munición especial que te apunta: {2}{3}"
+	}
+	"select special ammo target"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}!ammotarget {2}<targetname>"
+	}
+	"last special target wiped"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Último objetivo de munición especial {2}olvidado."
+	}
+	"survival intermission end"
+	{
+		"#format"			"{1:s},{2:s},{3:i}"
+		"es"				"{1}Se acabó el intermedio.\nRornada de inicio {2}{3}"
+	}
+	"survival intermission ending soon"
+	{
+		"#format"			"{1:s},{2:s},{3:i}"
+		"es"				"{1}El intervalo terminará en {2}{3}segundos"
+	}
+	"out of combat state"
+	{
+		"es"				"Fuera de combate"
+	}
+	"in combat state"
+	{
+		"#format"			"{1:3.1f}"
+		"es"				"En combate ({1})"
+	}
+	"upgrade awarded"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i}"
+		"es"				"{1}¡Has recibido {2}{5} {3}puntos de actualización{4}!"
+	}
+	"Talent Id Code"
+	{
+		"es"			"Código de identificación:"
+	}
+	"Talent Menu"
+	{
+		"es"			"Menú de talentos"
+	}
+	"Survivor Menu"
+	{
+		"es"			"Menú Sobreviviente"
+	}
+	"Infected Menu"
+	{
+		"es"			"Menú infectado"
+	}
+	"damage experience reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"es"				"{1}Combate salido\n{2}Bonificación de {3}daño: {4}{5} {6}experiencia"
+	}
+	"base experience reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"es"				"{1}{2} {3}Asesinado: {4}{5} {6}experiencia"
+	}
+	"rested experience reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}Bonificación {2}descansada: {3}{4} {5}experiencia"
+	}
+	"booster experience reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}bonificación {2}bonificación: {3}{4} {5}experiencia"
+	}
+	"tanking experience reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}Tanking {2}bonus: {3}{4} {5}experiencia"
+	}
+	"healing experience reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}bonificación de {2}curación: {3}{4} {5}experiencia"
+	}
+	"buffing experience reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}Bonificación de {2}Buffing: {3}{4} {5}experiencia"
+	}
+	"hexing experience reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}Bonificación de {2}maleficio: {3}{4} {5}experiencia"
+	}
+	"points from damage reward"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:3.3f},{5:s}"
+		"es"				"{1}Puntos {2}: {3}{4} {5}obtenidos"
+	}
+	"received item from teammate"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}{2} {3}fue comprado y entregado por {4}{5}"
+	}
+	"teamwork reward notification"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:i}"
+		"es"				"{1}{2} {3}ha recibido {4}{5}{6}: {7} {8}experiencia"
+	}
+	"level requirement kick"
+	{
+		"#format"			"{1:i},{2:s}"
+		"es"				"Requiere una {2}calificación de usted es {1}\nvisita steamcommunity.com/groups/sky-rpg"
+	}
+	"incap survivor health"
+	{
+		"es"				"(Incap) Salud Sobreviviente"
+	}
+	"incap survivor health info"
+	{
+		"es"				"Aumenta el tiempo en que puedes descansar tu cabeza\nen el suelo."
+	}
+	"incap health regen survivor"
+	{
+		"es"				"(Incap) Regeneración de la salud"
+	}
+	"incap health regen survivor info"
+	{
+		"es"				"Regen tu salud mientras descansas tu cabeza\nDándote más tiempo para descansar tu cabeza."
+	}
+	"Menu Header 0"
+	{
+		"#format"			"{1:3.3f}"
+		"es"				"Puntos de compra: {1}"
+	}
+	"Menu Header 3 Exp"
+	{
+		"#format"			"{1:s}"
+		"es"				"Costo de actualización: {1}"
+	}
+	"Give Store Points Syntax"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Syntax: {2}!awardsp <name> <value>"
+	}
+	"Store Points Award Given"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"es"				"{1}Obtuvo {2}{3} {4}Créditos Premium a {5}{6}"
+	}
+	"Store Points Award Received"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"es"				"{1}Se le han otorgado {2}{3} {4}Créditos Premium"
+	}
+	"Tank Limit Reached"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s}"
+		"es"				"{1}Se ha alcanzado el {4}límite del tanque de {2}{3}"
+	}
+	"Tank On Cooldown"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Compras de tanques {2}actualmente en tiempo de reutilización"
+	}
+	"Tank Cooldown Complete"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}LA IA {2}ahora puede comprar un tanque"
+	}
+	"Tank Cooldown Remaining"
+	{
+		"#format"			"{1:s},{2:3.1f},{3:s},{4:s},{5:s}"
+		"es"				"{1}{2} {3}segundo(s) restante(s) en {4}Tanque en {5}tiempo de reutilización"
+	}
+	"Store Header"
+	{
+		"#format"			"{1:i}"
+		"es"				"Tienda en el juego\nTienda créditos: {1}"
+	}
+	"Store Points Award"
+	{
+		"#format"			"{1:s},{2:i},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s}"
+		"es"				"{1}{2} {3}{4} {5}have been added to {6}{7} {8}'s account"
+	}
+	"Menu Header 1 Talents"
+	{
+		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:i},{6:s},{7:i}"
+		"es"				"Lv: {1} / {2}\nXP: {3} / {4}\n \nPuntos de talento: {5} ({6})\nCréditos de la tienda: {7}"
+	}
+	"Menu Header 1 Exp"
+	{
+		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:i},{8:s},{9:s}"
+		"es"				"Lv: {1} / {2} {9}\n\nXP: {3} / {4} ({5})\n \nCosto de actualización: {6} XP\nCréditos de la tienda: {7}\n \n{8}"
+	}
+	"Menu Header 2 Talents"
+	{
+		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:i},{6:s},{7:3.3f},{8:i}"
+		"es"				"Lv: {1} / {2}\nXP: {3} / {4}\n \nPuntos de talento: {5} ({6})\nCompra creditos: {7}\nCréditos de la tienda: {8}"
+	}
+	"Menu Header 2 Exp"
+	{
+		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:3.3f},{8:i},{9:s},{10:s}"
+		"es"				"Lv: {1} / {2} {10}\nXP: {3} / {4} ({5})\n \nCosto de actualización: {6} XP\nCompra creditos: {7}\nCréditos de la tienda: {8}\n \n{9}"
+	}
+	"Points Text"
+	{
+		"#format"			"{1:3.2f}"
+		"es"				"\n!comprar creditos: {1}"
+	}
+	"Player Level Text"
+	{
+		"#format"			"{1:i},{2:s},{3:s},{4:s}"
+		"es"				"Lv. {1}\t\t{2}{3}{4}"
+	}
+	"RPG Header"
+	{
+		"#format"			"{1:s},{2:i}"
+		"es"				"{1}\n \nPuntos de subida de nivel: {2}"
+	}
+	"Data Saved"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Todos los datos del jugador {2}se han guardado!"
+	}
+	"Director Think Process"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}El Director {2}está trazando su próximo movimiento..."
+	}
+	"Not Enough Points"
+	{
+		"#format"			"{1:s},{2:s},{3:3.3f}"
+		"es"				"{1}No hay suficientes puntos ( {3} ) {2}para realizar esta compra"
+	}
+	"Not Enough Experience"
+	{
+		"#format"			"{1:s},{2:s},{3:i}"
+		"es"				"{1}No hay suficiente experiencia ( {3} ) {2}para hacer esta compra"
+	}
+	"Buy Menu"
+	{
+		"es"				"Menú de !comprar\nGastar !comprar puntos aqui"
+	}
+	"Buy Menu Option 1"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1} ({2})"
+	}
+	"Buy Menu Option 2"
+	{
+		"#format"			"{1:s},{2:3.1f},{3:s}"
+		"es"				"{1} Costo: {2} !comprar creditos ({3})"
+	}
+	"Buy Menu Option 3"
+	{
+		"#format"			"{1:s},{2:i},{3:s}"
+		"es"				"{1} Costo: {2} XP ({3})"
+	}
+	"Command Information"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s}"
+		"es"				"{1}{2} {3}- {4}{5} {6}- {7}{8}"
+	}
+	"Commands Listed Console"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Los comandos rápidos {2}se han impreso en su {3}consola"
+	}
+	"Upgrades Used"
+	{
+		"es"				"Actualizaciones asignadas"
+	}
+	"Points"
+	{
+		"es"				"Creditos"
+	}
+	"respawn"
+	{
+		"es"				"Respawn (en el punto de muerte)"
+	}
+	"respawn bind"
+	{
+		"es"				"¡Compra tu camino de vuelta a la vida!"
+	}
+	"Experience"
+	{
+		"es"				"Experiencia"
+	}
+	"weapons bind"
+	{
+		"es"				"Abre el menú de compra de armas."
+	}
+	"health bind"
+	{
+		"es"				"Abre el menú de compra de artículos de salud."
+	}
+	"grenade bind"
+	{
+		"es"				"Abre el menú de compra de artículos de granada."
+	}
+	"upgrades bind"
+	{
+		"es"				"abre el menú de compra de artículos de actualización"
+	}
+	"free weapons bind"
+	{
+		"es"				"Abre el menú de compra de armas."
+	}
+	"baseball_bat bind"
+	{
+		"es"			"compra el bate de béisbol arma cuerpo a cuerpo"
+	}
+	"fireaxe bind"
+	{
+		"es"				"compra el arma de fuego cuerpo a cuerpo"
+	}
+	"tonfa bind"
+	{
+		"es"				"compra el arma cuerpo a cuerpo tonfa"
+	}
+	"cricketbat bind"
+	{
+		"es"				"compra el arma de cricketbat cuerpo a cuerpo"
+	}
+	"melee weapons bind"
+	{
+		"es"				"Abre el menú de compra de armas cuerpo a cuerpo."
+	}
+	"rifles bind"
+	{
+		"es"				"Abre el menú de compra de rifles de nivel 2."
+	}
+	"shotguns bind"
+	{
+		"es"				"Abre el menú de compra de escopetas de nivel 2."
+	}
+	"snipers bind"
+	{
+		"es"				"Abre el menú de compra de rifles de francotirador de nivel 2."
+	}
+	"chainsaw bind"
+	{
+		"es"				"Comprar la motosierra (arma cuerpo a cuerpo)"
+	}
+	"grenade launcher bind"
+	{
+		"es"				"Comprar el lanzagranadas."
+	}
+	"ammo bind"
+	{
+		"es"				"Comprar munición de recarga"
+	}
+	"pumpshotgun bind"
+	{
+		"es"				"Compra la escopeta bomba"
+	}
+	"uzi bind"
+	{
+		"es"				"Compra el uzi"
+	}
+	"tmp5 bind"
+	{
+		"es"				"Compra el tmp5"
+	}
+	"mp5 bind"
+	{
+		"es"				"Comprar el mp5"
+	}
+	"pistol bind"
+	{
+		"es"				"Comprar la pistola"
+	}
+	"dual pistol bind"
+	{
+		"es"				"Comprar pistolas duales"
+	}
+	"magnum bind"
+	{
+		"es"				"Comprar el magnum"
+	}
+	"m4a1 bind"
+	{
+		"es"				"Compra el M4A1"
+	}
+	"ak47 bind"
+	{
+		"es"				"Compra el AK47"
+	}
+	"desert bind"
+	{
+		"es"				"Comprar el Rifle del Desierto"
+	}
+	"sg552 bind"
+	{
+		"es"				"Compra el SG552"
+	}
+	"m60 bind"
+	{
+		"es"				"Compra el M60"
+	}
+	"autoshotgun bind"
+	{
+		"es"				"Comprar el escopeta automática"
+	}
+	"spas bind"
+	{
+		"es"				"Compra la escopeta SPAS"
+	}
+	"hunt bind"
+	{
+		"es"				"Comprar el rifle de caza"
+	}
+	"military bind"
+	{
+		"es"				"Comprar el fusil militar"
+	}
+	"scout bind"
+	{
+		"es"				"Compra el Scout Sniper Rifle"
+	}
+	"awp bind"
+	{
+		"es"				"Comprar el rifle de francotirador AWP"
+	}
+	"adren bind"
+	{
+		"es"				"Comprar adrenalina"
+	}
+	"pills bind"
+	{
+		"es"				"Comprar pastillas para el dolor"
+	}
+	"medkit bind"
+	{
+		"es"				"Compre un botiquín de primeros auxilios"
+	}
+	"defib bind"
+	{
+		"es"				"Comprar un desfibrilador"
+	}
+	"heal bind"
+	{
+		"es"				"Compra una sanación instantánea (te mantendrá de pie si no está capacitado)"
+	}
+	"molotov bind"
+	{
+		"es"				"Comprar un molotov"
+	}
+	"pipe bind"
+	{
+		"es"				"Comprar una bomba de pipa"
+	}
+	"vomitjar bind"
+	{
+		"es"				"Comprar un vomitjar"
+	}
+	"gascan bind"
+	{
+		"es"				"Comprar un Gascan (utilizable en eventos generador / gas)"
+	}
+	"firework bind"
+	{
+		"es"				"Comprar una caja de fuegos artificiales"
+	}
+	"explosiveammo bind"
+	{
+		"es"				"Comprar (solo) clip de munición explosiva"
+	}
+	"incendiaryammo bind"
+	{
+		"es"				"Comprar (solo) clip de munición incendiaria"
+	}
+	"laser bind"
+	{
+		"es"				"Comprar una mira laser"
+	}
+	"explosivepack bind"
+	{
+		"es"				"Comprar paquete de actualización explosiva (ranura medkit)"
+	}
+	"incendiarypack bind"
+	{
+		"es"				"Comprar paquete de actualización incendiario (ranura de kit de medkit)"
+	}
+	"class bind"
+	{
+		"es"				"Abre el menú de cambio de clase."
+	}
+	"hunter bind"
+	{
+		"es"				"Compra (gratis si en fantasma) un cambio de clase a cazador"
+	}
+	"smoker bind"
+	{
+		"es"				"Compre (gratis si está en fantasma) un cambio de clase a fumador"
+	}
+	"boomer bind"
+	{
+		"es"				"Compra (gratis si en fantasma) un cambio de clase a boomer"
+	}
+	"jockey bind"
+	{
+		"es"				"Compra (gratis si en fantasma) un cambio de clase a jockey"
+	}
+	"spitter bind"
+	{
+		"es"				"Compra (gratis si en fantasma) un cambio de clase a spitter"
+	}
+	"charger bind"
+	{
+		"es"				"Compra (gratis si está en fantasma) un cambio de clase a cargador"
+	}
+	"tank bind"
+	{
+		"es"				"Compre un cambio de clase al tanque (nunca es gratis, por cierto)"
+	}
+	"panic bind"
+	{
+		"es"				"Comprar un evento de pánico"
+	}
+	"witch bind"
+	{
+		"es"				"Compra una gota de bruja donde estas mirando"
+	}
+	"riotdrop bind"
+	{
+		"es"				"Compra una pista de policía antidisturbios donde estés mirando."
+	}
+	"riotqueue bind"
+	{
+		"es"				"Comprar una cola de la policía antidisturbios"
+	}
+	"jimmydrop bind"
+	{
+		"es"				"Compre una gota de jimmy gibbs donde está mirando"
+	}
+	"jimmyqueue bind"
+	{
+		"es"				"Comprar una cola de gimbs jimmy"
+	}
+	"Buy Menu Option Cooldown"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1} (Enfriarse)"
+	}
+	"Director Priority Save Disabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"Este servidor no prioriza los {2}datos del director"
+	}
+	"Director Priority Save Enabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Este servidor guarda los datos de {2}AI Director."
+	}
+	"constitution"
+	{
+		"es"				"Constitución"
+	}
+	"constitution info"
+	{
+		"es"				"Talentos:\n+Fuerza de la primera mejora\n+Tiempo de enfriamiento\n\nAmmos:\n+Vida de la primera actualización\n+Costo de resistencia base"
+	}
+	"agility"
+	{
+		"es"				"Agilidad"
+	}
+	"agility info"
+	{
+		"es"				"Talentos:\n+Fuerza de actualización\n+Tiempo de enfriamiento\n\nAmmos:\n-Rango"
+	}
+	"resilience"
+	{
+		"es"				"Resistencia"
+	}
+	"resilience info"
+	{
+		"es"				"Talentos:\n-Tiempo de recuperación de talento\n\nAmmos:\n+Costo de resistencia de cada actualización\n-Tiempo de recuperación de cada actualización"
+	}
+	"technique"
+	{
+		"es"				"Técnica"
+	}
+	"technique info"
+	{
+		"es"				"Talentos:\n+Tiempo de cada capacidad de actualización\n\nAmmos:\n+1ra Actualización \"Tiempo de\""
+	}
+	"endurance"
+	{
+		"es"				"Resistencia"
+	}
+	"endurance info"
+	{
+		"es"				"No afecta a los talentos.\n\nAmmos:\n+Duración de la primera actualización\n-Costo de resistencia de la primera actualización\n+Cada rango de actualización"
+	}
+	"luck"
+	{
+		"es"				"Suerte"
+	}
+	"luck info"
+	{
+		"es"				"Aumenta la probabilidad de eventos críticos."
+	}
+	"talent level up"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s},{7:s},{8:s}"
+		"es"				"{1}{2} {3}ha ganado {4}{5} {6}puntos de {7}{8}"
+	}
+	"cartel experience screen"
+	{
+		"#format"			"{1:i},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{4} Lv.{1}:\t{2}XP {5} {3}XP"
+	}
+	"Survivor Cartel"
+	{
+		"es"				"CARTEL\nEstas categorías afectan a todas las cosas en pequeñas formas."
+	}
+	"Survivor Classes"
+	{
+		"es"				"Class\nEnabled: RPG en\nNone: RPG desactivado (Desactiva TUS talentos y modificadores de nivel)"
+	}
+	"warrior"
+	{
+		"es"				"Guerrero"
+	}
+	"healer"
+	{
+		"es"				"Curador"
+	}
+	"death knight"
+	{
+		"es"				"Caballero de la muerte"
+	}
+	"death priest"
+	{
+		"es"				"Sacerdote de la muerte"
+	}
+	"death ward"
+	{
+		"es"				"Sala de la muerte"
+	}
+	"crusader"
+	{
+		"es"				"Cruzado"
+	}
+	"paladin"
+	{
+		"es"				"Paladín"
+	}
+	"druid"
+	{
+		"es"				"druida"
+	}
+	"shaman"
+	{
+		"es"				"Chamán"
+	}
+	"assassin"
+	{
+		"es"				"Asesino"
+	}
+	"crusader assassin"
+	{
+		"es"				"Árbitro"
+	}
+	"brawler"
+	{
+		"es"				"Alborotador"
+	}
+	"monk"
+	{
+		"es"				"Monje"
+	}
+	"totem spirit"
+	{
+		"es"				"Totem Spirit\nAbsorbe a los talentos que los envían hacia afuera como\nexplosiones cuando los enemigos están cerca"
+	}
+	"blessed by the light"
+	{
+		"es"				"Luchador de la luz\nDibuja zombies si el enfado no está activo."
+	}
+	"dark sacrifice"
+	{
+		"es"				"Sacrificio Oscuro\nLa regeneración de debilidad y salud siempre está activa, y\nattracts zombies durante el enfurecimiento."
+	}
+	"conXP class info"
+	{
+		"es"				"Constitución XP"
+	}
+	"agiXP class info"
+	{
+		"es"				"Agilidad XP"
+	}
+	"resXP class info"
+	{
+		"es"				"Resistencia XP"
+	}
+	"tecXP class info"
+	{
+		"es"				"Técnica XP"
+	}
+	"endXP class info"
+	{
+		"es"				"Resistencia XP"
+	}
+	"lucXP class info"
+	{
+		"es"				"Suerte XP"
+	}
+	"saving class data"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Guardando datos de clase para {2}{3}"
+	}
+	"d class info"
+	{
+		"es"				"Daño Saliente"
+	}
+	"D class info"
+	{
+		"es"				"Daño entrante"
+	}
+	"tXP class info"
+	{
+		"es"				"Tanque XP"
+	}
+	"hB class info"
+	{
+		"es"				"Fuerza de curación de bala"
+	}
+	"hM class info"
+	{
+		"es"				"Fuerza de curación cuerpo a cuerpo"
+	}
+	"hXP class info"
+	{
+		"es"				"Sanar XP"
+	}
+	"stam class info"
+	{
+		"es"				"Costo de resistencia"
+	}
+	"amCD class info"
+	{
+		"es"				"Enfriamiento de munición"
+	}
+	"wRNG class info"
+	{
+		"es"				"Rango de arma"
+	}
+	"mDMG class info"
+	{
+		"es"				"Daño cuerpo a cuerpo"
+	}
+	"ICwDMG class info"
+	{
+		"es"				"Daño de arma en combate"
+	}
+	"OCwDMG class info"
+	{
+		"es"				"Daño de arma fuera de combate"
+	}
+	"eprange class info"
+	{
+		"es"				"Cada rango de puntos"
+	}
+	"stalker class info"
+	{
+		"es"				"Caminante nocturno\nIncrementa todos los daños salientes.\nCuanto más daño te haya hecho una\nturba, menos acosador lo hará."
+	}
+	"range class info"
+	{
+		"es"				"Su rango de munición"
+	}
+	"amSTR class info"
+	{
+		"es"				"Fuerza de munición"
+	}
+	"aamRNG class info"
+	{
+		"es"				"Toda la gama de munición"
+	}
+	"H class talent info"
+	{
+		"es"				"Talentos de la salud"
+	}
+	"h class talent info"
+	{
+		"es"				"Talentos curativos"
+	}
+	"R class talent info"
+	{
+		"es"				"Reflejar talentos"
+	}
+	"d class talent info"
+	{
+		"es"				"Daños a los talentos"
+	}
+	"elven ranger"
+	{
+		"es"				"Elfo arquero"
+	}
+	"healer shaman"
+	{
+		"es"				"Clérigo"
+	}
+	"death shaman"
+	{
+		"es"				"Portador de muerte"
+	}
+	"crusader shaman"
+	{
+		"es"				"Mago de batalla"
+	}
+	"death crusader"
+	{
+		"es"				"Hoja de Guerra"
+	}
+	"death ranger"
+	{
+		"es"				"Arquero oscuro"
+	}
+	"rating increase"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"es"				"{1}+{2}{3} {4}clasificación"
+	}
+	"Enable Class"
+	{
+		"es"				"Habilitar clase"
+	}
+	"Disable Class"
+	{
+		"es"				"Deshabilitar clase"
+	}
+	"weapons"
+	{
+		"es"				"Las armas"
+	}
+	"health"
+	{
+		"es"				"Artículos de salud"
+	}
+	"grenades"
+	{
+		"es"				"Granadas"
+	}
+	"upgrades"
+	{
+		"es"				"Mejoras de armas"
+	}
+	"free weapons"
+	{
+		"es"				"Las armas"
+	}
+	"fireaxe"
+	{
+		"es"				"Hacha contra incendios"
+	}
+	"tonfa"
+	{
+		"es"				"Bastón de la policía"
+	}
+	"cricketbat"
+	{
+		"es"				"Bate de cricket"
+	}
+	"melee weapons"
+	{
+		"es"				"Armas cuerpo a cuerpo"
+	}
+	"rifles"
+	{
+		"es"				"Rifles de asalto"
+	}
+	"shotguns"
+	{
+		"es"				"Escopetas automáticas"
+	}
+	"snipers"
+	{
+		"es"				"Rifles de francotirador"
+	}
+	"chainsaw"
+	{
+		"es"				"Motosierra"
+	}
+	"grenade launcher"
+	{
+		"es"				"Lanzagranadas"
+	}
+	"ammo"
+	{
+		"es"				"Recarga de munición"
+	}
+	"main menu"
+	{
+		"es"				"Volver al menú anterior"
+	}
+	"pump shotgun"
+	{
+		"es"				"Escopeta"
+	}
+	"uzi"
+	{
+		"es"				"Pistola ametralladora"
+	}
+	"tmp-5"
+	{
+		"es"				"Ametralladora silenciada"
+	}
+	"mp-5"
+	{
+		"es"				"ametralladora mp5"
+	}
+	"pistol"
+	{
+		"es"				"Pistola"
+	}
+	"dual pistol"
+	{
+		"es"				"Pistolas duales"
+	}
+	"rise again"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}¡Uno de {2}nuestro {3}caído ha resucitado!"
+	}
+	"enter the fray"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Un nuevo jugador {2}ha entrado en la contienda {3}¡Deséales suerte!"
+	}
+	"magnum"
+	{
+		"es"				"botella doble"
+	}
+	"m4a1"
+	{
+		"es"				"M4A1"
+	}
+	"ak47"
+	{
+		"es"				"AK47"
+	}
+	"desert rifle"
+	{
+		"es"				"Rifle del desierto"
+	}
+	"sg552"
+	{
+		"es"				"SG-552"
+	}
+	"m60"
+	{
+		"es"				"M-60"
+	}
+	"autoshotgun"
+	{
+		"es"				"Escopeta automática"
+	}
+	"spas"
+	{
+		"es"				"Escopeta SPAS"
+	}
+	"hunting rifle"
+	{
+		"es"				"Rifle de caza"
+	}
+	"military rifle"
+	{
+		"es"				"Rifle militar"
+	}
+	"scout"
+	{
+		"es"				"Explorar"
+	}
+	"awp"
+	{
+		"es"				"AW/P"
+	}
+	"adrenaline"
+	{
+		"es"				"Adrenalina"
+	}
+	"pain pills"
+	{
+		"es"				"Pastillas para el dolor"
+	}
+	"medkit"
+	{
+		"es"				"Kit de medicación"
+	}
+	"defibrillator"
+	{
+		"es"				"Desfibrilador"
+	}
+	"full heal"
+	{
+		"es"				"Curación instantánea"
+	}
+	"molotov"
+	{
+		"es"				"Cóctel de fuego"
+	}
+	"pipe bomb"
+	{
+		"es"				"Bomba de tubo"
+	}
+	"vomitjar"
+	{
+		"es"				"Frasco de vómito"
+	}
+	"gascan"
+	{
+		"es"				"Lata de gas"
+	}
+	"firework crate"
+	{
+		"es"				"Caja de fuegos artificiales"
+	}
+	"explosive"
+	{
+		"es"				"Munición Explosiva (Individual)"
+	}
+	"incendiary"
+	{
+		"es"				"Munición Incendiaria (Individual)"
+	}
+	"explosive pack"
+	{
+		"es"				"Pack explosivo"
+	}
+	"incendiary pack"
+	{
+		"es"				"Paquete incendiario"
+	}
+	"laser sight"
+	{
+		"es"				"Visión Laser"
+	}
+	"director menu"
+	{
+		"es"				"Menú Director"
+	}
+	"class menu"
+	{
+		"es"				"Cambio de clase"
+	}
+	"hunter"
+	{
+		"es"				"Hunter"
+	}
+	"smoker"
+	{
+		"es"				"Smoker"
+	}
+	"boomer"
+	{
+		"es"				"Boomer"
+	}
+	"jockey"
+	{
+		"es"				"Jockey"
+	}
+	"spitter"
+	{
+		"es"				"Spitter"
+	}
+	"charger"
+	{
+		"es"				"Charger"
+	}
+	"tank"
+	{
+		"es"				"Tan"
+	}
+	"panic event"
+	{
+		"es"				"Panic Event"
+	}
+	"witch"
+	{
+		"es"				"Witch"
+	}
+	"witch drop"
+	{
+		"es"				"Witch drop"
+	}
+	"riot queue"
+	{
+		"es"				"Riot Queue"
+	}
+	"clown queue"
+	{
+		"es"				"Clown Queue"
+	}
+	"fallen queue"
+	{
+		"es"				"Fallen Queue"
+	}
+	"riot drop"
+	{
+		"es"				"Riot Drop"
+	}
+	"jimmy queue"
+	{
+		"es"				"Jimmy Queue"
+	}
+	"jimmy drop"
+	{
+		"es"				"Jimmy Drop"
+	}
+	"bomber drop"
+	{
+		"es"				"Bomber Drop"
+	}
+	"flamer drop"
+	{
+		"es"				"Flamer Drop"
+	}
+	"leaker drop"
+	{
+		"es"				"Leaker Drop"
+	}
+	"bomber queue"
+	{
+		"es"				"Bomber Queue"
+	}
+	"flamer queue"
+	{
+		"es"				"Flamer Queue"
+	}
+	"leaker queue"
+	{
+		"es"				"Leaker Queue"
+	}
+	"Pistol Talents"
+	{
+		"es"				"Talentos de pistola"
+	}
+	"SMG Talents"
+	{
+		"es"				"Talentos SMG"
+	}
+	"Shotgun Talents"
+	{
+		"es"				"Talentos de escopeta"
+	}
+	"Assault Rifle Talents"
+	{
+		"es"				"Talentos AR"
+	}
+	"Defensive Survivor Talents"
+	{
+		"es"				"Talentos Defensivos Sobrevivientes"
+	}
+	"Survivor Passives"
+	{
+		"es"				"Talentos pasivos\nSurvivor Aumento de la salud y espinas"
+	}
+	"Survivor VomitedOn"
+	{
+		"es"				"Talentos de tanque\nDeben estar cubiertos en bilis"
+	}
+	"Survivor Junky"
+	{
+		"es"				"Talentos de adrenalina\nAdrenalina [Ad] Requerido"
+	}
+	"Survivor Fire"
+	{
+		"es"				"Todo relacionado con el fuego."
+	}
+	"Survivor Auras"
+	{
+		"es"				"Aura magica"
+	}
+	"Survivor Spells"
+	{
+		"es"				"Hechizos"
+	}
+	"Ammo Circle Talents"
+	{
+		"es"				"Sobrevivientes municiones talentos\n!sa - activar / desactivar \n!saf / !sab - rotar ammos hacia adelante / hacia atrás"
+	}
+	"Infected Talents"
+	{
+		"es"				"Talentos infectados"
+	}
+	"Infected Passives"
+	{
+		"es"				"Pasivos infectados"
+	}
+	"level up unavailable"
+	{
+		"#format"			"{1:i}"
+		"es"				"Subir de nivel no disponible (se requieren {1} actualizaciones)"
+	}
+	"level up available"
+	{
+		"#format"			"{1:s}"
+		"es"				"Comprar Level Up! ({1} XP requerido)"
+	}
+	"director priorities"
+	{
+		"es"				"Director de Prioridades"
+	}
+	"Map Records"
+	{
+		"es"				"Mapa de registros"
+	}
+	"Store"
+	{
+		"es"				"Buffs Vendor \nGana créditos de la tienda para comprar buffs temporales."
+	}
+	"survivor health"
+	{
+		"es"				"Salud del sobreviviente"
+	}
+	"bean bag"
+	{
+		"es"				"Bolsa de frijoles munición"
+	}
+	"slowing ammo"
+	{
+		"es"				"Lenta Munición"
+	}
+	"bean bag ammo"
+	{
+		"es"				"Bolsa-de-frijoles munición"
+	}
+	"explosive ammo"
+	{
+		"es"				"Explosiva munición"
+	}
+	"leech ammo"
+	{
+		"es"				"Sanguijuela munición"
+	}
+	"gravity ammo"
+	{
+		"es"				"Gravedad munición"
+	}
+	"pistol damage increase"
+	{
+		"es"				"Daño crítico de pistola"
+	}
+	"Environmental Talents"
+	{
+		"es"				"Talentos elementales\nFuego, explosión, etc."
+	}
+	"Melee Talents"
+	{
+		"es"				"Melee Talents\nCuando las armas no son lo suficientemente buenas."
+	}
+	"weapon damage increase"
+	{
+		"es"				"Segundo disparo"
+	}
+	"burn damage increase"
+	{
+		"es"				"+Daño por fuego"
+	}
+	"burn damage increase info"
+	{
+		"es"				"Aumenta todo el daño de la quemadura que se obtiene de ti."
+	}
+	"weapon damage increase info"
+	{
+		"es"				"Dispara una segunda bala, no elemental."
+	}
+	"melee damage increase"
+	{
+		"es"				"Aumento de daño cuerpo a cuerpo"
+	}
+	"melee damage increase info"
+	{
+		"es"				"El daño del arma cuerpo a cuerpo aumenta."
+	}
+	"adrenaline heal"
+	{
+		"es"				"Curación de adrenalina"
+	}
+	"healing ammo"
+	{
+		"es"				"Curativa munición"
+	}
+	"distraction ammo"
+	{
+		"es"				"Distracción munición"
+	}
+	"distraction ammo info"
+	{
+		"es"				"Los sobrevivientes dentro de la munición se convertirán en una distracción."
+	}
+	"berserk ammo"
+	{
+		"es"				"Enloquecido munición"
+	}
+	"berserk ammo info"
+	{
+		"es"				"Aumenta todo el daño saliente y entrante."
+	}
+	"rage ammo"
+	{
+		"es"				"Rabia munición"
+	}
+	"rage ammo info"
+	{
+		"es"				"Otorga adrenalina, pero aumenta el daño recibido por cualquier cosa que esté dentro."
+	}
+	"darkness ammo"
+	{
+		"es"				"Oscuridad munición"
+	}
+	"darkness ammo info"
+	{
+		"es"				"Otorga debilidad."
+	}
+	"cleansing ammo"
+	{
+		"es"				"Limpieza munición"
+	}
+	"cleansing ammo info"
+	{
+		"es"				"Los receptores que sufren debilidad [Wk]\nson inmunes mientras que eliminan los efectos\nnegativos de aquellos que no lo son."
+	}
+	"overdose ammo"
+	{
+		"es"				"Sobredosis munición"
+	}
+	"overdose ammo info"
+	{
+		"es"				"Los sobrevivientes dentro del aura tienen su grupo de salud\ninflado temporalmente."
+	}
+	"fire ammo"
+	{
+		"es"				"Fuego munición"
+	}
+	"reflect ammo"
+	{
+		"es"				"Reflejar munición"
+	}
+	"attack ammo"
+	{
+		"es"				"Ataque munición"
+	}
+	"shield ammo"
+	{
+		"es"				"Barrera munición"
+	}
+	"damage shield"
+	{
+		"es"				"Escudo de daño"
+	}
+	"speed boost"
+	{
+		"es"				"Aumento de velocidad temporal"
+	}
+	"thorns talent"
+	{
+		"es"				"Espinas"
+	}
+	"Round Time"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s},{6:i},{7:s}"
+		"es"				"{1}Esta longitud redonda era {2}{3}{4}m {5}{6}{7}s"
+	}
+	"gravity jump"
+	{
+		"es"				"Salto de gravedad"
+	}
+	"Ability Restricted"
+	{
+		"#format"			"{1:s},{2:i}"
+		"es"				"{1} (Desbloquea a nivel {2})"
+	}
+	"Ability Locked"
+	{
+		"#format"			"{1:s},{2:i}"
+		"es"				"{1} (Encuentre un artículo de descubrimiento o pague {2} Créditos Premium)"
+	}
+	"Ability Available"
+	{
+		"#format"			"{1:s},{2:i},{3:i}"
+		"es"				"{1} : {2} ({3})"
+	}
+	"Ability Available T1"
+	{
+		"#format"			"{1:s},{2:i}"
+		"es"				"{1} : {2}"
+	}
+	"Ability Available Percent"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f},{6:s},{7:3.3f},{8:s}"
+		"es"				"{1} {2} / {3} ({4}) - Cada punto: {5}{6} ({7}{8})"
+	}
+	"Ability Available Time"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f},{6:3.2f}"
+		"es"				"{1} {2} / {3} ({4}) - Cada punto: {5} segundo(s) ({6} segundo(s))"
+	}
+	"Ability Available Distance"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f},{6:3.2f}"
+		"es"				"{1} {2} / {3} ({4}) - Cada punto: {5} unidad(s) ({6} unidad(s))"
+	}
+	"Ability Available Percent - First Point"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f},{6:s}"
+		"es"				"{1} {2} / {3} ({4}) - Primer punto: {5}{6}"
+	}
+	"Ability Available Time - First Point"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f}"
+		"es"				"{1} {2} / {3} ({4}) - Primer punto: {5} segundo(s)"
+	}
+	"Ability Available Distance - First Point"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f}"
+		"es"				"{1} {2} / {3} ({4}) - Primer punto: {5} unidad(s)"
+	}
+	"player level up"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i}"
+		"es"				"{1}{4} {2}ahora está a nivel {3}{5}"
+	}
+	"player multiple level up"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s},{7:s},{8:s}"
+		"es"				"{1}{2} {3}gané {4}{5} {6}niveles, y ahora es {7}nivel {8}"
+	}
+	"common kills award"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"es"				"{1}Campos comunes muertos: {2}{3} {4}XP."
+	}
+	"common headshot award"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"es"				"{1}Disparos a la cabeza de Commons: {2}{3} {4}XP."
+	}
+	"distance experience"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s}"
+		"es"				"{1}Distancia: {2}{3} {4}XP."
+	}
+	"healing experience"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s}"
+		"es"				"{1}Curación: {2}{3} {4}XP."
+	}
+	"assisting experience"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s}"
+		"es"				"{1}Ayudar: {2}{3} {4}XP."
+	}
+	"Experience Earned Self"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:i}"
+		"es"				"{1}Bonificación de daño: {2}{6} {3}for {4}{7} {5}XP."
+	}
+	"Points Earned Self"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:3.3f}"
+		"es"				"{1}Bonificación de daño: {2}{6} {3}for {4}{7} {5}!comprar creditos"
+	}
+	"client level set"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i}"
+		"es"				"{2}{1} {3}ahora está a nivel {4}{5}"
+	}
+	"slate"
+	{
+		"es"				"CARTEL\nConstitución\nAgilidad\nResiliencia\nTécnica\nSeguro\nLuck"
+	}
+	"Locked Talent Award"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"es"				"{1}{2} {3}ha desbloqueado el {4}{5} {6}talento!"
+	}
+	"Free Upgrades"
+	{
+		"es"				"Actualizaciones gratuitas"
+	}
+	"Inventory"
+	{
+		"es"				"Inventario"
+	}
+	"autoshotgun"
+	{
+		"es"				"Escopeta automática"
+	}
+	"grenade_launcher"
+	{
+		"es"				"Lanzagranadas"
+	}
+	"hunting_rifle"
+	{
+		"es"				"Rifle de caza"
+	}
+	"pistol"
+	{
+		"es"				"Pistola"
+	}
+	"pistol_magnum"
+	{
+		"es"				"Botella doble"
+	}
+	"pumpshotgun"
+	{
+		"es"				"Escopeta"
+	}
+	"rifle"
+	{
+		"es"				"M4A1"
+	}
+	"rifle_ak47"
+	{
+		"es"				"AK47"
+	}
+	"rifle_desert"
+	{
+		"es"				"Rifle del desierto"
+	}
+	"rifle_m60"
+	{
+		"es"				"M60"
+	}
+	"rifle_sg552"
+	{
+		"es"				"SG552"
+	}
+	"shotgun_chrome"
+	{
+		"es"				"Escopeta de bomba (cromo)"
+	}
+	"shotgun_spas"
+	{
+		"es"				"Escopeta SPAS"
+	}
+	"smg"
+	{
+		"es"				"UZI"
+	}
+	"smg_mp5"
+	{
+		"es"				"MP5"
+	}
+	"smg_silenced"
+	{
+		"es"				"TMP5"
+	}
+	"sniper_awp"
+	{
+		"es"				"AWP Francotirador"
+	}
+	"sniper_military"
+	{
+		"es"				"Francotirador militar"
+	}
+	"sniper_scout"
+	{
+		"es"				"Francotirador scout"
+	}
+	"baseball_bat"
+	{
+		"es"				"Bate de béisbol"
+	}
+	"cricket_bat"
+	{
+		"es"				"Bate de cricket"
+	}
+	"crowbar"
+	{
+		"es"				"Palanca"
+	}
+	"melee"
+	{
+		"es"				"Pelea confusa"
+	}
+	"electric_guitar"
+	{
+		"es"				"Guitarra electrica"
+	}
+	"fireaxe"
+	{
+		"es"				"Hacha contra incendios"
+	}
+	"frying_pan"
+	{
+		"es"				"Sartén"
+	}
+	"golfclub"
+	{
+		"es"				"Club de Golf"
+	}
+	"katana"
+	{
+		"es"				"Espada ninja"
+	}
+	"machete"
+	{
+		"es"				"Machete"
+	}
+	"tonfa"
+	{
+		"es"				"Baston de policia"
+	}
+	"knife"
+	{
+		"es"				"Cuchillo"
+	}
+	"chainsaw"
+	{
+		"es"				"Motosierra"
+	}
+	"adrenaline"
+	{
+		"es"				"Adrenalina"
+	}
+	"defibrillator"
+	{
+		"es"				"Desfibrilador"
+	}
+	"first_aid_kit"
+	{
+		"es"				"Kit de medicación"
+	}
+	"pain_pills"
+	{
+		"es"				"Analgésicos"
+	}
+	"molotov"
+	{
+		"es"				"bomba de fuego"
+	}
+	"pipe_bomb"
+	{
+		"es"				"Bomba de tubo"
+	}
+	"vomitjar"
+	{
+		"es"				"Frasco de vómito"
+	}
+	"upgradepack_explosive"
+	{
+		"es"				"Paquete de actualización (explosivo)"
+	}
+	"upgradepack_incendiary"
+	{
+		"es"				"Paquete de actualización (Incendiario)"
+	}
+	"Time Remaining"
+	{
+		"es"				"Corriente"
+	}
+	"memory wipe"
+	{
+		"es"				"Talentos de respec"
+	}
+	"experience boost"
+	{
+		"es"				"Aumento de experiencia"
+	}
+	"experience boost 2"
+	{
+		"es"				"Aumento de experiencia"
+	}
+	"talent upgrade"
+	{
+		"es"				"Actualización de talento"
+	}
+	"experience in bulk"
+	{
+		"es"				"Experiencia a granel"
+	}
+	"random backpack"
+	{
+		"es"				"Mochila al azar"
+	}
+	"Store Amount Range"
+	{
+		"#format"			"{1:i},{2:i}"
+		"es"				"{1} -> {2}"
+	}
+	"Store Amount Static"
+	{
+		"#format"			"{1:i}"
+		"es"				"{1}"
+	}
+	"Store Option"
+	{
+		"#format"			"{1:s},{2:i},{3:s},{4:s}"
+		"es"				"{1} {4} Costo: {2} Crédito(s) {3}"
+	}
+	"Locked Talent Store Cost"
+	{
+		"#format"			"{1:s},{2:i}"
+		"es"				"{1} - Costo: {2}"
+	}
+	"health regen survivor"
+	{
+		"es"				"(En combate) Regen de salud"
+	}
+	"nocombat regen survivor"
+	{
+		"es"				"(OoC) Regen Salud"
+	}
+	"Player upgrades ability"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"es"				"{1}{2} {3}mejoró su {4}{5} {6}talento!"
+	}
+	"tier one"
+	{
+		"es"				"armas de nivel uno"
+	}
+	"shotguns"
+	{
+		"es"				"Escopetas"
+	}
+	"rifles"
+	{
+		"es"				"Rifles de asalto"
+	}
+	"snipers"
+	{
+		"es"				"Rifles de francotirador"
+	}
+	"Talent Upgrade Title"
+	{
+		"#format"			"{1:s},{2:i},{3:i}"
+		"es"				"{1} - Actualizaciones -> {2} ({3})"
+	}
+	"Talent Upgrade Title Free"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i}"
+		"es"				"{1} - Actualizaciones -> {2} ({3})\nMejoras reembolsadas: {4}"
+	}
+	"Talent Cooldown Info - No Points"
+	{
+		"#format"			"{1:3.2f}"
+		"es"				"Enfriarse:\tPrimer punto\t->\t{1}s"
+	}
+	"Talent Cooldown Info"
+	{
+		"#format"			"{1:3.2f},{2:3.2f}"
+		"es"				"Enfriarse:\t{1}s\t->\t{2}s"
+	}
+	"Ability Info Percent"
+	{
+		"#format"			"{1:3.3f},{2:s},{3:3.3f},{4:s}"
+		"es"				"Fuerza: {1}{2}\t->\t{3}{4}"
+	}
+	"Ability Info Time"
+	{
+		"#format"			"{1:3.3f},{2:3.3f}"
+		"es"				"Fuerza: {1}s\t->\t{2}s"
+	}
+	"Ability Info Distance"
+	{
+		"#format"			"{1:3.1f},{2:3.1f}"
+		"es"				"Fuerza: {1}unidad(s)\t->\t{2}unidad(s)"
+	}
+	"Insert Talent Upgrade"
+	{
+		"#format"			"{1:i}"
+		"es"				"Mejorar ({1})"
+	}
+	"Refund Talent Upgrade"
+	{
+		"#format"			"{1:i}"
+		"es"				"Reembolso ({1})"
+	}
+	"survivor profile editor"
+	{
+		"es"				"Editor de perfiles\nGuarda, carga y comparte perfiles.\nDime !loadoutname para establecer el nombre actual de carga."
+	}
+	"loadout name set"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Carga de Lalida nombre establecido en{2}{3}"
+	}
+	"profile editor title"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}"
+	}
+	"loadout deleted"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Borrado eliminado: {2}{3}"
+	}
+	"loading profile"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}Cargando perfil; Se cargará un nuevo menú cuando se complete este proceso."
+	}
+	"loading profile ex"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Cargando perfil; Se cargará un nuevo menú cuando se complete este proceso. {2}"
+	}
+	"loaded profile"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}{2} {3}ha cargado el perfil {4}{5}"
+	}
+	"no profiles to load"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}La cuenta de Steam seleccionada no tiene perfiles guardados."
+	}
+	"new save"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Perfil guardado: {2}{3}"
+	}
+	"update save"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Perfil actualizado: {2}{3}"
+	}
+	"Delete Profile"
+	{
+		"es"				"Eliminar perfil actual"
+	}
+	"profile editor limit reached"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}Has alcanzado el límite de perfiles guardados.\nElimina uno e inténtalo de nuevo."
+	}
+	"profile exists"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}Ya existe un perfil con este nombre."
+	}
+	"profile saved"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{2}{3} {1}Se ha guardado con éxito. Utilice !loadprofile para carga rápida."
+	}
+	"Save Profile"
+	{
+		"es"				"Guardar perfil actual"
+	}
+	"Load Profile"
+	{
+		"es"				"Cargar mis perfiles"
+	}
+	"Load All"
+	{
+		"es"				"Cargar todos los perfiles"
+	}
+	"Insert One Upgrade"
+	{
+		"es"				"Utilice 1 actualización gratuita"
+	}
+	"Insert Ten Upgrade"
+	{
+		"es"				"Utilice 10 actualizaciones gratuitas"
+	}
+	"Fill Her Up"
+	{
+		"es"				"Sólo llénala (Oh papi!)"
+	}
+	"Ability Available Percent"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f},{6:s},{7:3.3f},{8:s}"
+		"es"				"{1} {2} / {3} ({4}) - Cada Punto: {5}{6} ({7}{8})"
+	}
+	"Ability Available Time"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f},{6:3.2f}"
+		"es"				"{1} {2} / {3} ({4}) - Cada Punto: {5} segundo(s) ({6} segundo(s))"
+	}
+	"Ability Available Distance"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f},{6:3.2f}"
+		"es"				"{1} {2} / {3} ({4}) - Cada Punto: {5} unidad(s) ({6} unidad(s))"
+	}
+	"Ability Available Percent - First Point"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:3.2f},{6:s}"
+		"es"				"{1} {2} / {3} ({4}) - Primer Punto: {5}{6}"
+	}
+	"Warning Upgrade TalentName"
+	{
+		"#format"			"{1:s}"
+		"es"				"Por favor confirme su actualización: {1}"
+	}
+	"continue"
+	{
+		"es"				"Continuar con la actualización"
+	}
+	"return to talent menu"
+	{
+		"es"				"Regresar al menú de talentos"
+	}
+	"bile bullet"
+	{
+		"es"				"Bala de bilis"
+	}
+	"bile heal"
+	{
+		"es"				"Curación biliar"
+	}
+	"adrenaline bullet"
+	{
+		"es"				"Bala de adrenalina"
+	}
+	"adrenaline bullet info"
+	{
+		"es"				"Dispara una bala adicional cuando la Adrenalina [Ad] está activa."
+	}
+	"dark bullet"
+	{
+		"es"				"Bala oscura"
+	}
+	"dark bullet info"
+	{
+		"es"				"Dispara una bala con energía oscura cuando la debilidad [Wk]\nestá activa." 
+	}
+	"Menu Rested Experience"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:i}"
+		"es"				"{1}\nDescansado XP: {2} of {3} (+{4}PCT XP tarifa)\n \n"
+	}
+	"tag colors"
+	{
+		"es"				"Color de la etiqueta de nombre"
+	}
+	"chat colors"
+	{
+		"es"				"Color del texto del chat"
+	}
+	"white"
+	{
+		"es"				"Blanco"
+	}
+	"orange"
+	{
+		"es"				"naranja"
+	}
+	"red"
+	{
+		"es"				"rojo"
+	}
+	"blue"
+	{
+		"es"				"Azul"
+	}
+	"light green"
+	{
+		"es"				"Verde claro"
+	}
+	"green"
+	{
+		"es"				"Verde"
+	}
+	"team"
+	{
+		"es"				"Basado en equipo (rojo infectado, azul sobreviviente)"
+	}
+	"Tag Name Too Long"
+	{
+		"#format"			"{1:i}"
+		"es"				"Su apodo no puede tener más de {1} caracteres."
+	}
+	"Tag Name Set"
+	{
+		"#format"			"{1:s}"
+		"es"				"Tu apodo es ahora: {1}"
+	}
+	"chat settings"
+	{
+		"es"				"Colores del chat\n¡di !name en el chat para usar un apodo personalizado!"
+	}
+	"Chat Settings (Reserve)"
+	{
+		"es"				"Configuración de configuración de chat"
+	}
+	"Farming Prevention Disabled"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"es"				"{1}El {2}sistema de prevención de la agricultura {3}ha sido {4}inhabilitado {5}hasta que llegue el {6}vehículo de rescate"
+	}
+	"Experience Gains Disabled"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"es"				"{1}La experiencia y las ganancias de puntos {2}han sido {3}deshabilitadas {4}cuando ha llegado el {5}vehículo de rescate"
+	}
+	"survivor health info"
+	{
+		"es"				"Aumenta tu salud máxima de sobreviviente."
+	}
+	"survivor health (weak)"
+	{
+		"es"				"Salud del sobreviviente [Wk]"
+	}
+	"survivor health (weak) info"
+	{
+		"es"				"Aumenta tu salud máxima de sobreviviente cuando sufres [Wk] Debilidad"
+	}
+	"survivor health (adren)"
+	{
+		"es"				"Salud del sobreviviente [Ad]"
+	}
+	"survivor health (adren) info"
+	{
+		"es"				"Aumenta tu salud máxima de sobreviviente mientras\nestás bajo el efecto de la adrenalina."
+	}
+	"survivor health (vomit)"
+	{
+		"es"				"Salud del sobreviviente [Bi]"
+	}
+	"survivor health (vomit) info"
+	{
+		"es"				"Aumenta su salud máxima de sobreviviente mientras\nestá cubierto en la bilis del boomer."
+	}
+	"slowing ammo info"
+	{
+		"es"				"El daño de bala ralentiza temporalmente\nel movimiento y la velocidad de las especiales."
+	}
+	"bean bag ammo info"
+	{
+		"es"				"Ya sabes, se tiran... como una bolsa de frijoles.\n...Solo dispara algo con eso."
+	}
+	"explosive ammo info"
+	{
+		"es"				"Crea una explosión basada en el daño del arma.\nUna segunda explosión se disparará en el daño crítico.\nDaña a los aliados y enemigos."
+	}
+	"healing ammo info"
+	{
+		"es"				"Coloca un Área de Efecto que ocasionalmente sana a los aliados."
+	}
+	"reflect ammo info"
+	{
+		"es"				"Los jugadores dentro de la ÁdeE tienen una parte de su daño\nincidiendo reflejado de nuevo en el atacante."
+	}
+	"attack ammo info"
+	{
+		"es"				"Coloca un ÁdeE que aumenta toda la salida de daño."
+	}
+	"shield ammo info"
+	{
+		"es"				"Coloca una barrera protectora que absorbe el daño recibido."
+	}
+	"fire ammo info"
+	{
+		"es"				"Coloca una trampa de fuego ÁdeE que enciende CUALQUIER COSA que entre."
+	}
+	"leech ammo info"
+	{
+		"es"				"Crea un área de efecto que daña a los\naliados y enemigos, al igual que una sanación."
+	}
+	"gravity ammo info"
+	{
+		"es"				"Atrae a los enemigos (y jugadores) hacia adentro\n¡ideal para las combinaciones de daño de área de efecto!"
+	}
+	"Healing Talents"
+	{
+		"es"				"Talentos curativos\nLos talentos que reponen tu salud."
+	}
+	"adrenaline heal info"
+	{
+		"es"				"Cura un porcentaje de tu daño\nsaliente cuando la adrenalina [Ad] está activa."
+	}
+	"thorns talent info"
+	{
+		"es"				"Tomar daño refleja un porcentaje en el atacante."
+	}
+	"gravity jump info"
+	{
+		"es"				"Mantenga presionada la tecla de salto y experimente\ntoda la diversión que ofrece Borderlands Pre-Sequel.\n¡Genial!"
+	}
+	"health regen survivor info"
+	{
+		"es"				"¡Regenera tu salud!\nDebe estar en combate."
+	}
+	"nocombat regen survivor info"
+	{
+		"es"				"¡Regenera tu salud!\n¡No debes estar en combate!"
+	}
+	"bile bullet info"
+	{
+		"es"				"Dispara una bala adicional cuando está cubierta de bilis."
+	}
+	"bile heal info"
+	{
+		"es"				"Cura un porcentaje de todos los daños\nrecibidos cuando se cubra con bilis."
+	}
+	"Bullet Talents"
+	{
+		"es"				"Bullet Talents\n¡Enlaza tus balas con algo extra!"
+	}
+	"Weapon Talents"
+	{
+		"es"				"Talentos de armas\nSólo dispara tu arma."
+	}
+	"Main Talents"
+	{
+		"es"				"Talentos\nPase Puntos LevelUp Aquí"
+	}
+	"Special Ammo Time"
+	{
+		"#format"			"{1:3.2f},{2:3.2f}"
+		"es"				"Toda la vida:\t{1}s\t->\t{2}s"
+	}
+	"Special Ammo Interval"
+	{
+		"#format"			"{1:3.2f},{2:3.2f}"
+		"es"				"\"activo\" Tiempo: {1}s\t->\t{2}s"
+	}
+	"Special Ammo Cooldown"
+	{
+		"#format"			"{1:3.2f},{2:3.2f}"
+		"es"				"\"inactivo\" Tiempo: {1}s\t->\t{2}s"
+	}
+	"Special Ammo Stamina"
+	{
+		"#format"			"{1:i},{2:i}"
+		"es"				"Aguante:\t\t\t{1}\t->\t{2}"
+	}
+	"Special Ammo Range"
+	{
+		"#format"			"{1:3.2f},{2:3.2f}"
+		"es"				"Distancia:\t\t\t\t{1}unidads\t->\t{2}unidads"
+	}
+	"No Special Ammo"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"es"				"{1}Tienes {2}No hay munición especial {3}para equipar."
+	}
+	"Special Ammo Enabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Munición especial {2}habilitada"
+	}
+	"Special Ammo Disabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Munición Especial {2}Inhabilitada"
+	}
+	"Special Ammo Debug Enabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}Munición especial DEBUG {2}habilitada"
+	}
+	"Special Ammo Debug Disabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"es"				"{1}munición especial DEBUG {2}deshabilitado"
+	}
+	"cannot load in combat"
+	{
+		"#format"			"{1:s}"
+		"es"				"{1}No puedes cargar perfiles cuando estás en combate."
+	}
+}
+
+
+
+
+
+
+

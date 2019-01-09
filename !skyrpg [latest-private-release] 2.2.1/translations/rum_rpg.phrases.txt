@@ -3,6 +3,275 @@
 
 "Phrases"
 {
+	"loading data cannot open menu"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}The menu is unavailable while your data is loading."
+	}
+	"none"
+	{
+		"en"				"RPG DISABLED"
+	}
+	"view class abilities"
+	{
+		"en"				"View Talent Modifiers & Class Abilities"
+	}
+	"view class experience"
+	{
+		"en"				"View CARTEL XP modifiers" 
+	}
+	"select survivor bot"
+	{
+		"en"				"Select a Survivor Bot from the list\nthat you'd like to load your profile on to\n\nPressing the 'BACK' key resets targeting to YOU"
+	}
+	"vanilla"
+	{
+		"en"				"Vanilla"
+	}
+	"Select Load Target"
+	{
+		"#format"			"{1:s}"
+		"en"				"Load Profile Onto: {1}"
+	}
+	"Yourself"
+	{
+		"en"				"Yourself"
+	}
+	"playing in server name"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s}"
+		"en"				"{1}You are playing at {2}{3}\n{4}Say {5}!{6} {7}into chat to open the Control Panel"
+	}
+	"tellah"
+	{
+		"en"				"Tellah"
+	}
+	"talent level requirement not met"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s},{6:s}"
+		"en"				"{1}You must be level {2}{3} {4}to access the talent {5}{6}"
+	}
+	"class level requirement not met"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s},{6:s}"
+		"en"				"{1}You must be level {2}{3} {4}to access the class {5}{6}"
+	}
+	"loading class profile"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Please wait while I load the profile for... {2}{3}"
+	}
+	"class profile loaded"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}loaded class data successfully for {2}{3}"
+	}
+	"rejoining too fast"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}You will be respawned at a closet, or the beginning of the next round."
+	}
+	"rejoining too fast survival"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}You will respawn with all dead players at the next 5-minute interval."
+	}
+	"Leaderboards Top Page"
+	{
+		"en"				"Leaderboards - Go To Top Page"
+	}
+	"Leaderboards Next Page"
+	{
+		"en"				"Leaderboards - Next Page"
+	}
+	"View My Ranking"
+	{
+		"en"				"View My Ranking"
+	}
+	"the leaderboards"
+	{
+		"en"				"Leaderboards\nView yours & the top-rated players"
+	}
+	"respec"
+	{
+		"en"				"Memory Wipe\nRefunds all of your talents (not class attributes)"
+	}
+	"collected bonus container"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"en"				"{1}{2} {3}collected their bonus container for {4}{6} {5}experience"
+	}
+	"raid lock penalty warning"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}You are now locked in for the round.\n{2}Leaving before the round ends will forfeit experience earned this round."
+	}
+	"raid lock penalty enacted"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}{2} {3}left during a live round.\n{4}Their progress this round was not saved, and raid (or solo) level reset."
+	}
+	"bonus container burst"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s}"
+		"en"				"{1}{2}s {3}container dissolves... {4}{5} experience {6}lost in a blink of an eye..."
+	}
+	"bonus experience waiting"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:3.2f},{11:s}"
+		"en"				"{1}You have {2}{3} experience{4} available.\nType {5}!collect {6}to {7}receive the bonus now {8}and reset the multiplier.\nCurrent multiplier: {9}{10}{11}"
+	}
+	"teammate bonus experience"
+	{
+		"#format"			"{1:s},{2:s},{3:3.2f},{4:s}"
+		"en"				"{1}Team Experience Bonus: {2}{3}{4}"
+	}
+	"teammate has died"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:3.2f},{6:s}"
+		"en"				"{1}{2} {3}has died; The monsters weaken...\nTeam experience multiplier: {4}{5}{6}"
+	}
+	"you have died - handicap disabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}You have died: {2}Handicap Disabled"
+	}
+	"teammate has died - handicap reduced"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}One of your teammates died on your watch: {2}Handicap Reduced"
+	}
+	"you are doomed"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}The spell Doom has been cast upon you."
+	}
+	"survivors are doomed"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}The Survivors were Doomed..."
+	}
+	"Team Points"
+	{
+		"en"				"Team Points:"
+	}
+	"Share Points Syntax"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"!{3} <client> <points>"
+	}
+	"Share Points Given"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:3.2f},{6:s},{7:s},{8:s}"
+		"en"				"{1}{2} {3}has gifted {4}{5} {6}point(s) to {7}{8}"
+	}
+	"combat handicap restricted"
+	{
+		"#format"			"{1:s},{2:s},{3:i}"
+		"en"				"{1}You are now locked in to {2}Handicap Lv.{3}"
+	}
+	"Overdrive damage"
+	{
+		"en"				"Overdrive Damage"
+	}
+	"Overdrive damage info"
+	{
+		"en"				"Increases all outgoing damage during Overdrive\nbased on the number of overdrive stacks."
+	}
+	"Overdrive leech"
+	{
+		"en"				"Overdrive Leech"
+	}
+	"Overdrive leech info"
+	{
+		"en"				"You heal for some of the outgoing damage\nmultiplicative based on the stack count."
+	}
+	"Overdrive absorb"
+	{
+		"en"				"Overdrive Damage Shield"
+	}
+	"Overdrive absorb info"
+	{
+		"en"				"Absorb a portion of incoming damage\nPlease note this occurs after handicap/raid damage increases."
+	}
+	"Overdrive reflect"
+	{
+		"en"				"Overdrive Reflect"
+	}
+	"Overdrive reflect info"
+	{
+		"en"				"Reflects damage back - based on overdrive stacks."
+	}
+	
+	"Cleanse damage"
+	{
+		"en"				"Cleanse Damage"
+	}
+	"Cleanse damage info"
+	{
+		"en"				"Increases all outgoing damage based on\nyour cleanse stacks."
+	}
+	"Cleanse leech"
+	{
+		"en"				"Cleanse Leech"
+	}
+	"Cleanse leech info"
+	{
+		"en"				"You heal for some outgoing damage based on\nyour cleanse count."
+	}
+	"Cleanse absorb"
+	{
+		"en"				"Cleanse Damage Shield"
+	}
+	"Cleanse absorb info"
+	{
+		"en"				"Absorb a portion of incoming damage based on cleanse stacks."
+	}
+	"Cleanse reflect"
+	{
+		"en"				"Cleanse Reflect"
+	}
+	"Cleanse reflect info"
+	{
+		"en"				"Reflects damage back - based on cleanse stacks."
+	}
+	"building stack change"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:3.3f},{7:s}"
+		"en"				"{1}Now generating {2}{3} {4}for {5}{6} {7}second(s)."
+	}
+	"chainsaw damage increase"
+	{
+		"en"				"Chainsaw Damage+"
+	}
+	"chainsaw damage increase info"
+	{
+		"en"				"Chainsaw damage is increased."
+	}
+	"explosion damage increase"
+	{
+		"en"				"Explosion Damage+"
+	}
+	"explosion damage increase info"
+	{
+		"en"				"Explosions (pipes, propane, etc.) deal more damage."
+	}
+	"blunt damage increase"
+	{
+		"en"				"Blunt Melee Damage+"
+	}
+	"blunt damage increase info"
+	{
+		"en"				"Blunt Melee Weapons deal more damage"
+	}
+	"sharp damage increase"
+	{
+		"en"				"Sharp Melee Damage+"
+	}
+	"sharp damage increase info"
+	{
+		"en"				"Sharp Melee Weapons deal more damage"
+	}
 	"special ammo target selected"
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
@@ -156,7 +425,7 @@
 	"level requirement kick"
 	{
 		"#format"			"{1:i},{2:s}"
-		"en"				"Server Requires Sky Level {2}\nYour level is {1}.\nPlease connect 104.153.108.113:27015 [skyrpg] Any Level"
+		"en"				"Requires {2} Rating (You are {1}\nvisit steamcommunity.com/groups/sky-rpg"
 	}
 	"incap survivor health"
 	{
@@ -218,7 +487,7 @@
 	}
 	"handicap"
 	{
-		"en"				"Handicap Settings"
+		"en"				"Handicap\nModify your (and yours alone) difficulty."
 	}
 	"player handicap"
 	{
@@ -320,12 +589,12 @@
 	"Store Points Award Given"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"{1}Awarded {2}{3} {4}Store Credits to {5}{6}"
+		"en"				"{1}Awarded {2}{3} {4}Premium Credits to {5}{6}"
 	}
 	"Store Points Award Received"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}You have been awarded {2}{3} {4}Store Credits"
+		"en"				"{1}You have been awarded {2}{3} {4}Premium Credits"
 	}
 	"Sky Points Award"
 	{
@@ -350,7 +619,7 @@
 	"Tank Cooldown Complete"
 	{
 		"#format"			"{1:s},{2:s}"
-		"en"				"{1}Tank {2}can now be purchased"
+		"en"				"{1}THE AI {2}can now purchase a tank"
 	}
 	"Tank Cooldown Remaining"
 	{
@@ -360,7 +629,7 @@
 	"Store Header"
 	{
 		"#format"			"{1:i}"
-		"en"				"STORE\n \nStore Credits: {1}"
+		"en"				"In-Game Store\n!Store Credits: {1}"
 	}
 	"Store Points Award"
 	{
@@ -395,27 +664,27 @@
 	"Menu Header 1 Talents"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:i},{6:s},{7:i}"
-		"en"				"Lv: {1} of {2}\nXP: {3} of {4}\n \nTalent Points: {5} ({6})\nStore Credits: {7}"
+		"en"				"Lv: {1} of {2}\nXP: {3} of {4}\n \nTalent Points: {5} ({6})\nPremium Credits: {7}"
 	}
 	"Menu Header 1 Exp"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:i},{8:s},{9:s}"
-		"en"				"Lv: {1} of {2} {9}\n\nXP: {3} of {4} ({5})\n \nUpgrade Cost: {6} XP\nStore Credits: {7}\n \n{8}"
+		"en"				"Lv: {1} of {2} {9}\n\nXP: {3} of {4} ({5})\n \nUpgrade Cost: {6} XP\nPremium Credits: {7}\n \n{8}"
 	}
 	"Menu Header 2 Talents"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:i},{6:s},{7:3.3f},{8:i}"
-		"en"				"Lv: {1} of {2}\nXP: {3} of {4}\n \nTalent Points: {5} ({6})\nZShop Credits: {7}\nStore Credits: {8}"
+		"en"				"Lv: {1} of {2}\nXP: {3} of {4}\n \nTalent Points: {5} ({6})\nZShop Credits: {7}\nPremium Credits: {8}"
 	}
 	"Menu Header 2 Exp"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:3.3f},{8:i},{9:s},{10:s}"
-		"en"				"Lv: {1} of {2} {10}\nXP: {3} of {4} ({5})\n \nUpgrade Cost: {6} XP\nShop Credits: {7}\nStore Credits: {8}\n \n{9}"
+		"en"				"Lv: {1} of {2} {10}\nXP: {3} of {4} ({5})\n \nUpgrade Cost: {6} XP\nShop Credits: {7}\nPremium Credits: {8}\n \n{9}"
 	}
 	"Points Text"
 	{
 		"#format"			"{1:3.2f}"
-		"en"				"\nShop Credits: {1}"
+		"en"				"\n!buy credits: {1}"
 	}
 	"Player Level Text"
 	{
@@ -430,7 +699,7 @@
 	"RPG Header"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"{1}\n \nTalent Upgrade Points: {2}"
+		"en"				"{1}\n \nLevelUp Points: {2}"
 	}
 	"Data Saved"
 	{
@@ -458,7 +727,7 @@
 	}
 	"Buy Menu"
 	{
-		"en"				"Shop Menu"
+		"en"				"!buy Menu\nSpend !buy credits here"
 	}
 	"Buy Menu Option 1"
 	{
@@ -468,7 +737,7 @@
 	"Buy Menu Option 2"
 	{
 		"#format"			"{1:s},{2:3.1f},{3:s}"
-		"en"				"{1} Cost: {2} Point(s) ({3})"
+		"en"				"{1} Cost: {2} !buy credit(s) ({3})"
 	}
 	"Buy Menu Option 3"
 	{
@@ -524,6 +793,10 @@
 	"free weapons bind"
 	{
 		"en"				"opens the weapons buy menu"
+	}
+	"baseball_bat bind"
+	{
+		"en"			"purchases the baseball bat melee weapon"
 	}
 	"fireaxe bind"
 	{
@@ -788,35 +1061,371 @@
 		"#format"			"{1:s},{2:s}"
 		"en"				"{1}Director Priority Save {2}Enabled"
 	}
-	"Constitution"
+	"constitution"
 	{
-		"#format"			"{1:i}"
-		"en"				"Constitution:\t{1}"
+		"en"				"Constitution"
 	}
-	"Agility"
+	"constitution info"
 	{
-		"#format"			"{1:i}"
-		"en"				"Agility:\t\t\t{1}"
+		"en"				"Talents:\n+1st Upgrade Strength\n+Cooldown Time\n\nAmmos:\n+1st Upgrade Lifetime\n+Base Stamina Cost"
 	}
-	"Resilience"
+	"agility"
 	{
-		"#format"			"{1:i}"
-		"en"				"Resilience:\t {1}"
+		"en"				"Agility"
 	}
-	"Technique"
+	"agility info"
 	{
-		"#format"			"{1:i}"
-		"en"				"Technique:\t {1}"
+		"en"				"Talents:\n+Each Upgrade Strength\n+Cooldown Time\n\nAmmos:\n-Range"
 	}
-	"Endurance"
+	"resilience"
 	{
-		"#format"			"{1:i}"
-		"en"				"Endurance:\t {1}"
+		"en"				"Resilience"
 	}
-	"Luck"
+	"resilience info"
 	{
-		"#format"			"{1:i}"
-		"en"				"Luck:\t\t\t{1}"
+		"en"				"Talents:\n-Talent Cooldown Time\n\nAmmos:\n+Each Upgrade Stamina Cost\n-Each Upgrade Cooldown Time"
+	}
+	"technique"
+	{
+		"en"				"Technique"
+	}
+	"technique info"
+	{
+		"en"				"Talents:\n+Each Upgrade Ability Time\n\nAmmos:\n+1st Upgrade \"On\" Time"
+	}
+	"endurance"
+	{
+		"en"				"Endurance"
+	}
+	"endurance info"
+	{
+		"en"				"Does not affect Talents.\n\nAmmos:\n+1st Upgrade Lifetime\n-1st Upgrade Stamina Cost\n+Each Upgrade Range"
+	}
+	"luck"
+	{
+		"en"				"Luck"
+	}
+	"luck info"
+	{
+		"en"				"Increases the likelihood of critical events."
+	}
+	"talent level up"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s},{7:s},{8:s}"
+		"en"				"{1}{2} {3}has gained {4}{5} {6}points of {7}{8}"
+	}
+	"cartel experience screen"
+	{
+		"#format"			"{1:i},{2:s},{3:s},{4:s},{5:s}"
+		"en"				"{4} Lv.{1}:\t{2}XP {5} {3}XP"
+	}
+	"Survivor Cartel"
+	{
+		"en"				"CARTEL\nThese categories affect all things in small ways."
+	}
+	"Survivor Classes"
+	{
+		"en"				"Class\nEnabled: RPG ON\nNone: RPG Off (Disables YOUR Talents & Level Modifiers)"
+	}
+	"Tanking Classes"
+	{
+		"en"				"Tanking Classes\nClasses in this category primary role is tanking"
+	}
+	"Tank-Healing Subclasses"
+	{
+		"en"				"Tank(Healer)\nClasses in this category are tank-heal hybrids."
+	}
+	"Tank-DPS Subclasses"
+	{
+		"en"				"Tank(DPS)\nThese are tanks that also pack a punch!"
+	}
+	"DPS Classes"
+	{
+		"en"				"DPS Classes\nThese Class' primary focus is beating things up!"
+	}
+	"DPS-Ranged Subclasses"
+	{
+		"en"				"DPS(Ranged)\nDPS Classes with ranged-combat bonuses."
+	}
+	"DPS-Melee Subclasses"
+	{
+		"en"				"DPS(Melee)\nDPS Classes with a focus on close-quarter combat."
+	}
+	"Healer Classes"
+	{
+		"en"				"Healing Classes\nClasses that primarily focus in health recovery."
+	}
+	"Healer-DPS Subclasses"
+	{
+		"en"				"Healing(DPS)\nHealers that aren't COMPLETE push-overs in combat!"
+	}
+	"Healer-Tank Subclasses"
+	{
+		"en"				"Healing(Tank)\nThese healers have some tanking qualities."
+	}
+	"Hybrid Classes"
+	{
+		"en"				"Hybrid Classes\nThey can do it all!\n... But not necessarily the best."
+	}
+	"Submenu Locked"
+	{
+		"#format"			"{1:s},{2:i}"
+		"en"				"{1} (Locked until Lv.{2})"
+	}
+	"Submenu Available"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}"
+	}
+	"warrior"
+	{
+		"en"				"Warrior"
+	}
+	"healer"
+	{
+		"en"				"Healer"
+	}
+	"death knight"
+	{
+		"en"				"Death Knight"
+	}
+	"death healer"
+	{
+		"en"				"Death Priest"
+	}
+	"death ward"
+	{
+		"en"				"Death Ward"
+	}
+	"crusader"
+	{
+		"en"				"Crusader"
+	}
+	"paladin"
+	{
+		"en"				"Paladin"
+	}
+	"druid"
+	{
+		"en"				"Druid"
+	}
+	"shaman"
+	{
+		"en"				"Shaman"
+	}
+	"assassin"
+	{
+		"en"				"Assassin"
+	}
+	"crusader assassin"
+	{
+		"en"				"Arbiter"
+	}
+	"brawler"
+	{
+		"en"				"Brawler"
+	}
+	"monk"
+	{
+		"en"				"Monk"
+	}
+	"healer aura"
+	{
+		"en"				"Healer's Aura\nYour health regen talents affect nearby teammates\nbased on your healing ammo range."
+	}
+	"hemomancy"
+	{
+		"en"				"Hemomancy\nDealing damage replenishes your health, while\nreceiving damage heals nearby teammates."
+	}
+	"totem spirit"
+	{
+		"en"				"Totem Spirit\nAbsorbs regen talents sending them outwards as\nexplosions when enemies are near."
+	}
+	"blessed by the light"
+	{
+		"en"				"Blessed By The Light\nDraws zombies to them if enrage is not active."
+	}
+	"dark sacrifice"
+	{
+		"en"				"Dark Sacrifice\nWeakness and health regen are always active, and\nattracts zombies during enrage."
+	}
+	"conXP class info"
+	{
+		"en"				"Constitution XP"
+	}
+	"agiXP class info"
+	{
+		"en"				"Agility XP"
+	}
+	"resXP class info"
+	{
+		"en"				"Resilience XP"
+	}
+	"tecXP class info"
+	{
+		"en"				"Technique XP"
+	}
+	"endXP class info"
+	{
+		"en"				"Endurance XP"
+	}
+	"lucXP class info"
+	{
+		"en"				"Luck XP"
+	}
+	"saving class data"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Saving Class Data for {2}{3}"
+	}
+	"d class info"
+	{
+		"en"				"Outgoing Damage"
+	}
+	"D class info"
+	{
+		"en"				"Incoming Damage"
+	}
+	"tXP class info"
+	{
+		"en"				"Tank XP"
+	}
+	"hB class info"
+	{
+		"en"				"Bullet Heal Strength"
+	}
+	"hM class info"
+	{
+		"en"				"Melee Heal Strength"
+	}
+	"hXP class info"
+	{
+		"en"				"Heal XP"
+	}
+	"stam class info"
+	{
+		"en"				"Stamina Cost"
+	}
+	"amCD class info"
+	{
+		"en"				"Ammo Cooldown"
+	}
+	"wRNG class info"
+	{
+		"en"				"Weapon Range"
+	}
+	"mDMG class info"
+	{
+		"en"				"Melee Damage"
+	}
+	"ICwDMG class info"
+	{
+		"en"				"In-Combat Weapon Damage"
+	}
+	"OCwDMG class info"
+	{
+		"en"				"Out-of-Combat Weapon Damage"
+	}
+	"eprange class info"
+	{
+		"en"				"Each Point Range"
+	}
+	"stalker class info"
+	{
+		"en"				"Stalker\nIncreases all outgoing damage.\nThe more damage a mob has dealt\nto you, the less stalker will deal to it."
+	}
+	"range class info"
+	{
+		"en"				"Your Ammo Range"
+	}
+	"amSTR class info"
+	{
+		"en"				"Ammo Strength"
+	}
+	"ftCD class info"
+	{
+		"en"				"First Upgrade Cooldown"
+	}
+	"etCD class info"
+	{
+		"en"				"Each Upgrade Cooldown"
+	}
+	"aamRNG class info"
+	{
+		"en"				"All Ammo Range"
+	}
+	"H class talent info"
+	{
+		"en"				"Health Talents"
+	}
+	"h class talent info"
+	{
+		"en"				"Healing Talents"
+	}
+	"R class talent info"
+	{
+		"en"				"Reflect Talents"
+	}
+	"d class talent info"
+	{
+		"en"				"Damage Talents"
+	}
+	"elven ranger"
+	{
+		"en"				"Elven Ranger"
+	}
+	"healer shaman"
+	{
+		"en"				"Cleric"
+	}
+	"hemomancer"
+	{
+		"en"				"Hemomancer"
+	}
+	"death hemomancer"
+	{
+		"en"				"Bloodmage"
+	}
+	"crusader hemomancer"
+	{
+		"en"				"Bloodwarrior"
+	}
+	"death healer hemomancer"
+	{
+		"en"				"Bloodknight"
+	}
+	"healer hemomancer"
+	{
+		"en"				"Bloodpriest"
+	}
+	"death shaman"
+	{
+		"en"				"Deathbringer"
+	}
+	"crusader shaman"
+	{
+		"en"				"Battlemage"
+	}
+	"death crusader"
+	{
+		"en"				"Warblade"
+	}
+	"death ranger"
+	{
+		"en"				"Dark Ranger"
+	}
+	"rating increase"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}+{2}{3} {4}rating"
+	}
+	"Enable Class"
+	{
+		"en"				"Enable Class"
+	}
+	"Disable Class"
+	{
+		"en"				"Disable Class"
 	}
 	"strength slate"
 	{
@@ -1121,6 +1730,30 @@
 	{
 		"en"				"Jimmy Drop"
 	}
+	"bomber drop"
+	{
+		"en"				"Bomber Drop"
+	}
+	"flamer drop"
+	{
+		"en"				"Flamer Drop"
+	}
+	"leaker drop"
+	{
+		"en"				"Leaker Drop"
+	}
+	"bomber queue"
+	{
+		"en"				"Bomber Queue"
+	}
+	"flamer queue"
+	{
+		"en"				"Flamer Queue"
+	}
+	"leaker queue"
+	{
+		"en"				"Leaker Queue"
+	}
 	"Pistol Talents"
 	{
 		"en"				"Pistol Talents"
@@ -1143,15 +1776,19 @@
 	}
 	"Survivor Passives"
 	{
-		"en"				"Passive Talents"
+		"en"				"Passive Talents\nSurvivor Health Increase & Thorns"
 	}
 	"Survivor VomitedOn"
 	{
-		"en"				"Covered-In-Bile Talents"
+		"en"				"Tanking Talents*\n*Must be covered-in-bile"
 	}
 	"Survivor Junky"
 	{
-		"en"				"Junky Talents"
+		"en"				"Adren Talents\nAdrenaline[Ad] Required"
+	}
+	"Survivor Fire"
+	{
+		"en"				"Everything-Fire related"
 	}
 	"Survivor Auras"
 	{
@@ -1161,9 +1798,9 @@
 	{
 		"en"				"Spells"
 	}
-	"Special Ammo Talents"
+	"Ammo Circle Talents"
 	{
-		"en"				"Special Ammo Talents"
+		"en"				"Ammo Circle Talents\n!sa - toggle on/off\n!saf / !saf - rotate ammos forward/backward"
 	}
 	"Infected Talents"
 	{
@@ -1193,7 +1830,7 @@
 	}
 	"Store"
 	{
-		"en"				"Store"
+		"en"				"Buffs Vendor\nEarn store credits to buy temporary buffs."
 	}
 	"survivor health"
 	{
@@ -1255,13 +1892,29 @@
 	{
 		"en"				"Pistol Critical Damage"
 	}
+	"Environmental Talents"
+	{
+		"en"				"Elemental Talents\nFire, Explosion, etc."
+	}
+	"Melee Talents"
+	{
+		"en"				"Melee Talents\nWhen guns aren't good enough."
+	}
 	"weapon damage increase"
 	{
-		"en"				"Weapon Damage Increase"
+		"en"				"Second Shot"
+	}
+	"burn damage increase"
+	{
+		"en"				"Fire Damage+"
+	}
+	"burn damage increase info"
+	{
+		"en"				"Increases all the burn damage sourced from you."
 	}
 	"weapon damage increase info"
 	{
-		"en"				"Bullet damage increases when weapon\ncritical chance rolls successful."
+		"en"				"Fires a second, non-elemental bullet."
 	}
 	"melee damage increase"
 	{
@@ -1307,9 +1960,9 @@
 	{
 		"en"				"Zero Gravity Ammo"
 	}
-	"adrenaline rage"
+	"adrenaline heal"
 	{
-		"en"				"Adrenaline Rage"
+		"en"				"Adrenaline Heal"
 	}
 	"fight or flight"
 	{
@@ -1552,12 +2205,17 @@
 	"Ability Locked"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"{1} (Find a Discovery Item or pay {2} Store Credits)"
+		"en"				"{1} (Find a Discovery Item or pay {2} Premium Credits)"
 	}
 	"Ability Available"
 	{
 		"#format"			"{1:s},{2:i},{3:i}"
 		"en"				"{1} : {2} ({3})"
+	}
+	"Ability Available T1"
+	{
+		"#format"			"{1:s},{2:i}"
+		"en"				"{1} : {2}"
 	}
 	"Ability Available Percent"
 	{
@@ -1593,6 +2251,11 @@
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i}"
 		"en"				"{1}{4} {2}is now level {3}{5}"
+	}
+	"player multiple level up"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s},{7:s},{8:s}"
+		"en"				"{1}{2} {3}gained {4}{5} {6}levels, and is now {7}level {8}"
 	}
 	"player sky level up"
 	{
@@ -1632,17 +2295,17 @@
 	"distance points"
 	{
 		"#format"			"{1:s},{2:s},{3:3.3f},{4:s}"
-		"en"				"{1}Distance: {2}{3} {4}buy point(s)."
+		"en"				"{1}Distance: {2}{3} {4}!buy credit(s)."
 	}
 	"healing points"
 	{
 		"#format"			"{1:s},{2:s},{3:3.3f},{4:s}"
-		"en"				"{1}Healing: {2}{3} {4}buy point(s)."
+		"en"				"{1}Healing: {2}{3} {4}!buy credit(s)."
 	}
 	"assisting points"
 	{
 		"#format"			"{1:s},{2:s},{3:3.3f},{4:s}"
-		"en"				"{1}Assist: {2}{3} {4}buy point(s)."
+		"en"				"{1}Assist: {2}{3} {4}!buy credit(s)."
 	}
 	"Experience Earned Self"
 	{
@@ -1652,7 +2315,7 @@
 	"Points Earned Self"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:3.3f}"
-		"en"				"{1}Hurt Bonus: {2}{6} {3}for {4}{7} {5}buy point(s)"
+		"en"				"{1}Hurt Bonus: {2}{6} {3}for {4}{7} {5}buy !buy credit(s)"
 	}
 	"Tag Experience"
 	{
@@ -1672,7 +2335,7 @@
 	"Tag Points"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:3.2f}"
-		"en"				"{1}Tag Points: {2}{4} {3}buy point(s)."
+		"en"				"{1}Tag Points: {2}{4} {3}!buy credit(s)."
 	}
 	"Bile Damage Experience"
 	{
@@ -1682,7 +2345,7 @@
 	"Bile Damage Points"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:3.1f}"
-		"en"				"{1}Bile Points: {2}{6} {3}for {4}{7} {5}buy point(s)."
+		"en"				"{1}Bile Points: {2}{6} {3}for {4}{7} {5}!buy credit(s)."
 	}
 	"Experience Earned Total Self"
 	{
@@ -1702,22 +2365,22 @@
 	"Points Earned Total Self"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:3.3f}"
-		"en"				"{1}Hurt Bonus (Total): {2}{4} {3}buy point(s)"
+		"en"				"{1}Hurt Bonus (Total): {2}{4} {3}!buy credit(s)"
 	}
 	"Points Earned Total Team"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:3.3f}"
-		"en"				"{1}Hurt Bonus (Total) for {2}{6}{3}: {4}{7} {5}buy point(s)"
+		"en"				"{1}Hurt Bonus (Total) for {2}{6}{3}: {4}{7} {5}!buy credit(s)"
 	}
 	"Points Earned Total Team Survivor"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:3.3f}"
-		"en"				"{1}Hurt Bonus: {2}{8} {3}against {4}{9} {5}for {6}{10} {7}buy point(s)"
+		"en"				"{1}Hurt Bonus: {2}{8} {3}against {4}{9} {5}for {6}{10} {7}!buy credit(s)"
 	}
 	"Experience Points Earned Total Self"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:i},{7:3.3f}"
-		"en"				"{1}Hurt Bonus (Total): {2}{6} {3}XP, {4}{7} {5}buy point(s)"
+		"en"				"{1}Hurt Bonus (Total): {2}{6} {3}XP, {4}{7} {5}!buy credit(s)"
 	}
 	"Experience Points Earned Total Team"
 	{
@@ -1727,11 +2390,11 @@
 	"Experience Points Earned Total Team Survivor"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:i},{13:3.3f}"
-		"en"				"{1}Hurt Bonus: {2}{10} {3}against {4}{11} {5}for {6}{12} {7}XP, {8}{13} {9}buy point(s)"
+		"en"				"{1}Hurt Bonus: {2}{10} {3}against {4}{11} {5}for {6}{12} {7}XP, {8}{13} {9}!buy credit(s)"
 	}
 	"slate"
 	{
-		"en"				"CARTEL"
+		"en"				"CARTEL\nConstitution\nAgility\nResilience\nTechnique\nEndurance\nLuck"
 	}
 	"SLATE Award Common"
 	{
@@ -2285,7 +2948,7 @@
 	}
 	"survivor profile editor"
 	{
-		"en"				"Loadout Editor"
+		"en"				"Profile Editor\nSave, Load & Share Profiles.\nSay !loadoutname to set the current loadout name."
 	}
 	"loadout name set"
 	{
@@ -2306,6 +2969,16 @@
 	{
 		"#format"			"{1:s}"
 		"en"				"{1}Loading Profile; A new menu will load when this process is complete."
+	}
+	"loading profile ex"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Loading Profile; A new menu will load when this process is complete. {2}"
+	}
+	"loaded profile"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"en"				"{1}{2} {3}has loaded the {4}{5} profile"
 	}
 	"no profiles to load"
 	{
@@ -2431,25 +3104,29 @@
 	{
 		"en"				"Rebirth"
 	}
-	"blind rage"
+	"bile bullet"
 	{
-		"en"				"Blind Rage"
+		"en"				"Bile Bullet"
 	}
-	"diversion"
+	"bile heal"
 	{
-		"en"				"Diversion"
+		"en"				"Bile Heal"
 	}
-	"bile addict"
+	"adrenaline bullet"
 	{
-		"en"				"Bile Addict"
+		"en"				"Adrenaline Bullet"
 	}
-	"quantum chemist"
+	"adrenaline bullet info"
 	{
-		"en"				"Quantum Chemist"
+		"en"				"Fires an additional bullet when Adrenaline[Ad]\nis active."
 	}
-	"quantum chemist info"
+	"dark bullet"
 	{
-		"en"				"Not an addict... Something more!\nYou deal more damage under the influence of adrenaline!"
+		"en"				"Dark Bullet"
+	}
+	"dark bullet info"
+	{
+		"en"				"Fires a bullet laced with dark energy when Weakness[Wk]\nis active." 
 	}
 	"Menu Rested Experience"
 	{
@@ -2505,16 +3182,16 @@
 	"Tag Name Too Long"
 	{
 		"#format"			"{1:i}"
-		"en"				"Your tag can be no larger than {1} characters."
+		"en"				"Your nick name can be no larger than {1} characters."
 	}
 	"Tag Name Set"
 	{
 		"#format"			"{1:s}"
-		"en"				"Your tag is now: {1}"
+		"en"				"Your nick name is now: {1}"
 	}
 	"chat settings"
 	{
-		"en"				"Chat Settings"
+		"en"				"Chat Colors\nsay !name in chat to use a custom nick-name!"
 	}
 	"Chat Settings (Reserve)"
 	{
@@ -2658,9 +3335,13 @@
 	{
 		"en"				"Bullet Damage gives specials wings.\nWarning: Effect only temporary."
 	}
-	"adrenaline rage info"
+	"Healing Talents"
 	{
-		"en"				"Deal damage and replenish your health!"
+		"en"				"Healing Talents\nTalents that replenish your health."
+	}
+	"adrenaline heal info"
+	{
+		"en"				"Heal for a percentage of your outgoing damage\nwhen Adrenaline[Ad] is active."
 	}
 	"fight or flight info"
 	{
@@ -2767,17 +3448,13 @@
 	{
 		"en"				"You fight-back against specials hurting you\ncausing them to stagger in surprise."
 	}
-	"blind rage info"
+	"bile bullet info"
 	{
-		"en"				"When covered in bile, your outgoing damage is increased.\nThis is a separate effect from weapon criticals."
+		"en"				"Fires an additional bullet when covered in bile."
 	}
-	"diversion info"
+	"bile heal info"
 	{
-		"en"				"When covered in bile, heal for a portion\nof incoming damage from commons."
-	}
-	"bile addict info"
-	{
-		"en"				"Dealing critical damage while covered in\nbile fuels your adrenaline."
+		"en"				"Heal for a percentage of all incoming damage\nwhen covered in bile."
 	}
 	"rebirth info"
 	{
@@ -3019,17 +3696,25 @@
 	{
 		"en"				"Increases your sniper damage to tanks."
 	}
+	"Overdrive Talents"
+	{
+		"en"				"Overdrive\nGet cleansed, earn overdrive stacks."
+	}
+	"Cleanse Ammo Talents"
+	{
+		"en"				"Cleanse Ammo\nCleanse allies/enemies, earn cleanse stacks."
+	}
+	"Bullet Talents"
+	{
+		"en"				"Bullet Talents\nLace your bullets with something extra!"
+	}
 	"Weapon Talents"
 	{
-		"en"				"Weapon Talents"
+		"en"				"Weapon Talents\nJust shoot your gun."
 	}
-	"infected talents ability chance"
+	"Main Talents"
 	{
-		"en"				"Infected Ability Chance"
-	}
-	"infected talents ability chance info"
-	{
-		"en"				"Likelihood infected talents will trigger."
+		"en"				"Talents\nSpend LevelUp Points Here"
 	}
 	"Special Ammo Time"
 	{
@@ -3080,6 +3765,11 @@
 	{
 		"#format"			"{1:s},{2:s}"
 		"en"				"{1}Special Ammo DEBUG {2}Disabled"
+	}
+	"cannot load in combat"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}You cannot load profiles when you are in combat."
 	}
 }
 
