@@ -3,10 +3,25 @@
 
 "Phrases"
 {
+	"bonus container locked"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Your bonus container {2}is now locked."
+	}
+	"player no longer eligible"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}{2} {3}was removed from the server for falling below the rating requirement."
+	}
 	"loading data cannot open menu"
 	{
 		"#format"			"{1:s}"
 		"en"				"{1}The menu is unavailable while your data is loading."
+	}
+	"Cancel Load Request"
+	{
+		"#format"			"{1:s}"
+		"en"				"View Profile Authorization Request From {1}"
 	}
 	"none"
 	{
@@ -1229,6 +1244,34 @@
 	{
 		"en"				"Monk"
 	}
+	"blaster"
+	{
+		"en"				"Blaster"
+	}
+	"firebug"
+	{
+		"en"				"Firebug"
+	}
+	"firebug blaster"
+	{
+		"en"				"Fireblaster"
+	}
+	"firebug crusader"
+	{
+		"en"				"Fire Crusader"
+	}
+	"firebug death"
+	{
+		"en"				"Hellfire Knight"
+	}
+	"explosive impact"
+	{
+		"en"				"Unstable Genetics\nSpecial Commons become unstable, exploding for AoE damage\nwhen you land the killing blow."
+	}
+	"fire crater"
+	{
+		"en"				"Fireball Blast\nLanding the killing blow on special commons\ncreates a crater of fire on them."
+	}
 	"healer aura"
 	{
 		"en"				"Healer's Aura\nYour health regen talents affect nearby teammates\nbased on your healing ammo range."
@@ -1249,27 +1292,27 @@
 	{
 		"en"				"Dark Sacrifice\nWeakness and health regen are always active, and\nattracts zombies during enrage."
 	}
-	"conXP class info"
+	"coX class info"
 	{
 		"en"				"Constitution XP"
 	}
-	"agiXP class info"
+	"agX class info"
 	{
 		"en"				"Agility XP"
 	}
-	"resXP class info"
+	"reX class info"
 	{
 		"en"				"Resilience XP"
 	}
-	"tecXP class info"
+	"teX class info"
 	{
 		"en"				"Technique XP"
 	}
-	"endXP class info"
+	"enX class info"
 	{
 		"en"				"Endurance XP"
 	}
-	"lucXP class info"
+	"luX class info"
 	{
 		"en"				"Luck XP"
 	}
@@ -1326,15 +1369,59 @@
 	{
 		"en"				"Out-of-Combat Weapon Damage"
 	}
-	"eprange class info"
+	"snprDMG class info"
+	{
+		"en"				"Sniper Damage"
+	}
+	"pstlDMG class info"
+	{
+		"en"				"Pistol Damage"
+	}
+	"riflDMG class info"
+	{
+		"en"				"Assault Rifle Damage"
+	}
+	"snprDMG class info"
+	{
+		"en"				"Sniper Damage"
+	}
+	"shtgDMG class info"
+	{
+		"en"				"Shotgun Damage"
+	}
+	"smgDMG class info"
+	{
+		"en"				"SMG Damage"
+	}
+	"atsgDMG class info"
+	{
+		"en"				"Auto-Shotgun Damage"
+	}
+	"pusgDMG class info"
+	{
+		"en"				"Pump-Shotgun Damage"
+	}
+	"boltDMG class info"
+	{
+		"en"				"Bolt-Action Sniper Damage"
+	}
+	"50caDMG class info"
+	{
+		"en"				".50cal Damage"
+	}
+	"eprng class info"
 	{
 		"en"				"Each Point Range"
 	}
-	"stalker class info"
+	"STK class info"
 	{
 		"en"				"Stalker\nIncreases all outgoing damage.\nThe more damage a mob has dealt\nto you, the less stalker will deal to it."
 	}
-	"range class info"
+	"gunslinger"
+	{
+		"en"				"Gunslinger"
+	}
+	"rng class info"
 	{
 		"en"				"Your Ammo Range"
 	}
@@ -1374,6 +1461,10 @@
 	{
 		"en"				"Elven Ranger"
 	}
+	"sharpshooter"
+	{
+		"en"				"Sharpshooter"
+	}
 	"healer shaman"
 	{
 		"en"				"Cleric"
@@ -1390,7 +1481,7 @@
 	{
 		"en"				"Bloodwarrior"
 	}
-	"death healer hemomancer"
+	"shaman hemomancer"
 	{
 		"en"				"Bloodknight"
 	}
@@ -2967,8 +3058,8 @@
 	}
 	"loading profile"
 	{
-		"#format"			"{1:s}"
-		"en"				"{1}Loading Profile; A new menu will load when this process is complete."
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Loading Profile; A new menu will load when this process is complete.\nYou can quick-load this profile with {2}!loadprofile {3}"
 	}
 	"loading profile ex"
 	{
@@ -2979,6 +3070,41 @@
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
 		"en"				"{1}{2} {3}has loaded the {4}{5} profile"
+	}
+	"target has authorized you"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}{2} {3}has authorized you to load profiles for them."
+	}
+	"authorized client to load"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"en"				"{1}You have authorized {2}{3} {4}to load profiles for you.\nThey have access until you {5}REVOKE {6}the privilege."
+	}
+	"user has withdrawn authorization"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}{2} {3}has withdrawn authorization."
+	}
+	"withdrawn authorization to user"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Withdrawn authorization to user: {2}{3}"
+	}
+	"user has withdrawn request"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}{2} {3}has withdrawn their authorization request."
+	}
+	"withdrawn request to user"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Withdrawn authorization request to user: {2}{3}"
+	}
+	"bot data deleted"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}BOT Data has been {2}erased"
 	}
 	"no profiles to load"
 	{
@@ -2994,6 +3120,29 @@
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
 		"en"				"{1}Profile Updated: {2}{3}"
+	}
+	"sending profile request"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Sending profile load request to {2}{3}"
+	}
+	"profile load request"
+	{
+		"#format"			"{1:s}"
+		"en"				"Profile Load Request\n\n{1} would like your permission to\nload their saved profile onto your character."
+	}
+	"profile request cancelled"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Cancelled your profile load request to {2}{3}"
+	}
+	"Allow Profile Request"
+	{
+		"en"				"Load This Profile"
+	}
+	"Deny Profile Request"
+	{
+		"en"				"Deny Request"
 	}
 	"Delete Profile"
 	{
