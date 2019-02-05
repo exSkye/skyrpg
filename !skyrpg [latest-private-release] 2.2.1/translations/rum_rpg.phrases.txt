@@ -1497,7 +1497,7 @@
 	{
 		"en"				"Battlemage"
 	}
-	"death crusader"
+	"crusader death"
 	{
 		"en"				"Warblade"
 	}
@@ -1891,7 +1891,7 @@
 	}
 	"Ammo Circle Talents"
 	{
-		"en"				"Ammo Circle Talents\n!sa - toggle on/off\n!saf / !saf - rotate ammos forward/backward"
+		"en"				"Magic Spells\nbindable commands:\n!sa - toggle magic ON/OFF\n!saf / !sab - cycle through spells forward/back"
 	}
 	"Infected Talents"
 	{
@@ -1957,27 +1957,27 @@
 	}
 	"bean bag"
 	{
-		"en"				"Bean Bag Ammo"
+		"en"				"Beanbag"
 	}
 	"slowing ammo"
 	{
-		"en"				"Slowing Ammo"
+		"en"				"Slow"
 	}
 	"bean bag ammo"
 	{
-		"en"				"Bean Bag Ammo"
+		"en"				"Beanbag"
 	}
 	"explosive ammo"
 	{
-		"en"				"Explosive Ammo"
+		"en"				"Explode"
 	}
 	"leech ammo"
 	{
-		"en"				"Leech Ammo"
+		"en"				"Drain"
 	}
 	"gravity ammo"
 	{
-		"en"				"Gravity Ammo"
+		"en"				"Gravity"
 	}
 	"pistol damage increase"
 	{
@@ -2049,7 +2049,7 @@
 	}
 	"zero gravity ammo"
 	{
-		"en"				"Zero Gravity Ammo"
+		"en"				"Gravity"
 	}
 	"adrenaline heal"
 	{
@@ -2073,15 +2073,15 @@
 	}
 	"blind ammo"
 	{
-		"en"				"Blind Ammo"
+		"en"				"Blind"
 	}
 	"healing ammo"
 	{
-		"en"				"Healing Ammo"
+		"en"				"Cure"
 	}
 	"distraction ammo"
 	{
-		"en"				"Distraction Ammo"
+		"en"				"Vomit"
 	}
 	"distraction ammo info"
 	{
@@ -2089,15 +2089,23 @@
 	}
 	"berserk ammo"
 	{
-		"en"				"Berserk Ammo"
+		"en"				"Berserk"
 	}
 	"berserk ammo info"
 	{
 		"en"				"Increases all outgoing and incoming damage."
 	}
+	"Single Spell Talents"
+	{
+		"en"				"Single-Target Spells\nShoot a target to inflict the status effect."
+	}
+	"Aoe Spell Talents"
+	{
+		"en"				"AoE Spells\nCreates an AoE Circle containing the spell."
+	}
 	"rage ammo"
 	{
-		"en"				"Rage Ammo"
+		"en"				"Adrenaline Rage"
 	}
 	"rage ammo info"
 	{
@@ -2105,7 +2113,7 @@
 	}
 	"darkness ammo"
 	{
-		"en"				"Darkness Ammo"
+		"en"				"Dark"
 	}
 	"darkness ammo info"
 	{
@@ -2113,7 +2121,7 @@
 	}
 	"cleansing ammo"
 	{
-		"en"				"Cleansing Ammo"
+		"en"				"Cleanse"
 	}
 	"cleansing ammo info"
 	{
@@ -2121,7 +2129,7 @@
 	}
 	"overdose ammo"
 	{
-		"en"				"Overdose Ammo"
+		"en"				"Overdose"
 	}
 	"overdose ammo info"
 	{
@@ -2129,19 +2137,19 @@
 	}
 	"fire ammo"
 	{
-		"en"				"Fire Ammo"
+		"en"				"Fire"
 	}
 	"reflect ammo"
 	{
-		"en"				"Reflect Ammo"
+		"en"				"Reflect"
 	}
 	"attack ammo"
 	{
-		"en"				"Attack Ammo"
+		"en"				"Bravery"
 	}
 	"shield ammo"
 	{
-		"en"				"Barrier Ammo"
+		"en"				"Barrier"
 	}
 	"damage shield"
 	{
@@ -2301,7 +2309,7 @@
 	"Ability Available"
 	{
 		"#format"			"{1:s},{2:i},{3:i}"
-		"en"				"{1} : {2} ({3})"
+		"en"				"{1} : {2} (Max: {3})"
 	}
 	"Ability Available T1"
 	{

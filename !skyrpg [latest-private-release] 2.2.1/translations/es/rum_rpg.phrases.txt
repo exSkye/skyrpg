@@ -974,7 +974,7 @@
 	{
 		"es"				"Mago de batalla"
 	}
-	"death crusader"
+	"crusader death"
 	{
 		"es"				"Hoja de Guerra"
 	}
