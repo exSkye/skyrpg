@@ -3928,6 +3928,17 @@
 		"#format"			"{1:s}"
 		"en"				"{1}You cannot load profiles when you are in combat."
 	}
+	//2/12/2019
+	"PvP Disabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Friendly-Fire: {2}Disabled"
+	}
+	"PvP Enabled"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Friendly-Fire: {2}Enabled"
+	}
 }
 
 

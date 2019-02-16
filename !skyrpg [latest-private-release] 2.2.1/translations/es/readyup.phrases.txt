@@ -1,0 +1,135 @@
+﻿"Phrases"
+{
+	"command sm_forcestart is unavailable"
+	{
+		"#format"		"{1:s}"
+		"es"			"{1} Command sm_forcestart is unavailable."
+	}
+	"hud enabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"es"			"{1} Pantalla de HUD {2}habilitada"
+	}
+	"hud disabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"es"			"{1} Pantalla de HUD {2} deshabilitada"
+	}
+	"not ready"
+	{
+		"#format"		"{1:s},{2:s}"
+		"es"			"{1} Conjunto de estado: {2} no está listo"
+	}
+	"ready"
+	{
+		"#format"		"{1:s},{2:s}"
+		"es"			"{1} Conjunto de estado: {2} listo"
+	}
+	"alltalk enabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"es"			"{1} Todas las conversaciones {2} habilitadas"
+	}
+	"alltalk disabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"es"			"{1} Todas las conversaciones {2} deshabilitadas"
+	}
+	"ready up time remaining"
+	{
+		"#format"		"{1:s},{2:s},{3:i},{4:s},{5:s},{6:i},{7:s}"
+		"es"			"{1} El Pre-juego termina en... {2}{3}{4}min(s) {5}{6}{7}seg(s)"
+	}
+	"match ready up"
+	{
+		"#format"		"{1:s},{2:s}"
+		"es"			"{1} El período previo al juego está activo; {2} por favor, ¡listo en el chat cuando estés preparado!"
+	}
+	"match is live"
+	{
+		"#format"		"{1:s},{2:s}"
+		"es"			"{1} ¡El pre-juego ha finalizado {2} y el partido ha comenzado!"
+	}
+	"client connected"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s}"
+		"es"			"{1} {2}{3} {4}se está conectando..."
+	}
+	"client loaded"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s}"
+		"es"			"{1} {2}{3} {4}ha entrado en el juego"
+	}
+	"connection timeout"
+	{
+		"#format"		"{1:i},{2:i}"
+		"es"			"período de preparación: comienza en {1}min(s) {2}seg(s)"
+	}
+	"warmup time remaining"
+	{
+		"#format"		"{1:i},{2:i}"
+		"es"			"período de preparación: partido en vivo en {1}min(s) {2}seg(s)"
+	}
+	"menu clients loading"
+	{
+		"#format"		"{1:i},{2:i},{3:i}"
+		"es"			"El Prejuego comienza en {1}min(s) {2}seg(s)\n"
+	}
+	"ready up countdown"
+	{
+		"#format"		"{1:i},{2:i}"
+		"es"			"El Pre-juego termina en... {1}min(s) {2}seg(s)\n"
+	}
+	"match begin notice"
+	{
+		"#format"		"{1:i}"
+		"es"			"la coincidencia comenzará cuando todos los\nclientes se hayan cargado."
+	}
+	"players loading"
+	{
+		"es"			"Cargando:"
+	}
+	"players waiting"
+	{
+		"es"			"Esperando:"
+	}
+	"players ready"
+	{
+		"es"			"Listo:"
+	}
+	"players not ready"
+	{
+		"es"			"No está listo:"
+	}
+	"spectators"
+	{
+		"es"			"Espectador:"
+	}
+	"toggle ready"
+	{
+		"es"			"<- Cambiar estado"
+	}
+	"toggle not ready"
+	{
+		"es"			"<- Cambiar estado"
+	}
+	"hide hud"
+	{
+		"es"			"<- Ocultar menú"
+	}
+	"intermission"
+	{
+		"#format"		"{1:s}"
+		"es"			"{1} ¡El período previo al juego ocurre antes de cada ronda!"
+	}
+	"timer match countdown aborted"
+	{
+		"#format"		"{1:s}"
+		"es"			"{1} Anulación de la mayoría abortada..."
+	}
+	"timer match countdown"
+	{
+		"#format"		"{1:i}"
+		"es"			"La ronda comienza en {1}segundo(s)\n(la mayoría está lista)"
+	}
+}
