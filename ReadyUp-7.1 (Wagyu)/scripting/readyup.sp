@@ -4,11 +4,11 @@
 
 #define MAX_ENTITIES		2048
 
-#define PLUGIN_VERSION		"6.2 Apple Pie"
-#define PLUGIN_CONTACT		"github.com/exskye"
+#define PLUGIN_VERSION		"7.1 Wagyu"
+#define PLUGIN_CONTACT		"github.com/MISSSKYELIGHTER"
 
 #define PLUGIN_NAME			"Ready Up"
-#define PLUGIN_DESCRIPTION	"A module-based pre-game preparation plugin."
+#define PLUGIN_DESCRIPTION	"A pre-game management plugin with an extensive API"
 #define CVAR_SHOW			FCVAR_NOTIFY | FCVAR_PLUGIN
 
 #define PLUGIN_LIBRARY		"readyup"
@@ -31,6 +31,9 @@ new bool:b_IsSaferoomDoorOpened;
 new bool:b_IsReadyUpOver;
 new bool:b_IsReadyUpStart;
 
+new DeleteTheDoors;
+new String:ForceCampaign[64];
+static Handle:g_IsGroupMemberStatus					= INVALID_HANDLE;
 static Handle:g_IsSaferoomDoorDestroyed				= INVALID_HANDLE;
 static Handle:g_IsFirstClientLoaded					= INVALID_HANDLE;
 static Handle:g_IsAllClientsLoaded					= INVALID_HANDLE;
@@ -217,6 +220,7 @@ public APLRes:AskPluginLoad2(Handle:g_Me, bool:b_IsLate, String:s_Error[], s_Err
 	g_CampaignStatus								= CreateGlobalForward("ReadyUp_GetCampaignStatus", ET_Event, Param_Cell);
 	g_MinimumSurvivors								= CreateGlobalForward("ReadyUp_SetSurvivorMinimum", ET_Event, Param_Cell);
 	g_CreateCompanion								= CreateGlobalForward("ReadyUp_CreateCompanion", ET_Event, Param_Cell, Param_String);
+	g_IsGroupMemberStatus							= CreateGlobalForward("ReadyUp_GroupMemberStatus", ET_Event, Param_Cell, Param_Cell);
 
 
 	CreateNative("ReadyUp_IsTeamsFlipped", Native_IsTeamsFlipped);
@@ -241,6 +245,7 @@ public APLRes:AskPluginLoad2(Handle:g_Me, bool:b_IsLate, String:s_Error[], s_Err
 	CreateNative("ReadyUp_NtvIsCampaignFinale", Native_IsCampaignFinale);
 	CreateNative("ReadyUp_NtvHandicapChanged", Native_HandicapChanged);
 	CreateNative("ReadyUp_NtvCreateCompanion", Native_CreateCompanion);
+	CreateNative("ReadyUp_NtvGroupMemberStatus", Native_GroupMemberStatus);
 	return APLRes_Success;
 }
 
@@ -500,6 +505,17 @@ public Native_IsCampaignFinale(Handle:plugin, params) {
 	if (IsEligibleMap(1)) Call_PushCell(1);
 	else if (IsEligibleMap(0)) Call_PushCell(0);
 	else Call_PushCell(-1);
+	Call_Finish();
+}
+
+public Native_GroupMemberStatus(Handle:plugin, params) {
+
+	new client		= GetNativeCell(1);
+	new groupStatus = GetNativeCell(2);
+
+	Call_StartForward(g_IsGroupMemberStatus);
+	Call_PushCell(client);
+	Call_PushCell(groupStatus);
 	Call_Finish();
 }
 
@@ -938,6 +954,17 @@ stock GetCurrentCampaignName() {
 	decl String:mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	mapname = LowerString(mapname);
+
+	if (!StrEqual(ForceCampaign, "none", false)) {
+
+		// We force a specific campaign on this server.
+		if (StrContains(mapname, ForceCampaign, false) == -1) {
+
+			GetArrayString(Handle:a_FirstMap, 0, mapname, sizeof(mapname));
+			ServerCommand("changelevel %s", mapname);
+			return;
+		}
+	}
 
 	new size = GetArraySize(a_CampaignMapDescriptionKey);
 	decl String:s_MapDescription[64];
@@ -1449,14 +1476,17 @@ stock Now_OpenSaferoomDoor() {
 	Call_StartForward(g_IsCheckpointDoorOpened);
 	Call_Finish();
 
-	if (!IsEligibleMap(0)) {
+	if (DeleteTheDoors > 0) {
 
-		if (IsValidEntity(SaferoomDoor)) AcceptEntityInput(SaferoomDoor, "Kill");
+		if (!IsEligibleMap(0)) {
+
+			if (IsValidEntity(SaferoomDoor)) AcceptEntityInput(SaferoomDoor, "Kill");
+		}
+		Call_StartForward(g_IsSaferoomDoorDestroyed);
+		Call_Finish();
+		SaferoomDoor = -1;
+		DeleteSaferoomDoors();
 	}
-	Call_StartForward(g_IsSaferoomDoorDestroyed);
-	Call_Finish();
-	SaferoomDoor = -1;
-	DeleteSaferoomDoors();
 }
 
 stock Now_OnReadyUpEnd() {
@@ -1553,9 +1583,9 @@ public OnClientConnected(client) {
 		GetClientName(client, Name, sizeof(Name));
 		PrintToChatAll("%t", "client connected", s_rup, green, Name, white);
 
-		Call_StartForward(g_MinimumSurvivors);
+		/*Call_StartForward(g_MinimumSurvivors);
 		Call_PushCell(iMinSurvivorsAllowed);
-		Call_Finish();
+		Call_Finish();*/
 	}
 }
 
@@ -1564,6 +1594,10 @@ public OnClientPostAdminCheck(client) {
 	if (IsClientInGame(client)) b_IsReady[client]	= false;
 	
 	if (IsClientHuman(client)) {
+
+		Call_StartForward(g_MinimumSurvivors);
+		Call_PushCell(iMinSurvivorsAllowed);
+		Call_Finish();
 
 		Call_StartForward(g_IsClientLoaded);
 		Call_PushCell(client);
@@ -2110,10 +2144,13 @@ stock bool:IsClientHuman(client) {
 
 stock DeleteSaferoomDoors() {
 
-	new ent = -1;
-	while ((ent = FindEntityByClassname(ent, "prop_door_rotating_checkpoint")) != -1) {
+	if (DeleteTheDoors == 2) {
 
-		AcceptEntityInput(ent, "Kill");
+		new ent = -1;
+		while ((ent = FindEntityByClassname(ent, "prop_door_rotating_checkpoint")) != -1) {
+
+			AcceptEntityInput(ent, "Kill");
+		}
 	}
 	//Call_StartForward(g_IsSaferoomDoorDestroyed);
 	//Call_Finish();
@@ -2299,6 +2336,8 @@ public SMCResult:Config_KeyValue(Handle:parser, const String:key[], const String
 		else if (StrEqual(key, "force start maps?")) Format(ForceStartMaps, sizeof(ForceStartMaps), "%s", value);
 		else if (StrEqual(key, "max survivors?")) iMaxSurvivorsAllowed = StringToInt(value);
 		else if (StrEqual(key, "min survivors?")) iMinSurvivorsAllowed = StringToInt(value);
+		else if (StrEqual(key, "force campaign?")) Format(ForceCampaign, sizeof(ForceCampaign), "%s", value);
+		else if (StrEqual(key, "delete all doors?")) DeleteTheDoors = StringToInt(value);
 		else if (StrEqual(key, "header?")) {
 		
 			strcopy(s_rup, sizeof(s_rup), value);

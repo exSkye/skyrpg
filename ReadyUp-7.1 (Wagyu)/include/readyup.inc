@@ -197,7 +197,7 @@ forward ReadyUp_FwdCallModule(String:nameConfig[], String:nameCommand[], value);
  *	Called when a player connects to the server, this sets the minimum survivors that should exist.
  *
  */
-forward ReadyUp_SetSurvivorMinimum(count);
+forward ReadyUp_SetSurvivorMinimum(iMin);
 
 /*
  *	Called when a plugin creates a companion.
@@ -242,6 +242,23 @@ forward ReadyUp_FwdGetCampaignName(const String:mapname[]);
  *	@noreturn
  */
 forward ReadyUp_SetInfectedBotLimit(infectedCount);
+
+/*
+ *
+ *	Called when a group user request is sent
+ *
+ *	@param client		The client id
+ *	@param groupStatus	The status of membership (1 - member, 0 no member)
+ */
+forward ReadyUp_GroupMemberStatus(client, groupStatus);
+
+/*
+ *	Call to request a users group status.
+ *
+ *	@param client	The client id
+ *	@param groupStatus The clients group status
+ */
+native ReadyUp_NtvGroupMemberStatus(client, groupStatus);
 
 /*
  *	Called when SKYRPG solo survivor handicap is locked into place.
