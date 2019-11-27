@@ -3,6 +3,16 @@
 
 "Phrases"
 {
+	"hardcore mode enabled"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s}"
+		"en"				"{1}You are level {2}{3}{4}: All Death Penalties are {5}Enabled"
+	}
+	"the zombies are coming"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}>>>>> {2}THE INFECTED ARE COMING {3}<<<<<"
+	}
 	"bonus container locked"
 	{
 		"#format"			"{1:s},{2:s}"
@@ -74,12 +84,12 @@
 	"loading class profile"
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
-		"en"				"{1}Please wait while I load the profile for... {2}{3}"
+		"en"				"{1}Loading your saved {2}{3}"
 	}
 	"class profile loaded"
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
-		"en"				"{1}loaded class data successfully for {2}{3}"
+		"en"				"{1}My life is complete; I have loaded your {2}{3}"
 	}
 	"rejoining too fast"
 	{
@@ -105,11 +115,11 @@
 	}
 	"the leaderboards"
 	{
-		"en"				"Leaderboards\nView yours & the top-rated players"
+		"en"				"Rating Leaderboards"
 	}
 	"respec"
 	{
-		"en"				"Memory Wipe\nRefunds all of your talents (not class attributes)"
+		"en"				"Refund Talent Points"
 	}
 	"collected bonus container"
 	{
@@ -504,11 +514,6 @@
 	{
 		"en"				"Handicap\nModify your (and yours alone) difficulty."
 	}
-	"player handicap"
-	{
-		"#format"			"{1:i}"
-		"en"				"Handicap Lv. {1}"
-	}
 	"player handicap bonus"
 	{
 		"#format"			"{1:3.1f}"
@@ -714,7 +719,12 @@
 	"RPG Header"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"{1}\n \nLevelUp Points: {2}"
+		"en"				"{1}\n \nUpgrade Points: {2}"
+	}
+	"Class Level Text"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1} Lv.{2}\n \nRating Score: {3}"
 	}
 	"Data Saved"
 	{
@@ -742,7 +752,7 @@
 	}
 	"Buy Menu"
 	{
-		"en"				"!buy Menu\nSpend !buy credits here"
+		"en"				"!buy Menu\nSpend !buy credits"
 	}
 	"Buy Menu Option 1"
 	{
@@ -1082,7 +1092,7 @@
 	}
 	"constitution info"
 	{
-		"en"				"Talents:\n+1st Upgrade Strength\n+Cooldown Time\n\nAmmos:\n+1st Upgrade Lifetime\n+Base Stamina Cost"
+		"en"				"Talents:\n+1st Upgrade Strength\n+Cooldown Time\n\nAmmos:\n+1st Upgrade Lifetime\n+Base Stamina Cost\n+Cooldown Time"
 	}
 	"agility"
 	{
@@ -1138,9 +1148,13 @@
 	{
 		"en"				"CARTEL\nThese categories affect all things in small ways."
 	}
+	"Load And Go"
+	{
+		"en"				"Load 'n Go\nLoad an existing profile and go kill some shit!"
+	}
 	"Survivor Classes"
 	{
-		"en"				"Class\nEnabled: RPG ON\nNone: RPG Off (Disables YOUR Talents & Level Modifiers)"
+		"en"				"Job Class\n34 classes to choose from!"
 	}
 	"Tanking Classes"
 	{
@@ -1290,7 +1304,15 @@
 	}
 	"dark sacrifice"
 	{
-		"en"				"Dark Sacrifice\nWeakness and health regen are always active, and\nattracts zombies during enrage."
+		"en"				"Dark Sacrifice\nWeakness[Wk] is always active."
+	}
+	"elon mastery"
+	{
+		"en"				"Elon Mastery\nUnspecified 'upgrades' prevent your Jetpack from\nmalfunctioning when tanks are nearby."
+	}
+	"zora mastery"
+	{
+		"en"				"Zora Mastery\nAs a Zora, you move swiftly when in water."
 	}
 	"coX class info"
 	{
@@ -1320,6 +1342,10 @@
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
 		"en"				"{1}Saving Class Data for {2}{3}"
+	}
+	"h class info"
+	{
+		"en"				"Healing"
 	}
 	"d class info"
 	{
@@ -1420,6 +1446,30 @@
 	"gunslinger"
 	{
 		"en"				"Gunslinger"
+	}
+	"river zora"
+	{
+		"en"				"River Zora"
+	}
+	"spacex employee"
+	{
+		"en"				"SpaceX Employee"
+	}
+	"arsonist"
+	{
+		"en"				"Arsonist"
+	}
+	"wtrDMG class info"
+	{
+		"en"				"Water Damage"
+	}
+	"airDMG class info"
+	{
+		"en"				"Air Damage"
+	}
+	"fireDMG class info"
+	{
+		"en"				"Fire Damage"
 	}
 	"rng class info"
 	{
@@ -1891,7 +1941,7 @@
 	}
 	"Ammo Circle Talents"
 	{
-		"en"				"Magic Spells\nbindable commands:\n!sa - toggle magic ON/OFF\n!saf / !sab - cycle through spells forward/back"
+		"en"				"Action Bar\nSpells & Abilities that require an action slot.\n!abar\non/off floating action bar"
 	}
 	"Infected Talents"
 	{
@@ -2097,11 +2147,15 @@
 	}
 	"Single Spell Talents"
 	{
-		"en"				"Single-Target Spells\nShoot a target to inflict the status effect."
+		"en"				"Focus Spells\nCasts a spell on a specific target."
 	}
 	"Aoe Spell Talents"
 	{
-		"en"				"AoE Spells\nCreates an AoE Circle containing the spell."
+		"en"				"AoE Spells\nWhen selecting a spell, hold [WALK] to instead\nopen the action equip screen instead\nof the talent upgrade screen."
+	}
+	"Abilities Talents"
+	{
+		"en"				"Abilities\nUpgrade points not required."
 	}
 	"rage ammo"
 	{
@@ -2309,12 +2363,12 @@
 	"Ability Available"
 	{
 		"#format"			"{1:s},{2:i},{3:i}"
-		"en"				"{1} : {2} (Max: {3})"
+		"en"				"{1} : {2} ({3})"
 	}
 	"Ability Available T1"
 	{
-		"#format"			"{1:s},{2:i}"
-		"en"				"{1} : {2}"
+		"#format"			"{1:s},{2:i},{3:i}"
+		"en"				"{1} : {2} ({3})"
 	}
 	"Ability Available Percent"
 	{
@@ -2607,20 +2661,14 @@
 	{
 		"en"				"Unlimited Slots"
 	}
-	"inventory size"
-	{
-		"#format"			"{1:i}"
-		"en"				"{1} slots"
-	}
 	"inventory header"
 	{
-		"#format"			"{1:s},{2:i},{3:s}"
+		"#format"			"{1:s},{2:i},{3:i}"
 		"en"				"{1}\nInventory: {2} of {3}"
 	}
 	"inventory empty"
 	{
-		"#format"			"{1:s},{2:s}"
-		"en"				"{1}Inventory is {2}EMPTY"
+		"en"				"Inventory is EMPTY"
 	}
 	"maximum inventory clip size reached"
 	{
@@ -2991,20 +3039,25 @@
 	{
 		"en"				"Weapon Statistics"
 	}
-	"Round Statistics"
+	"round statistics"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s}"
-		"en"				"{1}Commons Killed: {2}{3}\n{4}Specials Killed: {5}{6}\n{7}Survivors Killed: {8}{9}\n{10}Total Damage: {11}{12}\n{13}MVP: {14}{15} {16}Damage: {17}{18}"
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s},{19:s}"
+		"en"				"{1}=== ROUND KILLS STATISTICS ===\n{2}Commons: {3}{4}\n{5}Super Commons: {6}{7}\n{8}Witches: {9}{10}\n{11}Special Infected: {12}{13}\n{14}Tanks: {15}{16}\n{17}Total: {18}{19}"
+	}
+	"campaign statistics"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s},{19:s}"
+		"en"				"{1}=== TOTAL CAMPAIGN KILLS STATISTICS ===\n{2}Commons: {3}{4}\n{5}Super Commons: {6}{7}\n{8}Witches: {9}{10}\n{11}Special Infected: {12}{13}\n{14}Tanks: {15}{16}\n{17}Total: {18}{19}"
 	}
 	"Talent Upgrade Title"
 	{
-		"#format"			"{1:s},{2:i},{3:i}"
-		"en"				"{1} - Upgrades -> {2} ({3})"
+		"#format"			"{1:s},{2:i}"
+		"en"				"{1} - STRENGTH -> {2}"
 	}
 	"Talent Upgrade Title Free"
 	{
-		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		"en"				"{1} - Upgrades -> {2} ({3})\nUpgrades Respec: {4}"
+		"#format"			"{1:s},{2:i},{3:i}"
+		"en"				"{1} - STRENGTH -> {2}\nUpgrades Respec: {3}"
 	}
 	"Talent Cooldown Info - No Points"
 	{
@@ -3047,7 +3100,7 @@
 	}
 	"survivor profile editor"
 	{
-		"en"				"Profile Editor\nSave, Load & Share Profiles.\nSay !loadoutname to set the current loadout name."
+		"en"				"Profile Editor\n!loadoutname\nView/Load or Save a loadout.\nNote: Class is locked during Combat."
 	}
 	"loadout name set"
 	{
@@ -3057,7 +3110,7 @@
 	"profile editor title"
 	{
 		"#format"			"{1:s}"
-		"en"				"{1}"
+		"en"				"Loadout: {1}\n"
 	}
 	"loadout deleted"
 	{
@@ -3348,7 +3401,7 @@
 	}
 	"chat settings"
 	{
-		"en"				"Chat Colors\nsay !name in chat to use a custom nick-name!"
+		"en"				"Chat Settings\n!name\nSet a custom chat name"
 	}
 	"Chat Settings (Reserve)"
 	{
@@ -3869,9 +3922,13 @@
 	{
 		"en"				"Weapon Talents\nJust shoot your gun."
 	}
+	"Survivor Talents Main"
+	{
+		"en"				"Survivor Talents\nAll upgradeable talents, including spells.\nAbilities are here, too!"
+	}
 	"Main Talents"
 	{
-		"en"				"Talents\nSpend LevelUp Points Here"
+		"en"				"Talents\nUpgrade points Required."
 	}
 	"Special Ammo Time"
 	{
@@ -3886,7 +3943,7 @@
 	"Special Ammo Cooldown"
 	{
 		"#format"			"{1:3.2f},{2:3.2f}"
-		"en"				"\"Off\" Time: {1}s\t->\t{2}s"
+		"en"				"Cooldown: {1}s\t->\t{2}s"
 	}
 	"Special Ammo Stamina"
 	{
@@ -3939,7 +3996,483 @@
 		"#format"			"{1:s},{2:s}"
 		"en"				"{1}Friendly-Fire: {2}Enabled"
 	}
+	"sacrificed a bot to respawn"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}A bot was sacrificed to bring {2}{3} {4}back from the dead."
+	}
+	"my inventory"
+	{
+		"en"				"Inventory\nAll of your loot in one convenient location."
+	}
+	"No Action Equipped"
+	{
+		"en"				"None"
+	}
+	"Assign to Action Bar"
+	{
+		"#format"			"{1:s},{2:i},{3:s}"
+		"en"				"!{1}{2}: {3}"
+	}
+	"action bar displayed"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Action bar: {2}Show"
+	}
+	"action bar hidden"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Action bar: {2}Hide"
+	}
+	"Action Bar Loaded"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Action Bar: {2}Loaded"
+	}
+	"Active Effects"
+	{
+		"en"				"Effects (Active)"
+	}
+	"Passive Effects"
+	{
+		"en"				"Effects (Passive)"
+	}
+	"Toggle Effects"
+	{
+		"en"				"Effects (Toggle)"
+	}
+	"Ability Cooldown"
+	{
+		"#format"			"{1:s}"
+		"en"				"Cooldown: {1}s"
+	}
+	"No Ability Cooldown"
+	{
+		"en"				"Cooldown: Instant"
+	}
+	"Ability Active Time"
+	{
+		"#format"			"{1:s}"
+		"en"				"Active: {1}s"
+	}
+	"Instant Ability"
+	{
+		"en"				"Active: Instant"
+	}
+	"S Toggle Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"When ensnared, shake yourself free, immediately"
+	}
+	"S Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"When ensnared, spam strafe_left / strafe_right to shake yourself free"
+	}
+	"X Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Reduces all incoming damage by {1}{2}"
+	}
+	"X Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Reduces all incoming damage by {1}{2}"
+	}
+	"P Disabled"
+	{
+		"en"				"Switch between dual pistols and magnum"
+	}
+	"P Toggle Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Switch between dual pistols and magnum"
+	}
+	"T Toggle Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Toggle Your Class' Stance On/Off\nSupported Classes: Tank"
+	}
+	"T Disabled"
+	{
+		"en"				"Toggle Your Class' Stance On/Off\nSupported Classes: Tank"
+	}
+	"C Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Outgoing Damage is increased by {1}{2} per consecutive hit"
+	}
+	"C Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Outgoing Damage is increased by {1}{2} per consecutive hit"
+	}
+	"N Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Outgoing Damage is increased by {1}{2}"
+	}
+	"N Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Outgoing Damage is increased by {1}{2}"
+	}
+	"L Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Reduces ALL cooldowns by {1}{2}"
+	}
+	"L Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Reduces ALL cooldowns by {1}{2}"
+	}
+	"R Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Life on Kill for {1}{2} of earned rating"
+	}
+	"R Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Life on Kill for {1}{2} of earned rating"
+	}
+	"I Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Life on Kill for {1}{2} of your maximum health"
+	}
+	"I Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Life on Kill for {1}{2} of your maximum health"
+	}
+	"T Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your total stamina by {1}{2}"
+	}
+	"T Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your total stamina by {1}{2}"
+	}
+	"A Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Instantly restores {1}{2} of your total stamina"
+	}
+	"H Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Instantly restores {1}{2} of your maximum health"
+	}
+	"V Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your maximum health by {1}{2}"
+	}
+	"V Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your total health by {1}{2}"
+	}
+	"E Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"+{1}{2} Incoming Healing"
+	}
+	"E Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"+{1}{2} Incoming Healing"
+	}
+	"E Disabled"
+	{
+		"en"				"Incoming Heals Reduced to 0"
+	}
+	"O Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Enemies you kill are {1}{2} more-likely to drop items"
+	}
+	"O Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Enemies you kill are {1}{2} more-likely to drop items"
+	}
+	"M Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Items you obtain are {1}{2} stronger"
+	}
+	"M Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Items you obtain are {1}{2} stronger"
+	}
+	"K Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your damage while flying by {1}{2}"
+	}
+	"K Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your damage while flying by {1}{2}"
+	}
+	"a Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your damage in water by {1}{2}"
+	}
+	"a Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your damage in water by {1}{2}"
+	}
+	"f Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your damage when on fire by {1}{2}"
+	}
+	"f Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your damage when on fire by {1}{2}"
+	}
+	"l Active Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Specials you kill explode for {1}{2} weapon damage as Fire."
+	}
+	"l Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Specials you kill explode for {1}{2} weapon damage as Fire."
+	}
+	"knife ability"
+	{
+		"en"				"Knife"
+	}
+	"last chance ability"
+	{
+		"en"				"Last Chance"
+	}
+	"second holster"
+	{
+		"en"				"Second Holster"
+	}
+	"basilisk armor ability"
+	{
+		"en"				"Basilisk Armor"
+	}
+	"sharp eye ability"
+	{
+		"en"				"Sharp Eye"
+	}
+	"bloodlust ability"
+	{
+		"en"				"Bloodlust"
+	}
+	"focus ability"
+	{
+		"en"				"Focus"
+	}
+	"transference ability"
+	{
+		"en"				"Transference"
+	}
+	"life leech ability"
+	{
+		"en"				"Life Leech"
+	}
+	"meditation ability"
+	{
+		"en"				"Meditation"
+	}
+	"refresh ability"
+	{
+		"en"				"Refresh"
+	}
+	"nature embrace ability"
+	{
+		"en"				"Nature's Embrace"
+	}
+	"unstable genetics ability"
+	{
+		"en"				"Unstable Genetics"
+	}
+	"potluck ability"
+	{
+		"en"				"Pot Luck"
+	}
+	"potion master ability"
+	{
+		"en"				"Potion Master"
+	}
+	"stance ability"
+	{
+		"en"				"Stance"
+	}
+	"rocketeer ability"
+	{
+		"en"				"Rocketeer"
+	}
+	"watergun ability"
+	{
+		"en"				"Water Gun"
+	}
+	"magma ability"
+	{
+		"en"				"Magma-Laced Bullets"
+	}
+	"wall of fire ability"
+	{
+		"en"				"Wall-of-Fire"
+	}
+	"Action Slot Range"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s}"
+		"en"				"{1}Available action slots are {2}!action1 - !action{3}\n{4}You can substitute / for ! to suppress."
+	}
+	"group member bonus"
+	{
+		"#format"			"{1:s},{2:3.1f},{3:s},{4:s},{5:s}"
+		"en"				"{1}+{2}{3}{4}XP {5}PREMIUM MEMBER Bonus"
+	}
+	"group member benefit"
+	{
+		"#format"			"{1:s},{2:s},{3:3.1f},{4:s},{5:s},{6:s}"
+		"en"				"{1}Become a PREMIUM MEMBER to earn {2}{3}{4}{5}XP {6}bonus"
+	}
+	"player uses spell"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"en"				"{1}{2} {3}casts the {4}{5} {6}spell"
+	}
+	"player uses ability"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
+		"en"				"{1}{2} {3}uses the {4}{5} {6}ability"
+	}
+	"handicap range"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s},{6:i}"
+		"en"				"{1}Handicap Range: {2}{3} {4}- {5}{6}"
+	}
+	"player handicap locked"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}Handicap is locked. You can only change it if you have not entered combat during the round."
+	}
+	"player handicap"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:i}"
+		"en"				"{1}Handicap Set{2}: {3}{4}"
+	}
+	"respawn queue"
+	{
+		"#format"			"{1:i}"
+		"en"				"Respawning in {1} second(s)"
+	}
+	"health potion (lo)"
+	{
+		"en"				"minor Healing Potion"
+	}
+	"stamina potion (lo)"
+	{
+		"en"				"minor Stamina Potion"
+	}
+	"adren potion (lo)"
+	{
+		"en"				"minor Adrenaline Potion"
+	}
+	"incendiary potion (lo)"
+	{
+		"en"				"minor Incendiary Potion"
+	}
+	"explosive potion (lo)"
+	{
+		"en"				"minor Explosive Potion"
+	}
+	"blue potion (lo)"
+	{
+		"en"				"minor Blue Potion"
+	}
+	"ammo potion (lo)"
+	{
+		"en"				"minor Ammo potion"
+	}
+	"health potion (hi)"
+	{
+		"en"				"major Healing Potion"
+	}
+	"stamina potion (hi)"
+	{
+		"en"				"major Stamina Potion"
+	}
+	"adren potion (hi)"
+	{
+		"en"				"major Adrenaline Potion"
+	}
+	"incendiary potion (hi)"
+	{
+		"en"				"major Incendiary Potion"
+	}
+	"explosive potion (hi)"
+	{
+		"en"				"major Explosive Potion"
+	}
+	"blue potion (hi)"
+	{
+		"en"				"major Blue Potion"
+	}
+	"item obtained by player"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"en"				"{1}{2} {3}obtained a {4}{5}"
+	}
+	"enrage period"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}>\n>>>>>>>>>>> {2}ENRAGE NOW ACTIVE {3}<<<<<<<<<<<\n>"
+	}
+	"enrage in..."
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}>\n>>>>>>>>>>> ENRAGE IN {2}{3} {4}<<<<<<<<<<<\n>"
+	}
+	"Creating New Class"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}Creating a shiny, NEW {2}{3} {4}for you!"
+	}
+	"groupmate death penalty"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"en"				"{1}A Group Member has Died!\n{2}You have lost {3}{4} {5}experience"
+	}
+	"Rushing Return To Team"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}>>>>>>>>>> | {2}STOP RUSHING AND REGROUP WITH YOUR TEAM {3}| <<<<<<<<<<"
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
