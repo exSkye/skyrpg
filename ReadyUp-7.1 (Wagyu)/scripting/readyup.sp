@@ -5,7 +5,7 @@
 #define MAX_ENTITIES		2048
 
 #define PLUGIN_VERSION		"7.1 Wagyu"
-#define PLUGIN_CONTACT		"github.com/MISSSKYELIGHTER"
+#define PLUGIN_CONTACT		"github.com/missexskye"
 
 #define PLUGIN_NAME			"Ready Up"
 #define PLUGIN_DESCRIPTION	"A pre-game management plugin with an extensive API"
