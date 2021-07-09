@@ -1,0 +1,35 @@
+L 05/02/2021 - 10:03:48: SourceMod error session started
+L 05/02/2021 - 10:03:48: Info (map "c1m1_hotel") (file "/home/steam/l4d2/left4dead2/addons/rpg_tankrush/logs/errors_20210502.log")
+L 05/02/2021 - 10:03:48: [SM] Exception reported: Error fetching data from field 2
+L 05/02/2021 - 10:03:48: [SM] Blaming: rum_rpg.smx
+L 05/02/2021 - 10:03:48: [SM] Call stack trace:
+L 05/02/2021 - 10:03:48: [SM]   [0] SQL_FetchInt
+L 05/02/2021 - 10:03:48: [SM]   [1] Line 1892, rpg/rpg_database.sp::QueryResults_LoadTalentTrees
+L 05/02/2021 - 10:09:25: Error log file session closed.
+L 05/02/2021 - 22:15:57: SourceMod error session started
+L 05/02/2021 - 22:15:57: Info (map "c12m5_cornfield") (file "/home/steam/l4d2/left4dead2/addons/rpg_tankrush/logs/errors_20210502.log")
+L 05/02/2021 - 22:15:57: [SM] Exception reported: Language phrase "0" not found (arg 6)
+L 05/02/2021 - 22:15:57: [SM] Blaming: rum_rpg.smx
+L 05/02/2021 - 22:15:57: [SM] Call stack trace:
+L 05/02/2021 - 22:15:57: [SM]   [0] Format
+L 05/02/2021 - 22:15:57: [SM]   [1] Line 9311, rpg/rpg_functions.sp::ChatTrigger
+L 05/02/2021 - 22:15:57: [SM]   [2] Line 9239, rpg/rpg_functions.sp::CMD_ChatCommand
+L 05/02/2021 - 22:16:00: [SM] Exception reported: Language phrase "0" not found (arg 6)
+L 05/02/2021 - 22:16:00: [SM] Blaming: rum_rpg.smx
+L 05/02/2021 - 22:16:00: [SM] Call stack trace:
+L 05/02/2021 - 22:16:00: [SM]   [0] Format
+L 05/02/2021 - 22:16:00: [SM]   [1] Line 9311, rpg/rpg_functions.sp::ChatTrigger
+L 05/02/2021 - 22:16:00: [SM]   [2] Line 9239, rpg/rpg_functions.sp::CMD_ChatCommand
+L 05/02/2021 - 22:16:20: [SM] Exception reported: Language phrase "0" not found (arg 6)
+L 05/02/2021 - 22:16:20: [SM] Blaming: rum_rpg.smx
+L 05/02/2021 - 22:16:20: [SM] Call stack trace:
+L 05/02/2021 - 22:16:20: [SM]   [0] Format
+L 05/02/2021 - 22:16:20: [SM]   [1] Line 9311, rpg/rpg_functions.sp::ChatTrigger
+L 05/02/2021 - 22:16:20: [SM]   [2] Line 9239, rpg/rpg_functions.sp::CMD_ChatCommand
+L 05/02/2021 - 22:18:33: [SM] Exception reported: Language phrase "0" not found (arg 6)
+L 05/02/2021 - 22:18:33: [SM] Blaming: rum_rpg.smx
+L 05/02/2021 - 22:18:33: [SM] Call stack trace:
+L 05/02/2021 - 22:18:33: [SM]   [0] Format
+L 05/02/2021 - 22:18:33: [SM]   [1] Line 9311, rpg/rpg_functions.sp::ChatTrigger
+L 05/02/2021 - 22:18:33: [SM]   [2] Line 9239, rpg/rpg_functions.sp::CMD_ChatCommand
+L 05/02/2021 - 22:19:07: Error log file session closed.

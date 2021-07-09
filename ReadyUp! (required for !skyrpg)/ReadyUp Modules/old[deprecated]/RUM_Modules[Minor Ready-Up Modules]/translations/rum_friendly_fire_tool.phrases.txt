@@ -1,0 +1,47 @@
+﻿"Phrases"
+{
+	"limit threshold"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"Friendly Fire: {1} of limit: {2}"
+	}
+	"punishment counter"
+	{
+		"#format"		"{1:i}"
+		"en"			"Punishments: {1}"
+	}
+	"slay and ban counter"
+	{
+		"#format"		"{1:i}"
+		"en"			"Slay while punishment is less than {1}.\nBan if exceeding."
+	}
+	"close menu"
+	{
+		"en"			"Close Menu"
+	}
+	"still banned"
+	{
+		"#format"		"{1:i},{2:i},{3:i}"
+		"en"			"Friendly-Fire Ban expires in: {1}H {2}M {3}S"
+	}
+	"client punishment (slay)"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s}"
+		"en"			"{1}{2} {3}was slain for {4}friendly fire violations"
+	}
+	"banned"
+	{
+		"#format"		"{1:i},{2:i},{3:i}"
+		"en"			"Friendly Fire ban for {1}H {2}M {3}S"
+	}
+	"client punishment (ban)"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:i},{8:i},{9:i},{10:s}"
+		"en"			"{1}{2} {3}has been {4}banned for friendly fire violations{5}. ({6}{7}H {8}M {9}S{10})"
+	}
+	"friendly fire tool running"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s}"
+		"en"			"{1}Friendly Fire System {2}is running. Say {3}!ffdata {4}to view your data."
+	}
+}

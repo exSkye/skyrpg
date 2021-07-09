@@ -1,0 +1,8 @@
+﻿"Phrases"
+{
+	"Player Passes Tank"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"en"			"{1}{2} {3}passes the tank to {4}{5}"
+	}
+}

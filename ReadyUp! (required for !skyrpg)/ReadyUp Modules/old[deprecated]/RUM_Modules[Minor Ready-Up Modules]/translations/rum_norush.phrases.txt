@@ -1,0 +1,16 @@
+﻿// The last 6 format variables are (from right to left)
+// lb, rb, white, blue, green, orange
+
+"Phrases"
+{
+	"violation"
+	{
+		"#format"	"{1:s}"
+		"en"		"{1}Teleported due to rushing violation."
+	}
+	"warning"
+	{
+		"#format"	"{1:s}"
+		"en"		"{1}Warning: Rushing is not allowed, return to your team."
+	}
+}

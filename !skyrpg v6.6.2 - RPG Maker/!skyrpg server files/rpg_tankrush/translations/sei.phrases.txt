@@ -1,0 +1,200 @@
+﻿// The last 6 format variables are (from right to left)
+// lb, rb, white, blue, green, orange
+
+"Phrases"
+{
+	"added to inventory (clip)"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i}"
+		"en"				"{1}{5} {2}ammo picked up for your {3}{4}"
+	}
+	"added to inventory (weapon)"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}{3} {2}placed in your inventory"
+	}
+	"unlimited inventory"
+	{
+		"en"				"Unlimited Slots"
+	}
+	"inventory size"
+	{
+		"#format"			"{1:i}"
+		"en"				"{1} slots"
+	}
+	"inventory header"
+	{
+		"#format"			"{1:i},{2:s}"
+		"en"				"Inventory: {1} of {2}"
+	}
+	"inventory empty"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}Inventory is {2}EMPTY"
+	}
+	"maximum inventory clip size reached"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:i}"
+		"en"				"{1}Inventory Limit Reached {2}of maximum clip size: {3}{4}"
+	}
+	"autoshotgun"
+	{
+		"en"				"Auto Shotgun"
+	}
+	"grenade_launcher"
+	{
+		"en"				"Grenade Launcher"
+	}
+	"hunting_rifle"
+	{
+		"en"				"Hunting Rifle"
+	}
+	"pistol"
+	{
+		"en"				"Pistol"
+	}
+	"pistol_magnum"
+	{
+		"en"				"Magnum"
+	}
+	"pumpshotgun"
+	{
+		"en"				"Pump Shotgun"
+	}
+	"rifle"
+	{
+		"en"				"M4A1"
+	}
+	"rifle_ak47"
+	{
+		"en"				"AK47"
+	}
+	"rifle_desert"
+	{
+		"en"				"Desert Rifle"
+	}
+	"rifle_m60"
+	{
+		"en"				"M60"
+	}
+	"rifle_sg552"
+	{
+		"en"				"SG552"
+	}
+	"shotgun_chrome"
+	{
+		"en"				"Pump Shotgun (Chrome)"
+	}
+	"shotgun_spas"
+	{
+		"en"				"SPAS Shotgun"
+	}
+	"smg"
+	{
+		"en"				"UZI"
+	}
+	"smg_mp5"
+	{
+		"en"				"MP5"
+	}
+	"smg_silenced"
+	{
+		"en"				"TMP5"
+	}
+	"sniper_awp"
+	{
+		"en"				"AWP Sniper"
+	}
+	"sniper_military"
+	{
+		"en"				"Military Sniper"
+	}
+	"sniper_scout"
+	{
+		"en"				"Scout Sniper"
+	}
+	"baseball_bat"
+	{
+		"en"				"Baseball Bat"
+	}
+	"cricket_bat"
+	{
+		"en"				"Cricket Bat"
+	}
+	"crowbar"
+	{
+		"en"				"Crowbar"
+	}
+	"electric_guitar"
+	{
+		"en"				"Electric Guitar"
+	}
+	"fireaxe"
+	{
+		"en"				"Fireaxe"
+	}
+	"frying_pan"
+	{
+		"en"				"Frying Pan"
+	}
+	"golfclub"
+	{
+		"en"				"Golf club"
+	}
+	"katana"
+	{
+		"en"				"Katana"
+	}
+	"machete"
+	{
+		"en"				"Machete"
+	}
+	"tonfa"
+	{
+		"en"				"Tonfa"
+	}
+	"knife"
+	{
+		"en"				"Knife"
+	}
+	"chainsaw"
+	{
+		"en"				"Chainsaw"
+	}
+	"adrenaline"
+	{
+		"en"				"Adrenaline"
+	}
+	"defibrillator"
+	{
+		"en"				"Defibrillator"
+	}
+	"first_aid_kit"
+	{
+		"en"				"Medkit"
+	}
+	"pain_pills"
+	{
+		"en"				"Pain Killers"
+	}
+	"molotov"
+	{
+		"en"				"Molotov"
+	}
+	"pipe_bomb"
+	{
+		"en"				"Pipe Bomb"
+	}
+	"vomitjar"
+	{
+		"en"				"Vomitjar"
+	}
+	"upgradepack_explosive"
+	{
+		"en"				"Upgrade Pack (Explosive)"
+	}
+	"upgradepack_incendiary"
+	{
+		"en"				"Upgrade Pack (Incendiary)"
+	}
+}

@@ -1,0 +1,8 @@
+L 05/01/2021 - 23:00:50: SourceMod error session started
+L 05/01/2021 - 23:00:50: Info (map "c5m1_waterfront") (file "/home/steam/l4d2/left4dead2/addons/rpg_tankrush/logs/errors_20210501.log")
+L 05/01/2021 - 23:00:50: [SM] Exception reported: Error fetching data from field 2
+L 05/01/2021 - 23:00:50: [SM] Blaming: rum_rpg.smx
+L 05/01/2021 - 23:00:50: [SM] Call stack trace:
+L 05/01/2021 - 23:00:50: [SM]   [0] SQL_FetchInt
+L 05/01/2021 - 23:00:50: [SM]   [1] Line 1892, rpg/rpg_database.sp::QueryResults_LoadTalentTrees
+L 05/01/2021 - 23:03:52: Error log file session closed.

@@ -1,0 +1,16 @@
+L 05/15/2021 - 02:24:13: SourceMod error session started
+L 05/15/2021 - 02:24:13: Info (map "c2m4_barns") (file "/home/steam/l4d2/left4dead2/addons/rpg_tankrush/logs/errors_20210515.log")
+L 05/15/2021 - 02:24:13: [SM] Exception reported: Error fetching data from field 2
+L 05/15/2021 - 02:24:13: [SM] Blaming: rum_rpg.smx
+L 05/15/2021 - 02:24:13: [SM] Call stack trace:
+L 05/15/2021 - 02:24:13: [SM]   [0] SQL_FetchInt
+L 05/15/2021 - 02:24:13: [SM]   [1] Line 1895, rpg/rpg_database.sp::QueryResults_LoadTalentTrees
+L 05/15/2021 - 02:28:41: Error log file session closed.
+L 05/15/2021 - 14:12:03: SourceMod error session started
+L 05/15/2021 - 14:12:03: Info (map "c1m2_streets") (file "/home/steam/l4d2/left4dead2/addons/rpg_tankrush/logs/errors_20210515.log")
+L 05/15/2021 - 14:12:03: [SM] Exception reported: Error fetching data from field 2
+L 05/15/2021 - 14:12:03: [SM] Blaming: rum_rpg.smx
+L 05/15/2021 - 14:12:03: [SM] Call stack trace:
+L 05/15/2021 - 14:12:03: [SM]   [0] SQL_FetchInt
+L 05/15/2021 - 14:12:03: [SM]   [1] Line 1895, rpg/rpg_database.sp::QueryResults_LoadTalentTrees
+L 05/15/2021 - 14:18:30: Error log file session closed.

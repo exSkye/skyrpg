@@ -1,0 +1,36 @@
+// Advertisements 2.0
+// by Tsunami
+//
+// Types
+// -----
+// center: Center message
+// chat: Chat message
+// hint: Hint message
+// menu: Menu message
+// top: Top message
+//
+// Flags (optional)
+// -----
+// Accepts flags of admins that will not see the advertisement.
+// When omitted everyone will see the advertisement.
+// When left empty only admins will see the advertisement.
+
+"Advertisements"
+{
+    "1"
+    {
+        "chat"			"Chat Commands:\n!skyrpg - opens the RPG panel\n!buy - opens the BUY menu\n!revive - trade a bots life for your own!\n!abar - turns the action bar on/off"
+    }
+	"2"
+	{
+		"chat"			"Down? Incapped? Hanging on a Ledge? Hold [USE] (E Default) to self-revive yourself!"
+	}
+	"3"
+	{
+		"chat"			"Hold your JUMP key to JETPACK!\nFly with your movement keys!\nIt uses STAMINA; just hold JUMP before you hit the ground to avoid taking damage!"
+	}
+	"4"
+	{
+		"chat"			"Agro in this server is threat-based, !skyrpg -> threat meter, to see where you are in the list! (Tank Classes earn 5x threat)"
+	}
+}

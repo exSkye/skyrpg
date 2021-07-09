@@ -1,0 +1,15 @@
+L 05/04/2021 - 20:39:58: SourceMod error session started
+L 05/04/2021 - 20:39:58: Info (map "c10m3_ranchhouse") (file "/home/steam/l4d2/left4dead2/addons/rpg_tankrush/logs/errors_20210504.log")
+L 05/04/2021 - 20:39:58: [SM] Exception reported: Language phrase "0" not found (arg 6)
+L 05/04/2021 - 20:39:58: [SM] Blaming: rum_rpg.smx
+L 05/04/2021 - 20:39:58: [SM] Call stack trace:
+L 05/04/2021 - 20:39:58: [SM]   [0] Format
+L 05/04/2021 - 20:39:58: [SM]   [1] Line 9311, rpg/rpg_functions.sp::ChatTrigger
+L 05/04/2021 - 20:39:58: [SM]   [2] Line 9228, rpg/rpg_functions.sp::CMD_TeamChatCommand
+L 05/04/2021 - 20:40:06: [SM] Exception reported: Language phrase "0" not found (arg 6)
+L 05/04/2021 - 20:40:06: [SM] Blaming: rum_rpg.smx
+L 05/04/2021 - 20:40:06: [SM] Call stack trace:
+L 05/04/2021 - 20:40:06: [SM]   [0] Format
+L 05/04/2021 - 20:40:06: [SM]   [1] Line 9311, rpg/rpg_functions.sp::ChatTrigger
+L 05/04/2021 - 20:40:06: [SM]   [2] Line 9228, rpg/rpg_functions.sp::CMD_TeamChatCommand
+L 05/04/2021 - 20:45:16: Error log file session closed.
