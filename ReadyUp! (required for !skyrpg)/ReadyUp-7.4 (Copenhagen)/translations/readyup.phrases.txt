@@ -1,0 +1,131 @@
+﻿"Phrases"
+{
+	"command sm_forcestart is unavailable"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1} Command sm_forcestart is unavailable."
+	}
+	"hud enabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} HUD Display {2}enabled"
+	}
+	"hud disabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} HUD Display {2}disabled"
+	}
+	"not ready"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Status set: {2}not ready"
+	}
+	"ready"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Status set: {2}ready"
+	}
+	"alltalk enabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Alltalk {2}enabled"
+	}
+	"alltalk disabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Alltalk {2}disabled"
+	}
+	"ready up time remaining"
+	{
+		"#format"		"{1:s},{2:s},{3:i},{4:s},{5:s},{6:i},{7:s}"
+		"en"			"{1} Ready up ends in {2}{3}{4}m {5}{6}{7}s"
+	}
+	"match ready up"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Ready Up Period: {2}active"
+	}
+	"match is live"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Ready Up Period: {2}match is live"
+	}
+	"client connected"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s}"
+		"en"			"{1} {2}{3} {4}is connecting..."
+	}
+	"client loaded"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s}"
+		"en"			"{1} {2}{3} {4}has entered the game."
+	}
+	"connection timeout"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"ready up period: starts in {i}m {2}s"
+	}
+	"warmup time remaining"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"ready up period: match live in {1}m {2}s"
+	}
+	"menu clients loading"
+	{
+		"#format"		"{1:i},{2:i},{3:i}"
+		"en"			"ready up starts in {1}m {2}s\nplayers loading: {3}"
+	}
+	"ready up countdown"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"ready up ends in {1}m {2}s\n"
+	}
+	"match begin notice"
+	{
+		"#format"		"{1:i}"
+		"en"			"match will begin when all\nclients have loaded.\nplayers loading: {1}"
+	}
+	"players loading"
+	{
+		"en"			"players loading:"
+	}
+	"players ready"
+	{
+		"en"			"players ready:"
+	}
+	"players not ready"
+	{
+		"en"			"players not ready:"
+	}
+	"spectators"
+	{
+		"en"			"spectators:"
+	}
+	"toggle ready"
+	{
+		"en"			"toggle status: ready"
+	}
+	"toggle not ready"
+	{
+		"en"			"toggle status: not ready"
+	}
+	"hide hud"
+	{
+		"en"			"hide HUD"
+	}
+	"intermission"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1} Pre-game will occur before the second half"
+	}
+	"timer match countdown aborted"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1}Majority override aborted..."
+	}
+	"timer match countdown"
+	{
+		"#format"		"{1:i}"
+		"en"			"Majority of players are READY\nRound will begin in {1} second(s).\n\nWill abort if majority are not ready!"
+	}
+}
