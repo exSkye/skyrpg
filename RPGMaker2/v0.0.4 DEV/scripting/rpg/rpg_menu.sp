@@ -1,4 +1,4 @@
-stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = false) {	// 0 is legacy type that appeared on all menus. 0 - Main Menu | 1 - Upgrades | 2 - Points
+stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = false, bool:ShowLayerEligibility = false) {	// 0 is legacy type that appeared on all menus. 0 - Main Menu | 1 - Upgrades | 2 - Points
 
 	decl String:text[512], String:stext[512];
 	new CurRPGMode = iRPGMode;
@@ -11,12 +11,20 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 		new CheckRPGMode = iRPGMode;
 		if (CheckRPGMode > 0) {
 
+			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
+
 			new TotalPoints = TotalPointsAssigned(client);
 			decl String:PlayerLevelText[256];
 			Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, AddCommasToString(ExperienceLevel[client]), MenuExperienceBar(client), AddCommasToString(CheckExperienceRequirement(client)));
 			new strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]);
 			new maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
-			if (CheckRPGMode != 0) Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, PlayerCurrentMenuLayer[client] + 1);
+			if (CheckRPGMode != 0) {
+				Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow);
+				if (ShowLayerEligibility) {
+					if (bIsLayerEligible) Format(text, sizeof(text), "%T", "RPG Layer Eligible", client, text, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, PlayerCurrentMenuLayer[client] + 1);
+					else Format(text, sizeof(text), "%T", "RPG Layer Not Eligible", client, text, PlayerCurrentMenuLayer[client]);
+				}
+			}
 			if (CheckRPGMode != 1) Format(text, sizeof(text), "%s\n%s", text, PointsText);
 			//Format(stext, sizeof(stext), "%T", "Class Level Text", client, TheClass, AddCommasToString(CartelLevel(client)));
 			//Format(stext, sizeof(stext), "Class: %s", stext);
@@ -1149,6 +1157,8 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 		RemoveFromArray(Handle:MenuStructure[client], GetArraySize(MenuStructure[client]) - 1);
 	}
 	else Format(MenuName, sizeof(MenuName), "%s", TheMenuName);
+	if (StrEqual(MenuName, "main")) ShowPlayerLayerInformation[client] = false;		// layer info is NEVER shown on the main menu.
+
 	//PrintToChatAll("Menu name: %s", MenuName);
 
 
@@ -1162,8 +1172,8 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 	// Keep track of the position selected.
 	decl String:pos[64];
 
-	if (!b_IsDirectorTalents[client]) BuildMenuTitle(client, menu, _, 0);
-	else BuildMenuTitle(client, menu, 1);
+	if (!b_IsDirectorTalents[client]) BuildMenuTitle(client, menu, _, 0, _, ShowPlayerLayerInformation[client]);
+	else BuildMenuTitle(client, menu, 1, _, _, ShowPlayerLayerInformation[client]);
 
 	decl String:text[PLATFORM_MAX_PATH];
 	// declare the variables for requirements to display in menu.
@@ -1371,8 +1381,8 @@ stock GetProfileLoadoutConfig(client, String:TheString[], thesize) {
 
 public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 
-	if (action == MenuAction_Select) {
-
+	if (action == MenuAction_Select)
+	{
 		// Declare variables for target config, menu name (some submenu's require this information) and the ACTUAL position for a slot
 		// (as pos won't always line up with slot since items can be hidden under special circumstances.)
 		decl String:config[64];
@@ -1399,6 +1409,8 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 		MenuSection[client]			= GetArrayCell(a_Menu_Main, StringToInt(pos), 2);
 		GetArrayString(Handle:MenuSection[client], 0, menuname, sizeof(menuname));
 
+		new showLayerInfo = GetKeyValueInt(MenuKeys[client], MenuValues[client], "show layer info?");
+
 		// We want to know the value of the target config based on the keys and values pulled.
 		// This will be used to determine where we send the player.
 		FormatKeyValue(config, sizeof(config), MenuKeys[client], MenuValues[client], "config?");
@@ -1410,8 +1422,10 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 
 		FormatKeyValue(sCvarRequired, sizeof(sCvarRequired), MenuKeys[client], MenuValues[client], "cvar_required?");
 		//isSubMenu = GetKeyValueInt(MenuKeys[client], MenuValues[client], "is sub menu?");
+		// we only modify the value if it's set, otherwise it's grandfathered.
+		if (showLayerInfo == 1) ShowPlayerLayerInformation[client] = true;
+		else if (showLayerInfo == 0) ShowPlayerLayerInformation[client] = false;
 		
-
 		AddMenuStructure(client, c_MenuName);
 		if (!StrEqual(sCvarRequired, "-1", false) && FindConVar(sCvarRequired) != INVALID_HANDLE) {
 
@@ -1458,7 +1472,8 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 			BuildMenu(client);
 		}
 		else if (StrEqual(config, "layerdown")) {
-			if (PlayerCurrentMenuLayer[client] < iMaxLayers && GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) >= PlayerCurrentMenuLayer[client] + 1) PlayerCurrentMenuLayer[client]++;
+			//if (PlayerCurrentMenuLayer[client] < iMaxLayers && GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) >= PlayerCurrentMenuLayer[client] + 1) PlayerCurrentMenuLayer[client]++;
+			if (PlayerCurrentMenuLayer[client] < iMaxLayers) PlayerCurrentMenuLayer[client]++;
 			BuildMenu(client);
 		}
 		else if (StrEqual(config, "prestige", false)) {
@@ -2538,7 +2553,7 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 
 		if (StrEqual(ConfigName, CONFIG_MENUTALENTS)) {
 
-			BuildMenuTitle(client, menu, _, 1);
+			BuildMenuTitle(client, menu, _, 1, _, ShowPlayerLayerInformation[client]);
 		}
 		else if (StrEqual(ConfigName, CONFIG_POINTS)) {
 
@@ -2987,7 +3002,7 @@ public Handle:TalentInfoScreen (client) {
 	new IsSpecialAmmo = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "special ammo?");
 
 	new Handle:menu = CreatePanel();
-	BuildMenuTitle(client, menu, _, 0, true);
+	BuildMenuTitle(client, menu, _, 0, true, true);
 
 	decl String:TalentName[64];
 	Format(TalentName, sizeof(TalentName), "%s", PurchaseTalentName[client]);
@@ -3119,17 +3134,18 @@ public Handle:TalentInfoScreen (client) {
 	if (TalentType <= 0 || AbilityTalent == 1) {
 
 		if (TalentPointAmount == 0) {
-			if (UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost &&
-			GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) < PlayerCurrentMenuLayer[client] + 1) {
-				decl String:sTalentsRequired[64];
-				decl String:formattedTalentsRequired[64];
-				FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
-				new requirementsRemaining = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "required talents required?");
-				new requiredCopy = requirementsRemaining;
-				requirementsRemaining = TalentRequirementsMet(client, sTalentsRequired, formattedTalentsRequired, sizeof(formattedTalentsRequired), requirementsRemaining);
-				new optionsRemaining = TalentRequirementsMet(client, sTalentsRequired, _, -1);	// -1 for size gets the count remaining
+			new bool:bIsLayerEligible = (UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost && GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) < PlayerCurrentMenuLayer[client] + 1) ? true : false;
+			if (bIsLayerEligible) bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
+			decl String:sTalentsRequired[64];
+			decl String:formattedTalentsRequired[64];
+			FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
+			new requirementsRemaining = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "required talents required?");
+			new requiredCopy = requirementsRemaining;
+			requirementsRemaining = TalentRequirementsMet(client, sTalentsRequired, formattedTalentsRequired, sizeof(formattedTalentsRequired), requirementsRemaining);
+			new optionsRemaining = TalentRequirementsMet(client, sTalentsRequired, _, -1);	// -1 for size gets the count remaining
+			if (bIsLayerEligible || requirementsRemaining >= 1) {
 				if (requirementsRemaining <= 0) Format(text, sizeof(text), "%T", "Insert Talent Upgrade", client, 1);
-				else {
+				else if (requirementsRemaining >= 1) {
 					if (requirementsRemaining > 1) {
 						if (requiredCopy == optionsRemaining) Format(text, sizeof(text), "%T", "node locked by talents all (talentview)", client, formattedTalentsRequired);
 						else Format(text, sizeof(text), "%T", "node locked by talents multiple (talentview)", client, formattedTalentsRequired, requirementsRemaining);

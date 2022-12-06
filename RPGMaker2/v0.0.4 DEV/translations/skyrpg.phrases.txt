@@ -48,17 +48,17 @@
 	"node locked by talents all (treeview)"
 	{
 		"#format"			"{1:s},{2:s}"
-		"en"				"{1} (Missing ALL below nodes)\n{2}"
+		"en"				"{1} (Missing ALL)\n{2}"
 	}
 	"node locked by talents multiple (treeview)"
 	{
 		"#format"			"{1:s},{2:s},{3:i}"
-		"en"				"{1} (Missing {3} below nodes)\n{2}"
+		"en"				"{1} (Missing {3})\n{2}"
 	}
 	"node locked by talents single (treeview)"
 	{
 		"#format"			"{1:s},{2:s},{3:i}"
-		"en"				"{1} (Missing {3} below node)\n{2}"
+		"en"				"{1} (Missing {3})\n{2}"
 	}
 	"node locked by talents last one (treeview)"
 	{
@@ -68,17 +68,17 @@
 	"node locked by talents all (talentview)"
 	{
 		"#format"			"{1:s}"
-		"en"				"Node Locked (Missing ALL below nodes)\n{1}"
+		"en"				"Node Locked (Missing ALL)\n{1}"
 	}
 	"node locked by talents multiple (talentview)"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"Node Locked (Missing {2} below nodes)\n{1}"
+		"en"				"Node Locked (Missing {2})\n{1}"
 	}
 	"node locked by talents single (talentview)"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"Node Locked (Missing {2} below node)\n{1}"
+		"en"				"Node Locked (Missing {2})\n{1}"
 	}
 	"node locked by talents last one (talentview)"
 	{
@@ -137,15 +137,15 @@
 	}
 	"survival talents"
 	{
-		"en"				"Survivalist"
+		"en"				"Survivalist nodes"
 	}
 	"offensive talents"
 	{
-		"en"				"Offensive"
+		"en"				"Offensive nodes"
 	}
 	"utility talents"
 	{
-		"en"				"Utility\t\t"
+		"en"				"Utility nodes\t\t"
 	}
 	"proficiency level up"
 	{
@@ -425,7 +425,7 @@
 	}
 	"respec confirm"
 	{
-		"en"				"Confirm Refund of Talent Upgrades\nResets all talents & refunds Talent Upgrades = YourLv.- 1\n"
+		"en"				"Confirm\nResetting your talents cannot be undone."
 	}
 	"respec"
 	{
@@ -439,7 +439,7 @@
 	"layer move locked"
 	{
 		"#format"			"{1:i},{2:i},{3:i}"
-		"en"				"Layer {1} Locked\n{3} more upgrades required in layer {2}"
+		"en"				"(Preview Only)Layer {1}\nThis layer requires {3} more upgrades before\nyou can unlock deeper layers."
 	}
 	"prestige"
 	{
@@ -1047,8 +1047,18 @@
 	}
 	"RPG Header"
 	{
-		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:i},{6:i}"
-		"en"				"{1}\n \nNodes unlocked: {2}/{3}\nLayer {4} Nodes unlocked: {5}/{6}"
+		"#format"			"{1:s},{2:i},{3:i}"
+		"en"				"{1}\n \nTotal nodes unlocked: {2}/{3}"
+	}
+	"RPG Layer Eligible"
+	{
+		"#format"			"{1:s},{2:i},{3:i},{4:i}"
+		"en"				"{1}\n \nThis is layer {2}.\nYou have {3} of {4} possible nodes\nunlocked on this layer."
+	}
+	"RPG Layer Not Eligible"
+	{
+		"#format"			"{1:s},{2:i}"
+		"en"				"{1}\n \nThis is layer {2}.\nIt is locked to preview mode only."
 	}
 	"Class Level Text"
 	{

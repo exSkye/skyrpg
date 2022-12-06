@@ -28,191 +28,6 @@
  // line 4312 in functions explains default values in pawn (similar to c++)
  // why am i leaving comments up here.
 
-
-/*
-	Credits:
-
-	AtomikStryker (biletheworld reference on how to traceray)
-	panxiaoxiao ?? man im sorry if i butchered that
-	mr.zero stocks has been invaluable
-	Asherkin <3 my bae invaluable resource for learning
-
-	// 4.2 (PUBLIC)
-	Added "teams allowed?" key to the ability tree.
-
-	// 4.1
-	Further optimization for survivor bots.
-	Players get health proper on incap.
-	Hostname now displays to people; people have asked what server they play in, and RPG allows each server to set individual hostnames.
-	Survivors Bots fully-supported in Helms-Deep
-	shortened class effect vars
-	Healers now heal with bullets.
-	Shamans can heal with melee attacks.
-
-	// 4.0.3
-	// Added customizable database. If one isn't specified with the "db record?" keyvalue, one of these will be picked by default
-
-	4.0.1
-	- Action bars are implemented!
-	- Magic system revamped!
-
-	4.0
-
-	1.	Revamped the Common Affix System to be more robust.
-		a.	How we display common affixes has been expanded to make room for new affixes.
-		b.	Also to make room for survivor auras, we don't want people getting more confused than they will already be.
-		c.	Maybe support for multiple affixes on a common?
-		d.	Level restrictions for certain common affixes as well as level ranges for others!
-	2.	Elemental damage
-		a.	Special commons and Special infected will have a halo above their heads in the colour associated
-			with the elemental damage they spawned with. Common infected are always physical damage.
-	3.	Survivor Auras
-		These are essentially spells. A player can have one active at any time and change the active aura with the
-		shortcut command for the aura they wish to change to. This can be done only when aura switch is not on cooldown.
-		Players can reduce this interval by stacking Agility in the new CARTEL system...
-	4.	SLATE -> CARTEL
-		Slate is being replaced with the newer and more robust CARTEL system.
-		Upgrade points are either spent on talents OR on a CARTEL point. CARTEL points affect everything, so a point in
-		one of these categories is much more valuable than stacking into a single talent. This adds another layer of
-		strategy that players will have to adapt to.
-
-	3.9.2
-	1.	Preparing for 4.0 major changes coming.
-	2.	Changed witch damage / level to be a linear increase.
-
-	3.9.1
-	1.	New Special Common Classes.
-	2.	Common Infected have received health pools.
-	3.	Special/Standard Common Infected now affected by damage talents.
-	4.	RPG now properly loads on a server startup!
-	5.	HUD has been redesigned: Status Effects added for the Buffer/Hexer roles.
-
-	3.8.6.2
-	1.	Special Common Infected added. (Formerly affixes, formerly auras)
-	2.	Fixed some issues with talent points and level-ups.
-	3.	Respec now resets SLATE as well, since they will be important in the survivor skills update.
-	4.	If the experience requirements ever change and a player doesn't line up, it will automatically adjust them and refund everything for them.
-	5.	Due to abuse, free weapons now are removed when purchased. If you want to give someone something, use the !drop command.
-	6.	Due to the new system, players can again spend talents when alive.
-
-	3.8.6.1
-	1.	Added AoE Healing (Defensive & Offensive) Abilities.
-	2.	Added Abilities that damage/kill/affect Common Infected.
-	3.	Added Healing Role Support.
-	4.	Corrected some minor issues (like experience debt triggering multiple times / death)
-
-	3.8.5
-	1.	Added a tanking experience reward. Players can now choose to play a role as a damage dealer, tank, or both.
-		Players receive tanking experience when the damage received is greater than their damage contributed but
-		the player must still meet the minimum damage contribution requirement.
-
-	3.8.4, 3.8.3
-	1.	Miscellaneous fixes and updates for Quality of Life
-
-	3.8.2
-	1.	Fixed an issue that eliminated worldspawn damage triggers.
-
-	3.8.1
-	1.	Locked Talent upgrades to dead players or during pre-game.
-	2.	Upgrades Available replaces the old, archaic, manual upgrade system.
-
-	3.7.5
-	1.	Discovered a bug that a user in the community had been exploiting for insane experience rewards; simply, weapon talents would affect
-		all weapons when you trigger the talent and just switch weapons. Now, for damage bonus talents, the damage is applied immediately
-		and no multiplier that can be exploited is used.
-	2.	Fixed an issue that rewarded players with points and experience for overkill damage.
-	3.	Potential bug fix for tank death anim bug. Valve, why are your programmers so fucking shitty that they can't patch a bug that has been
-		in the game for over 7 years????
-	4.	BaseDamageMultiplier system removed; it was buggy, and simply replaced with a better system.
-	5.	Redundancies in place for SDHHook and new health pool systems; sometimes players are not properly connected to it and it creates adverse
-		effects on the player experience.
-	6.	Low-level handicapping has been removed as it caused issues.
-	7.	Corrected an issue that allowed special infected to pre-death before they were killed in any instance.
-	8.	Hard-coded special infected life to always reset to a set value whenever they take damage since damage is stored in variables, and not by the game.
-	2\left4dead2\models\props_urban\metal_pole001.mdl
-
-	3.7.4
-	1.	Infected point and experience earning has been updated.
-		Infected players (and bots) will earn experience and points in real-time as they hurt survivors
-		instead of having to wait until after they die, which should hopefully create better balance between survivors and infected.
-
-
-	3.7.3
-	1.	To combat higher-level players who like to just rush, knowing that they have respawn abilities and death is not a punishment
-		I have now added the dreaded experience debt to the game. Rejoice, hell is here.
-
-
-	3.7.2
-	1.	Added Required Ranges for certain weapons; sniper rifles, for instance, will actually receive damage penalties when
-		a player uses them when too close to special infected. This prevents players from no-scoping sniper rifle shots while
-		dancing, essentially to distinctly classify shotguns and snipers into their own groups.
-
-	3.7.1
-	1.	Damage System Redesign
-
-		The damage system has been redesigned due to SDKHooks providing a more
-		reliable solution versus the player_hurt event.
-		AURAS REMOVED IN 3.7.1 - Let's focus on player skills & equipment instead.
-
-
-	2.	Menu System Expanded
-
-		The main menu system has been expanded to support new entries in the config files.
-		"menu name?"	->	Which sub-menu of the main-menu should be open; "main" is hard-coded for main menu.
-		"target menu?"	->	Which sub-menu of the main-menu does this open call?
-
-		Ability chance has been re-balanced. Since talents either come with the option to require ability chance
-		or not require ability chance, but can't use their own, I wrote a work-around until I can go back and
-		redesign that system. if the talent is in menu named "shotgun talents" and requires ability chance, then
-		you must also have an ability chance talent in the menu named "shotgun talents" as all talents in the same
-		menu will feed from the same ability chance. This lets us weight different categories completely different.
-
-	3.	Macroable talent upgrade system
-
-		Adds new command: talentupgrade <id#> <value>
-		Using this command with / or ! a user can instantly fill specific talents with specific values.
-		Allows for unlimited build diversity, and should help reduce time players spend manually inserting points
-		in endgame when they have thousands of upgrade points.
-
-	4.	Survival support
-		Official Support for survival is added. Yep... go ham.
-
-	3.6.2
-	Contribution system tweaked;
-	Player Level determines:
-	1. Upgrades Limits
-	2. Outgoing (and incoming) damage.
-
-	Sky Level determines:
-	1. Item drop chances.
-	2. Special Infected / Witch Health pools.
-
-	3.6.1
-	Contribution system added.
-*/
-
- /*
- 	List:InfectedHealth[MAXPLAYERS + 1];
- 	block 0 - entity id.
- 	block 1 - true health (infectedhealth - (infectedhealth * teamPercentage))
- 	block 2 - each individual player contribution
- 	block 3 - player damage taken from the special infected (for tank xp bonus)
- 	block 4 - player healing done // deprecated in v0.9.9 (Survivor buffs and then full release.)
- 	block 5 - infected health original - used to determine how much tanking rating to give (this - tankingdone)
-
- 	The idea is instead of directly sharing health with mobs that each player
- 	fights a mob of their own health pool. This design eliminates the issue that
- 	lower level (and higher level) players have with zombies that either have
- 	too little or too much health, allowing players of multiple level ranges
- 	to co-exist on the same server together.
-
- 	Both health bars are shown to the player, so they have a general idea of how
- 	fast they're killing the mob, comparatively to the group effort.
-
- 	When the group effort reaches 100% of the mob health, the mob is killed and
- 	players earn the full range of experience for their contribution.
-*/
-
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -225,7 +40,6 @@
 #define TEAM_SPECTATOR		1
 #define TEAM_SURVIVOR		2
 #define TEAM_INFECTED		3
-
 #define MAX_ENTITIES		2048
 #define MAX_CHAT_LENGTH		1024
 
@@ -233,7 +47,7 @@
 #define SURVRECORD_DB				"db_season_surv"
 
 
-#define PLUGIN_VERSION				"v0.0.4 DEV"
+#define PLUGIN_VERSION				"v0.0.4.1 DEV"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -1045,6 +859,7 @@ new Handle:CallAbilityCooldownTriggerSection[MAXPLAYERS + 1];
 new Handle:GetIfTriggerRequirementsMetKeys[MAXPLAYERS + 1];
 new Handle:GetIfTriggerRequirementsMetValues[MAXPLAYERS + 1];
 new Handle:GetIfTriggerRequirementsMetSection[MAXPLAYERS + 1];
+new bool:ShowPlayerLayerInformation[MAXPLAYERS + 1];
 
 public Action:CMD_DropWeapon(client, args) {
 
@@ -1088,22 +903,17 @@ public Action:CMD_IAmStuck(client, args) {
 }
 
 public Action:CMD_OpenRPGMenu(client, args) {
-	
 	ClearArray(Handle:MenuStructure[client]);	// keeps track of the open menus.
-
 	VerifyAllActionBars(client);	// Because.
 	if (LoadProfileRequestName[client] != -1) {
 
 		if (!IsLegitimateClient(LoadProfileRequestName[client])) LoadProfileRequestName[client] = -1;
 	}
-
 	iIsWeaponLoadout[client] = 0;
 	bEquipSpells[client] = false;
 	PlayerCurrentMenuLayer[client] = 1;
-
+	ShowPlayerLayerInformation[client] = false;
 	BuildMenu(client, "main");
-	//SteamWorks_GetUserGroupStatus(client, 26026802);
-	//SaveAndClear(-1, true);
 	return Plugin_Handled;
 }
 
@@ -2983,7 +2793,6 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		//}
 	}
 
-
 	decl String:thetext[64];
 	if (StrEqual(configname, CONFIG_MAIN) && !b_IsFirstPluginLoad) {
 
@@ -3035,13 +2844,14 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		GetConfigValue(thetext, sizeof(thetext), "load profile command?");
 		RegConsoleCmd(thetext, CMD_LoadProfileEx);
 		//RegConsoleCmd("backpack", CMD_Backpack);
+		//etConfigValue(thetext, sizeof(thetext), "rpg data force save?");
+		//RegConsoleCmd(thetext, CMD_SaveData);
 	}
 
 	if (StrEqual(configname, CONFIG_EVENTS)) SubmitEventHooks(1);
 	ReadyUp_NtvGetHeader();
 
 	if (StrEqual(configname, CONFIG_MAIN)) {
-
 		GetConfigValue(thetext, sizeof(thetext), "item drop model?");
 		PrecacheModel(thetext, true);
 		GetConfigValue(thetext, sizeof(thetext), "backpack model?");
@@ -3061,16 +2871,12 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		new pos = 0;
 
 		for (new i = 0; i <= iRarityMax; i++) {
-
 			for (new j = 0; j < mySize; j++) {
-
 				PreloadKeys				= GetArrayCell(a_Menu_Talents, j, 0);
 				PreloadValues			= GetArrayCell(a_Menu_Talents, j, 1);
 				if (GetKeyValueInt(PreloadKeys, PreloadValues, "is item?") == 1) {
-
 					//PushArrayCell(ItemDropArray, i);
 					if (GetKeyValueInt(PreloadKeys, PreloadValues, "rarity?") == i) {
-
 						curSize = GetArraySize(ItemDropArray);
 						if (pos == curSize) ResizeArray(ItemDropArray, curSize + 1);
 						SetArrayCell(ItemDropArray, pos, j, i);
@@ -3532,7 +3338,6 @@ stock bool:IsSpecialCommon(entity) {
 	}
 	return -1;
 }*/
-
 
 //GetClientAuthId(client, AuthIdType:AuthId_Steam3, String:AuthString, maxlen, bool:validate=true);
 

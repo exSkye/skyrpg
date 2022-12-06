@@ -2295,17 +2295,6 @@ public Action:Timer_LoadData(Handle:timer, any:client) {
 	return Plugin_Stop;
 }
 
-/*public SteamWorks_OnClientGroupStatus(authid, groupid, bool:isMember, bool:isOfficer) {
-
-	new client = FindClientWithAuth(authid);
-
-	if (isMember) PrintToChatAll("User is a member.");
-	else PrintToChatAll("Nope.");
-}*/
-
-//native bool:Steam_RequestGroupStatus(client, 26026802);
-//forward Steam_GroupStatusResult(client, groupAccountID, bool:groupMember, bool:groupOfficer);
-
 public Action:Timer_LoggedUsers(Handle:timer, any:client) {
 
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
