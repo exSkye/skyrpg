@@ -1019,7 +1019,7 @@ public Action:CMD_STAGGERTEST(client, args) {
 		if (i == client) continue;
 
 		StaggerPlayer(client, i);
-		StaggerPlayer(i, client);
+		//StaggerPlayer(i, client);
 		break;
 	}
 	return Plugin_Handled;

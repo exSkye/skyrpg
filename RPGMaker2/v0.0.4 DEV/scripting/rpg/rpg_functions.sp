@@ -4612,7 +4612,7 @@ stock StaggerPlayer(target, activator) {
 		SetVariantString(text);
 		AcceptEntityInput(ent, "RunScriptCode");
 		AcceptEntityInput(ent, "Kill");
-		PrintToChatAll("%s", text);
+		//PrintToChatAll("%s", text);
 
 		EntityWasStaggered(0, activator);
 	}
@@ -6962,12 +6962,15 @@ stock Float:GetAbilityMultiplier(client, String:abilityT[], override = 0, String
 
 	new size = GetArraySize(a_Menu_Talents);
 	new Float:fCooldownRemaining = 0.0;
+	new isReactive = 0;
 	for (new i = 0; i < size; i++) {
 
 		GetAbilityKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		GetAbilityValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 		if (GetKeyValueInt(GetAbilityKeys[client], GetAbilityValues[client], "is ability?") != 1) continue;
-		if (override == 5 && GetKeyValueInt(GetAbilityKeys[client], GetAbilityValues[client], "reactive ability?") != 1) continue;
+		isReactive = GetKeyValueInt(GetAbilityKeys[client], GetAbilityValues[client], "reactive ability?");
+		if (isReactive != 1 && override == 5) continue;
+		if (isReactive == 1 && override != 5) continue;
 		
 		FormatKeyValue(TheTeams, sizeof(TheTeams), GetAbilityKeys[client], GetAbilityValues[client], "teams allowed?");
 		if (StrContains(TheTeams, MyTeam) == -1) continue;

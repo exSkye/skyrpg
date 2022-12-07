@@ -2414,6 +2414,14 @@
 	{
 		"en"				"Reduces the cooldown of all Regen I nodes."
 	}
+	"health regen adr cdr i"
+	{
+		"en"				"(Adren) Regen Mastery I"
+	}
+	"health regen adr i cooldown"
+	{
+		"en"				"Reduces the cooldown of all Regen I nodes when you have [Ad]renaline."
+	}
 	"survivor cooldown info"
 	{
 		"en"				"reduces cooldowns for you when you're a survivor."
@@ -2429,6 +2437,10 @@
 	"survivor bile health i"
 	{
 		"en"				"(Biled) Health I"
+	}
+	"survivor bile health ii"
+	{
+		"en"				"(Biled) Health II"
 	}
 	"survivor bile health info"
 	{
@@ -2474,6 +2486,14 @@
 	{
 		"en"				"Reduce incoming damage when you are covered in [Bi]le."
 	}
+	"weak dmgdn i"
+	{
+		"en"				"(Weakness) Damage Resistance I"
+	}
+	"weak dmgdn i info"
+	{
+		"en"				"Reduces incoming damage when you have [Wk]ness."
+	}
 	"adren dmgdn i"
 	{
 		"en"				"(Adrenaline) Damage Resistance I"
@@ -2488,15 +2508,39 @@
 	}
 	"thorns i info"
 	{
-		"en"				"Reflects a percentage of the damage taken back at the attacker."
+		"en"				"Reflects a small percentage of the damage taken back at the attacker."
+	}
+	"thorns ii"
+	{
+		"en"				"Thorns II"
+	}
+	"thorns ii info"
+	{
+		"en"				"Reflects a large percentage of the damage taken back at the attacker."
 	}
 	"healer path i"
 	{
 		"en"				"Healer Path I"
 	}
+	"healer path ii"
+	{
+		"en"				"Healer Path II"
+	}
 	"healer path info"
 	{
 		"en"				"Bullet damage heals teammates for a percentage of damage dealt."
+	}
+	"adren ab"
+	{
+		"en"				"Adrenaline"
+	}
+	"adren ammo"
+	{
+		"en"				"(Equippable)Adrenaline"
+	}
+	"adren ammo info"
+	{
+		"en"				"Places a temporary adrenaline field at your aim target."
 	}
 	"reflect ab"
 	{
@@ -2538,9 +2582,21 @@
 	{
 		"en"				"Tier 2 weapon damage increased when not touching the ground."
 	}
+	"elon path iii"
+	{
+		"en"				"Elon Path III"
+	}
+	"elon path iii info"
+	{
+		"en"				"All SMGs and Shotguns deal increased damage when not touching the ground."
+	}
 	"shaman path i"
 	{
 		"en"				"Shaman Path I"
+	}
+	"shaman path ii"
+	{
+		"en"				"Shaman Path II"
 	}
 	"shaman path info"
 	{
@@ -2602,6 +2658,14 @@
 	{
 		"en"				"Increases all weapon damage, except melee weapons."
 	}
+	"warblade path i"
+	{
+		"en"				"Warblade Path I"
+	}
+	"warblade path info"
+	{
+		"en"				"Increases all melee and pump shotgun damage when you are black and white."
+	}
 	"defender path i"
 	{
 		"en"				"Defender Path I"
@@ -2626,6 +2690,14 @@
 	{
 		"en"				"Regenerates a moderate amount of health over time."
 	}
+	"health regen iii"
+	{
+		"en"				"Regen III"
+	}
+	"health regen iii info"
+	{
+		"en"				"Regenerates a large amount of health over time."
+	}
 	"stamina i"
 	{
 		"en"				"Stamina I"
@@ -2633,6 +2705,14 @@
 	"stamina i info"
 	{
 		"en"				"Increases your stamina by a small amount."
+	}
+	"stamina ii"
+	{
+		"en"				"Stamina II"
+	}
+	"stamina ii info"
+	{
+		"en"				"Increases your stamina by a moderate amount."
 	}
 	"survivor health i"
 	{
@@ -2730,6 +2810,10 @@
 	{
 		"en"				"Weapon Damage I"
 	}
+	"weapon damage increase ii"
+	{
+		"en"				"Weapon Damage II"
+	}
 	"tier1 damage increase"
 	{
 		"en"				"Tier 1 Weapons have increased damage.\n(twin pistols, pump shotguns, smg\'s, hunting rifle)"
@@ -2738,6 +2822,10 @@
 	{
 		"en"				"Tier1 Damage I"
 	}
+	"tier1 damage increase ii"
+	{
+		"en"				"Tier1 Damage II"
+	}
 	"tier2 damage increase"
 	{
 		"en"				"Tier 2 Weapons have increased damage.\n(assault rifles, auto-shotguns, and sniper rifles)"
@@ -2745,6 +2833,10 @@
 	"tier2 damage increase i"
 	{
 		"en"				"Tier2 Damage I"
+	}
+	"tier2 damage increase ii"
+	{
+		"en"				"Tier2 Damage II"
 	}
 	"burn damage increase"
 	{
@@ -4855,6 +4947,10 @@
 		"#format"			"{1:3.2f},{2:s}"
 		"en"				"Reduces all incoming damage by {1}{2}"
 	}
+	"stagger Active Ability"
+	{
+		"en"				"Free yourself when ensnared by a special infected\nif activated before being ensnared."
+	}
 	"X Passive Ability"
 	{
 		"#format"			"{1:3.2f},{2:s}"
@@ -5097,10 +5193,6 @@
 	{
 		"en"				"This talent must be equipped to the action bar once unlocked."
 	}
-	"bloodlust ability"
-	{
-		"en"				"Bloodlust"
-	}
 	"focus ability"
 	{
 		"en"				"Focus"
@@ -5117,6 +5209,42 @@
 	{
 		"en"				"Meditation"
 	}
+	"bloodlust ab"
+	{
+		"en"				"Bloodlust"
+	}
+	"bloodlust ability"
+	{
+		"en"				"(Equippable)Bloodlust"
+	}
+	"bloodlust info"
+	{
+		"en"				"Increases all outgoing damage."
+	}
+	"knife ab"
+	{
+		"en"				"Knife"
+	}
+	"knife ability"
+	{
+		"en"				"(Equippable)Knife"
+	}
+	"knife info"
+	{
+		"en"				"You can now parry special infected ensnares\nif this ability is active when you are ensnared."
+	}
+	"last chance ab"
+	{
+		"en"				"Last Chance"
+	}
+	"last chance ability"
+	{
+		"en"				"(Equippable)Last Chance"
+	}
+	"last chance info"
+	{
+		"en"				"Reduce almost-all incoming damage for a short period of time."
+	}
 	"refresh ab"
 	{
 		"en"				"Refresh"
@@ -5127,7 +5255,7 @@
 	}
 	"refresh info"
 	{
-		"en"				"Increases incoming healing received."
+		"en"				"Heal yourself for a large portion of your health, instantly."
 	}
 	"phoenix ability"
 	{

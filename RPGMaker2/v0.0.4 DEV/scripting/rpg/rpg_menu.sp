@@ -3174,18 +3174,20 @@ public Handle:TalentInfoScreen (client) {
 	Format(text, sizeof(text), "%T", "return to talent menu", client);
 	DrawPanelItem(menu, text);
 
-	//	Talents now have a brief description of what they do on their purchase page.
-	//	This variable is pre-determined and calls a translation file in the language of the player.
-	GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation));
-	//Format(TalentInfo, sizeof(TalentInfo), "%s", GetTranslationOfTalentName(client, TalentName));
-	new Float:rollChance = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "roll chance?");
-	if (TalentType <= 0 && rollChance > 0.0) {
-		Format(text, sizeof(text), "%3.2f%s", rollChance * 100.0, pct);
-		Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, text);
-	}
-	else Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client);
+	if (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "hide translation?") != 1) {
+		//	Talents now have a brief description of what they do on their purchase page.
+		//	This variable is pre-determined and calls a translation file in the language of the player.
+		GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation));
+		//Format(TalentInfo, sizeof(TalentInfo), "%s", GetTranslationOfTalentName(client, TalentName));
+		new Float:rollChance = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "roll chance?");
+		if (TalentType <= 0 && rollChance > 0.0) {
+			Format(text, sizeof(text), "%3.2f%s", rollChance * 100.0, pct);
+			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, text);
+		}
+		else Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client);
 
-	DrawPanelText(menu, TalentInfo);	// rawline means not a selectable option.
+		DrawPanelText(menu, TalentInfo);	// rawline means not a selectable option.
+	}
 	if (AbilityTalent == 1) {
 
 		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client]);
@@ -3254,37 +3256,29 @@ stock GetAbilityText(client, String:TheString[], TheSize, Handle:Keys, Handle:Va
 		Format(AbilityType, sizeof(AbilityType), "Toggle Ability");
 		TheAbilityMultiplier = GetKeyValueFloat(Keys, Values, "toggle strength?");
 	}
-	new size = strlen(text);
-	for (new i = 0; i < size && size > 0; i++) {
-
-		/*
-
-			so apparently my initial design had the idea of using a string instead of a char so abilities could provide multiple active/passive effects.
-			i didn't code the other end this way, it requires a char, but we'll come back to it at some point since the hard part is done.
-		*/
-
-		Format(TheEffect, sizeof(TheEffect), "%s", text[i]);
-
-		if (StrContains(TheEffect, "C") != -1) {
-
-			Format(text2, sizeof(text2), "%s %s", TheEffect, AbilityType);
+	Format(text2, sizeof(text2), "%s %s", text, AbilityType);
+	new isReactive = GetKeyValueInt(Keys, Values, "reactive ability?");
+	if (isReactive == 1) {
+		Format(text2, sizeof(text2), "%T", text2, client);
+	}
+	else {
+		if (StrEqual(text, "C", true)) {
 
 			Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "maximum %s multiplier?", TheMaximumMultiplier);
 			new Float:MaxMult = GetKeyValueFloat(Keys, Values, TheMaximumMultiplier);
 			Format(text2, sizeof(text2), "%T", text2, client, TheAbilityMultiplier * 100.0, pct, MaxMult * 100.0, pct);
 		}
-		else if (TheAbilityMultiplier > 0.0 || StrContains(TheEffect, "S") != -1) {
+		else if (TheAbilityMultiplier > 0.0 || StrEqual(text, "S", true)) {
 
-			Format(text2, sizeof(text2), "%s %s", TheEffect, AbilityType);
 			Format(text2, sizeof(text2), "%T", text2, client, TheAbilityMultiplier * 100.0, pct);
 		}
 		else {
 
-			Format(text2, sizeof(text2), "%s Disabled", TheEffect);
+			Format(text2, sizeof(text2), "%s Disabled", text);
 			Format(text2, sizeof(text2), "%T", text2, client);
 		}
-		Format(tDraft, sizeof(tDraft), "%s\n%s", tDraft, text2);
 	}
+	Format(tDraft, sizeof(tDraft), "%s\n%s", tDraft, text2);
 	if (StrContains(TheQuery, "active", false) != -1) {
 
 		FormatKeyValue(text, sizeof(text), Keys, Values, "cooldown?");
