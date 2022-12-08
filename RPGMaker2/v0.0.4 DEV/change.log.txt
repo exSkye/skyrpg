@@ -1,5 +1,5 @@
 
-	RPGMaker2 v0.0.4.1 (RPG Construction Set)
+	RPGMaker2 v0.0.4.2 (RPG Construction Set)
 	By Skye
 
 	Other Credits:
@@ -12,6 +12,28 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.4.2
+	-	Rating changes:
+		a. All players joining the server, who aren't a carry-over from the previous map will have their rating set to 0.
+		b. 20% of your earned rating is lost when you die.
+		-	Rating Difficulty:
+			At 0 rating, the difficulty is equivalent to vanilla's "easy" difficulty, and scales gradually up-to "impossible" (around 100,000 rating) and beyond.
+	-	The base # of common infected to start-off is set to the vanilla amount of 30.
+	-	Formerly a static variable, The super common limit is set to default to 10% of whatever the current common infected limit is; it defaults to 3.
+	-	Formerly a static variable, The uncommon limit is set to default to 20% "..." it defaults to 6.
+	-	COMMON INFECTED HEADSHOTS:
+		a.	Common infected headshots now causes your bullet (or melee weapon) to deal the remaining amount of their life, both awarding you based on that value
+			and killing the common instantly. this doesn't work on super commons. Hopefully solves the problem with the invisible zombies (all their bits are exploded, but they're still around)
+	-	The special infected damage values shown in the character sheet are now the accurate values for incoming damage.
+	-	Knife (the RPG version of a parry) is 1.0 seconds of forgiveness time, please let me know if it needs to be longer.
+	-	Default Experience earned right now is very low but that's irrelevant on the test server, as everyone starts at max level. Please do provide feedback on it, to help me figure-out where it should be.
+	-	NEW PLAYER ISSUES:
+		a.	(If no data loads for you, say !newdata in chat; I haven't fully-hooked the new player system up, and this is the manual method.)
+	-	COMMANDS:
+		a.	!RPG is the menu command, and case-sensitive at the moment. Will get it changed so that it accepts any variation in the future.
+	-	TALENT NODES INFO:
+		a.	Default values for Max HP (when not considering other +Health upgrades from buffs/debuffs) from non-buff health nodes is 376 at the moment.
+			I'm not sure how high it goes if you stack all the +Health nodes from all the debuff/buff versions, but you can get pretty tanky.
 	
 	0.0.4.1
 	-	Made changes to the layer restrictions of the talent menu.

@@ -1047,8 +1047,8 @@
 	}
 	"RPG Header"
 	{
-		"#format"			"{1:s},{2:i},{3:i}"
-		"en"				"{1}\n \nTotal nodes unlocked: {2}/{3}"
+		"#format"			"{1:s},{2:i},{3:i},{4:i}"
+		"en"				"{1}\n \nTotal nodes unlocked: {2}/{3}\nNode unlocks remaining: {4}"
 	}
 	"RPG Layer Eligible"
 	{
