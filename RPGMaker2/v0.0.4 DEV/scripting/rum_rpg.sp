@@ -46,7 +46,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v0.0.4.3 DEV"
+#define PLUGIN_VERSION				"v0.0.4.4"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -868,6 +868,7 @@ new String:DefaultInfectedProfileName[64];
 new Handle:GetGoverningAttributeKeys[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeValues[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeSection[MAXPLAYERS + 1];
+
 
 public Action:CMD_DropWeapon(client, args) {
 

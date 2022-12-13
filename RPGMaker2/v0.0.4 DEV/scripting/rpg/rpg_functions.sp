@@ -9660,8 +9660,9 @@ public bool:ChatTrigger(client, args, bool:teamOnly) {
 
 	GetClientName(client, Name, sizeof(Name));
 	GetCmdArg(1, sBuffer, sizeof(sBuffer));
-	if (IsOpenRPGMenu(sBuffer)) {
+	if (sBuffer[0] == '!' && IsOpenRPGMenu(sBuffer)) {
 		CMD_OpenRPGMenu(client);
+		return false;	// if we want to suppress the chat command
 	}
 	//StripQuotes(sBuffer);
 	//if (StrEqual(sBuffer, LastSpoken[client], false)) return false;
@@ -9709,9 +9710,9 @@ public bool:ChatTrigger(client, args, bool:teamOnly) {
 	}
 
 	if (iRPGMode > 0) {
-		if (GetClientTeam(client) == TEAM_SURVIVOR) Format(Message, sizeof(Message), "{N}({B}Lv.%s{N}) %s", AddCommasToString(CartelLevel(client)), Message);
-		else if (GetClientTeam(client) == TEAM_INFECTED) Format(Message, sizeof(Message), "{N}({R}Lv.%s{N}) %s", AddCommasToString(CartelLevel(client)), Message);
-		else if (GetClientTeam(client) == TEAM_SPECTATOR) Format(Message, sizeof(Message), "{N}({GRA}Lv.%s{N}) %s", AddCommasToString(CartelLevel(client)), Message);
+		if (GetClientTeam(client) == TEAM_SURVIVOR) Format(Message, sizeof(Message), "{N}({B}Lv.%s{N}) %s", AddCommasToString(PlayerLevel[client]), Message);
+		else if (GetClientTeam(client) == TEAM_INFECTED) Format(Message, sizeof(Message), "{N}({R}Lv.%s{N}) %s", AddCommasToString(PlayerLevel[client]), Message);
+		else if (GetClientTeam(client) == TEAM_SPECTATOR) Format(Message, sizeof(Message), "{N}({GRA}Lv.%s{N}) %s", AddCommasToString(PlayerLevel[client]), Message);
 
 		//if (SkyLevel[client] >= 1) Format(Message, sizeof(Message), "{N}({B}SLv.%d{N})%s", SkyLevel[client], Message);
 	}

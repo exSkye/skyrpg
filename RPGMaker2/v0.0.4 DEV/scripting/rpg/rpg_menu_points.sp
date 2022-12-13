@@ -17,8 +17,8 @@ stock BuildPointsMenu(client, String:MenuName[], String:ConfigName[] = "none") {
 	decl String:IsCooldown[64];
 	Format(IsCooldown, sizeof(IsCooldown), "0");
 	decl String:quickCommand[64];
-	decl String:campaignSupported[512];
-	Format(campaignSupported, sizeof(campaignSupported), "-1");
+	//decl String:campaignSupported[512];
+	//Format(campaignSupported, sizeof(campaignSupported), "-1");
 
 	decl String:teamsAllowed[64];
 	decl String:gamemodesAllowed[64];
@@ -78,7 +78,7 @@ stock BuildPointsMenu(client, String:MenuName[], String:ConfigName[] = "none") {
 		PointCostMinimum	= GetKeyValueFloat(MenuKeys[client], MenuValues[client], "point cost minimum?");
 		FormatKeyValue(quickCommand, sizeof(quickCommand), MenuKeys[client], MenuValues[client], "quick bind?");
 		Format(quickCommand, sizeof(quickCommand), "!%s", quickCommand);
-		FormatKeyValue(campaignSupported, sizeof(campaignSupported), MenuKeys[client], MenuValues[client], "campaign supported?", campaignSupported);
+		//FormatKeyValue(campaignSupported, sizeof(campaignSupported), MenuKeys[client], MenuValues[client], "campaign supported?", campaignSupported);
 
 		iPreGameFree = GetKeyValueInt(MenuKeys[client], MenuValues[client], "pre-game free?");
 
@@ -96,11 +96,11 @@ stock BuildPointsMenu(client, String:MenuName[], String:ConfigName[] = "none") {
 			continue;
 		}
 
-		if (!StrEqual(campaignSupported, "-1", false) && StrContains(campaignSupported, currentCampaignName, false) == -1) {
+		/*if (!StrEqual(campaignSupported, "-1", false) && StrContains(campaignSupported, currentCampaignName, false) == -1) {
 
 			menuPos--;
 			continue;
-		}
+		}*/
 		Format(Name_Temp, sizeof(Name_Temp), "%T", Name, client);
 		if (FindCharInString(Command, ':') != -1) Format(text, sizeof(text), "%T", "Buy Menu Option 1", client, Name_Temp, quickCommand);
 		else {
@@ -162,8 +162,8 @@ public BuildPointsMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 		decl String:Name[64];
 		decl String:Command[64];
 		decl String:Parameter[64];
-		decl String:campaignSupported[512];
-		Format(campaignSupported, sizeof(campaignSupported), "-1");	// If there's no value for it, ignore.
+		//decl String:campaignSupported[512];
+		//Format(campaignSupported, sizeof(campaignSupported), "-1");	// If there's no value for it, ignore.
 
 		new Float:PointCost				=	0.0;
 		new Float:PointCostMinimum		=	0.0;
@@ -228,7 +228,7 @@ public BuildPointsMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 		ExperienceCost		= GetKeyValueInt(MenuKeys[client], MenuValues[client], "experience cost?");
 		FormatKeyValue(Command, sizeof(Command), MenuKeys[client], MenuValues[client], "command?", Command);
 		PointCostMinimum	= GetKeyValueFloat(MenuKeys[client], MenuValues[client], "point cost minimum?");
-		FormatKeyValue(campaignSupported, sizeof(campaignSupported), MenuKeys[client], MenuValues[client], "campaign supported?", campaignSupported);
+		//FormatKeyValue(campaignSupported, sizeof(campaignSupported), MenuKeys[client], MenuValues[client], "campaign supported?", campaignSupported);
 		FormatKeyValue(Parameter, sizeof(Parameter), MenuKeys[client], MenuValues[client], "parameter?", Parameter);
 		FormatKeyValue(Model, sizeof(Model), MenuKeys[client], MenuValues[client], "model?", Model);
 		Count				= GetKeyValueInt(MenuKeys[client], MenuValues[client], "count?");
@@ -352,7 +352,7 @@ public BuildPointsMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 						SDKCall(hRoundRespawn, client);
 						CreateTimer(0.2, Timer_TeleportRespawn, client, TIMER_FLAG_NO_MAPCHANGE);
 					}
-					else if (!StrEqual(campaignSupported, "-1", false) && StrContains(campaignSupported, currentCampaignName, false) != -1) {
+					else if (StrEqual(Command, "melee")) {
 
 						// Get rid of their old weapon
 						//CheckIfRemoveWeapon(client, Parameter);

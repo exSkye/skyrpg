@@ -573,7 +573,7 @@ stock GetTeamComposition(client) {
 		if (!IsLegitimateClient(i) || myteam != GetClientTeam(i)) continue;
 
 		GetClientName(i, text, sizeof(text));
-		Format(text, sizeof(text), "[Rating: %s] (Lv.%s) %s", AddCommasToString(Rating[i]), AddCommasToString(CartelLevel(i)), text);
+		Format(text, sizeof(text), "[Rating: %s] (Lv.%s) %s", AddCommasToString(Rating[i]), AddCommasToString(PlayerLevel[i]), text);
 		AddMenuItem(menu, text, text);
 	}
 	SetMenuExitBackButton(menu, true);
@@ -2465,6 +2465,7 @@ stock SaveProfileEx(client, String:key[], SaveType) {
 
 		//	A save doesn't exist for this steamid so we create one before saving anything.
 		Format(tquery, sizeof(tquery), "INSERT INTO `%s` (`steam_id`) VALUES ('%s');", TheDBPrefix, key);
+		//PrintToChat(client, tquery);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
 	}
 
@@ -2479,6 +2480,7 @@ stock SaveProfileEx(client, String:key[], SaveType) {
 
 	//if (PlayerLevel[client] < 1) return;		// Clearly, their data hasn't loaded, so we don't save.
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `total upgrades` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, PlayerLevel[client] - UpgradesAvailable[client] - FreeUpgrades[client], key);
+	//PrintToChat(client, tquery);
 	//LogMessage(tquery);
 	SQL_TQuery(hDatabase, QueryResults, tquery, client);
 
@@ -2536,8 +2538,8 @@ stock ReadProfiles(client, String:target[] = "none") {
 	new owner = client;
 	if (LoadTarget[owner] != -1 && LoadTarget[owner] != owner && IsSurvivorBot(LoadTarget[owner])) client = LoadTarget[owner]; 
 
-	if (!StrEqual(target, "all", false)) Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `total upgrades` <= '%d';", TheDBPrefix, key, pct, (PlayerLevel[client] - 1));
-	else Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s+SavedProfile%s' AND `total upgrades` <= '%d';", TheDBPrefix, pct, PROFILE_VERSION, (PlayerLevel[client] - 1));
+	if (!StrEqual(target, "all", false)) Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `total upgrades` <= '%d';", TheDBPrefix, key, pct, PlayerLevel[client]);
+	else Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s+SavedProfile%s' AND `total upgrades` <= '%d';", TheDBPrefix, pct, PROFILE_VERSION, PlayerLevel[client]);
 	//PrintToChat(client, tquery);
 	//decl String:tqueryE[512];
 	//SQL_EscapeString(Handle:hDatabase, tquery, tqueryE, sizeof(tqueryE));

@@ -1939,6 +1939,7 @@ public QueryResults_LoadActionBar(Handle:owner, Handle:hndl, const String:error[
 
 		if (IsFound && !IsFakeClient(client)) PrintToChat(client, "%T", "Action Bar Loaded", client, orange, blue);
 		b_IsLoading[client] = false;
+		bIsTalentTwo[client] = false;
 	}
 	else {
 		
