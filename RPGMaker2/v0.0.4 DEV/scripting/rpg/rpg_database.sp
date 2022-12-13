@@ -52,7 +52,6 @@ stock SetSurvivorsAliveHostname() {
 public ReadyUp_GroupMemberStatus(client, groupStatus) {
 
 	if (IsLegitimateClient(client)) {
-
 		if (HasCommandAccess(client, "donator package flag?") || groupStatus == 1) IsGroupMember[client] = true;
 		else IsGroupMember[client] = false;
 
@@ -814,7 +813,7 @@ stock CreateNewPlayerEx(client) {
 	ChallengeEverything(client);
 
 	bIsNewPlayer[client]			= true;
-	//b_IsLoading[client]				= false;
+	b_IsLoading[client]				= false;
 	bIsTalentTwo[client]			= false;
 	b_IsLoadingStore[client]		= false;
 	b_IsLoadingTrees[client]		= false;
@@ -828,7 +827,7 @@ stock CreateNewPlayerEx(client) {
 	TotalTalentPoints[client]		=	0;
 	TimePlayed[client]				=	0;
 	PlayerUpgradesTotal[client]		=	0;
-	UpgradesAvailable[client]		= FreeUpgrades[client];
+	UpgradesAvailable[client]		= MaximumPlayerUpgrades(client);
 	FreeUpgrades[client]			=	0;
 	if (!IsFakeClient(client)) DefaultHealth[client]			=	iSurvivorBaseHealth;
 	else DefaultHealth[client]			= iSurvivorBotBaseHealth;
@@ -1231,17 +1230,13 @@ public Action:Timer_LoadNewPlayer(Handle:timer, any:client) {
 	if (IsLegitimateClient(client)) {
 
 		//bIsTalentTwo[client] = true;
-		b_IsLoading[client] = true;
-
 		LogMessage("Loading profile for new player %N", client);
-
-		decl String:DefaultProfileName[64];
-		GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
-		if (iDontLoadProfiles != 0 && StrContains(DefaultProfileName, "-1", false) == -1) {
-
+		if (forceProfileOnNewPlayers == 1 && !StrEqual(DefaultProfileName, "-1")) {
+			b_IsLoading[client] = true;
 			LoadTarget[client] = -1;
 			LoadProfileEx(client, DefaultProfileName);
 		}
+		else b_IsLoading[client] = false;
 	}
 }
 
@@ -1955,7 +1950,7 @@ public QueryResults_LoadActionBar(Handle:owner, Handle:hndl, const String:error[
 stock TotalPointsAssigned(client) {
 
 	new count = 0;
-	new MaxTalents = PlayerLevel[client] - 1;
+	new MaxTalents = PlayerLevel[client];
 	new currentValue = 0;
 	//decl String:TalentName[64];
 
@@ -2187,7 +2182,7 @@ stock OnClientLoaded(client, bool:IsHooked = false) {
 		b_IsHooked[client] = true;
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	}*/
-
+	FreeUpgrades[client] = 0;
 	bIsHideThreat[client] = true;
 	iThreatLevel[client] = 0;
 	iChaseEnt[client] = -1;

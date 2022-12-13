@@ -16,12 +16,16 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 			new TotalPoints = TotalPointsAssigned(client);
 			decl String:PlayerLevelText[256];
 			Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, AddCommasToString(ExperienceLevel[client]), MenuExperienceBar(client), AddCommasToString(CheckExperienceRequirement(client)));
-			new strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]);
 			new maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
 			if (CheckRPGMode != 0) {
-				Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow);
+				Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
 				if (ShowLayerEligibility) {
-					if (bIsLayerEligible) Format(text, sizeof(text), "%T", "RPG Layer Eligible", client, text, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, PlayerCurrentMenuLayer[client] + 1);
+					if (bIsLayerEligible) {
+						new strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]);
+						new allUpgradesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, true);
+						new totalPossibleNodesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true);
+						Format(text, sizeof(text), "%T", "RPG Layer Eligible", client, text, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, PlayerCurrentMenuLayer[client] + 1, allUpgradesThisLayer, totalPossibleNodesThisLayer);
+					}
 					else Format(text, sizeof(text), "%T", "RPG Layer Not Eligible", client, text, PlayerCurrentMenuLayer[client]);
 				}
 			}
@@ -191,32 +195,14 @@ public Action:CMD_LoadProfileEx(client, args) {
 }
 
 stock LoadProfileEx(client, String:key[]) {
-
 	if (IsSurvivorBot(LoadTarget[client]) || IsSurvivorBot(client) || LoadTarget[client] == -1 || IsLegitimateClient(LoadTarget[client]) && GetClientTeam(LoadTarget[client]) == TEAM_SURVIVOR) {
-
 		new targetClient = LoadTarget[client];
 		if (LoadTarget[client] == -1 || !IsLegitimateClient(LoadTarget[client])) targetClient = client;
 		LoadTarget[client] = -1;
-
 		if (IsSurvivorBot(targetClient) || b_IsLoaded[targetClient]) {
-
-			//Format(ProfileLoadQueue[targetClient], sizeof(ProfileLoadQueue[]), "%s", key);
-			//SaveClassData(targetClient);
 			LoadProfileEx_Confirm(targetClient, key);
 		}
 	}
-	/*else if (IsLegitimateClient(LoadTarget[client]) && client != LoadTarget[client]) {
-
-		decl String:LoadName[64];
-		GetClientName(LoadTarget[client], LoadName, sizeof(LoadName));
-
-		PrintToChat(client, "%T", "sending profile request", client, orange, green, LoadName);
-		LoadProfileEx_Request(client, LoadTarget[client], key);
-	}*/
-	/*else {
-
-		PrintToChat(client, "%T", "cannot load in combat", client, orange);
-	}*/
 }
 
 stock LoadProfileEx_Confirm(client, String:key[]) {
@@ -233,6 +219,7 @@ stock LoadProfileEx_Confirm(client, String:key[]) {
 	//else
 	if (!IsFakeClient(client)) PrintToChat(client, "%T", "loading profile", client, orange, green, key);
 
+	//b_IsLoading[client] = false;
 	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `total upgrades` FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 	// maybe set a value equal to the users steamid integer only, so if steam:0:1:23456, set the value of "client" equal to 23456 and then set the client equal to whatever client's steamid contains 23456?
 	//LogMessage("Loading %N data: %s", client, tquery);
@@ -300,15 +287,13 @@ public QueryResults_LoadEx(Handle:howner, Handle:hndl, const String:error[], any
 		decl String:result[3][64];
 
 		new owner = client;	// so if the load target is not the client we can track both.
+		new bool:rowsFound = false;
 
 		while (SQL_FetchRow(hndl))
 		{
 			SQL_FetchString(hndl, 0, key, sizeof(key));
+			rowsFound = true;	// not sure how else to verify this without running a count query first.
 			if (LoadTarget[owner] != owner && LoadTarget[owner] != -1 && (IsSurvivorBot(LoadTarget[owner]) || IsLegitimateClient(LoadTarget[owner]) && GetClientTeam(LoadTarget[owner]) != TEAM_INFECTED)) client = LoadTarget[owner];
-			// check if the client is overriden by LoadProfileRequestName[client]
-			//client = CheckLoadProfileRequest(owner);
-			//if (LoadTarget[owner] != client) LoadTarget[owner] = client;
-
 			if (!IsLegitimateClient(client)) return;
 
 			ExplodeString(key, "+", result, 3, 64);
@@ -318,9 +303,14 @@ public QueryResults_LoadEx(Handle:howner, Handle:hndl, const String:error[], any
 
 			PlayerUpgradesTotal[client]	= SQL_FetchInt(hndl, 1);
 			UpgradesAvailable[client]	= 0;
-			FreeUpgrades[client] = (PlayerLevel[client] - 1) - PlayerUpgradesTotal[client];
+			FreeUpgrades[client] = PlayerLevel[client] - PlayerUpgradesTotal[client];
 			if (FreeUpgrades[client] < 0) FreeUpgrades[client] = 0;
 			PurchaseTalentPoints[client] = PlayerUpgradesTotal[client];
+		}
+		if (!rowsFound) {
+			b_IsLoading[client] = false;
+			LogMessage("Could not load the profile on target client forced by %N, exiting loading sequence.", client);
+			return;
 		}
 		decl String:tquery[512];
 		//decl String:key[64];
@@ -428,7 +418,6 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 				LoadPos[client] = 0;
 				LoadTalentTrees(client, skey, true, key);
 			}
-			new TalentMaximum				=	0;
 			new PlayerTalentPoints			=	0;
 			decl String:TalentName[64];
 
@@ -449,14 +438,11 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 
 				GetArrayString(Handle:MenuSection[client], 0, TalentName, sizeof(TalentName));
 
-				TalentMaximum = GetKeyValueInt(MenuKeys[client], MenuValues[client], "maximum talent points allowed?", "1");
-
 				PlayerTalentPoints = GetTalentStrength(client, TalentName);
-				if (PlayerTalentPoints > TalentMaximum) {
-
-					FreeUpgrades[client] += (PlayerTalentPoints - TalentMaximum);
-					PlayerUpgradesTotal[client] -= (PlayerTalentPoints - TalentMaximum);
-					AddTalentPoints(client, TalentName, (PlayerTalentPoints - TalentMaximum));
+				if (PlayerTalentPoints > 1) {
+					FreeUpgrades[client] += (PlayerTalentPoints - 1);
+					PlayerUpgradesTotal[client] -= (PlayerTalentPoints - 1);
+					AddTalentPoints(client, TalentName, (PlayerTalentPoints - 1));
 				}
 			}
 		}
@@ -945,7 +931,7 @@ stock bool:IsAbilityTalent(client, String:TalentName[], String:SearchKey[] = "no
 
 stock DrawAbilityEffect(client, String:sDrawEffect[], String:sTalentName[], iEffectType = 0) {
 
-	if (StrEqual(sDrawEffect, "-1.0")) return;
+	if (StrEqual(sDrawEffect, "-1")) return;
 
 	/*new Float:fCooldownTime = GetAmmoCooldownTime(client, sTalentName, true);
 	new Float:fActive = GetAbilityValue(client, sTalentName, "active time?");
@@ -962,7 +948,7 @@ stock DrawAbilityEffect(client, String:sDrawEffect[], String:sTalentName[], iEff
 	new ExplodeCount = GetDelimiterCount(sDrawEffect, "+") + 1;
 	decl String:sEffects[ExplodeCount][64];
 	ExplodeString(sDrawEffect, "+", sEffects, ExplodeCount, 64);
-
+	//																size						color		pos			pulse?	lifetime
 	if (iEffectType == 1 || iEffectType == 2) CreateRing(client, StringToFloat(sEffects[0]), sEffects[1], sEffects[2], false, 0.2);
 	else {
 
@@ -1073,19 +1059,19 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 				if (IsInstantDraw) {
 
 					FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw?");
-					if (!StrEqual(sDrawEffect, "-1.0")) DrawAbilityEffect(client, sDrawEffect, text);
+					if (!StrEqual(sDrawEffect, "-1")) DrawAbilityEffect(client, sDrawEffect, text);
 				}
 				else {
 
 					if (IsActionAbilityCooldown(client, text, true)) {// || !StrEqual(sPassiveEffects, "-1.0") && !IsActionAbilityCooldown(client, text)) {
 
 						FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect?");
-						if (!StrEqual(sDrawEffect, "-1.0")) DrawAbilityEffect(client, sDrawEffect, text, 1);
+						if (!StrEqual(sDrawEffect, "-1")) DrawAbilityEffect(client, sDrawEffect, text, 1);
 					}
 					else if (PassiveEffectDisplay[client] == i && IsPassiveAbility == 1) {
 
 						FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw?");
-						if (!StrEqual(sDrawEffect, "-1.0")) DrawAbilityEffect(client, sDrawEffect, text, 2);
+						if (!StrEqual(sDrawEffect, "-1")) DrawAbilityEffect(client, sDrawEffect, text, 2);
 					}
 				}
 			}
@@ -1210,6 +1196,8 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 	decl String:sCvarRequired[64];
 	decl String:sCatRepresentation[64];
 
+	decl String:translationInfo[64];
+
 	for (new i = 0; i < size; i++) {
 
 		// Pull data from the parsed config.
@@ -1236,6 +1224,7 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 		FormatKeyValue(configname, sizeof(configname), MenuKeys[client], MenuValues[client], "config?");
 		FormatKeyValue(s_TalentDependency, sizeof(s_TalentDependency), MenuKeys[client], MenuValues[client], "talent dependency?");
 		FormatKeyValue(sCvarRequired, sizeof(sCvarRequired), MenuKeys[client], MenuValues[client], "cvar_required?");
+		FormatKeyValue(translationInfo, sizeof(translationInfo), MenuKeys[client], MenuValues[client], "translation?");
 
 		iIsReadMenuName = GetKeyValueInt(MenuKeys[client], MenuValues[client], "ignore header name?");
 		iHasLayers = GetKeyValueInt(MenuKeys[client], MenuValues[client], "layers?");
@@ -1350,6 +1339,10 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 				PushArrayString(Handle:RPGMenuPosition[client], pos);
 			}
 			else continue;
+		}
+		if (!StrEqual(translationInfo, "-1")) {
+			Format(translationInfo, sizeof(translationInfo), "%T", translationInfo, client);
+			Format(text, sizeof(text), "%s\n%s", text, translationInfo);
 		}
 
 		AddMenuItem(menu, text, text);
@@ -1576,7 +1569,7 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 
 stock PlayerTalentLevel(client) {
 
-	new PTL = RoundToFloor((((PlayerUpgradesTotal[client] * 1.0) + FreeUpgrades[client]) / (MaxUpgradesPerLevel() * PlayerLevel[client])) * PlayerLevel[client]);
+	new PTL = RoundToFloor((((PlayerUpgradesTotal[client] * 1.0) + FreeUpgrades[client]) / PlayerLevel[client]) * PlayerLevel[client]);
 	if (PTL < 0) PTL = 0;
 
 	return PTL;
@@ -1585,28 +1578,23 @@ stock PlayerTalentLevel(client) {
 
 stock Float:PlayerBuffLevel(client) {
 
-	new Float:PBL = ((PlayerUpgradesTotal[client] * 1.0) + FreeUpgrades[client]) / (MaxUpgradesPerLevel() * PlayerLevel[client]);
+	new Float:PBL = ((PlayerUpgradesTotal[client] * 1.0) + FreeUpgrades[client]) / PlayerLevel[client];
 	PBL = 1.0 - PBL;
 	//PBL = PBL * 100.0;
 	if (PBL < 0.0) PBL = 0.0; // This can happen if a player uses free upgrades, so, yeah...
 	return PBL;
 }
 
-stock MaxUpgradesPerLevel() {
-
-	return RoundToFloor(1.0 / GetConfigValueFloat("upgrade experience cost?"));
-}
-
 stock MaximumPlayerUpgrades(client, bool:getNodeCountInstead = false) {
 
-	if (!getNodeCountInstead) return MaxUpgradesPerLevel() * PlayerLevel[client];
+	if (!getNodeCountInstead) return PlayerLevel[client];
 	return nodesInExistence;
 }
 
 stock VerifyMaxPlayerUpgrades(client) {
 
 	if (PlayerUpgradesTotal[client] + FreeUpgrades[client] > MaximumPlayerUpgrades(client)) {
-
+		PrintToChatAll("7");
 		FreeUpgrades[client]								=	MaximumPlayerUpgrades(client);
 		UpgradesAvailable[client]							=	0;
 		PlayerUpgradesTotal[client]							=	0;
@@ -2058,7 +2046,7 @@ public Handle:CharacterSheetMenu(client) {
 	// parse the menu according to how the server operator has designed it.
 	
 	if (playerPageOfCharacterSheet[client] == 0) {
-		Format(text, sizeof(text), "%T", "Character Sheet Info", client);
+		Format(text, sizeof(text), "%T", "Infected Sheet Info", client);
 
 		if (StrContains(text, "{CH}", true) != -1) {
 			GetCharacterSheetData(client, data, sizeof(data), 1);
@@ -2133,15 +2121,13 @@ public Handle:CharacterSheetMenu(client) {
 			ReplaceString(text, sizeof(text), "{TANKDMG}", data);
 		}
 	}
-	else { // weapon damage bonuses...
-		// the value of typeOfAimTarget determines what we show the player.
-		// we are also storing the target name in the String:targetName.
+	else { // Survivor Sheet!
 		decl String:targetName[64];
 		//new typeOfAimTarget = DataScreenTargetName(client, targetName, sizeof(targetName));
 		decl String:weaponDamage[64];
 		Format(weaponDamage, sizeof(weaponDamage), "%s", AddCommasToString(DataScreenWeaponDamage(client)));
 
-		Format(text, sizeof(text), "%T", "Weapons Sheet Info", client);
+		Format(text, sizeof(text), "%T", "Survivor Sheet Info", client);
 		if (StrContains(text, "{AIMTARGET}", true) != -1) {
 			ReplaceString(text, sizeof(text), "{AIMTARGET}", targetName);
 		}
@@ -2157,10 +2143,34 @@ public Handle:CharacterSheetMenu(client) {
 			Format(weaponDamage, sizeof(weaponDamage), "%d", GetMaximumHealth(client));
 			ReplaceString(text, sizeof(text), "{MYHP}", weaponDamage);
 		}
+		if (StrContains(text, "{CON}", true) != -1) {
+			Format(weaponDamage, sizeof(weaponDamage), "%d", GetTalentStrength(client, "constitution", _, _, true));
+			ReplaceString(text, sizeof(text), "{CON}", weaponDamage);
+		}
+		if (StrContains(text, "{AGI}", true) != -1) {
+			Format(weaponDamage, sizeof(weaponDamage), "%d", GetTalentStrength(client, "agility", _, _, true));
+			ReplaceString(text, sizeof(text), "{AGI}", weaponDamage);
+		}
+		if (StrContains(text, "{RES}", true) != -1) {
+			Format(weaponDamage, sizeof(weaponDamage), "%d", GetTalentStrength(client, "resilience", _, _, true));
+			ReplaceString(text, sizeof(text), "{RES}", weaponDamage);
+		}
+		if (StrContains(text, "{TEC}", true) != -1) {
+			Format(weaponDamage, sizeof(weaponDamage), "%d", GetTalentStrength(client, "technique", _, _, true));
+			ReplaceString(text, sizeof(text), "{TEC}", weaponDamage);
+		}
+		if (StrContains(text, "{END}", true) != -1) {
+			Format(weaponDamage, sizeof(weaponDamage), "%d", GetTalentStrength(client, "endurance", _, _, true));
+			ReplaceString(text, sizeof(text), "{END}", weaponDamage);
+		}
+		if (StrContains(text, "{LUC}", true) != -1) {
+			Format(weaponDamage, sizeof(weaponDamage), "%d", GetTalentStrength(client, "luck", _, _, true));
+			ReplaceString(text, sizeof(text), "{LUC}", weaponDamage);
+		}
 	}
 
 	SetMenuTitle(menu, text);
-	if (playerPageOfCharacterSheet[client] == 0) Format(text, sizeof(text), "%T", "Character Sheet (Weapons Page)", client);
+	if (playerPageOfCharacterSheet[client] == 0) Format(text, sizeof(text), "%T", "Character Sheet (Survivor Page)", client);
 	else Format(text, sizeof(text), "%T", "Character Sheet (Infected Page)", client);
 	AddMenuItem(menu, text, text);
 
@@ -2468,7 +2478,7 @@ stock SaveProfileEx(client, String:key[], SaveType) {
 	}
 
 	//if (PlayerLevel[client] < 1) return;		// Clearly, their data hasn't loaded, so we don't save.
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `total upgrades` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, (PlayerLevel[client] - 1) - UpgradesAvailable[client] - FreeUpgrades[client], key);
+	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `total upgrades` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, PlayerLevel[client] - UpgradesAvailable[client] - FreeUpgrades[client], key);
 	//LogMessage(tquery);
 	SQL_TQuery(hDatabase, QueryResults, tquery, client);
 
@@ -2567,7 +2577,6 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 	decl String:TalentName[128];
 	decl String:TalentName_Temp[128];
 	new isSubMenu = 0;
-	new TalentMaximum				=	0;
 	new TalentLevelRequired			=	0;
 	new PlayerTalentPoints			=	0;
 	//new AbilityInherited			=	0;
@@ -2629,7 +2638,6 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 		}
 		else {
 			if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is item?") == 1) continue;	// ignore items.
-			TalentMaximum = GetKeyValueInt(MenuKeys[client], MenuValues[client], "maximum talent points allowed?", "1");
 			//AbilityInherited = GetKeyValueInt(MenuKeys[client], MenuValues[client], "ability inherited?");
 			nodeUnlockCost = GetKeyValueInt(MenuKeys[client], MenuValues[client], "node unlock cost?", "1");	// we want to default the nodeUnlockCost to 1 if it's not set.
 			if (!b_IsDirectorTalents[client]) {
@@ -2649,7 +2657,7 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 				}
 				else {
 					bIsNotEligible = false;
-					if (PlayerTalentPoints > TalentMaximum) {
+					if (PlayerTalentPoints > 1) {
 						/*
 						The player was on a server with different talent settings; specifically,
 						it's clear some talents allowed greater values. Since this server doesn't,
@@ -2657,9 +2665,9 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 						*/
 						// dev note; we did this because players have saveable profiles and they can just load their server-specific profiles at any time.
 						// instantly, and effortlessly, because it's an rpg and a common sense feature that should ALWAYS EXIST IN AN RPG.
-						FreeUpgrades[client] += (PlayerTalentPoints - TalentMaximum);
-						PlayerUpgradesTotal[client] -= (PlayerTalentPoints - TalentMaximum);
-						AddTalentPoints(client, TalentName, (PlayerTalentPoints - TalentMaximum));
+						FreeUpgrades[client] += (PlayerTalentPoints - 1);
+						PlayerUpgradesTotal[client] -= (PlayerTalentPoints - 1);
+						AddTalentPoints(client, TalentName, (PlayerTalentPoints - 1));
 					}
 				}
 			}
@@ -2880,16 +2888,6 @@ stock ShowTalentInfoScreen(client, String:TalentName[], Handle:Keys, Handle:Valu
 	//else if (IsSpecialAmmo == 1 || IsAbilityType == 1) SendPanelToClientAndClose(TalentInfoScreen_Special(client), client, TalentInfoScreen_Special_Init, MENU_TIME_FOREVER);
 }
 
-stock Float:TalentScalingFactorBonus(client, Float:fStrengthPoint = 0.0, boomSize, iScalarCount, String:sTalentStrengthLevels[][], Float:fScalingTalentFactor, iAttributeType, Float:iAttributeMult, iScalingType = 0) {
-	new Float:f_StrengthIncrement = StringToFloat(sTalentStrengthLevels[boomSize]);
-	for (new i = 0; i < iScalarCount; i++) {
-		new Float:f_StrengthT = ((f_StrengthIncrement * ((i + 1) * fScalingTalentFactor)) * (iAttributeMult * iAttributeType));
-		if (f_StrengthT > 0.0) fStrengthPoint += (f_StrengthIncrement * f_StrengthT);
-		fStrengthPoint += (f_StrengthIncrement * fScalingTalentFactor);
-	}
-	return fStrengthPoint;
-}
-
 stock Float:GetTalentInfo(client, Handle:Keys, Handle:Values, infotype = 0, bool:bIsNext = false, String:pTalentNameOverride[] = "none", target = 0, iStrengthOverride = 0) {
 
 	new Float:f_Strength	= 0.0;
@@ -2913,10 +2911,20 @@ stock Float:GetTalentInfo(client, Handle:Keys, Handle:Values, infotype = 0, bool
 
 	if (target == 0 || !IsLegitimateClient(target)) target = client;
 
-	new Cons = GetTalentStrength(target, "constitution");
+	/*
+		Server operators can make up their own custom attributes, and make them affect any node they want.
+		This key "governing attribute?" lets me know what attribute multiplier to collect.
+		If you don't want a node governed by an attribute, omit the field.
+	*/
+	decl String:text[64];
+	FormatKeyValue(text, sizeof(text), Keys, Values, "governing attribute?");
+	new Float:governingAttributeMultiplier = 0.0;
+	if (!StrEqual(text, "-1")) governingAttributeMultiplier = GetAttributeMultiplier(client, text);
+
+	//new Cons = GetTalentStrength(target, "constitution");
 	//new Resi = GetTalentStrength(target, "resilience");
-	new Agil = GetTalentStrength(target, "agility");
-	new Tech = GetTalentStrength(target, "technique");
+	//new Agil = GetTalentStrength(target, "agility");
+	//new Tech = GetTalentStrength(target, "technique");
 	//new Endu = GetTalentStrength(target, "endurance");
 	//new Luck = GetTalentStrength(client, "luck");
 	//new Float:f_StrEach = f_Strength - 1;
@@ -2938,22 +2946,13 @@ stock Float:GetTalentInfo(client, Handle:Keys, Handle:Values, infotype = 0, bool
 	"talent last point scale?"						"1.25"						// new talent point system
 	"talent tree category?"							"survival"					// new talent point system*/
 	new istrength = RoundToCeil(f_Strength);
+	new Float:f_StrengthIncrement = 0.0;
 	for (new i = 0; i < istrength && i < iExplodeCount; i++) {
-		new Float:f_StrengthIncrement = StringToFloat(sTalentStrengthLevels[i]);
+		f_StrengthIncrement = StringToFloat(sTalentStrengthLevels[i]);
 		f_StrengthPoint += f_StrengthIncrement;
 	}
-	if (istrength > iExplodeCount) {
-		if (target == client) {
-			if (infotype == 0 || infotype == 1) f_StrengthPoint = TalentScalingFactorBonus(client, f_StrengthPoint, iExplodeCount - 1, istrength - iExplodeCount, sTalentStrengthLevels, GetKeyValueFloat(Keys, Values, "talent upgrade scale?", "1.0"), Cons, ConsMult, 1);
-			else if (infotype == 2) {
-				f_StrengthPoint = TalentScalingFactorBonus(client, f_StrengthPoint, iExplodeCount - 1, istrength - iExplodeCount, sTalentStrengthLevels, GetKeyValueFloat(Keys, Values, "talent active time scale?", "1.0"), Agil, AgilMult, 3);
-				//TheAbilityMultiplier = GetAbilityMultiplier(target, 'L');
-				//if (TheAbilityMultiplier != -1.0) { f_StrengthPoint *= TheAbilityMultiplier; }
-			}
-			else if (infotype == 3) {
-				f_StrengthPoint = TalentScalingFactorBonus(client, f_StrengthPoint, iExplodeCount - 1, istrength - iExplodeCount, sTalentStrengthLevels, GetKeyValueFloat(Keys, Values, "talent cooldown scale?", "1.0"), Tech, TechMult, 2);
-			}
-		}
+	if (governingAttributeMultiplier > 0.0) {
+		f_StrengthPoint += RoundToCeil(f_StrengthPoint * governingAttributeMultiplier);
 	}
 	if (infotype == 3) {
 		decl String:sCooldownGovernor[64];
@@ -2975,22 +2974,6 @@ stock Float:GetTalentInfo(client, Handle:Keys, Handle:Values, infotype = 0, bool
 		if (f_StrengthPoint < 0.0) f_StrengthPoint = 0.0;	// can't have cooldowns that are less than 0.0 seconds.
 	}
 
-	/*if (StrEqual(TalentNameOverride, "none")) {
-
-		decl String:talenteffects[64];
-		Format(talenteffects, sizeof(talenteffects), "-1");
-		new counter = 0;
-		while (StrEqual(talenteffects, "-1", false) && counter < 5) {
-
-			if (counter == 0) FormatKeyValue(talenteffects, sizeof(talenteffects), Keys, Values, "activator ability effects?");
-			else if (counter == 1) FormatKeyValue(talenteffects, sizeof(talenteffects), Keys, Values, "witch ability effects?");
-			else if (counter == 2) FormatKeyValue(talenteffects, sizeof(talenteffects), Keys, Values, "common ability effects?");
-			else if (counter == 3) FormatKeyValue(talenteffects, sizeof(talenteffects), Keys, Values, "infected ability effects?");
-			else if (counter == 4) FormatKeyValue(talenteffects, sizeof(talenteffects), Keys, Values, "survivor ability effects?");
-			counter++;
-		}
-	}*/
-
 	new Float:TalentHardLimit = GetKeyValueFloat(Keys, Values, "talent hard limit?");
 	if (infotype != 3 && f_StrengthPoint > TalentHardLimit && TalentHardLimit > 0.0) f_StrengthPoint = TalentHardLimit;
 
@@ -3008,10 +2991,8 @@ public Handle:TalentInfoScreen (client) {
 	Format(TalentName, sizeof(TalentName), "%s", PurchaseTalentName[client]);
 
 	new TalentPointAmount		= 0;
-	new TalentPointMaximum		= 0;
 	if (!b_IsDirectorTalents[client]) TalentPointAmount = GetTalentStrength(client, TalentName);
 	else TalentPointAmount = GetTalentStrength(-1, TalentName);
-	TalentPointMaximum		= GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "maximum talent points allowed?", "1");
 
 	new TalentType = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "talent type?");
 	new nodeUnlockCost = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "node unlock cost?", "1");
@@ -3039,7 +3020,6 @@ public Handle:TalentInfoScreen (client) {
 	decl String:TalentNameTranslation[64];
 	GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation), true);
 	Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", TalentNameTranslation, client);
-
 	decl String:text[512];
 	if (AbilityTalent != 1) {
 
@@ -3048,6 +3028,14 @@ public Handle:TalentInfoScreen (client) {
 	}
 	else Format(text, sizeof(text), "%s", TalentName_Temp);
 	DrawPanelText(menu, text);
+
+	decl String:governingAttribute[64];
+	GetGoverningAttribute(client, TalentName, governingAttribute, sizeof(governingAttribute));
+	if (!StrEqual(governingAttribute, "-1")) {
+		Format(text, sizeof(text), "%T", governingAttribute, client);
+		Format(text, sizeof(text), "%T", "Node Governing Attribute", client, text);
+		DrawPanelText(menu, text);
+	}
 
 	decl String:TalentInfo[128];
 	new AbilityType = 0;
@@ -3073,7 +3061,7 @@ public Handle:TalentInfoScreen (client) {
 			if (TalentType <= 0) {
 
 				
-				if (TalentPointAmount < TalentPointMaximum) {
+				if (TalentPointAmount < 1) {
 					if (AbilityType == 0) Format(text, sizeof(text), "%T", "Ability Info Percent", client, s_TalentPoints * 100.0, pct, s_OtherPointNext * 100.0, pct);
 					else if (AbilityType == 1) Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
 					else if (AbilityType == 2) Format(text, sizeof(text), "%T", "Ability Info Distance", client, s_TalentPoints, s_OtherPointNext);
@@ -3107,7 +3095,7 @@ public Handle:TalentInfoScreen (client) {
 
 			//Format(text, sizeof(text), "%T", "Special Ammo Interval", client, flIntCur, flIntNex);
 			//DrawPanelText(menu, text);
-			if (TalentPointAmount < TalentPointMaximum) {
+			if (TalentPointAmount < 1) {
 				Format(text, sizeof(text), "%T", "Special Ammo Time", client, fTimeNex);
 				DrawPanelText(menu, text);
 				Format(text, sizeof(text), "%T", "Special Ammo Cooldown", client, fTimeNex + GetSpecialAmmoStrength(client, TalentName, 1, true));
@@ -3134,8 +3122,10 @@ public Handle:TalentInfoScreen (client) {
 	if (TalentType <= 0 || AbilityTalent == 1) {
 
 		if (TalentPointAmount == 0) {
-			new bool:bIsLayerEligible = (UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost && GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) < PlayerCurrentMenuLayer[client] + 1) ? true : false;
-			if (bIsLayerEligible) bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
+			new ignoreLayerCount = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?");
+			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
+			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
+
 			decl String:sTalentsRequired[64];
 			decl String:formattedTalentsRequired[64];
 			FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
@@ -3215,7 +3205,7 @@ public Handle:TalentInfoScreen (client) {
 
 stock GetAbilityText(client, String:TheString[], TheSize, Handle:Keys, Handle:Values, String:TheQuery[] = "active effect?") {
 
-	decl String:text[512], String:text2[512], String:tDraft[512], String:TheEffect[2], String:AbilityType[64], String:TheMaximumMultiplier[64];
+	decl String:text[512], String:text2[512], String:tDraft[512], String:AbilityType[64], String:TheMaximumMultiplier[64];
 	new Float:TheAbilityMultiplier = 0.0;
 	decl String:pct[4];
 	Format(pct, sizeof(pct), "%");
@@ -3340,10 +3330,8 @@ public Handle:TalentInfoScreen_Special (client) {
 	new Handle:menu = CreatePanel();
 
 	new AbilityTalent			= GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is ability?");
-
 	new TalentPointAmount		= GetTalentStrength(client, TalentName);
-
-	new TalentPointMaximum		= GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "maximum talent points allowed?");
+	new TalentPointMaximum		= 1;
 
 	decl String:TalentIdCode[64];
 	decl String:theval[64];
@@ -3440,7 +3428,7 @@ public TalentInfoScreen_Init (Handle:topmenu, MenuAction:action, client, param2)
 {
 	if (action == MenuAction_Select)
 	{
-		new MaxPoints = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "maximum talent points allowed?", "1");	// all talents have a minimum of 1 max points, including spells and abilities.
+		new MaxPoints = 1;	// all talents have a minimum of 1 max points, including spells and abilities.
 		new TalentStrength = GetTalentStrength(client, PurchaseTalentName[client]);
 		decl String:TalentName[64];
 		Format(TalentName, sizeof(TalentName), "%s", PurchaseTalentName[client]);
@@ -3451,13 +3439,16 @@ public TalentInfoScreen_Init (Handle:topmenu, MenuAction:action, client, param2)
 		FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
 		new requiredTalentsRequired = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "required talents required?");
 		if (requiredTalentsRequired > 0) requiredTalentsRequired = TalentRequirementsMet(client, sTalentsRequired, _, _, requiredTalentsRequired);
-		new bool:bIsNotEligible = (requiredTalentsRequired > 0) ? true : false;
 		
 		new nodeUnlockCost = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "node unlock cost?", "1");	// if the key is not found, return a default value of 1.
 		new bool:isNodeCostMet = (UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 		new currentLayer = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "layer?");
-		if (!bIsNotEligible && currentLayer > 1) {
-			bIsNotEligible = (GetLayerUpgradeStrength(client, currentLayer - 1) < currentLayer) ? true : false;
+		new ignoreLayerCount = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?");
+
+		new bool:bIsLayerEligible = (TalentStrength > 0) ? true : false;
+		if (!bIsLayerEligible) {
+			bIsLayerEligible = (requiredTalentsRequired < 1 && (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client])) ? true : false;
+			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 		}
 		/*if (AbilityTalent == 1 && bActionBarMenuRequest) {
 
@@ -3477,30 +3468,29 @@ public TalentInfoScreen_Init (Handle:topmenu, MenuAction:action, client, param2)
 			{
 				case 1: {
 
-					if (!bIsNotEligible) {
+					if (bIsLayerEligible) {
 						if (TalentType <= 0) {
-							bIsNotEligible = (GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) >= PlayerCurrentMenuLayer[client] + 1) ? true : false;
-							if (TalentStrength == 0 && (bIsNotEligible || UpgradesAvailable[client] == 0 && FreeUpgrades[client] == 0)) {
-								BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
-							}
-							else if (!bIsNotEligible && isNodeCostMet && TalentStrength + 1 <= MaxPoints) {
-							//else if ((UpgradesAvailable[client] > 0 || FreeUpgrades[client] > 0) && TalentStrength + 1 <= MaxPoints) {
-								if (UpgradesAvailable[client] >= nodeUnlockCost) {
-									TryToTellPeopleYouUpgraded(client);
-									UpgradesAvailable[client] -= nodeUnlockCost;
-									PlayerLevelUpgrades[client]++;
+							if (TalentStrength == 0) {
+								if (UpgradesAvailable[client] + FreeUpgrades[client] < nodeUnlockCost) BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
+								else if (isNodeCostMet && TalentStrength + 1 <= MaxPoints) {
+								//else if ((UpgradesAvailable[client] > 0 || FreeUpgrades[client] > 0) && TalentStrength + 1 <= MaxPoints) {
+									if (UpgradesAvailable[client] >= nodeUnlockCost) {
+										TryToTellPeopleYouUpgraded(client);
+										UpgradesAvailable[client] -= nodeUnlockCost;
+										PlayerLevelUpgrades[client]++;
+									}
+									else if (FreeUpgrades[client] >= nodeUnlockCost) FreeUpgrades[client] -= nodeUnlockCost;
+									else {
+										nodeUnlockCost -= FreeUpgrades[client];
+										UpgradesAvailable[client] -= nodeUnlockCost;
+									}
+									PlayerUpgradesTotal[client]++;
+									PurchaseTalentPoints[client]++;
+									AddTalentPoints(client, PurchaseTalentName[client], PurchaseTalentPoints[client]);
+									SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
 								}
-								else if (FreeUpgrades[client] >= nodeUnlockCost) FreeUpgrades[client] -= nodeUnlockCost;
-								else {
-									nodeUnlockCost -= FreeUpgrades[client];
-									UpgradesAvailable[client] -= nodeUnlockCost;
-								}
-								PlayerUpgradesTotal[client]++;
-								PurchaseTalentPoints[client]++;
-								AddTalentPoints(client, PurchaseTalentName[client], PurchaseTalentPoints[client]);
-								SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
 							}
-							else if (TalentStrength > 0) {
+							else {
 								PlayerUpgradesTotal[client]--;
 								PurchaseTalentPoints[client]--;
 								FreeUpgrades[client] += nodeUnlockCost;
@@ -3542,8 +3532,6 @@ public TalentInfoScreen_Special_Init (Handle:topmenu, MenuAction:action, client,
 {
 	if (action == MenuAction_Select)
 	{
-		//new MaxPoints = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "maximum talent points allowed?");
-		//new TalentStrength = GetTalentStrength(client, PurchaseTalentName[client]);
 		new ActionBarSize = GetArraySize(Handle:ActionBar[client]);
 
 		if (param2 > ActionBarSize) {
@@ -3590,12 +3578,14 @@ stock TryToTellPeopleYouUpgraded(client) {
 
 		decl String:text2[64];
 		decl String:PlayerName[64];
+		decl String:translationText[64];
 		GetClientName(client, PlayerName, sizeof(PlayerName));
+		GetTranslationOfTalentName(client, PurchaseTalentName[client], translationText, sizeof(translationText), true);
 		for (new k = 1; k <= MaxClients; k++) {
 
 			if (IsLegitimateClient(k) && !IsFakeClient(k) && GetClientTeam(k) == GetClientTeam(client)) {
 
-				Format(text2, sizeof(text2), "%T", PurchaseTalentName[client], k);
+				Format(text2, sizeof(text2), "%T", translationText, k);
 				if (GetClientTeam(client) == TEAM_SURVIVOR) PrintToChat(k, "%T", "Player upgrades ability", k, blue, PlayerName, white, green, text2, white);
 				else if (GetClientTeam(client) == TEAM_INFECTED) PrintToChat(k, "%T", "Player upgrades ability", k, orange, PlayerName, white, green, text2, white);
 			}

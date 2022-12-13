@@ -1,5 +1,5 @@
 
-	RPGMaker2 v0.0.4.2 (RPG Construction Set)
+	RPGMaker2 v0.0.4.3 (RPG Construction Set)
 	By Skye
 
 	Other Credits:
@@ -12,6 +12,28 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.4.3
+	-	Configurable Attribute System added.
+		Attributes can be tied to any node and their multiplier will increase the efficacy of said node.
+		If a server operator doesn't want an attribute tied to a node, simply omit the "governing attribute?" key from the node.
+
+		There are default attributes that I've created, which I use on my own public server, and they're tied to all the nodes
+		in the talentmenu.cfg that I've built as an example. Any amount of attributes can be created, but only one can be tied
+		to any node. I'll add support for tying different attributes to different node effects in a later update. For now, I just
+		wanted to get this system integrated.
+		Values modified by attributes will be the values shown to players. Currently, the algorithm or float values aren't available
+		on the character sheet, but I plan to show the float values directly to players (i.e. 0.1 = +10% shown to player) in a later
+		update. I think posting the algorithm right on the character sheet is a mistake and should be reserved to theorycrafting.
+		-	By default, "diminishing returns?" for each attribute kicks in at 10, so in my version there is no diminishing returns
+			as there is only 10 planned layers (and 6 completed as of writing this) though you can theoretically implement
+			an infinite (re: memory pending) number of layers.
+		-	Default Attributes: (CARTEL Attributes)
+			a. Constitution
+			b. Agility
+			c. Resilience
+			d. Technique
+			e. Endurance
+			f. Luck
 	0.0.4.2
 	-	Rating changes:
 		a. All players joining the server, who aren't a carry-over from the previous map will have their rating set to 0.

@@ -198,6 +198,9 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		if (StrEqual(event_name, "player_entered_checkpoint")) bIsInCheckpoint[attacker] = true;
 		if (StrEqual(event_name, "player_left_checkpoint")) bIsInCheckpoint[attacker] = false;
 	}
+	if (StrEqual(event_name, "infected_hurt") && IsCommonInfected(victim) && !IsSpecialCommon(victim)) {
+		if (GetEventInt(event, "hitgroup") == 1) AddCommonInfectedDamage(attacker, victim, 9999, true);	// if someone shoots a common infected in the head, we want to auto-kill it.
+	}
 	if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
 
 		if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && !b_IsHooked[attacker]) ChangeHook(attacker, true);
@@ -1107,7 +1110,7 @@ stock bool:GetActiveSpecialAmmoType(client, effect) {
 stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusOnly=true, AmmoPosition=-1, Float:baseeffectvalue=0.0, realowner=0) {
 
 	static String:text[512];
-	static String:result[6][512];
+	static String:result[7][512];
 	static String:t_pos[3][512];
 	static Float:EntityPos[3];
 	decl String:TalentInfo[4][512];
@@ -1119,10 +1122,10 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 	//new Float:f_Strength = 0.0;
 	//decl String:t_effect[4];
 
-	new Float:EffectStrength = 0.0;
-	new Float:EffectStrengthBonus = 0.0;
-	new bool:IsInfected = false;
-	new bool:IsSameteam = false;
+	static Float:EffectStrength = 0.0;
+	static Float:EffectStrengthBonus = 0.0;
+	static bool:IsInfected = false;
+	static bool:IsSameteam = false;
 
 	static Float:ClientPos[3];
 	//decl String:EffectT[4];
@@ -1134,11 +1137,11 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 		IsInfected = true;
 	}
 
-	new Float:EffectStrengthValue = 0.0;
-	new Float:EffectMultiplierValue = 0.0;
+	static Float:EffectStrengthValue = 0.0;
+	static Float:EffectMultiplierValue = 0.0;
 
 	static Float:t_Range	= 0.0;
-	new baseeffectbonus = 0;
+	static baseeffectbonus = 0;
 
 	if (GetArraySize(SpecialAmmoData) < 1) return 0.0;
 	//new Float:fAmmoRangeTalentBonus = GetAbilityStrengthByTrigger(client, client, "aamRNG", FindZombieClass(client), 0, _, _, "d", 1, true);	// true at the end makes sure we don't actually fire off the ability or really check the "d" (resulteffects) here
@@ -1151,7 +1154,7 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 		if (AmmoPosition != -1 && i != AmmoPosition) continue;
 
 		GetArrayString(Handle:SpecialAmmoData, i, text, sizeof(text));
-		ExplodeString(text, "}", result, 6, 512);
+		ExplodeString(text, "}", result, 7, 512);
 
 		ExplodeString(result[0], " ", t_pos, 5, 512);
 		EntityPos[0] = StringToFloat(t_pos[0]);
@@ -1163,28 +1166,20 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 		// TalentInfo[2] = Talent Damage
 		// TalentInfo[3] = Talent Interval
 		owner = FindClientWithAuthString(result[2]);
-		//if (AmmoPosition == -1 && StringToFloat(TalentInfo[3]) > 0.0) continue;
-		//if (StringToFloat(TalentInfo[3]) > 0.0) continue;
 		if (!IsLegitimateClientAlive(owner) || GetClientTeam(owner) != TEAM_SURVIVOR || StringToFloat(TalentInfo[3]) <= 0.0) continue;
-		if (IsPvP[owner] != 0 && client != owner) continue;
 
 		pos			= GetMenuPosition(owner, TalentInfo[0]);
 		IsClientInRangeSAKeys[owner]				= GetArrayCell(a_Menu_Talents, pos, 0);
 		IsClientInRangeSAValues[owner]				= GetArrayCell(a_Menu_Talents, pos, 1);
 		FormatKeyValue(value, sizeof(value), IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "ammo effect?");
-		//Format(value, sizeof(value), "%s", GetKeyValue(IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "ammo effect?"));
 		if (!StrEqual(value, EffectT, true)) continue;
+		
 		if (GetSpecialAmmoStrength(owner, TalentInfo[0], 3) == -1.0) continue;
+		if (IsPvP[owner] != 0 && client != owner) continue;
+		
 		t_Range		= GetSpecialAmmoStrength(owner, TalentInfo[0], 3);
-		//t_Range		*= (1.0 - fAmmoRangeTalentBonus);
 
 		if (GetVectorDistance(ClientPos, EntityPos) > (t_Range / 2)) continue;
-
-		/*if (!IsCommonInfected(client) && !IsLegitimateClientAlive(client) && GetKeyValueInt(IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "humanoid only?")) == 1) continue;
-		if ((IsCommonInfected(client) || IsLegitimateClientAlive(client)) && GetKeyValueInt(IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "inanimate only?")) == 1) continue;
-		if (GetKeyValueInt(IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "allow commons?")) == 0 && IsCommonInfected(client) ||
-			GetKeyValueInt(IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "allow specials?")) == 0 && IsLegitimateClientAlive(client) && GetClientTeam(client) == TEAM_INFECTED ||
-			GetKeyValueInt(IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "allow survivors?")) == 0 && IsLegitimateClientAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR) continue;*/
 		if (GetStatusOnly) {
 
 			//LogMessage("Entity %d in range of ammo %c", client, effect);
@@ -1299,6 +1294,7 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 	if (IsLegitimateClientAlive(target)) GetClientAbsOrigin(target, TargetPos);
 
 	new Float:TheAbilityMultiplier = 0.0;
+	if (GetKeyValueInt(Keys, Values, "cannot be ensnared?") == 1 && L4D2_GetInfectedAttacker(client) != -1) return false;
 
 	new Float:ClientPos[3];
 	GetClientAbsOrigin(client, ClientPos);
@@ -1319,7 +1315,7 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 
 	if (SkyLevel[client] < iSkyLevelRequirement) return false;
 	FormatKeyValue(Effects, sizeof(Effects), Keys, Values, "toggle effect?");
-	if (StrContains(Effects, "r", true) != -1) {
+	if (StrEqual(Effects, "r", true)) {
 
 		if (!IsPlayerAlive(client) && b_HasDeathLocation[client]) {
 
@@ -1329,18 +1325,18 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 		}
 		else return false;
 	}
-	if (StrContains(Effects, "P", true) != -1) {
+	if (StrEqual(Effects, "P", true)) {
 
 		// Toggles between pistol / magnum
 		if (IsValidEntity(MySecondary)) {
 
 			GetEntityClassname(MySecondary, MyWeapon, sizeof(MyWeapon));
-			if (StrContains(MyWeapon, "pistol", false) != -1) {
+			if (StrEqual(MyWeapon, "pistol", false)) {
 
 				// This ability only works if a melee weapon is not equipped.
 				RemovePlayerItem(client, MySecondary);
 				AcceptEntityInput(MySecondary, "Kill");
-				if (StrContains(MyWeapon, "magnum", false) == -1) {
+				if (StrEqual(MyWeapon, "magnum", false)) {
 
 					// give them a magnum.
 					ExecCheatCommand(client, "give", "pistol_magnum");
@@ -1354,7 +1350,7 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 			}
 		}
 	}
-	if (StrContains(Effects, "T", true) != -1) {
+	if (StrEqual(Effects, "T", true)) {
 		GetClientStance(client, GetAmmoCooldownTime(client, TalentName, true));
 	}
 	/*if (StrContains(Effects, "S", true) != -1) {
@@ -1366,7 +1362,7 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 		//if (AbilityTime > 0.0) IsAbilityActive(client, TalentName, AbilityTime);
 		//We check active time another way now
 
-		if (StrContains(Effects, "A", true) != -1) { // restores stamina
+		if (StrEqual(Effects, "A", true)) { // restores stamina
 
 			TheAbilityMultiplier = GetAbilityMultiplier(client, "A", 1);
 			MyBonus = RoundToCeil(MyStamina * TheAbilityMultiplier);
@@ -1376,17 +1372,12 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 			}
 			else SurvivorStamina[client] += MyBonus;
 		}
-		if (StrContains(Effects, "H", true) != -1) {	// heals the individual
+		if (StrEqual(Effects, "H", true)) {	// heals the individual
 
-			if (L4D2_GetInfectedAttacker(client) == -1) {
-
-				TheAbilityMultiplier = GetAbilityMultiplier(client, "H", 1);
-				//HealPlayer(client, client, (MyMaxHealth * TheAbilityMultiplier), 'h', true);
-				HealPlayer(client, client, TheAbilityMultiplier, 'h');
-			}
-			else return false;
+			TheAbilityMultiplier = GetAbilityMultiplier(client, "H", 1);
+			HealPlayer(client, client, TheAbilityMultiplier, 'h');
 		}
-		if (StrContains(Effects, "t", true) != -1) {	// instantly lowers threat by a percentage
+		if (StrEqual(Effects, "t", true)) {	// instantly lowers threat by a percentage
 
 			TheAbilityMultiplier = GetAbilityMultiplier(client, "t", 1);
 			iThreatLevel[client] -= RoundToFloor(iThreatLevel[client] * TheAbilityMultiplier);
@@ -1510,11 +1501,11 @@ stock BeanBagAmmo(client, Float:force, TalentClient) {
 
 	new Float:Vec_Pull;
 	new Float:Vec_Lunge;
-	if (client != TalentClient) {
+	/*if (client != TalentClient) {
 
 		//new CartXP = RoundToCeil(GetClassMultiplier(TalentClient, force, "enX", true));
-		AddTalentExperience(TalentClient, "endurance", RoundToCeil(force));
-	}
+		//AddTalentExperience(TalentClient, "endurance", RoundToCeil(force));
+	}*/
 
 	Vec_Pull	=	GetRandomFloat(force * -1.0, force);
 	Vec_Lunge	=	GetRandomFloat(force * -1.0, force);
@@ -2251,7 +2242,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 								SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 								SurvivorStamina[client] -= ConsumptionInt;
-								AddTalentExperience(client, "endurance", ConsumptionInt);
+								//AddTalentExperience(client, "endurance", ConsumptionInt);
 								if (SurvivorStamina[client] <= 0) {
 
 									bIsSurvivorFatigue[client] = true;
@@ -2446,9 +2437,9 @@ stock ExplosiveAmmo(client, damage, TalentClient) {
 		if (GetClientTeam(client) == TEAM_INFECTED) AddSpecialInfectedDamage(TalentClient, client, damage);
 		else SetClientTotalHealth(client, damage);	// survivor teammates don't reward players with experience or damage bonus, but they'll take damage from it.
 	}
-	if (client != TalentClient && (!IsCommonInfected(client) || IsSpecialCommon(client)) && (IsLegitimateClientAlive(client) && GetClientTeam(client) != TEAM_SURVIVOR)) {
+	/*if (client != TalentClient && (!IsCommonInfected(client) || IsSpecialCommon(client)) && (IsLegitimateClientAlive(client) && GetClientTeam(client) != TEAM_SURVIVOR)) {
 		AddTalentExperience(TalentClient, "agility", damage);
-	} 
+	} */
 }
 
 stock HealingAmmo(client, healing, TalentClient, bool:IsCritical=false) {

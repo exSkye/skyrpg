@@ -32,11 +32,16 @@
 	{
 		"en"				"Witch"
 	}
-	"Weapons Sheet Info"
+	"Node Governing Attribute"
 	{
-		"en"				"Max Health: {MYHP}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}"
+		"#format"			"{1:s}"
+		"en"				"Governing Attribute: {1}"
 	}
-	"Character Sheet Info"
+	"Survivor Sheet Info"
+	{
+		"en"				"Max Health: {MYHP}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}\n \nConstitution:  {CON}\nAgility:\t\t\t{AGI}\nResilience:\t {RES}\nTechnique:\t {TEC}\nEndurance:\t{END}\nLuck:\t\t\t {LUC}"
+	}
+	"Infected Sheet Info"
 	{
 		"en"				"Infected Character Data\n \nCommons HP: {CH}\tDMG: {CD}\nWitch HP: {WH}\tDMG: {WD}\nHunter HP: {HUNTERHP}\tDMG: {HUNTERDMG}\nSmoker HP: {SMOKERHP}\tDMG: {SMOKERDMG}\nBoomer HP: {BOOMERHP}\tDMG: {BOOMERDMG}\nSpitter HP: {SPITTERHP}\tDMG: {SPITTERDMG}\nJockey HP: {JOCKEYHP}\tDMG: {JOCKEYDMG}\nCharger HP: {CHARGERHP}\tDMG: {CHARGERDMG}\nTank HP: {TANKHP}\tDMG: {TANKDMG}"
 	}
@@ -141,11 +146,15 @@
 	}
 	"offensive talents"
 	{
-		"en"				"Offensive nodes"
+		"en"				"Offensive nodes "
 	}
 	"utility talents"
 	{
 		"en"				"Utility nodes\t\t"
+	}
+	"attribute talents"
+	{
+		"en"				"Attributes\t\t\t"
 	}
 	"proficiency level up"
 	{
@@ -439,7 +448,8 @@
 	"layer move locked"
 	{
 		"#format"			"{1:i},{2:i},{3:i}"
-		"en"				"(Preview Only)Layer {1}\nThis layer requires {3} more upgrades before\nyou can unlock deeper layers."
+		"en"				"(Preview Only) Layer {1}"
+		//"en"				"(Preview Only) Layer {1}\nThis layer requires {3} more upgrades before\nyou can unlock deeper layers."
 	}
 	"prestige"
 	{
@@ -1052,13 +1062,17 @@
 	}
 	"RPG Layer Eligible"
 	{
-		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		"en"				"{1}\n \nThis is layer {2}.\nYou have {3} of {4} possible nodes\nunlocked on this layer."
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:i},{6:i}"
+		"en"				"{1}\n \nLayer {2} info:\nNodes unlocked: {5} of {6}\nNodes required to unlock next layer: {3} of {4}."
 	}
 	"RPG Layer Not Eligible"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"{1}\n \nThis is layer {2}.\nIt is locked to preview mode only."
+		"en"				"{1}\n \nLayer {2} info:\nLocked to preview mode only."
+	}
+	"attribute no layer progress"
+	{
+		"en"				"Attribute nodes do not contribute\nto unlocking the next layer."
 	}
 	"Class Level Text"
 	{
@@ -1507,9 +1521,9 @@
 	{
 		"en"				"Character Sheet"
 	}
-	"Character Sheet (Weapons Page)"
+	"Character Sheet (Survivor Page)"
 	{
-		"en"				"Weapons Info"
+		"en"				"Survivor Info"
 	}
 	"Character Sheet (Infected Page)"
 	{

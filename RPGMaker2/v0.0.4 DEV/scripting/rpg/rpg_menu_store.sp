@@ -163,7 +163,6 @@ stock GiveClientStoreItem(client, pos) {
 }
 
 stock ChallengeEverything(client) {
-
 	TotalTalentPoints[client]							=	0;
 	UpgradesAvailable[client]							=	0;
 	FreeUpgrades[client]								=	MaximumPlayerUpgrades(client);
@@ -209,10 +208,6 @@ public BuildStoreHandle(Handle:menu, MenuAction:action, client, slot) {
 			if (FindCharInString(ItemEffect, 'r') != -1) {
 
 				ChallengeEverything(client);
-			}
-			if (FindCharInString(ItemEffect, 't') != -1) {
-
-				FreeUpgrades[client]								+=	Amount;
 			}
 			if (FindCharInString(ItemEffect, 'e') != -1) {
 

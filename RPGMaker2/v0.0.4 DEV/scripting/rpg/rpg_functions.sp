@@ -1004,15 +1004,13 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 	if (IsLegitimateClientAlive(attacker) && !b_IsLoading[attacker] && PlayerLevel[attacker] < iPlayerStartingLevel) loadtarget[0] = attacker;
 	if (IsLegitimateClientAlive(victim) && !b_IsLoading[victim] && PlayerLevel[victim] < iPlayerStartingLevel) loadtarget[1] = victim;
 
-	decl String:DefaultProfileName[64];
 	for (new i = 0; i < 2; i++) {
 
 		if (IsLegitimateClientAlive(loadtarget[i]) && GetClientTeam(loadtarget[i]) == TEAM_SURVIVOR) {
 
 			SetTotalExperienceByLevel(loadtarget[i], iPlayerStartingLevel);
-			if (GetClientTeam(loadtarget[i]) == TEAM_SURVIVOR) GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
-			else if (GetClientTeam(loadtarget[i]) == TEAM_INFECTED) GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new infected player profile?");
-			if (StrContains(DefaultProfileName, "-1", false) == -1) LoadProfileEx(loadtarget[i], DefaultProfileName);
+			if (GetClientTeam(loadtarget[i]) == TEAM_SURVIVOR) LoadProfileEx(loadtarget[i], DefaultProfileName);
+			else if (GetClientTeam(loadtarget[i]) == TEAM_INFECTED) LoadProfileEx(loadtarget[i], DefaultInfectedProfileName);
 		}
 	}
 	if (!b_IsActiveRound || b_IsSurvivalIntermission) {
@@ -1437,8 +1435,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 				}
 				GetAbilityStrengthByTrigger(attacker, victim, "D", FindZombieClass(attacker), baseWeaponDamage);
 				GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), baseWeaponDamage);
-				if (!bIsMeleeAttack) AddTalentExperience(attacker, "agility", baseWeaponDamage);
-				else AddTalentExperience(attacker, "constitution", baseWeaponDamage);
+				//if (!bIsMeleeAttack) AddTalentExperience(attacker, "agility", baseWeaponDamage);
+				//else AddTalentExperience(attacker, "constitution", baseWeaponDamage);
 				//}
 				if (IsWitch(victim)) {
 
@@ -1536,8 +1534,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 				
 				if (FindZombieClass(victim) == ZOMBIECLASS_TANK) CheckTankSubroutine(victim, attacker, baseWeaponDamage, true);
 				if (IsLegitimateClientAlive(victim)) {
-					if (!bIsMeleeAttack) AddTalentExperience(attacker, "agility", baseWeaponDamage);
-					else AddTalentExperience(attacker, "constitution", baseWeaponDamage);
+					//if (!bIsMeleeAttack) AddTalentExperience(attacker, "agility", baseWeaponDamage);
+					//else AddTalentExperience(attacker, "constitution", baseWeaponDamage);
 					AddSpecialInfectedDamage(attacker, victim, baseWeaponDamage);
 				}
 				if (iDisplayHealthBars == 1) {
@@ -1609,8 +1607,9 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
  		//CombatTime[victim] = GetEngineTime() + StringToFloat(GetConfigValue("out of combat time?"));
  		CombatTime[victim] = GetEngineTime() + fOutOfCombatTime;
  		if (b_IsJumping[victim]) ModifyGravity(victim);
-		new totalIncomingDamage = RoundToCeil(damage);
+		//new totalIncomingDamage = RoundToCeil(damage);
 		new myzombieclass = FindZombieClass(attacker);
+		new totalIncomingDamage = (myzombieclass != ZOMBIECLASS_TANK) ? iBaseSpecialDamage[myzombieclass - 1] : iBaseSpecialDamage[myzombieclass - 2];
 		if (IsSpecialCommonInRange(attacker, 'b')) {
 
 			totalIncomingDamage += GetSpecialCommonDamage(totalIncomingDamage, attacker, 'b', victim);
@@ -1981,13 +1980,13 @@ stock AddSpecialInfectedDamage(client, target, TotalDamage, bool:IsTankingInstea
 			RoundDamageTotal += (i_DamageBonus);
 			RoundDamage[client] += (i_DamageBonus);
 
-			if (damagevariant == 1) AddTalentExperience(client, "endurance", i_DamageBonus);
+			/*if (damagevariant == 1) AddTalentExperience(client, "endurance", i_DamageBonus);
 			else if (damagevariant == -1) {
 
 				new bool:bIsMeleeAttack = IsMeleeAttacker(client);
 				if (!bIsMeleeAttack) AddTalentExperience(client, "agility", i_DamageBonus);
 				else AddTalentExperience(client, "constitution", i_DamageBonus);
-			}
+			}*/
 		}
 		else {
 
@@ -2080,13 +2079,13 @@ stock AddSpecialCommonDamage(client, entity, playerDamage, bool:IsStatusDamage =
 
 			GetProficiencyData(client, GetWeaponProficiencyType(client), RoundToCeil(playerDamage * fProficiencyExperienceEarned));
 
-			if (damagevariant == 1) AddTalentExperience(client, "endurance", playerDamage);
+			/*if (damagevariant == 1) AddTalentExperience(client, "endurance", playerDamage);
 			else if (damagevariant == -1) {
 
 				new bool:bIsMeleeAttack = IsMeleeAttacker(client);
 				if (!bIsMeleeAttack) AddTalentExperience(client, "agility", playerDamage);
 				else AddTalentExperience(client, "constitution", playerDamage);
-			}
+			}*/
 		}
 	}
 	else {
@@ -2164,7 +2163,7 @@ stock AwardExperience(client, type = 0, AMOUNT = 0, bool:TheRoundHasEnded=false)
 		if (type == 1) HealingContribution[client] += bAMOUNT;
 		else if (type == 2) BuffingContribution[client] += bAMOUNT;
 		else if (type == 3) HexingContribution[client] += bAMOUNT;
-		AddTalentExperience(client, "endurance", bAMOUNT);
+		//AddTalentExperience(client, "endurance", bAMOUNT);
 	}
 }
 
@@ -2305,14 +2304,32 @@ stock bool:IsAbilityFound(String:tSearchString[], String:tSubstring[]) {
 	return false;
 }
 
-stock GetTranslationOfTalentName(client, String:nameOfTalent[], String:translationText[], theSize, bool:bGetTalentNameInstead = false, bool:bJustKiddingActionBarName = false) {
+stock GetGoverningAttribute(client, String:TalentName[], String:governingAttribute[], theSize) {
+	decl String:text[64];
+	new size = GetArraySize(a_Menu_Talents);
+	for (new i = 0; i < size; i++) {
+		GetGoverningAttributeSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
+		GetArrayString(GetGoverningAttributeSection[client], 0, text, sizeof(text));
+		if (!StrEqual(TalentName, text)) continue;
+
+		GetGoverningAttributeKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
+		GetGoverningAttributeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
+		FormatKeyValue(text, sizeof(text), GetGoverningAttributeKeys[client], GetGoverningAttributeValues[client], "governing attribute?");
+		if (StrEqual(text, "-1")) Format(governingAttribute, theSize, "-1");
+		else GetTranslationOfTalentName(client, text, governingAttribute, theSize, true, _, true);
+		break;
+	}
+}
+
+stock GetTranslationOfTalentName(client, String:nameOfTalent[], String:translationText[], theSize, bool:bGetTalentNameInstead = false, bool:bJustKiddingActionBarName = false, bool:returnResult = false) {
 	decl String:talentName[64];
 	new size = GetArraySize(a_Menu_Talents);
 
 	for (new i = 0; i < size; i++) {
 		TranslationOTNSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
 		GetArrayString(Handle:TranslationOTNSection[client], 0, talentName, sizeof(talentName));
-		if (!StrEqual(talentName, nameOfTalent)) continue;
+		if (!returnResult && !StrEqual(talentName, nameOfTalent) ||
+			returnResult && StrContains(talentName, nameOfTalent, false) == -1) continue;
 
 		TranslationOTNKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
 		TranslationOTNValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
@@ -2328,7 +2345,7 @@ stock GetTranslationOfTalentName(client, String:nameOfTalent[], String:translati
 		}
 		else {
 			FormatKeyValue(translationText, theSize, TranslationOTNKeys[client], TranslationOTNValues[client], "talent name?");
-			if (StrEqual(translationText, "-1")) Format(translationText, theSize, "%s", talentName);
+			if (!returnResult && StrEqual(translationText, "-1")) Format(translationText, theSize, "%s", talentName);
 		}
 		break;
 	}
@@ -2429,6 +2446,7 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 		if (GetKeyValueInt(TriggerKeys[activator], TriggerValues[activator], "is sub menu?") == 1) continue;
 		FormatKeyValue(TheString, sizeof(TheString), TriggerKeys[activator], TriggerValues[activator], "passive ability?");
 		if (!StrEqual(TheString, "-1")) continue;	// passive abilities from classes don't trigger here, they have specific points of trigger!
+		if (GetKeyValueInt(TriggerKeys[activator], TriggerValues[activator], "is attribute?") == 1) continue;
 		
 		FormatKeyValue(TheString, sizeof(TheString), TriggerKeys[activator], TriggerValues[activator], "ability trigger?");
 		if (!IsAbilityFound(TheString, AbilityT)) continue;
@@ -2637,8 +2655,8 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 						if (bIsStatusEffects) p_Strength = (p_Strength * MyStatusEffects[activator]);
 						if (target != activator) {
 							if (!bDontActuallyActivate) {
-								AddTalentExperience(activator, "resilience", RoundToCeil(p_Strength * 100.0));
-								AddTalentExperience(activator, "technique", RoundToCeil(p_Strength * 100.0));							
+								//AddTalentExperience(activator, "resilience", RoundToCeil(p_Strength * 100.0));
+								//AddTalentExperience(activator, "technique", RoundToCeil(p_Strength * 100.0));							
 								ActivateAbilityEx(activator, target, damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType, GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "is aoe?"));
 							}
 						}
@@ -2922,6 +2940,7 @@ stock GetCategoryStrength(client, String:sTalentCategory[], bool:bGetMaximumTree
 	new count = 0;
 	decl String:sText[64];
 	decl String:sTalentName[64];
+	new iStrength = 0;
 
 	new size = GetArraySize(a_Menu_Talents);
 	for (new i = 0; i < size; i++) {
@@ -2932,20 +2951,16 @@ stock GetCategoryStrength(client, String:sTalentCategory[], bool:bGetMaximumTree
 
 		FormatKeyValue(sText, sizeof(sText), GetCategoryStrengthKeys[client], GetCategoryStrengthValues[client], "talent tree category?");
 		if (!StrEqual(sTalentCategory, sText, false)) continue;
-		if (bGetMaximumTreePointsInstead) {
-			new maxpoints = GetKeyValueInt(GetCategoryStrengthKeys[client], GetCategoryStrengthValues[client], "maximum talent points allowed?");
-			if (maxpoints < 1 && GetKeyValueInt(GetCategoryStrengthKeys[client], GetCategoryStrengthValues[client], "is ability?") == 1) maxpoints = 1;
-			if (maxpoints > 0) count += maxpoints;
-		}
+		if (bGetMaximumTreePointsInstead) count++;
 		else {
-			new iStrength = GetTalentStrength(client, sTalentName, _, i);
-			if (iStrength > 0) count += iStrength;
+			iStrength = GetTalentStrength(client, sTalentName, _, i);
+			if (iStrength > 0) count++;
 		}
 	}
 	return count;
 }
 
-stock GetLayerUpgradeStrength(client, layer = 1, bool:bIsCheckEligibility = false, bool:bResetLayer = false) {
+stock GetLayerUpgradeStrength(client, layer = 1, bool:bIsCheckEligibility = false, bool:bResetLayer = false, bool:countAllOptionsOnLayer = false, bool:getAllLayerNodes = false) {
 	new size = GetArraySize(a_Menu_Talents);
 	new count = 0;
 	decl String:TalentName[64];
@@ -2955,6 +2970,11 @@ stock GetLayerUpgradeStrength(client, layer = 1, bool:bIsCheckEligibility = fals
 		GetLayerStrengthValues[client] = GetArrayCell(a_Menu_Talents, i, 1);// "values"
 		// talents are ordered by "layers" (think a 3-d talent tree)
 		if (GetKeyValueInt(GetLayerStrengthKeys[client], GetLayerStrengthValues[client], "layer?") != layer) continue;
+		if (getAllLayerNodes) {	// we just want to get how many nodes are on this layer, even the ones that we ignore for layer count.
+			count++;
+			continue;
+		}
+		if (!countAllOptionsOnLayer && GetKeyValueInt(GetLayerStrengthKeys[client], GetLayerStrengthValues[client], "ignore for layer count?") == 1) continue;
 		if (bResetLayer) {
 			GetLayerStrengthSection[client] = GetArrayCell(a_Menu_Talents, i, 2);	// Array holding the "name" of the talent.
 			GetArrayString(GetLayerStrengthSection[client], 0, TalentName, sizeof(TalentName));
@@ -2979,12 +2999,9 @@ stock GetLayerUpgradeStrength(client, layer = 1, bool:bIsCheckEligibility = fals
 	return count;
 }
 
-stock GetTalentStrength(client, String:TalentName[], target = 0, pos = -1) {
-
+stock GetTalentStrength(client, String:TalentName[], target = 0, pos = -1, bool:containsTalentName = false) {
 	if (!IsLegitimateClient(client)) return 0;
 	if (GetClientTeam(client) == TEAM_INFECTED && IsFakeClient(client)) {
-
-		//new counter = RaidCommonBoost(true);
 		new counter = 1;
 		if (target > 0 && IsLegitimateClient(target) && GetClientTeam(target) == TEAM_SURVIVOR) {
 
@@ -2995,39 +3012,71 @@ stock GetTalentStrength(client, String:TalentName[], target = 0, pos = -1) {
 	}
 
 	new iIsResetTalent = -1;
-
-	/*if (pos == -1) pos = GetMenuPosition(client, TalentName);
-	if (pos >= 0) {//deprecated
-
-		GetTalentStrengthKeys[client] = GetArrayCell(a_Menu_Talents, pos, 0);
-		GetTalentStrengthValues[client] = GetArrayCell(a_Menu_Talents, pos, 1);
-		//if (GetKeyValueInt(GetTalentStrengthKeys[client], GetTalentStrengthValues[client], "is ability?") == 1) return 1;	// abilities are always unlocked for everyone.
-	}*/
-
-	//Format(text, sizeof(text), "-1");
-	//if (IsLegitimateClient(client)) {
-
 	new size				=	0;
 	if (client != -1) size	=	GetArraySize(a_Database_PlayerTalents[client]);
 	else size				=	GetArraySize(a_Database_PlayerTalents_Bots);
 	decl String:text[64];
+	new count = 0;
+	new talentStrength = 0;
 
 	for (new i = 0; i < size; i++) {
-
 		GetArrayString(Handle:a_Database_Talents, i, text, sizeof(text));
-		if (StrEqual(TalentName, text)) {
-
-			if (iIsResetTalent == 0) {
-
-				iIsResetTalent = GetArrayCell(Handle:a_Database_PlayerTalents[client], i);
-				SetArrayCell(Handle:a_Database_PlayerTalents[client], i, 0);
-				FreeUpgrades[client] += iIsResetTalent;
-				return 0;
-			}
-			else return GetArrayCell(Handle:a_Database_PlayerTalents[client], i);
+		if (containsTalentName) {
+			if (StrContains(text, TalentName, false) != -1) count += GetArrayCell(Handle:a_Database_PlayerTalents[client], i);
+		}
+		else if (StrEqual(TalentName, text)) {
+			return GetArrayCell(Handle:a_Database_PlayerTalents[client], i);
 		}
 	}
+	if (containsTalentName) return count;
 	return 0;
+}
+
+/*
+	This method lets us make it so all talent nodes have a key field named "attribute?"
+
+	Server operators can set these to any custom value, as long as there is an attribute node with that name made.
+	The attributes multiplier, weighed based on several factors seen below, scales all factors of the talent.
+
+	These include strength, active time, cooldown time, passive time, etc.
+	If you don't want a node connected to an attribute, omit "attribute?" from the node.
+*/
+stock Float:GetAttributeMultiplier(client, String:TalentName[]) {
+	new size = GetArraySize(a_Database_PlayerTalents[client]);
+	new iStrength = 0;
+	decl String:text[64];
+	new Float:baseMultiplier;
+	new Float:dimMultiplier;
+	new dimPoint;
+	new bool:multipliersSet = false;
+	size = GetArraySize(a_Menu_Talents);
+	for (new i = 0; i < size; i++) {
+		GAMKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
+		GAMValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
+
+		/*	Is this node an attribute node?
+			we count how many attribute nodes the player has unlocked to determine the multiplier of said attribute.
+		*/
+		FormatKeyValue(text, sizeof(text), GAMKeys[client], GAMValues[client], "attribute?");
+		if (!StrEqual(text, TalentName)) continue;
+
+		GAMSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
+		GetArrayString(GAMSection[client], 0, text, sizeof(text));
+		if (GetTalentStrength(client, text) > 0) iStrength++;
+
+		if (!multipliersSet && GetKeyValueInt(GAMKeys[client], GAMValues[client], "use these multipliers?") == 1) {
+			multipliersSet = true;
+			baseMultiplier	= GetKeyValueFloat(GAMKeys[client], GAMValues[client], "base multiplier?");
+			dimMultiplier	= GetKeyValueFloat(GAMKeys[client], GAMValues[client], "diminishing multiplier?");
+			dimPoint		= GetKeyValueInt(GAMKeys[client], GAMValues[client], "diminishing returns?");
+		}
+	}
+	new Float:currStrength = 0.0;
+	for (new i = 1; i <= iStrength; i++) {
+		if (i % dimPoint == 0) baseMultiplier *= dimMultiplier;
+		currStrength += baseMultiplier;
+	}
+	return currStrength;
 }
 
 stock GetKeyPos(Handle:Keys, String:SearchKey[]) {
@@ -4006,58 +4055,31 @@ stock Float:GetTempHealth(client) {
 stock SetMaximumHealth(client, bool:bIsTemporaryHealth = false, Float:TalentStrength = 0.0, isRaw = 0) {
 
 	if (GetClientTeam(client) != TEAM_SURVIVOR && !IsSurvivorBot(client)) return DefaultHealth[client];
-	if (isRaw == 1) TalentStrength = 0.0;
-
-	if (TalentStrength <= 0.0) {
-		TalentStrength = GetAbilityStrengthByTrigger(client, client, "p", FindZombieClass(client), 0, _, _, "H", _, _, 1);	// 1 gets ONLY percentage returns
-		isRaw = RoundToCeil(GetAbilityStrengthByTrigger(client, client, "p", FindZombieClass(client), 0, _, _, "H", _, _, 2));			// 2 gets ONLY raw returns
-		//if (!IsSurvivorBot(client)) PrintToChatAll("%3.3f", TalentStrength);
-		/*
-
-			If we check if the talent strenght is <= 0.0 here, then we can apply overdose on ALL players (even level 1)
-			Keep in mind we allow talent strength of < 1 and > 0 to go through, which means players can actually have less than 100 life when a class is active.
-		*/
-		/*if (TalentStrength <= 0.0) {
-
-			TalentStrength = 1.0;
-		}*/
-	}
+	isRaw = RoundToCeil(GetAbilityStrengthByTrigger(client, client, "p", FindZombieClass(client), 0, _, _, "H", _, _, 2));			// 2 gets ONLY raw returns
 
 	new Float:TheAbilityMultiplier = GetAbilityMultiplier(client, "V");
 	if (TheAbilityMultiplier == -1.0) TheAbilityMultiplier = 0.0;
+	if (TheAbilityMultiplier > 0.0) isRaw += RoundToCeil(isRaw * TheAbilityMultiplier);
+
 
 	if (GetClientTeam(client) == TEAM_SURVIVOR || IsSurvivorBot(client)) {
-
-		if (!IsIncapacitated(client) && IsClientInRangeSpecialAmmo(client, "O") == -2.0) TalentStrength += (TalentStrength * IsClientInRangeSpecialAmmo(client, "O", false, _, TalentStrength));
-		if (!IsFakeClient(client)) DefaultHealth[client] = iSurvivorBaseHealth + isRaw + RoundToCeil((iSurvivorBaseHealth + isRaw) * (TalentStrength + (TalentStrength * TheAbilityMultiplier)));
-		else DefaultHealth[client] = iSurvivorBotBaseHealth + isRaw + RoundToCeil((iSurvivorBotBaseHealth + isRaw) * (TalentStrength + (TalentStrength * TheAbilityMultiplier)));
+		// health values are now only raw values.
+		if (!IsIncapacitated(client) && IsClientInRangeSpecialAmmo(client, "O") == -2.0) isRaw += RoundToCeil(isRaw * IsClientInRangeSpecialAmmo(client, "O", false, _, isRaw * 1.0));
+		if (!IsFakeClient(client)) DefaultHealth[client] = iSurvivorBaseHealth + isRaw;
+		else DefaultHealth[client] = iSurvivorBotBaseHealth + isRaw;
 	}
-	else DefaultHealth[client] = RoundToCeil(OriginalHealth[client] * (TalentStrength + (TalentStrength * TheAbilityMultiplier)));
+	else DefaultHealth[client] = OriginalHealth[client] + isRaw;
 
-	//TalentStrength += (TalentStrength * TheAbilityMultiplier);
-	if (DefaultHealth[client] > 50000) {
 
-		if (GetClientTeam(client) == TEAM_INFECTED) OverHealth[client] = DefaultHealth[client] - 50000;
-		DefaultHealth[client] = 50000;
-	}
-	else OverHealth[client] = 0;
-	//if (TalentStrength > 0.0) DefaultHealth[client] = RoundToCeil(TalentStrength * DefaultHealth[client]);
-	//PrintToChat(client, "Default health: %d %3.3f", DefaultHealth[client], TalentStrength);
-
-	/*if (!bIsTemporaryHealth) SetEntProp(client, Prop_Send, "m_iMaxHealth", DefaultHealth[client]);
-	else {
-
-		SetTempHealth(client, client, GetTempHealth(client) + (DefaultHealth[client] * 1.0), false);
-	}*/
-	//LogToFile(LogPathDirectory, "%N Health: %d", DefaultHealth[client]);
+	if (DefaultHealth[client] > 50000) DefaultHealth[client] = 50000;
 	SetEntProp(client, Prop_Send, "m_iMaxHealth", DefaultHealth[client]);
+
 	if ((GetClientTeam(client) == TEAM_SURVIVOR || IsSurvivorBot(client)) && IsIncapacitated(client) && bIsGiveIncapHealth[client]) {
 
 		bIsGiveIncapHealth[client] = false;
 		GiveMaximumHealth(client);
 	}
 	if (GetClientHealth(client) > DefaultHealth[client]) GiveMaximumHealth(client);
-	//if (bIsTemporaryHealth) SetTempHealth(client, client, DefaultHealth[client] * 1.0, false);
 	return DefaultHealth[client];
 }
 
@@ -5094,7 +5116,7 @@ stock SuperCommonsInPlay(String:Name[]) {
 stock CreateCommonAffix(entity) {
 
 	new size = GetArraySize(a_CommonAffixes);
-	if (GetArraySize(CommonAffixes) >= iSuperCommonLimit) return;	// there's a maximum limit on the # of super commons.
+	if (GetArraySize(CommonAffixes) >= GetSuperCommonLimit()) return;	// there's a maximum limit on the # of super commons.
 	//new Float:flMovementSpeed = 1.0;
 
 	//decl String:EntityId[64];
@@ -7617,45 +7639,6 @@ stock HandicapDifference(client, target) {
 	return 0;
 }
 
-/*stock EnforceServerTalentMaximum(client) {
-
-	new Handle:MKeys = CreateArray(8);
-	new Handle:MValues = CreateArray(8);
-	new Handle:MSection = CreateArray(8);
-
-	new TalentMaximum = 0;
-	new PlayerTalentPoints = 0;
-
-	decl String:TalentName[64];
-
-	new size						=	GetArraySize(a_Menu_Talents);
-
-	for (new i = 0; i < size; i++) {
-
-		MKeys			= GetArrayCell(a_Menu_Talents, i, 0);
-		MValues			= GetArrayCell(a_Menu_Talents, i, 1);
-		MSection		= GetArrayCell(a_Menu_Talents, i, 2);
-
-		GetArrayString(Handle:MSection, 0, TalentName, sizeof(TalentName));
-
-		TalentMaximum = StringToInt(GetKeyValue(MKeys, MValues, "maximum talent points allowed?"));
-
-		PlayerTalentPoints = GetTalentStrength(client, TalentName);
-		if (PlayerTalentPoints > TalentMaximum) {
-
-		//
-
-			The player was on a server with different talent settings; specifically,
-			it's clear some talents allowed greater values. Since this server doesn't,
-			we set them to the maximum, refund the extra points.
-		//
-			FreeUpgrades[client] += (PlayerTalentPoints - TalentMaximum);
-			PlayerUpgradesTotal[client] -= (PlayerTalentPoints - TalentMaximum);
-			AddTalentPoints(client, TalentName, TalentMaximum);
-		}
-	}
-}*/
-
 stock ReceiveCommonDamage(client, entity, playerDamageTaken) {
 
 	/*new pos = -1;
@@ -7821,13 +7804,13 @@ stock AddCommonInfectedDamage(client, entity, playerDamage, bool:IsStatusDamage 
 		CheckTeammateDamagesEx(client, entity, playerDamage);
 		if (playerDamage > 0) {
 			GetProficiencyData(client, GetWeaponProficiencyType(client), RoundToCeil(playerDamage * fProficiencyExperienceEarned));
-			if (damagevariant == 1) AddTalentExperience(client, "endurance", playerDamage);
+			/*if (damagevariant == 1) AddTalentExperience(client, "endurance", playerDamage);
 			else if (damagevariant == -1) {
 
 				new bool:bIsMeleeAttack = IsMeleeAttacker(client);
 				if (!bIsMeleeAttack) AddTalentExperience(client, "agility", playerDamage);
 				else AddTalentExperience(client, "constitution", playerDamage);
-			}
+			}*/
 		}
 	}
 	else {
@@ -7909,13 +7892,13 @@ stock AddWitchDamage(client, entity, playerDamageToWitch, bool:IsStatusDamage = 
 			SetArrayCell(Handle:WitchDamage[client], my_pos, damageTotal + playerDamageToWitch, 2);
 			if (playerDamageToWitch > 0) {
 				GetProficiencyData(client, GetWeaponProficiencyType(client), RoundToCeil(playerDamageToWitch * fProficiencyExperienceEarned));
-				if (damagevariant == 1) AddTalentExperience(client, "endurance", playerDamageToWitch);
+				/*if (damagevariant == 1) AddTalentExperience(client, "endurance", playerDamageToWitch);
 				else if (damagevariant == -1) {
 
 					new bool:bIsMeleeAttack = IsMeleeAttacker(client);
 					if (!bIsMeleeAttack) AddTalentExperience(client, "agility", playerDamageToWitch);
 					else AddTalentExperience(client, "constitution", playerDamageToWitch);
-				}
+				}*/
 			}
 		}
 		else SetArrayCell(Handle:WitchDamage[client], my_pos, healthTotal - playerDamageToWitch, 1);
@@ -9656,6 +9639,15 @@ stock CartelLevel(client) {
 	return CartelStrength;
 }
 
+stock bool:IsOpenRPGMenu(String:searchString[]) {
+	decl String:RPGCommands[RPGMenuCommandExplode][64];
+	ExplodeString(RPGMenuCommand, ",", RPGCommands, RPGMenuCommandExplode, 64);
+	for (new i = 0; i < RPGMenuCommandExplode; i++) {
+		if (StrContains(searchString, RPGCommands[i], false) != -1) return true;
+	}
+	return false;
+}
+
 public bool:ChatTrigger(client, args, bool:teamOnly) {
 
 	if (!IsLegitimateClient(client)) return true;
@@ -9668,6 +9660,9 @@ public bool:ChatTrigger(client, args, bool:teamOnly) {
 
 	GetClientName(client, Name, sizeof(Name));
 	GetCmdArg(1, sBuffer, sizeof(sBuffer));
+	if (IsOpenRPGMenu(sBuffer)) {
+		CMD_OpenRPGMenu(client);
+	}
 	//StripQuotes(sBuffer);
 	//if (StrEqual(sBuffer, LastSpoken[client], false)) return false;
 	Format(LastSpoken[client], sizeof(LastSpoken[]), "%s", sBuffer);
@@ -9887,68 +9882,6 @@ public Action:CMD_LoadoutName(client, args) {
 	return Plugin_Handled;
 }
 
-/*public Action:CMD_TalentUpgrade(client, args) {
-
-	if (args < 2)
-	{
-		PrintToChat(client, "!talentupgrade <idcode> <value>");
-		return Plugin_Handled;
-	}
-	if (FreeUpgrades[client] < 1) FreeUpgrades[client] = 0;
-	decl String:TalentName[64];
-	new bool:bIsRefund = false;
-
-	decl String:arg[64];
-	decl String:idNum[64];
-	GetCmdArg(1, idNum, sizeof(idNum));
-	GetCmdArg(2, arg, sizeof(arg));
-	new value = StringToInt(arg);
-
-	if (value < 0) {
-
-		value *= -1;
-		bIsRefund = true;
-	}
-	decl String:StringComp[64];
-	new size = GetArraySize(a_Menu_Talents);
-	for (new i = 0; i < size; i++) {
-
-		TalentUpgradeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
-		TalentUpgradeValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
-		if (GetKeyValueInt(TalentUpgradeKeys[client], TalentUpgradeValues[client], "is sub menu?") == 1) continue;
-
-		TalentUpgradeSection[client]		= GetArrayCell(a_Menu_Talents, i, 2);
-		if (GetKeyValueInt(TalentUpgradeKeys[client], TalentUpgradeValues[client], "talent type?") == 1) continue;
-
-		GetArrayString(Handle:TalentUpgradeSection[client], 0, TalentName, sizeof(TalentName));
-		FormatKeyValue(StringComp, sizeof(StringComp), TalentUpgradeKeys[client], TalentUpgradeValues[client], "id_number");
-		if (!StrEqual(StringComp, idNum, false)) continue;
-
-		if (!bIsRefund) {
-
-			if (FreeUpgrades[client] >= value && GetTalentStrength(client, TalentName) + value <= GetKeyValueInt(TalentUpgradeKeys[client], TalentUpgradeValues[client], "maximum talent points allowed?")) {
-
-				PlayerUpgradesTotal[client] += value;
-				PurchaseTalentPoints[client] += value;
-				FreeUpgrades[client] -= value;
-				AddTalentPoints(client, TalentName, GetTalentStrength(client, TalentName) + value);
-				return Plugin_Handled;
-			}
-		}
-		else {
-
-			if (value > GetTalentStrength(client, TalentName)) value = GetTalentStrength(client, TalentName);
-			AddTalentPoints(client, TalentName, GetTalentStrength(client, TalentName) - value);
-			FreeUpgrades[client] += value;
-			PlayerUpgradesTotal[client] -= value;
-			PurchaseTalentPoints[client] -= value;
-			return Plugin_Handled;
-		}
-	}
-	if (FreeUpgrades[client] < 0) FreeUpgrades[client] = 0;
-	return Plugin_Handled;
-}*/
-
 stock Float:GetMissingHealth(client) {
 
 	return ((GetClientHealth(client) * 1.0) / (GetMaximumHealth(client) * 1.0));
@@ -10008,6 +9941,7 @@ stock bool:QuickCommandAccessEx(client, String:sCommand[], bool:b_IsTeamOnly = f
 	new RemoveClient = -1;
 	new iWeaponCat = -1;
 	new iTargetClient = -1;
+	new iCommonQueueLimit = GetCommonQueueLimit();
 
 	//if (StringToInt(GetConfigValue("rpg mode?")) != 1) BuyItem(client, Command[1]);
 
@@ -11238,7 +11172,7 @@ stock SetClientTotalHealth(client, damage, bool:IsSetHealthInstead = false, bool
 			else if (!IsIncapacitated(client)) {
 
 				SetEntityHealth(client, GetClientHealth(client) - damage);
-				AddTalentExperience(client, "constitution", damage);
+				//AddTalentExperience(client, "constitution", damage);
 			}
 		}
 	}

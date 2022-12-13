@@ -1023,6 +1023,14 @@ public Action:Timer_TankCooldown(Handle:timer) {
 	return Plugin_Continue;
 }
 
+stock GetSuperCommonLimit() {
+	return RoundToCeil((AllowedCommons + RaidCommonBoost()) * fSuperCommonLimit);
+}
+
+stock GetCommonQueueLimit() {
+	return RoundToCeil((AllowedCommons + RaidCommonBoost()) * fCommonQueueLimit);
+}
+
 public Action:Timer_SettingsCheck(Handle:timer) {
 
 	if (!b_IsActiveRound) {
@@ -1518,7 +1526,7 @@ stock DirectorPurchase(Handle:Keys, Handle:Values, pos) {
 
 	if (StrEqual(Parameter, "common")) {
 
-		if (GetArraySize(CommonInfectedQueue) + Count >= iCommonQueueLimit) {
+		if (GetArraySize(CommonInfectedQueue) + Count >= GetCommonQueueLimit()) {
 
 			return;
 		}
@@ -1588,7 +1596,7 @@ stock DirectorPurchase(Handle:Keys, Handle:Values, pos) {
 stock SpawnCommons(Client, Count, String:Command[], String:Parameter[], String:Model[], IsPlayerDrop, String:SuperCommon[] = "none") {
 
 	new TargetClient				=	-1;
-	new CommonQueueLimit = iCommonQueueLimit;
+	new CommonQueueLimit = GetCommonQueueLimit();
 	if (StrContains(Model, ".mdl", false) != -1) {
 
 		for (new i = Count; i > 0 && GetArraySize(CommonInfectedQueue) < CommonQueueLimit; i--) {

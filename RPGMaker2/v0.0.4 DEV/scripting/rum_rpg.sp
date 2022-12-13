@@ -46,8 +46,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-
-#define PLUGIN_VERSION				"v0.0.4.1 DEV"
+#define PLUGIN_VERSION				"v0.0.4.3 DEV"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -171,7 +170,7 @@ new iTopThreat;
 new iThreatLevel[MAXPLAYERS + 1];
 new iThreatLevel_temp[MAXPLAYERS + 1];
 new Handle:hThreatMeter;
-new iDontLoadProfiles;
+new forceProfileOnNewPlayers;
 new bool:bEquipSpells[MAXPLAYERS + 1];
 new Handle:LoadoutConfigKeys[MAXPLAYERS + 1];
 new Handle:LoadoutConfigValues[MAXPLAYERS + 1];
@@ -624,16 +623,15 @@ new MyBirthday[MAXPLAYERS + 1];
 
 
 
-new iSuperCommonLimit;
+new Float:fSuperCommonLimit;
 new Float:fBurnPercentage;
 new iTankRush;
 new iTanksAlways;
 new Float:fSprintSpeed;
 new iRPGMode;
-//new Float:fTankMultiplier;
 new iTankPlayerCount;
 new DirectorWitchLimit;
-new iCommonQueueLimit;
+new Float:fCommonQueueLimit;
 new Float:fDirectorThoughtDelay;
 new Float:fDirectorThoughtHandicap;
 new iSurvivalRoundTime;
@@ -852,7 +850,6 @@ new Float:fStaggerTickrate;
 new Handle:StaggeredTargets;
 new Handle:staggerBuffer;
 new bool:staggerCooldownOnTriggers[MAXPLAYERS + 1];
-
 new Handle:CallAbilityCooldownTriggerKeys[MAXPLAYERS + 1];
 new Handle:CallAbilityCooldownTriggerValues[MAXPLAYERS + 1];
 new Handle:CallAbilityCooldownTriggerSection[MAXPLAYERS + 1];
@@ -860,6 +857,17 @@ new Handle:GetIfTriggerRequirementsMetKeys[MAXPLAYERS + 1];
 new Handle:GetIfTriggerRequirementsMetValues[MAXPLAYERS + 1];
 new Handle:GetIfTriggerRequirementsMetSection[MAXPLAYERS + 1];
 new bool:ShowPlayerLayerInformation[MAXPLAYERS + 1];
+new Handle:GAMKeys[MAXPLAYERS + 1];
+new Handle:GAMValues[MAXPLAYERS + 1];
+new Handle:GAMSection[MAXPLAYERS + 1];
+new String:RPGMenuCommand[64];
+new RPGMenuCommandExplode;
+new PrestigeLevel[MAXPLAYERS + 1];
+new String:DefaultProfileName[64];
+new String:DefaultInfectedProfileName[64];
+new Handle:GetGoverningAttributeKeys[MAXPLAYERS + 1];
+new Handle:GetGoverningAttributeValues[MAXPLAYERS + 1];
+new Handle:GetGoverningAttributeSection[MAXPLAYERS + 1];
 
 public Action:CMD_DropWeapon(client, args) {
 
@@ -893,7 +901,6 @@ public Action:CMD_IAmStuck(client, args) {
 
 		new target = FindAnyRandomClient(true, client);
 		if (target > 0) {
-
 			GetClientAbsOrigin(target, Float:DeathLocation[client]);
 			TeleportEntity(client, DeathLocation[client], NULL_VECTOR, NULL_VECTOR);
 			SetEntityMoveType(client, MOVETYPE_WALK);
@@ -902,7 +909,7 @@ public Action:CMD_IAmStuck(client, args) {
 	return Plugin_Handled;
 }
 
-public Action:CMD_OpenRPGMenu(client, args) {
+stock CMD_OpenRPGMenu(client) {
 	ClearArray(Handle:MenuStructure[client]);	// keeps track of the open menus.
 	VerifyAllActionBars(client);	// Because.
 	if (LoadProfileRequestName[client] != -1) {
@@ -914,7 +921,6 @@ public Action:CMD_OpenRPGMenu(client, args) {
 	PlayerCurrentMenuLayer[client] = 1;
 	ShowPlayerLayerInformation[client] = false;
 	BuildMenu(client, "main");
-	return Plugin_Handled;
 }
 
 public OnPluginStart() {
@@ -1405,6 +1411,12 @@ stock OnMapStartFunc() {
 			if (GetIfTriggerRequirementsMetKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetIfTriggerRequirementsMetKeys[i] = CreateArray(32);
 			if (GetIfTriggerRequirementsMetValues[i] == INVALID_HANDLE || !b_FirstLoad) GetIfTriggerRequirementsMetValues[i] = CreateArray(32);
 			if (GetIfTriggerRequirementsMetSection[i] == INVALID_HANDLE || !b_FirstLoad) GetIfTriggerRequirementsMetSection[i] = CreateArray(32);
+			if (GAMKeys[i] == INVALID_HANDLE || !b_FirstLoad) GAMKeys[i] = CreateArray(32);
+			if (GAMValues[i] == INVALID_HANDLE || !b_FirstLoad) GAMValues[i] = CreateArray(32);
+			if (GAMSection[i] == INVALID_HANDLE || !b_FirstLoad) GAMSection[i] = CreateArray(32);
+			if (GetGoverningAttributeKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetGoverningAttributeKeys[i] = CreateArray(32);
+			if (GetGoverningAttributeValues[i] == INVALID_HANDLE || !b_FirstLoad) GetGoverningAttributeValues[i] = CreateArray(32);
+			if (GetGoverningAttributeSection[i] == INVALID_HANDLE || !b_FirstLoad) GetGoverningAttributeSection[i] = CreateArray(32);
 		}
 		if (!b_FirstLoad) b_FirstLoad = true;
 		//LogMessage("AWAITING PARAMETERS");
@@ -1416,7 +1428,6 @@ stock OnMapStartFunc() {
 			CreateTimer(10.0, Timer_GetCampaignName, _, TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
-
 	ReadyUp_NtvIsCampaignFinale();
 }
 
@@ -1724,10 +1735,10 @@ stock bool:IsEnrageActive() {
 	if (!b_IsActiveRound || IsSurvivalMode || iEnrageTime < 1) return false;
 	if (RPGRoundTime() < iEnrageTime) return false;
 	if (!IsEnrageNotified && iNotifyEnrage == 1) {
-
 		IsEnrageNotified = true;
 		PrintToChatAll("%t", "enrage period", orange, blue, orange);
 	}
+
 	return true;
 }
 
@@ -1738,7 +1749,6 @@ stock bool:PlayerHasWeakness(client) {
 	if (!b_IsCheckpointDoorStartOpened || DoomTimer != 0) return true;
 	if (LastDeathTime[client] > GetEngineTime()) return true;
 	if (IsClientInRangeSpecialAmmo(client, "W", true) == -2.0) return true;	// the player is not weak if inside cleansing ammo.*
-
 	return false;
 }
 
@@ -2083,7 +2093,6 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 		}
 	}
 	else {
-
 		PrintToChat(client, "%T", "Action Slot Range", client, white, blue, ActionSlots, white);
 	}
 }
@@ -2270,7 +2279,6 @@ stock SetTotalExperienceByLevel(client, newlevel) {
 	ExperienceLevel[client]++;	// i don't like 0 / level, so i always do 1 / level as the minimum.
 	if (oldlevel > PlayerLevel[client]) ChallengeEverything(client);
 	else if (PlayerLevel[client] > oldlevel) {
-
 		FreeUpgrades[client] += (PlayerLevel[client] - oldlevel);
 	}
 }
@@ -2574,6 +2582,7 @@ stock CallRoundIsOver() {
 				}
 			}
 		}
+		
 		CreateTimer(1.0, Timer_SaveAndClear, _, TIMER_FLAG_NO_MAPCHANGE);
 
 		//PrintToChatAll("%t", "Data Saved", white, orange);
@@ -2803,15 +2812,8 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		}
 		LoadMainConfig();
 
-		GetConfigValue(thetext, sizeof(thetext), "rpg menu command?");
-
-		new ExplodeCount = GetDelimiterCount(thetext, ",") + 1;
-		decl String:t_Effects[ExplodeCount][64];
-		ExplodeString(thetext, ",", t_Effects, ExplodeCount, 64);
-		for (new i = 0; i < ExplodeCount; i++) {
-
-			RegConsoleCmd(t_Effects[i], CMD_OpenRPGMenu);
-		}
+		GetConfigValue(RPGMenuCommand, sizeof(RPGMenuCommand), "rpg menu command?");
+		RPGMenuCommandExplode = GetDelimiterCount(RPGMenuCommand, ",") + 1;
 
 		GetConfigValue(thetext, sizeof(thetext), "drop weapon command?");
 		RegConsoleCmd(thetext, CMD_DropWeapon);
@@ -2919,7 +2921,7 @@ stock LoadMainConfig() {
 	//iOnFireDebuffLimit			= GetConfigValueInt("standing in fire debuff limit?");
 	fOnFireDebuffDelay			= GetConfigValueFloat("standing in fire debuff delay?");
 	//fTankThreatBonus			= GetConfigValueFloat("tank threat bonus?");
-	iDontLoadProfiles			= GetConfigValueInt("Force Profile On New Player?");
+	forceProfileOnNewPlayers	= GetConfigValueInt("Force Profile On New Player?");
 	iShowLockedTalents			= GetConfigValueInt("show locked talents?");
 	iAwardBroadcast				= GetConfigValueInt("award broadcast?");
 	GetConfigValue(sSpecialsAllowed, sizeof(sSpecialsAllowed), "special infected classes?");
@@ -2942,7 +2944,7 @@ stock LoadMainConfig() {
 	//fTankMultiplier				= GetConfigValueFloat("director tanks player multiplier?");
 	iTankPlayerCount			= GetConfigValueInt("director tanks per _ players?");
 	DirectorWitchLimit			= GetConfigValueInt("director witch limit?");
-	iCommonQueueLimit			= GetConfigValueInt("common queue limit?");
+	fCommonQueueLimit			= GetConfigValueFloat("common queue limit?");
 	fDirectorThoughtDelay		= GetConfigValueFloat("director thought process delay?");
 	fDirectorThoughtHandicap	= GetConfigValueFloat("director thought process handicap?");
 	iSurvivalRoundTime			= GetConfigValueInt("survival round time?");
@@ -2976,9 +2978,9 @@ stock LoadMainConfig() {
 	//fNoobAssistanceResistance	= GetConfigValueFloat("new player assistance resistance?");
 	//fNoobAssistanceHealing		= GetConfigValueFloat("new player assistance healing?");
 	//fNoobAssistanceRecovery		= GetConfigValueFloat("new player assistance recovery?");
+
 	decl String:text[64], String:text2[64], String:text3[64], String:text4[64];
 	for (new i = 0; i < 7; i++) {
-
 		if (i == 6) {
 
 			Format(text, sizeof(text), "(%d) damage player level?", i + 2);
@@ -2987,7 +2989,6 @@ stock LoadMainConfig() {
 			Format(text4, sizeof(text4), "(%d) base infected health?", i + 2);
 		}
 		else {
-
 			Format(text, sizeof(text), "(%d) damage player level?", i + 1);
 			Format(text2, sizeof(text2), "(%d) infected health bonus", i + 1);
 			Format(text3, sizeof(text3), "(%d) base damage?", i + 1);
@@ -2998,9 +2999,6 @@ stock LoadMainConfig() {
 		iBaseSpecialDamage[i]	= GetConfigValueInt(text3);
 		iBaseSpecialInfectedHealth[i] = GetConfigValueInt(text4);
 	}
-
-
-
 	fPointsMultiplierInfected	= GetConfigValueFloat("points multiplier infected?");
 	fPointsMultiplier			= GetConfigValueFloat("points multiplier survivor?");
 	fHealingMultiplier			= GetConfigValueFloat("experience multiplier healing?");
@@ -3102,7 +3100,7 @@ stock LoadMainConfig() {
 	GetConfigValue(sBackpackModel, sizeof(sBackpackModel), "backpack model?");
 	iSurvivorGroupMinimum		= GetConfigValueInt("group member minimum?");
 	fBurnPercentage				= GetConfigValueFloat("burn debuff percentage?");
-	iSuperCommonLimit			= GetConfigValueInt("super common limit?");
+	fSuperCommonLimit			= GetConfigValueFloat("super common limit?");
 	iCommonsLimitUpper			= GetConfigValueInt("commons limit max?");
 	FinSurvBon					= GetConfigValueFloat("finale survival bonus?");
 	fCoopSurvBon 				= GetConfigValueFloat("coop round survival bonus?");
@@ -3114,9 +3112,8 @@ stock LoadMainConfig() {
 	fEffectOverTimeInterval		= GetConfigValueFloat("effect over time tick rate?");
 	//fStaggerTime				= GetConfigValueFloat("stagger debuff time?");
 	fStaggerTickrate			= GetConfigValueFloat("stagger tickrate?");
-
-
-
+	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
+	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
 
 	LogMessage("Main Config Loaded.");
 }
@@ -3173,11 +3170,10 @@ public Action:CMD_CycleBackwardAmmo(client, args) {
 public Action:CMD_DataErase(client, args) {
 	decl String:arg[MAX_NAME_LENGTH];
 	decl String:thetext[64];
+
 	GetConfigValue(thetext, sizeof(thetext), "delete bot flags?");
 	if (args > 0 && HasCommandAccess(client, thetext)) {
-
 		GetCmdArg(1, arg, sizeof(arg));
-	
 		new targetclient = FindTargetClient(client, arg);
 		if (IsLegitimateClient(targetclient) && GetClientTeam(targetclient) != TEAM_INFECTED) DeleteAndCreateNewData(targetclient);
 	}
@@ -3195,7 +3191,6 @@ stock DeleteAndCreateNewData(client, bool:IsBot = false) {
 
 	//decl String:thetext[64];
 	//GetConfigValue(thetext, sizeof(thetext), "database prefix?");
-
 	decl String:key[64];
 	decl String:tquery[1024];
 	decl String:text[64];
@@ -3224,6 +3219,7 @@ stock DeleteAndCreateNewData(client, bool:IsBot = false) {
 			GetConfigValue(key, sizeof(key), "survivor team?");
 			Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%s%s%s';", TheDBPrefix, pct, key, pct);
 			LogMessage(tquery);
+			//Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE 'STEAM';", TheDBPrefix);
 			SQL_TQuery(hDatabase, QueryResults, tquery, client);
 
 			PrintToChatAll("%t", "bot data deleted", orange, blue);
@@ -3338,7 +3334,6 @@ stock bool:IsSpecialCommon(entity) {
 	}
 	return -1;
 }*/
-
 //GetClientAuthId(client, AuthIdType:AuthId_Steam3, String:AuthString, maxlen, bool:validate=true);
 
 #include "rpg/rpg_menu.sp"
