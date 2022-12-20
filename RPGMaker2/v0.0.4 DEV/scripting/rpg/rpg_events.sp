@@ -70,47 +70,24 @@ public SubmitEventHooks(value) {
 	}
 }
 
-stock String:FindPlayerWeapon(client) {
-
-	decl String:weapon[64];
-	Format(weapon, sizeof(weapon), "-1");
-
-	new g_iActiveWeaponOffset = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
-	new iWeapon = GetEntDataEnt2(client, g_iActiveWeaponOffset);
-	if (IsValidEdict(iWeapon)) GetEdictClassname(iWeapon, weapon, sizeof(weapon));
-
-	return weapon;
+stock FindPlayerWeapon(client, String:weapon[], size) {
+	if (IsLegitimateClient(client) && GetClientTeam(client) == TEAM_INFECTED) {
+		GetClientWeapon(client, weapon, size);
+	}
+	else {
+		new g_iActiveWeaponOffset = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
+		new iWeapon = GetEntDataEnt2(client, g_iActiveWeaponOffset);
+		if (IsValidEdict(iWeapon)) GetEdictClassname(iWeapon, weapon, size);
+		else Format(weapon, size, "-1");
+	}
 }
 
-/*stock PrimeInfected(client) {
-
-	CreateMyHealthPool(client, true);
-	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-	decl String:InfecttedSpeedBonusType[64];
-	Format(InfecttedSpeedBonusType, sizeof(InfecttedSpeedBonusType), "(%d) infected speed bonus", FindZombieClass(client));
-	new Float:SpeedBonus = GetConfigValueFloat(InfecttedSpeedBonusType) * (SurvivorLevels() * 1.0);
-	SpeedMultiplierBase[client] = 1.0;
-	SpeedMultiplier[client] = 1.0;
-	SetSpeedMultiplierBase(client, 1.0 + SpeedBonus);
-	b_IsImmune[client] = false;
-	WipeDamageAward(client);
-}*/
-
 public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
-
-	/*if (StrEqual(event_name, "infected_hurt")) {
-
-		return 0;
-
-		//if (damagetype == 8 || damagetype == 2056 || damagetype == 268435464) return -1;
-	}*/
-
 	CallKeys							= GetArrayCell(a_Events, pos, 0);
 	CallValues							= GetArrayCell(a_Events, pos, 1);
 
 	decl String:ThePerp[64];
 	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "perpetrator?");
-
 	new attacker = GetClientOfUserId(GetEventInt(event, ThePerp));
 
 	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "victim?");
@@ -198,12 +175,9 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		if (StrEqual(event_name, "player_entered_checkpoint")) bIsInCheckpoint[attacker] = true;
 		if (StrEqual(event_name, "player_left_checkpoint")) bIsInCheckpoint[attacker] = false;
 	}
-	if (StrEqual(event_name, "infected_hurt") && IsCommonInfected(victim) && !IsSpecialCommon(victim)) {
-		if (GetEventInt(event, "hitgroup") == 1) AddCommonInfectedDamage(attacker, victim, 9999, true);	// if someone shoots a common infected in the head, we want to auto-kill it.
-	}
 	if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
 
-		if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && !b_IsHooked[attacker]) ChangeHook(attacker, true);
+		CheckIfHeadshot(attacker, victim, event);
 		if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !b_IsHooked[victim]) ChangeHook(victim, true);
 		
 		if (IsSurvivorBot(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
@@ -413,6 +387,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 
 	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "health?");
 	new healthvalue = GetEventInt(event, ThePerp);
+	//PrintToChat(attacker, "damage: %d", healthvalue);
 
 	//if (StrContains(event_name, "hurt", false) != -1) {
 
@@ -499,56 +474,8 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 				ReadyUp_NtvFriendlyFire(attacker, victim, healthvalue, GetClientHealth(victim), 1, 0);
 			}
 		}
-		if (IsLegitimateClient(victim) && GetClientTeam(victim) == TEAM_INFECTED) {
-
-			/*
-
-				Because all health pools are instanced, actual health pools should never decrease, so we keep them always topped-off.
-			*/
-			//LogToFile(LogPathDirectory, "%N health set to 40000", victim);
-			//if (FindZombieClass(victim) == ZOMBIECLASS_TANK) ExtinguishEntity(victim);
-			SetEntityHealth(victim, 40000);
-		}
-		/*if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR) {
-
-			if (IsWitch(victim)) {
-				
-				Format(weapon, sizeof(weapon), "%s", FindPlayerWeapon(attacker));
-				if (StrEqual(weapon, "melee", false) || !bIsMeleeCooldown[attacker]) {
-
-					if (StrContains(weapon, "shotgun", false) != -1) {
-
-						bIsMeleeCooldown[attacker] = true;				
-						CreateTimer(0.3, Timer_IsMeleeCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
-					}
-					AddWitchDamage(attacker, victim, healthvalue);
-
-
-					if (StringToInt(GetConfigValue("display health bars?")) == 1) {
-
-						if (damagetype != 8 && damagetype != 268435464 && !StrEqual(weapon, "inferno")) {
-
-							DisplayInfectedHealthBars(attacker, victim);
-						}
-					}
-					if (CheckTeammateDamages(victim, attacker) >= 1.0 ||
-						CheckTeammateDamages(victim, attacker, true) >= 1.0 ||
-						CheckTeammateDamages(victim, attacker) < 0.0 ||
-						CheckTeammateDamages(victim, attacker, true) < 0.0) {
-
-						OnWitchCreated(victim, true);
-					}
-				}
-			}
-		}*/
-		if (attacker > 0 && IsLegitimateClient(attacker)) {
-
-			if ((GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker)) && isinsaferoom == 1) b_IsInSaferoom[attacker] = true;
-		}
-		/*if (!IsLegitimateClient(attacker) && StrEqual(EventName, "player_hurt")) {
-
-
-		}*/
+		if (IsLegitimateClient(victim) && GetClientTeam(victim) == TEAM_INFECTED) SetEntityHealth(victim, 40000);
+		if (IsLegitimateClientAlive(attacker) && (GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker)) && isinsaferoom == 1) b_IsInSaferoom[attacker] = true;
 	}
 	if (isshoved == 1 && IsLegitimateClientAlive(victim) && IsLegitimateClientAlive(attacker) && GetClientTeam(victim) != GetClientTeam(attacker)) {
 
@@ -1862,12 +1789,19 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			CreateTimer(2.0, Timer_ResetStaggerCooldownOnTriggers, client, TIMER_FLAG_NO_MAPCHANGE);
 			EntityWasStaggered(client);
 		}
-		if (GetClientTeam(client) == TEAM_SURVIVOR && L4D2_GetInfectedAttacker(client) != -1) {
-			// when the requirement is met for the first time in a reactive talent or ability's active period, we
-			// trigger its reactive perk; reactive perks can only fire ONE time!
-			if (GetAbilityMultiplier(client, "stagger", 5) == -2.0) {
-				StaggerPlayer(client, GetAnyPlayerNotMe(client));
+		new myTeam = GetClientTeam(client);
+		if (myTeam == TEAM_SURVIVOR) {
+			if (L4D2_GetInfectedAttacker(client) != -1) {
+				// when the requirement is met for the first time in a reactive talent or ability's active period, we
+				// trigger its reactive perk; reactive perks can only fire ONE time!
+				if (GetAbilityMultiplier(client, "stagger", 5) == -2.0) {
+					StaggerPlayer(client, GetAnyPlayerNotMe(client));
+				}
 			}
+			if ((GetEntityFlags(client) & IN_DUCK)) GetAbilityStrengthByTrigger(client, _, "ducking");
+ 			if ((GetEntityFlags(client) & FL_INWATER)) GetAbilityStrengthByTrigger(client, _, "wtr");
+ 			else if (!(GetEntityFlags(client) & FL_ONGROUND)) GetAbilityStrengthByTrigger(client, _, "grnd");
+ 			if ((GetEntityFlags(client) & FL_ONFIRE)) GetAbilityStrengthByTrigger(client, _, "onfire");
 		}
 	}
 
@@ -1929,18 +1863,19 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 		if (!IsFakeClient(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
 
 			if (MyBirthday[client] == 0) MyBirthday[client] = GetTime();
+			if (iRushingModuleEnabled == 1) {
+				if (bRushingNotified[client] && IsPlayerRushing(client, 2048.0)) {
 
-			if (bRushingNotified[client] && IsPlayerRushing(client, 2048.0)) {
+					//IncapacitateOrKill(client, _, _, true, true);
+					FindRandomSurvivorClient(client, _, false);
+					//bRushingNotified[client] = false;
+				}
+				else if (!bRushingNotified[client] && IsPlayerRushing(client, 1536.0)) {
 
-				//IncapacitateOrKill(client, _, _, true, true);
-				FindRandomSurvivorClient(client, _, false);
-				//bRushingNotified[client] = false;
-			}
-			else if (!bRushingNotified[client] && IsPlayerRushing(client, 1536.0)) {
-
-				//FindRandomSurvivorClient(client);
-				bRushingNotified[client] = true;
-				PrintToChat(client, "%T", "Rushing Return To Team", client, orange, blue, orange);
+					//FindRandomSurvivorClient(client);
+					bRushingNotified[client] = true;
+					PrintToChat(client, "%T", "Rushing Return To Team", client, orange, blue, orange);
+				}
 			}
 		}
 

@@ -262,6 +262,7 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 	new size			=	GetArraySize(a_Menu_Talents);
 	nodesInExistence	=	0;
 	//new TheValue		=	0;
+	new nodeLayer		=	0;	// this will hide nodes not currently available from players total node count.
 	for (new i = 0; i < size; i++) {
 
 		DatabaseKeys			=	GetArrayCell(a_Menu_Talents, i, 0);
@@ -280,7 +281,8 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 
 		//FormatKeyValue(NewValue, sizeof(NewValue), DatabaseKeys, DatabaseValues, "ability inherited?");
 		//TheValue	= StringToInt(NewValue);
-		if (GetKeyValueInt(DatabaseKeys, DatabaseValues, "layer?") >= 1) nodesInExistence++;
+		nodeLayer = GetKeyValueInt(DatabaseKeys, DatabaseValues, "layer?");
+		if (nodeLayer >= 1 && nodeLayer <= iMaxLayers) nodesInExistence++;
 
 		if (GenerateDB == 1) {
 

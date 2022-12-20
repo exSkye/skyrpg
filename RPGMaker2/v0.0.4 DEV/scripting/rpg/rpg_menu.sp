@@ -15,7 +15,7 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 
 			new TotalPoints = TotalPointsAssigned(client);
 			decl String:PlayerLevelText[256];
-			Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, AddCommasToString(ExperienceLevel[client]), MenuExperienceBar(client), AddCommasToString(CheckExperienceRequirement(client)));
+			Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, AddCommasToString(ExperienceLevel[client]), MenuExperienceBar(client), AddCommasToString(CheckExperienceRequirement(client)), AddCommasToString(Rating[client]));
 			new maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
 			if (CheckRPGMode != 0) {
 				Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
@@ -33,9 +33,8 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 			//Format(stext, sizeof(stext), "%T", "Class Level Text", client, TheClass, AddCommasToString(CartelLevel(client)));
 			//Format(stext, sizeof(stext), "Class: %s", stext);
 			//Format(stext, sizeof(stext), "%s\n \nDifficulty: %s (%s)", stext, AddCommasToString(Rating[client]), AddCommasToString(TruRating(client)));
-			Format(stext, sizeof(stext), "Leaderboard Score: %s", AddCommasToString(Rating[client]));
 			//Format(text, sizeof(text), "%s\n \n%s", text, stext);
-			Format(text, sizeof(text), "%s\n \n%s", text, stext);
+			//Format(text, sizeof(text), "%s\n \n%s", text, stext);
 
 			//new RestedExperienceMaximum = GetConfigValueInt("rested experience maximum?");
 			//if (RestedExperienceMaximum < 1) RestedExperienceMaximum = CheckExperienceRequirement(client);
@@ -782,7 +781,7 @@ stock ShowActionBar(client) {
 	new Handle:menu = CreateMenu(ActionBarHandle);
 
 	decl String:text[128], String:talentname[64];
-	Format(text, sizeof(text), "Mana: %d (Max: %d)", SurvivorStamina[client], GetPlayerStamina(client));
+	Format(text, sizeof(text), "Stamina: %d (Max: %d)", SurvivorStamina[client], GetPlayerStamina(client));
 	
 	new baseWeaponDamage = DataScreenWeaponDamage(client);
 	if (baseWeaponDamage > 0) Format(text, sizeof(text), "%s\nBullet Damage: %s", text, AddCommasToString(baseWeaponDamage));

@@ -46,7 +46,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v0.0.4.4"
+#define PLUGIN_VERSION				"v0.0.4.5"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -75,7 +75,6 @@
 /*
 	==========
 				*/
-
 #define DEBUG				false
 /*
 	==========
@@ -868,7 +867,7 @@ new String:DefaultInfectedProfileName[64];
 new Handle:GetGoverningAttributeKeys[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeValues[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeSection[MAXPLAYERS + 1];
-
+new iRushingModuleEnabled;
 
 public Action:CMD_DropWeapon(client, args) {
 
@@ -2553,7 +2552,6 @@ stock CallRoundIsOver() {
 
 		ClearArray(CommonAffixes);
 		SetSurvivorsAliveHostname();
-		
 		if (!b_IsMissionFailed) {
 
 			//InfectedLevel = HumanSurvivorLevels();
@@ -2574,22 +2572,16 @@ stock CallRoundIsOver() {
 							if (CurrentMapPosition != 1) {
 
 								RoundExperienceMultiplier[i] += fCoopSurvBon;
-								PrintToChat(i, "xp bonus of %3.3f added : %3.3f bonus", fCoopSurvBon, RoundExperienceMultiplier[i]);
+								//PrintToChat(i, "xp bonus of %3.3f added : %3.3f bonus", fCoopSurvBon, RoundExperienceMultiplier[i]);
  							}
-							else PrintToChat(i, "no round bonus applied.");
+							//else PrintToChat(i, "no round bonus applied.");
 							AwardExperience(i, _, _, true);
 						}
 					}
 				}
 			}
 		}
-		
 		CreateTimer(1.0, Timer_SaveAndClear, _, TIMER_FLAG_NO_MAPCHANGE);
-
-		//PrintToChatAll("%t", "Data Saved", white, orange);
-
-		//new IsItEnabled = StringToInt(GetConfigValue("handicap enabled?"));
-		//ClearArray(Handle:EntityOnFire);
 		b_IsCheckpointDoorStartOpened	= false;
 		RemoveImmunities(-1);
 
@@ -2939,6 +2931,7 @@ stock LoadMainConfig() {
 	fDeathPenalty				= GetConfigValueFloat("death penalty?");
 	iDeathPenaltyPlayers		= GetConfigValueInt("death penalty players required?");
 	iTankRush					= GetConfigValueInt("tank rush?");
+	iRushingModuleEnabled		= GetConfigValueInt("anti-rushing enabled?");
 	iTanksAlways				= GetConfigValueInt("tanks always active?");
 	fSprintSpeed				= GetConfigValueFloat("sprint speed?");
 	iRPGMode					= GetConfigValueInt("rpg mode?");

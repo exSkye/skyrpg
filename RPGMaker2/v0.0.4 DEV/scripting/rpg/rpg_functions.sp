@@ -445,6 +445,8 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
 	new baseWeaponTemp = 0;
 
 	new size = GetArraySize(a_WeaponDamages);
+	new Float:TheAbilityMultiplier;
+	new Float:MaxMultiplier;
 	for (new i = 0; i < size; i++) {
 
 		DamageKeys[client] = GetArrayCell(a_WeaponDamages, i, 0);
@@ -459,6 +461,7 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
  		//if (HasAdrenaline(attacker)) baseWeaponDamage += RoundToCeil(baseWeaponDamage * GetConfigValueFloat("adrenaline damage modifier?"));
 
  		baseWeaponTemp = WeaponDamage;
+		if ((GetEntityFlags(client) & IN_DUCK)) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "ducking", FindZombieClass(client), WeaponDamage, _, _, "d", 1, true));
  		if ((GetEntityFlags(client) & FL_INWATER)) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "wtr", FindZombieClass(client), WeaponDamage, _, _, "d", 1, true));
  		else if (!(GetEntityFlags(client) & FL_ONGROUND)) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "grnd", FindZombieClass(client), WeaponDamage, _, _, "d", 1, true));
  		if ((GetEntityFlags(client) & FL_ONFIRE)) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "onfire", FindZombieClass(client), WeaponDamage, _, _, "d", 1, true));
@@ -497,6 +500,31 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
 		else if (IsMelee) {
 			WeaponDamage = RoundToCeil(GetAbilityStrengthByTrigger(client, target, "mDMG", FindZombieClass(client), WeaponDamage, _, _, "d", 1, true));
 		}
+
+		TheAbilityMultiplier = GetAbilityMultiplier(client, "N");
+		if (TheAbilityMultiplier != -1.0) {
+			if (TheAbilityMultiplier <= 0.0) WeaponDamage = 0;	// Damage dealt reduced to 0
+			else if (TheAbilityMultiplier > 0.0) WeaponDamage += RoundToCeil(WeaponDamage * TheAbilityMultiplier); // damage dealt is increased
+		}
+		TheAbilityMultiplier = GetAbilityMultiplier(client, "C");
+		if (TheAbilityMultiplier != -1.0) {
+			MaxMultiplier = GetAbilityMultiplier(client, "C", 3);
+			if (ConsecutiveHits[client] > 0) TheAbilityMultiplier *= ConsecutiveHits[client];
+			if (TheAbilityMultiplier > MaxMultiplier) TheAbilityMultiplier = MaxMultiplier;
+			if (TheAbilityMultiplier > 0.0) WeaponDamage += RoundToCeil(WeaponDamage * TheAbilityMultiplier); // damage dealt is increased
+		}
+		if (!(GetEntityFlags(client) & FL_ONGROUND)) {
+			TheAbilityMultiplier = GetAbilityMultiplier(client, "K");
+			if (TheAbilityMultiplier != -1.0) WeaponDamage += RoundToCeil(WeaponDamage * TheAbilityMultiplier);
+		}
+		if ((GetEntityFlags(client) & FL_INWATER)) {
+			TheAbilityMultiplier = GetAbilityMultiplier(client, "a");
+			if (TheAbilityMultiplier != -1.0) WeaponDamage += RoundToCeil(WeaponDamage * TheAbilityMultiplier);
+		}
+		if ((GetEntityFlags(client) & FL_ONFIRE)) {
+			TheAbilityMultiplier = GetAbilityMultiplier(client, "f");
+			if (TheAbilityMultiplier != -1.0) WeaponDamage += RoundToCeil(WeaponDamage * TheAbilityMultiplier);
+		}
 		RangeRequired = 0.0;
 		// StringToFloat(GetKeyValue(DamageKeys[client], DamageValues[client], "range required?"));
 		if (Distance > WeaponRange && WeaponRange > 0.0) {
@@ -526,6 +554,235 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
 	}
 	//LogMessage("Could not find header for %s", Weapon);
 	return 0;
+}
+
+stock IfCommonInfectedIsAttackerDoStuff(attacker, victim, damagetype) {
+	if (IsLegitimateClient(attacker) || !IsLegitimateClient(victim) && !IsSurvivorBot(victim)) return 0;
+	if ((attacker < 1 || !IsClientActual(attacker)) && IsLegitimateClient(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim))) {
+		new Float:CommonDamageScaleLevel = fCommonDamageLevel;
+		new theCount = LivingSurvivorCount();
+		if (IsLegitimateClientAlive(victim)) b_IsDead[victim] = false;
+		if (IsCommonInfected(attacker)) {
+			new CommonsDamage = iCommonInfectedBaseDamage;
+			if (IsSpecialCommonInRange(attacker, 'b')) CommonsDamage += GetSpecialCommonDamage(CommonsDamage, attacker, 'b', victim);
+			if (!(damagetype & DMG_DIRECT)) {
+				if (b_IsJumping[victim]) ModifyGravity(victim);
+				if (CommonDamageScaleLevel > 0.0) {
+					if (iBotLevelType == 0 && iRPGMode >= 1) CommonsDamage = RoundToCeil(CommonsDamage * (CommonDamageScaleLevel * GetDifficultyRating(victim)));
+					else CommonsDamage = RoundToCeil(CommonsDamage * (CommonDamageScaleLevel * SurvivorLevels()));
+				}
+				if (theCount >= iSurvivorModifierRequired) CommonsDamage += RoundToCeil(CommonsDamage * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));				
+				new DamageShield = 0;
+				if (IsClientInRangeSpecialAmmo(victim, "D") == -2.0) DamageShield = RoundToCeil(CommonsDamage * IsClientInRangeSpecialAmmo(victim, "D", false, _, CommonsDamage * 1.0));
+				if (DamageShield > 0) {
+					CommonsDamage -= DamageShield;
+					if (CommonsDamage < 0) CommonsDamage = 0;
+				}
+				new Float:TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
+				if (TheAbilityMultiplier >= 1.0) return -1;
+				else if (TheAbilityMultiplier > 0.0) CommonsDamage -= RoundToCeil(CommonsDamage * TheAbilityMultiplier);
+				new Float:absorbTalentStrength = GetAbilityStrengthByTrigger(victim, attacker, "L", _, CommonsDamage, _, _, "o", _, true); // true means we just get the result and don't execute the ability.
+				CommonsDamage -= RoundToCeil(CommonsDamage * absorbTalentStrength);
+				if (IsSurvivalMode || RPGRoundTime() < iEnrageTime) Points_Director += (fCommonDirectorPoints * CommonsDamage);
+				else Points_Director += (fEnrageDirectorPoints * CommonsDamage);
+				GetAbilityStrengthByTrigger(victim, attacker, "Y", FindZombieClass(victim), CommonsDamage);
+				SetClientTotalHealth(victim, CommonsDamage);
+				ReceiveCommonDamage(victim, attacker, CommonsDamage);
+				GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), CommonsDamage);
+			}
+			decl String:TheCommonValue[64];
+			if (IsSpecialCommon(attacker)) {
+				decl String:slevelrequired[10];
+				GetCommonValue(slevelrequired, sizeof(slevelrequired), attacker, "level required?");
+				if (PlayerLevel[victim] >= StringToInt(slevelrequired)) {
+					GetCommonValue(TheCommonValue, sizeof(TheCommonValue), attacker, "aura effect?");
+
+					// Flamers explode when they receive or take damage.
+					if (StrContains(TheCommonValue, "f", true) != -1) CreateDamageStatusEffect(attacker, _, victim, CommonsDamage);
+					if (StrContains(TheCommonValue, "a", true) != -1) CreateBomberExplosion(attacker, victim, TheCommonValue, CommonsDamage);
+					if (StrContains(TheCommonValue, "E", true) != -1) {
+						decl String:deatheffectshappen[10];
+						GetCommonValue(deatheffectshappen, sizeof(deatheffectshappen), attacker, "death effect?");
+						CreateDamageStatusEffect(attacker, _, victim, CommonsDamage);
+						CreateBomberExplosion(attacker, victim, deatheffectshappen);
+						ClearSpecialCommon(attacker, _, CommonsDamage);
+					}
+				}
+			}
+			new BuffDamage = 0;
+			if (IsClientInRangeSpecialAmmo(victim, "R") == -2.0) BuffDamage = RoundToCeil(CommonsDamage * IsClientInRangeSpecialAmmo(victim, "R", false, _, CommonsDamage * 1.0));
+			if (BuffDamage > 0) {
+				if (IsCommonInfected(attacker) && !IsSpecialCommon(attacker)) AddCommonInfectedDamage(victim, attacker, BuffDamage);
+				else if (IsSpecialCommon(attacker)) {
+					GetCommonValue(TheCommonValue, sizeof(TheCommonValue), attacker, "aura effect?");
+					if (StrContains(TheCommonValue, "d", true) == -1 || IsSurvivorBot(victim))AddSpecialCommonDamage(victim, attacker, BuffDamage);
+					else {	// if a player tries to reflect damage at a reflector, it's moot (ie reflects back to the player) so in this case the player takes double damage, though that's after mitigations.
+						SetClientTotalHealth(victim, BuffDamage);
+						ReceiveCommonDamage(victim, attacker, BuffDamage);
+					}
+				}
+			}
+			return CommonsDamage;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+stock IfInfectedIsAttackerDoStuff(attacker, victim) {
+	if (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_INFECTED && IsLegitimateClient(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim))) {// && !(damagetype & DMG_DIRECT)) {
+ 		CombatTime[victim] = GetEngineTime() + fOutOfCombatTime;
+ 		if (b_IsJumping[victim]) ModifyGravity(victim);
+		new myzombieclass = FindZombieClass(attacker);
+		new totalIncomingDamage = (myzombieclass != ZOMBIECLASS_TANK) ? iBaseSpecialDamage[myzombieclass - 1] : iBaseSpecialDamage[myzombieclass - 2];
+		if (IsSpecialCommonInRange(attacker, 'b')) totalIncomingDamage += GetSpecialCommonDamage(totalIncomingDamage, attacker, 'b', victim);
+		new MaxLevelCalc = iMaxDifficultyLevel;
+
+		//Incoming Damage is calculated a very specific way, so that handicap is always the final calculation.
+		if (iRPGMode >= 1) {
+			if (iBotLevelType == 1) {
+				if (myzombieclass != ZOMBIECLASS_TANK) totalIncomingDamage += RoundToFloor(totalIncomingDamage * (SurvivorLevels() * fDamagePlayerLevel[myzombieclass - 1]));
+				else totalIncomingDamage += RoundToFloor(totalIncomingDamage * (SurvivorLevels() * fDamagePlayerLevel[myzombieclass - 2]));
+			}
+			else {
+				if (PlayerLevel[victim] < MaxLevelCalc) MaxLevelCalc = PlayerLevel[victim];
+				if (myzombieclass != ZOMBIECLASS_TANK) totalIncomingDamage += RoundToFloor(totalIncomingDamage * (GetDifficultyRating(victim) * fDamagePlayerLevel[myzombieclass - 1]));
+				else totalIncomingDamage += RoundToFloor(totalIncomingDamage * (GetDifficultyRating(victim) * fDamagePlayerLevel[myzombieclass - 2]));
+			}
+		}
+		new totalIncomingTemp = 0;
+		// INFECTED MULTIPLIERS FOR VERSUS AND COOP
+		// berserk ammo affects both the attacker and the victim (increases the attackers damage and increases the damage the victim receives)
+		if (IsClientInRangeSpecialAmmo(victim, "E") == -2.0) totalIncomingTemp = RoundToCeil(totalIncomingDamage * IsClientInRangeSpecialAmmo(victim, "E", false, _, totalIncomingDamage * 1.0));
+		if (totalIncomingTemp > 0) totalIncomingDamage += totalIncomingTemp;
+		if (IsClientInRangeSpecialAmmo(attacker, "E") == -2.0) totalIncomingTemp = RoundToCeil(totalIncomingDamage * IsClientInRangeSpecialAmmo(attacker, "E", false, _, totalIncomingDamage * 1.0));
+		if (totalIncomingTemp > 0) totalIncomingDamage += totalIncomingTemp;
+		new theCount = LivingSurvivorCount();
+		if (theCount >= iSurvivorModifierRequired) totalIncomingDamage += RoundToCeil(totalIncomingDamage * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+
+		new DamageShield = 0;
+		if (IsClientInRangeSpecialAmmo(victim, "D") == -2.0) DamageShield = RoundToCeil(totalIncomingDamage * IsClientInRangeSpecialAmmo(victim, "D", false, _, totalIncomingDamage * 1.0));
+		if (DamageShield > 0) {
+			totalIncomingDamage -= DamageShield;
+			if (totalIncomingDamage < 0) return -1;
+		}
+		new Float:TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
+		if (TheAbilityMultiplier >= 1.0) return -1;
+		if (TheAbilityMultiplier > 0.0) totalIncomingDamage -= RoundToCeil(totalIncomingDamage * TheAbilityMultiplier); // Damage received is reduced by the amount.
+		totalIncomingDamage -= RoundToCeil(totalIncomingDamage * GetAbilityStrengthByTrigger(victim, attacker, "L", _, totalIncomingDamage, _, _, "o", _, true));
+		if (CheckActiveAbility(victim, totalIncomingDamage, 1) > 0.0) {
+			SetClientTotalHealth(victim, totalIncomingDamage);
+			AddSpecialInfectedDamage(victim, attacker, totalIncomingDamage, true);	// bool is tanking instead.
+		}
+		if (FindZombieClass(attacker) == ZOMBIECLASS_TANK) CheckTankSubroutine(attacker, victim, totalIncomingDamage);
+		if (IsFakeClient(attacker)) {
+			if (IsSurvivalMode || RPGRoundTime() < iEnrageTime) Points_Director += (totalIncomingDamage * fPointsMultiplierInfected);
+			else Points_Director += ((totalIncomingDamage * fPointsMultiplierInfected) * fEnrageDirectorPoints);
+		}
+		new bool:bIsInfectedSwarm = false;
+		decl String:weapon[64];
+		FindPlayerWeapon(attacker, weapon, sizeof(weapon));
+		if (StrEqual(weapon, "insect_swarm")) bIsInfectedSwarm = true;
+		if (L4D2_GetSurvivorVictim(attacker) != -1) GetAbilityStrengthByTrigger(attacker, victim, "v", FindZombieClass(attacker), totalIncomingDamage);
+		if (bIsInfectedSwarm) GetAbilityStrengthByTrigger(attacker, victim, "T", FindZombieClass(attacker), totalIncomingDamage);
+		else GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), totalIncomingDamage);
+		GetAbilityStrengthByTrigger(attacker, victim, "D", FindZombieClass(attacker), totalIncomingDamage);
+		if (L4D2_GetInfectedAttacker(victim) == attacker) GetAbilityStrengthByTrigger(victim, attacker, "s", FindZombieClass(victim), totalIncomingDamage);
+		if (L4D2_GetInfectedAttacker(victim) != -1 && L4D2_GetInfectedAttacker(victim) != attacker) {
+
+			// If the infected player dealing the damage isn't the player hurting the victim, we give the victim a chance to strike at both! This is balance!
+			GetAbilityStrengthByTrigger(victim, L4D2_GetInfectedAttacker(victim), "V", FindZombieClass(victim), totalIncomingDamage);
+			if (attacker != L4D2_GetInfectedAttacker(victim)) GetAbilityStrengthByTrigger(victim, attacker, "V", FindZombieClass(victim), totalIncomingDamage);
+		}
+		new ReflectIncomingDamage = 0;
+		if (!bIsInfectedSwarm && IsClientInRangeSpecialAmmo(victim, "R") == -2.0) ReflectIncomingDamage = RoundToCeil(totalIncomingDamage * IsClientInRangeSpecialAmmo(victim, "R", false, _, totalIncomingDamage * 1.0));
+		if (ReflectIncomingDamage > 0) AddSpecialInfectedDamage(victim, attacker, ReflectIncomingDamage);
+	}
+	return 1;
+}
+
+stock IfSurvivorIsAttackerDoStuff(attacker, victim, baseWeaponDamage, damagetype) {
+	if (!IsLegitimateClient(attacker) || (GetClientTeam(attacker) != TEAM_SURVIVOR && !IsSurvivorBot(attacker))) return 0;
+	if (IsSpecialCommon(victim) || IsWitch(victim) || IsLegitimateClientAlive(victim)) {
+		if (LastAttackedUser[attacker] == victim) ConsecutiveHits[attacker]++;
+		else {
+			LastAttackedUser[attacker] = victim;
+			ConsecutiveHits[attacker] = 0;
+		}
+	}
+	// we need to move last weapon damage, or record lastweaponbasedamage and lastweaponbuffdamage.
+	if (baseWeaponDamage < 1) baseWeaponDamage = 1;
+	LastWeaponDamage[attacker] = baseWeaponDamage;
+	if (iDisplayHealthBars == 1) DisplayInfectedHealthBars(attacker, victim);
+	if (TryToDamageNonPlayerInfected(attacker, victim, baseWeaponDamage) > 1) {
+		SDKUnhook(victim, SDKHook_OnTakeDamage, OnTakeDamage);
+		return -2;
+	}
+	if (TryToDamagePlayerInfected(attacker, victim, baseWeaponDamage, damagetype) == -1) return -1;
+	if (IsSpecialCommonInRange(attacker, 'd') && (damagetype & DMG_BULLET)) SetClientTotalHealth(attacker, baseWeaponDamage);
+	
+	decl String:weapon[64];
+	FindPlayerWeapon(attacker, weapon, sizeof(weapon));
+	if ((StrContains(weapon, "melee", false) != -1 || StrContains(weapon, "chainsaw", false) != -1) && bIsMeleeCooldown[attacker]) return -1;
+	return 0;
+}
+
+stock TryToDamagePlayerInfected(attacker, victim, baseWeaponDamage, damagetype) {
+	if (!IsLegitimateClient(victim) || GetClientTeam(victim) != TEAM_INFECTED) return 0;
+	if (L4D2_GetSurvivorVictim(victim) != -1) GetAbilityStrengthByTrigger(victim, attacker, "t", FindZombieClass(victim), baseWeaponDamage);
+	decl String:weapon[64];
+	FindPlayerWeapon(attacker, weapon, sizeof(weapon));
+	new bool:bIsMeleeAttack = IsMeleeAttacker(attacker);
+	if ((((StrContains(weapon, "molotov", false) != -1 || (damagetype & DMG_BURN)) && iIsSpecialFire != 1) || (!bIsMeleeAttack && TankState[victim] == TANKSTATE_DEATH)) && IsPlayerAlive(victim)) return -1;
+	if (StrContains(weapon, "molotov", false) != -1 || !IsPlayerAlive(victim) || RestrictedWeaponList(weapon)) return 0;
+	if ((StrContains(weapon, "melee", false) != -1 || StrContains(weapon, "chainsaw", false) != -1) && !bIsMeleeCooldown[attacker]) {
+		bIsMeleeCooldown[attacker] = true;
+		CreateTimer(0.05, Timer_IsMeleeCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
+	}
+	GetAbilityStrengthByTrigger(attacker, victim, "D", FindZombieClass(attacker), baseWeaponDamage);
+	GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), baseWeaponDamage);
+	
+	if (FindZombieClass(victim) == ZOMBIECLASS_TANK) CheckTankSubroutine(victim, attacker, baseWeaponDamage, true);
+	if (IsLegitimateClientAlive(victim)) AddSpecialInfectedDamage(attacker, victim, baseWeaponDamage);
+	CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
+	return 1;
+}
+
+stock TryToDamageNonPlayerInfected(attacker, victim, baseWeaponDamage) {
+	if (!IsWitch(victim) && !IsCommonInfected(victim)) return 0;
+	decl String:weapon[64];
+	decl String:TheCommonValue[10];
+	FindPlayerWeapon(attacker, weapon, sizeof(weapon));
+	if (StrContains(weapon, "melee", false) == -1 && StrContains(weapon, "chainsaw", false) == -1 || !bIsMeleeCooldown[attacker]) {
+		if (StrContains(weapon, "melee", false) != -1 || StrContains(weapon, "chainsaw", false) != -1) {
+			bIsMeleeCooldown[attacker] = true;				
+			CreateTimer(0.05, Timer_IsMeleeCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
+		}
+		GetAbilityStrengthByTrigger(attacker, victim, "D", FindZombieClass(attacker), baseWeaponDamage);
+		GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), baseWeaponDamage);
+		if (IsWitch(victim)) {
+			if (FindListPositionByEntity(victim, Handle:WitchList) >= 0) {
+				AddWitchDamage(attacker, victim, baseWeaponDamage);
+				if (GetEntProp(victim, Prop_Send, "m_mobRush") < 1) SetEntProp(victim, Prop_Send, "m_mobRush", 1);
+			}
+		}
+		else if (IsSpecialCommon(victim)) AddSpecialCommonDamage(attacker, victim, baseWeaponDamage);
+		else if (IsCommonInfected(victim)) {
+			AddCommonInfectedDamage(attacker, victim, baseWeaponDamage);
+			if (IsCommonInfectedDead(victim)) return baseWeaponDamage;
+		}
+		if (CheckTeammateDamages(victim, attacker) < 1.0) {
+			if (IsSpecialCommon(victim)) {
+				GetCommonValue(TheCommonValue, sizeof(TheCommonValue), victim, "damage effect?");
+				// The bomber explosion initially targets itself so that the chain-reaction (if enabled) doesn't go indefinitely.
+				if (StrContains(TheCommonValue, "f", true) != -1) CreateDamageStatusEffect(victim, _, attacker, baseWeaponDamage);
+				// Cannot trigger on survivor bots because they're frankly too stupid and it wouldn't be fair.
+				if (!IsSurvivorBot(attacker) && StrContains(TheCommonValue, "d", true) != -1) CreateDamageStatusEffect(victim, 3, attacker, baseWeaponDamage);		// attacker is not target but just used to pass for reference.
+			}
+		}
+		CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
+	}
+	return 1;
 }
 
 stock bool:IsSurvivor(client) {
@@ -947,6 +1204,7 @@ public Action:Hook_SetTransmit(entity, client) {
  */
 
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, &damagetype) {
+	//PrintToChatAll("damage: %3.3f", damage_ignore);
 
 //stock OnTakeDamage(victim, attacker, inflictor, Float:damage, damagetype) {
 
@@ -982,7 +1240,6 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 	decl String:ModelName[64];
 	decl String:TheMapName[64];
 	GetCurrentMap(TheMapName, sizeof(TheMapName));
-	new bool:bIsMeleeAttack = false;
 
 	if (IsLegitimateClientAlive(attacker) && b_IsLoading[attacker] && GetClientTeam(attacker) == TEAM_SURVIVOR) {
 
@@ -1148,29 +1405,20 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 	if (IsWitch(attacker) && IsLegitimateClient(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim))) {
 
 		new i_WitchDamage = iWitchDamageInitial;
-		if (IsSpecialCommonInRange(attacker, 'b')) {
-
-			i_WitchDamage += GetSpecialCommonDamage(i_WitchDamage, attacker, 'b', victim);
-		}
-
+		if (IsSpecialCommonInRange(attacker, 'b')) i_WitchDamage += GetSpecialCommonDamage(i_WitchDamage, attacker, 'b', victim);
 		if (fWitchDamageScaleLevel > 0.0 && iRPGMode >= 1) {
-
 			if (iBotLevelType == 0) i_WitchDamage += RoundToCeil(fWitchDamageScaleLevel * GetDifficultyRating(victim));
 			else i_WitchDamage += RoundToCeil(fWitchDamageScaleLevel * SurvivorLevels());
 		}
 		
 		if (theCount >= iSurvivorModifierRequired) i_WitchDamage += RoundToCeil(i_WitchDamage * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
-		
 		if (IsClientInRangeSpecialAmmo(victim, "D") == -2.0) DamageShield = RoundToCeil(i_WitchDamage * IsClientInRangeSpecialAmmo(victim, "D", false, _, i_WitchDamage * 1.0));
 		if (DamageShield > 0) {
-
 			i_WitchDamage -= DamageShield;
 			if (i_WitchDamage < 0) i_WitchDamage = 0;
 		}
-
 		TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
 		if (TheAbilityMultiplier >= 1.0) {	// Damage taken reduced to 0.
-
 			damage_ignore = 0.0;
 			return Plugin_Handled;
 		}
@@ -1199,539 +1447,31 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 			//IgnoreTeam = 5;
 		}
 	}
-	if ((attacker < 1 || !IsClientActual(attacker)) && IsLegitimateClient(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim))) {
-
-		new Float:CommonDamageScaleLevel = fCommonDamageLevel;
-		
-		if (IsLegitimateClientAlive(victim)) b_IsDead[victim] = false;
-		//if (ActiveProgressBar(victim))
-
-		if (IsCommonInfected(attacker)) {
-
-			//new CommonsDamage = RoundToCeil(damage);
-			new CommonsDamage = iCommonInfectedBaseDamage;
-			if (IsSpecialCommonInRange(attacker, 'b')) {
-
-				CommonsDamage += GetSpecialCommonDamage(CommonsDamage, attacker, 'b', victim);
-			}
-			if (!(damagetype & DMG_DIRECT)) {
-
-				if (b_IsJumping[victim]) ModifyGravity(victim);
-							
-				//new CommonsDamage = RoundToCeil(damage);
-				if (CommonDamageScaleLevel > 0.0) {
-
-					if (iBotLevelType == 0 && iRPGMode >= 1) {
-
-						CommonsDamage = RoundToCeil(CommonsDamage * (CommonDamageScaleLevel * GetDifficultyRating(victim)));
-					}
-					else {
-
-						CommonsDamage = RoundToCeil(CommonsDamage * (CommonDamageScaleLevel * SurvivorLevels()));
-					}
-				}
-				
-				// Commented this out because I don't know why it's here...
-				/*if (L4D2_GetInfectedAttacker(victim) != -1) {
-
-					new eInfectedAttacker = L4D2_GetInfectedAttacker(victim);
-
-					isEntityPos = FindListPositionByEntity(eInfectedAttacker, Handle:InfectedHealth[victim]);
-
-					if (isEntityPos < 0) {
-
-						//isArraySize = GetArraySize(Handle:InfectedHealth[victim]);
-						isEntityPos = InsertInfected(victim, eInfectedAttacker);
-					}
-					else if (isEntityPos >= 0 && GetArraySize(InfectedHealth[victim]) > isEntityPos) SetArrayCell(Handle:InfectedHealth[victim], isEntityPos, GetArrayCell(Handle:InfectedHealth[victim], isEntityPos, 3) + CommonsDamage, 3);
-				}*/
-				if (theCount >= iSurvivorModifierRequired) CommonsDamage += RoundToCeil(CommonsDamage * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));				
-				if (IsClientInRangeSpecialAmmo(victim, "D") == -2.0) DamageShield = RoundToCeil(CommonsDamage * IsClientInRangeSpecialAmmo(victim, "D", false, _, CommonsDamage * 1.0));
-				if (DamageShield > 0) {
-
-					CommonsDamage -= DamageShield;
-					if (CommonsDamage < 0) CommonsDamage = 0;
-				}
-				TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
-				if (TheAbilityMultiplier >= 1.0) {	// Damage taken reduced to 0.
-
-					damage_ignore = 0.0;
-					return Plugin_Handled;
-				}
-				else if (TheAbilityMultiplier > 0.0) {	// Damage received is reduced by the amount.
-
-					CommonsDamage -= RoundToCeil(CommonsDamage * TheAbilityMultiplier);
-				}
-				absorbTalentStrength = GetAbilityStrengthByTrigger(victim, attacker, "L", _, CommonsDamage, _, _, "o", _, true); // true means we just get the result and don't execute the ability.
-				CommonsDamage -= RoundToCeil(CommonsDamage * absorbTalentStrength);
-
-
-				if (IsSurvivalMode || RPGRoundTime() < iEnrageTime) Points_Director += (fCommonDirectorPoints * CommonsDamage);
-				else Points_Director += (fEnrageDirectorPoints * CommonsDamage);
-
-				GetAbilityStrengthByTrigger(victim, attacker, "Y", FindZombieClass(victim), CommonsDamage);
-				SetClientTotalHealth(victim, CommonsDamage); //SetEntityHealth(victim, GetClientHealth(victim) - CommonsDamage);
-				ReceiveCommonDamage(victim, attacker, CommonsDamage);
-				GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), CommonsDamage);
-			}
-			if (IsSpecialCommon(attacker)) {
-
-				decl String:slevelrequired[10];
-				GetCommonValue(slevelrequired, sizeof(slevelrequired), attacker, "level required?");
-				if (PlayerLevel[victim] >= StringToInt(slevelrequired)) {
-
-					GetCommonValue(TheCommonValue, sizeof(TheCommonValue), attacker, "aura effect?");
-
-					// Flamers explode when they receive or take damage.
-					if (StrContains(TheCommonValue, "f", true) != -1) {
-
-						CreateDamageStatusEffect(attacker, _, victim, CommonsDamage);
-					}
-					if (StrContains(TheCommonValue, "a", true) != -1) {
-
-						//CreateDamageStatusEffect(attacker, 4, victim, CommonsDamage);
-						CreateBomberExplosion(attacker, victim, TheCommonValue, CommonsDamage);
-					}
-					if (StrContains(TheCommonValue, "E", true) != -1) {
-
-						decl String:deatheffectshappen[10];
-						GetCommonValue(deatheffectshappen, sizeof(deatheffectshappen), attacker, "death effect?");
-
-						CreateDamageStatusEffect(attacker, _, victim, CommonsDamage);
-						CreateBomberExplosion(attacker, victim, deatheffectshappen);
-						ClearSpecialCommon(attacker, _, CommonsDamage);
-					}
-				}
-			}
-			//if (IsClientInRangeSpecialAmmo(victim, "R") == -2.0) {
-
-			if (IsClientInRangeSpecialAmmo(victim, "R") == -2.0) BuffDamage = RoundToCeil(CommonsDamage * IsClientInRangeSpecialAmmo(victim, "R", false, _, CommonsDamage * 1.0));
-			if (BuffDamage > 0) {
-
-				if (IsCommonInfected(attacker) && !IsSpecialCommon(attacker)) {
-
-					//IgnoreDamage = AddCommonInfectedDamage(victim, attacker, BuffDamage);
-					AddCommonInfectedDamage(victim, attacker, BuffDamage);
-					//IgnoreTeam = 5;
-				}
-				else if (IsSpecialCommon(attacker)) {
-
-					GetCommonValue(TheCommonValue, sizeof(TheCommonValue), attacker, "aura effect?");
-
-					if (StrContains(TheCommonValue, "d", true) == -1 || IsSurvivorBot(victim))	{
-
-						//IgnoreDamage = AddSpecialCommonDamage(victim, attacker, BuffDamage);
-						AddSpecialCommonDamage(victim, attacker, BuffDamage);
-						//IgnoreTeam = 5;
-					}
-					else {	// if a player tries to reflect damage at a reflector, it's moot (ie reflects back to the player) so in this case the player takes double damage, though that's after mitigations.
-
-						SetClientTotalHealth(victim, BuffDamage);
-						ReceiveCommonDamage(victim, attacker, BuffDamage);
-					}
-				}
-			}
-		}
+	if (IfCommonInfectedIsAttackerDoStuff(attacker, victim, damagetype) == -1) {
+		damage_ignore = 0.0;
+		return Plugin_Handled;
 	}
-
+	
  	decl String:weapon[64];
  	//new StaminaCost = 0;
  	//new baseWeaponTemp = 0;
- 	if (IsLegitimateClient(attacker) && (GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker))) {
-
- 		bIsMeleeAttack = IsMeleeAttacker(attacker);
-
- 		if (IsSpecialCommon(victim) || IsWitch(victim) || IsLegitimateClientAlive(victim)) {
-
- 			if (LastAttackedUser[attacker] == victim) ConsecutiveHits[attacker]++;
-			else {
-
-				LastAttackedUser[attacker] = victim;
-				ConsecutiveHits[attacker] = 0;
-			}
-		}
-
- 		//Someday we'll do more common infected stuff here.
- 		GetClientWeapon(attacker, weapon, sizeof(weapon));
- 		LastWeaponDamage[attacker] = baseWeaponDamage;
-
- 		TheAbilityMultiplier = GetAbilityMultiplier(attacker, "N");
-		if (TheAbilityMultiplier != -1.0) {
-
-			if (TheAbilityMultiplier <= 0.0) {	// Damage dealt reduced to 0
-
-				damage_ignore = 0.0;
-				return Plugin_Handled;
-			}
-			else if (TheAbilityMultiplier > 0.0) { // damage dealt is increased
-
-				baseWeaponDamage += RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
-			}
-		}
-		if (baseWeaponDamage < 1) baseWeaponDamage = 1;
-
-		TheAbilityMultiplier = GetAbilityMultiplier(attacker, "C");
-		if (TheAbilityMultiplier != -1.0) {
-
-			new Float:MaxMultiplier = GetAbilityMultiplier(attacker, "C", 3);
-
-			if (ConsecutiveHits[attacker] > 0) TheAbilityMultiplier *= ConsecutiveHits[attacker];
-			if (TheAbilityMultiplier > MaxMultiplier) TheAbilityMultiplier = MaxMultiplier;
-
-			/*if (TheAbilityMultiplier <= 0.0) {	// Damage dealt reduced to 0
-
-				damage_ignore = 0.0;
-				return Plugin_Handled;
-			}*/
-			if (TheAbilityMultiplier > 0.0) { // damage dealt is increased
-
-				baseWeaponDamage += RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
-			}
-		}
-
-		if (!(GetEntityFlags(attacker) & FL_ONGROUND)) {
-
-			TheAbilityMultiplier = GetAbilityMultiplier(attacker, "K");
-			if (TheAbilityMultiplier != -1.0) {
-
-				baseWeaponDamage += RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
-			}
-		}
-
-		if ((GetEntityFlags(attacker) & FL_INWATER)) {
-
-			TheAbilityMultiplier = GetAbilityMultiplier(attacker, "a");
-			if (TheAbilityMultiplier != -1.0) {
-
-				baseWeaponDamage += RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
-			}
-		}
-
-		if ((GetEntityFlags(attacker) & FL_ONFIRE)) {
-
-			TheAbilityMultiplier = GetAbilityMultiplier(attacker, "f");
-			if (TheAbilityMultiplier != -1.0) {
-
-				baseWeaponDamage += RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
-			}
-		}
-
-		if (baseWeaponDamage < 1) baseWeaponDamage = 1;
-
- 		if (IsWitch(victim) || IsSpecialCommon(victim) || IsCommonInfected(victim)) {
-
- 			//decl String:ModelName[64];
- 			Format(ModelName, sizeof(ModelName), "-1");
- 			GetEntPropString(victim, Prop_Data, "m_ModelName", ModelName, sizeof(ModelName));
-	 		Format(weapon, sizeof(weapon), "%s", FindPlayerWeapon(attacker));
-			if (StrContains(weapon, "melee", false) == -1 && StrContains(weapon, "chainsaw", false) == -1 || !bIsMeleeCooldown[attacker]) {
-
-				if (StrContains(weapon, "melee", false) != -1 || StrContains(weapon, "chainsaw", false) != -1) {
-
-					bIsMeleeCooldown[attacker] = true;				
-					CreateTimer(0.05, Timer_IsMeleeCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
-					//GetAbilityStrengthByTrigger(attacker, victim, 'b', FindZombieClass(attacker), baseWeaponDamage);	// striking a player with a melee weapon
-					//GetAbilityStrengthByTrigger(victim, attacker, 'B', FindZombieClass(victim), baseWeaponDamage);	// being struck by a melee weapon
-				}
-				GetAbilityStrengthByTrigger(attacker, victim, "D", FindZombieClass(attacker), baseWeaponDamage);
-				GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), baseWeaponDamage);
-				//if (!bIsMeleeAttack) AddTalentExperience(attacker, "agility", baseWeaponDamage);
-				//else AddTalentExperience(attacker, "constitution", baseWeaponDamage);
-				//}
-				if (IsWitch(victim)) {
-
-					if (FindListPositionByEntity(victim, Handle:WitchList) >= 0) {
-
-						new WitchActive = GetEntProp(victim, Prop_Send, "m_mobRush");
-						if (WitchActive < 1) SetEntProp(victim, Prop_Send, "m_mobRush", 1);
-
-						//IgnoreDamage = AddWitchDamage(attacker, victim, baseWeaponDamage);
-						AddWitchDamage(attacker, victim, baseWeaponDamage);
-						//IgnoreTeam = 4;
-					}
-					//else OnWitchCreated(victim, true);
-				}
-				else if (IsSpecialCommon(victim)) {
-
-					//IgnoreDamage = AddSpecialCommonDamage(attacker, victim, baseWeaponDamage);
-					AddSpecialCommonDamage(attacker, victim, baseWeaponDamage);
-					//IgnoreTeam = 4;
-				}
-				else if (IsCommonInfected(victim)) {
-
-					//IgnoreDamage = AddCommonInfectedDamage(attacker, victim, baseWeaponDamage);
-					AddCommonInfectedDamage(attacker, victim, baseWeaponDamage);
-					if (IsCommonInfectedDead(victim))  {
-
-						SDKUnhook(victim, SDKHook_OnTakeDamage, OnTakeDamage);
-						damage_ignore = (baseWeaponDamage * 1.0);
-						return Plugin_Changed;
-					}
-					//IgnoreTeam = 4;
-				}
-				if (iDisplayHealthBars == 1) {
-
-					DisplayInfectedHealthBars(attacker, victim);
-				}
-				if (CheckTeammateDamages(victim, attacker) >= 1.0 ||
-					CheckTeammateDamages(victim, attacker, true) >= 1.0) {
-
-					if (IsWitch(victim)) OnWitchCreated(victim, true);
-					else if (IsSpecialCommon(victim)) {
-
-						if (IsIncapacitated(attacker)) GetAbilityStrengthByTrigger(attacker, victim, "K", FindZombieClass(attacker), baseWeaponDamage);
-						ClearSpecialCommon(victim, _, baseWeaponDamage, attacker);
-					}
-					else if (IsCommonInfected(victim)) {
-
-						OnCommonInfectedCreated(victim, true, attacker);
-					}
-				}
-				else {
-
-					/*
-
-							So the player / common took damage.
-					*/
-					if (IsSpecialCommon(victim)) {
-
-						GetCommonValue(TheCommonValue, sizeof(TheCommonValue), victim, "damage effect?");
-
-						// The bomber explosion initially targets itself so that the chain-reaction (if enabled) doesn't go indefinitely.
-						if (StrContains(TheCommonValue, "f", true) != -1) {
-
-							CreateDamageStatusEffect(victim, _, attacker, baseWeaponDamage);
-						}
-						if (!IsSurvivorBot(attacker) && StrContains(TheCommonValue, "d", true) != -1) {
-
-							CreateDamageStatusEffect(victim, 3, attacker, baseWeaponDamage);		// attacker is not target but just used to pass for reference.
-						}
-					}
-				}
-			}
-			CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
-		}
-		else if (IsLegitimateClient(victim) && GetClientTeam(victim) == TEAM_INFECTED) {//} && !(damagetype & DMG_DIRECT)) {
-
-			if (L4D2_GetSurvivorVictim(victim) != -1) GetAbilityStrengthByTrigger(victim, attacker, "t", FindZombieClass(victim), baseWeaponDamage);
-
-			if ((((StrContains(weapon, "molotov", false) != -1 || (damagetype & DMG_BURN)) && iIsSpecialFire != 1) || (!bIsMeleeAttack && TankState[victim] == TANKSTATE_DEATH)) && IsPlayerAlive(victim)) {
-
-				damage_ignore = 0.0;	// *reference to damage
-				return Plugin_Handled;
-			}
-			if (StrContains(weapon, "molotov", false) == -1 && IsPlayerAlive(victim) && !RestrictedWeaponList(weapon)) {
-
-				if ((StrContains(weapon, "melee", false) != -1 || StrContains(weapon, "chainsaw", false) != -1) && !bIsMeleeCooldown[attacker]) {
-
-					bIsMeleeCooldown[attacker] = true;
-					CreateTimer(0.05, Timer_IsMeleeCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
-					//GetAbilityStrengthByTrigger(attacker, victim, 'b', FindZombieClass(attacker), baseWeaponDamage);	// striking a player with a melee weapon
-					//GetAbilityStrengthByTrigger(victim, attacker, 'B', FindZombieClass(victim), baseWeaponDamage);	// being struck by a melee weapon
-				}
-				GetAbilityStrengthByTrigger(attacker, victim, "D", FindZombieClass(attacker), baseWeaponDamage);
-				GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), baseWeaponDamage);
-				
-				if (FindZombieClass(victim) == ZOMBIECLASS_TANK) CheckTankSubroutine(victim, attacker, baseWeaponDamage, true);
-				if (IsLegitimateClientAlive(victim)) {
-					//if (!bIsMeleeAttack) AddTalentExperience(attacker, "agility", baseWeaponDamage);
-					//else AddTalentExperience(attacker, "constitution", baseWeaponDamage);
-					AddSpecialInfectedDamage(attacker, victim, baseWeaponDamage);
-				}
-				if (iDisplayHealthBars == 1) {
-
-					DisplayInfectedHealthBars(attacker, victim);
-				}
-				CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
-				//CheckTeammateDamagesEx(attacker, victim, baseWeaponDamage);
-			}
-		}
- 		if (IsSpecialCommonInRange(attacker, 'd') && (damagetype & DMG_BULLET)) {
-
- 			SetClientTotalHealth(attacker, baseWeaponDamage);// CreateDamageStatusEffect(attacker, 3, attacker, baseWeaponDamage);
- 		}
- 		if (IsLegitimateClientAlive(victim) && (GetClientTeam(victim) != GetClientTeam(attacker) || iIsPvpServer == 1) || IsCommonInfected(victim) || IsWitch(victim)) {
-
-	 		//if (damagetype & DMG_BLAST) GetAbilityStrengthByTrigger(attacker, victim, 'S', FindZombieClass(attacker), baseWeaponDamage);
-	 		//if (damagetype & DMG_CLUB) GetAbilityStrengthByTrigger(attacker, victim, 'U', FindZombieClass(attacker), baseWeaponDamage);
-	 		//if (damagetype & DMG_SLASH) GetAbilityStrengthByTrigger(attacker, victim, 'u', FindZombieClass(attacker), baseWeaponDamage);
-	 		//if (damagetype & DMG_BURN) DoBurn(attacker, victim, baseWeaponDamage);
-	 	}
- 		if (baseWeaponDamage == -1) {
-
- 			damage_ignore = 0.0;
- 			return Plugin_Handled;
- 		}
- 		/*if (GetConfigValueInt("special ammo requires target?") == 1 && (damagetype & DMG_BULLET)) {
-
- 			//Bullets trigger special ammo.
- 			if (HasSpecialAmmo(attacker) && IsSpecialAmmoEnabled[attacker][0] == 1.0) {
-
- 				if (DrawSpecialAmmoTarget(attacker, _, true) == 1) {
-
- 					StaminaCost = RoundToCeil(GetSpecialAmmoStrength(attacker, ActiveSpecialAmmo[attacker], 2));
- 					if (SurvivorStamina[attacker] >= StaminaCost) {
-
- 						//if (CheckActiveAmmoCooldown(attacker, ActiveSpecialAmmo[attacker]) == 1) {
- 						if (!IsAmmoActive(attacker, ActiveSpecialAmmo[attacker])) {
-	 					//if (CreateActiveTime(attacker, ActiveSpecialAmmo[attacker], GetSpecialAmmoStrength(attacker, ActiveSpecialAmmo[attacker])) == 1) {
-
-	 						if (TriggerSpecialAmmo(attacker, victim, baseWeaponDamage, GetSpecialAmmoStrength(attacker, ActiveSpecialAmmo[attacker]), GetSpecialAmmoStrength(attacker, ActiveSpecialAmmo[attacker], 4))) {
-
-		 						SurvivorStamina[attacker] -= StaminaCost;
-								if (SurvivorStamina[attacker] <= 0) {
-
-									bIsSurvivorFatigue[attacker] = true;
-									IsSpecialAmmoEnabled[attacker][0] = 0.0;
-								}
-							}
-						}
-	 				}
-		 		}
- 			}
- 		}*/
- 		if ((StrContains(weapon, "melee", false) != -1 || StrContains(weapon, "chainsaw", false) != -1) && bIsMeleeCooldown[attacker]) {
-
- 			damage_ignore = 0.0;
-			return Plugin_Handled;
- 		}
- 	}
-
+	new survivorResult = IfSurvivorIsAttackerDoStuff(attacker, victim, baseWeaponDamage, damagetype);
+	if (survivorResult == -1) {
+		damage_ignore = 0.0;
+		return Plugin_Handled;
+	}
+	if (survivorResult == -2) {
+		damage_ignore = (baseWeaponDamage * 1.0);
+		return Plugin_Changed;
+	}
  	if (SameTeam_OnTakeDamage(attacker, victim, baseWeaponDamage, _, damagetype)) {
 
  		damage_ignore = 0.0;
  		return Plugin_Handled;
  	}
- 	if (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_INFECTED && IsLegitimateClient(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim))) {// && !(damagetype & DMG_DIRECT)) {
-
- 		//CombatTime[victim] = GetEngineTime() + StringToFloat(GetConfigValue("out of combat time?"));
- 		CombatTime[victim] = GetEngineTime() + fOutOfCombatTime;
- 		if (b_IsJumping[victim]) ModifyGravity(victim);
-		//new totalIncomingDamage = RoundToCeil(damage);
-		new myzombieclass = FindZombieClass(attacker);
-		new totalIncomingDamage = (myzombieclass != ZOMBIECLASS_TANK) ? iBaseSpecialDamage[myzombieclass - 1] : iBaseSpecialDamage[myzombieclass - 2];
-		if (IsSpecialCommonInRange(attacker, 'b')) {
-
-			totalIncomingDamage += GetSpecialCommonDamage(totalIncomingDamage, attacker, 'b', victim);
-		}
-		new MaxLevelCalc = iMaxDifficultyLevel;
-				
-		//Incoming Damage is calculated a very specific way, so that handicap is always the final calculation.
-		if (iRPGMode >= 1) {
-
-			//Format(idpLevel, sizeof(idpLevel), "(%d) damage player level?", FindZombieClass(attacker));
-			
-			if (iBotLevelType == 1) {
-
-				if (myzombieclass != ZOMBIECLASS_TANK) totalIncomingDamage += RoundToFloor(totalIncomingDamage * (SurvivorLevels() * fDamagePlayerLevel[myzombieclass - 1]));
-				else totalIncomingDamage += RoundToFloor(totalIncomingDamage * (SurvivorLevels() * fDamagePlayerLevel[myzombieclass - 2]));
-			}
-			else {
-
-				if (PlayerLevel[victim] < MaxLevelCalc) MaxLevelCalc = PlayerLevel[victim];
-				if (myzombieclass != ZOMBIECLASS_TANK) totalIncomingDamage += RoundToFloor(totalIncomingDamage * (GetDifficultyRating(victim) * fDamagePlayerLevel[myzombieclass - 1]));
-				else totalIncomingDamage += RoundToFloor(totalIncomingDamage * (GetDifficultyRating(victim) * fDamagePlayerLevel[myzombieclass - 2]));
-			}
-		}
-
-		//decl String:s_findZombie[64];
-		/*if (HandicapLevel[victim] != -1) {
-
-			//Format(s_findZombie, sizeof(s_findZombie), "(%d) damage increase?", FindZombieClass(attacker));
-			//new Float:f_InfectedHealthMultiplier = StringToFloat(GetConfigValue(s_findZombie)) * HandicapLevel[victim];
-			//totalIncomingDamage += RoundToCeil(totalIncomingDamage * f_InfectedHealthMultiplier);
-			Format(s_findZombie, sizeof(s_findZombie), "(%d) new damage?", FindZombieClass(attacker));
-			totalIncomingDamage += RoundToCeil(totalIncomingDamage * GetHandicapStrength(s_findZombie, HandicapLevel[victim]));
-		}*/
-		//LogToFile(LogPathDirectory, "[INFECTED DAMAGE] %N hits %N for %d", attacker, victim, totalIncomingDamage);
-
-		//if (totalIncomingDamage >= GetClientTotalHealth(victim)) IncapacitateOrKill(victim, attacker, totalIncomingDamage);
-		//else
-		new totalIncomingTemp = 0;
-
-		// INFECTED MULTIPLIERS FOR VERSUS AND COOP
-
-		// berserk ammo affects both the attacker and the victim (increases the attackers damage and increases the damage the victim receives)
-		if (IsClientInRangeSpecialAmmo(victim, "E") == -2.0) totalIncomingTemp = RoundToCeil(totalIncomingDamage * IsClientInRangeSpecialAmmo(victim, "E", false, _, totalIncomingDamage * 1.0));
-		if (totalIncomingTemp > 0) totalIncomingDamage += totalIncomingTemp;
-		if (IsClientInRangeSpecialAmmo(attacker, "E") == -2.0) totalIncomingTemp = RoundToCeil(totalIncomingDamage * IsClientInRangeSpecialAmmo(attacker, "E", false, _, totalIncomingDamage * 1.0));
-		if (totalIncomingTemp > 0) totalIncomingDamage += totalIncomingTemp;
-
-		if (theCount >= iSurvivorModifierRequired) totalIncomingDamage += RoundToCeil(totalIncomingDamage * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
-
-		if (IsClientInRangeSpecialAmmo(victim, "D") == -2.0) DamageShield = RoundToCeil(totalIncomingDamage * IsClientInRangeSpecialAmmo(victim, "D", false, _, totalIncomingDamage * 1.0));
-		if (DamageShield > 0) {
-
-			totalIncomingDamage -= DamageShield;
-			if (totalIncomingDamage < 0) totalIncomingDamage = 0;
-		}
-
-		TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
-		if (TheAbilityMultiplier >= 1.0) {	// Damage taken reduced to 0.
-
-			damage_ignore = 0.0;
-			return Plugin_Handled;
-		}
-		else if (TheAbilityMultiplier > 0.0) {	// Damage received is reduced by the amount.
-
-			totalIncomingDamage -= RoundToCeil(totalIncomingDamage * TheAbilityMultiplier);
-		}
-		absorbTalentStrength = GetAbilityStrengthByTrigger(victim, attacker, "L", _, totalIncomingDamage, _, _, "o", _, true); // true means we just get the result and don't execute the ability.
-		totalIncomingDamage -= RoundToCeil(totalIncomingDamage * absorbTalentStrength);
-
-		if (CheckActiveAbility(victim, totalIncomingDamage, 1) > 0.0) {
-
-			SetClientTotalHealth(victim, totalIncomingDamage);
-			AddSpecialInfectedDamage(victim, attacker, totalIncomingDamage, true);	// bool is tanking instead.
-		}
-
-		if (FindZombieClass(attacker) == ZOMBIECLASS_TANK) CheckTankSubroutine(attacker, victim, totalIncomingDamage);
-		//RoundDamageTotal += totalIncomingDamage;
-		//RoundDamage[attacker] += totalIncomingDamage;
-		//DamageAward[attacker][victim] += totalIncomingDamage;
-		if (IsFakeClient(attacker)) {
-
-			if (IsSurvivalMode || RPGRoundTime() < iEnrageTime) Points_Director += (totalIncomingDamage * fPointsMultiplierInfected);
-			else Points_Director += ((totalIncomingDamage * fPointsMultiplierInfected) * fEnrageDirectorPoints);
-
-			//ExperienceLevel_Bots += RoundToCeil(totalIncomingDamage * GetConfigValueFloat("experience multiplier infected?"));
-			//if (ExperienceLevel_Bots > CheckExperienceRequirement(-1)) ExperienceLevel_Bots = CheckExperienceRequirement(-1);
-		}
-
-		new bool:bIsInfectedSwarm = false;
-		if (StrEqual(weapon, "insect_swarm")) bIsInfectedSwarm = true;
-
-		if (L4D2_GetSurvivorVictim(attacker) != -1) GetAbilityStrengthByTrigger(attacker, victim, "v", FindZombieClass(attacker), totalIncomingDamage);
-		if (bIsInfectedSwarm) GetAbilityStrengthByTrigger(attacker, victim, "T", FindZombieClass(attacker), totalIncomingDamage);
-		else GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), totalIncomingDamage);
-		GetAbilityStrengthByTrigger(attacker, victim, "D", FindZombieClass(attacker), totalIncomingDamage);
-		if (L4D2_GetInfectedAttacker(victim) == attacker) GetAbilityStrengthByTrigger(victim, attacker, "s", FindZombieClass(victim), totalIncomingDamage);
-		if (L4D2_GetInfectedAttacker(victim) != -1 && L4D2_GetInfectedAttacker(victim) != attacker) {
-
-			// If the infected player dealing the damage isn't the player hurting the victim, we give the victim a chance to strike at both! This is balance!
-			GetAbilityStrengthByTrigger(victim, L4D2_GetInfectedAttacker(victim), "V", FindZombieClass(victim), totalIncomingDamage);
-			if (attacker != L4D2_GetInfectedAttacker(victim)) GetAbilityStrengthByTrigger(victim, attacker, "V", FindZombieClass(victim), totalIncomingDamage);
-		}
-		if (!bIsInfectedSwarm && IsClientInRangeSpecialAmmo(victim, "R") == -2.0) ReflectIncomingDamage = RoundToCeil(totalIncomingDamage * IsClientInRangeSpecialAmmo(victim, "R", false, _, totalIncomingDamage * 1.0));
-		if (ReflectIncomingDamage > 0) {
-
-			/*for (new i = 1; i <= MaxClients; i++) {
-
-				if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR && i != victim) {	// we don't allow the buffer to gain experience off their own buffs that are applied to themselves. (if they increase their damage, they'll get bonus xp from THAT)
-
-					IsClientInRangeSpecialAmmo(victim, "R", false, _, totalIncomingDamage * 1.0, i);			// this will reward each of the players who have buffed the individual with experience.
-				}
-			}*/
-			//IgnoreDamage = AddSpecialInfectedDamage(victim, attacker, ReflectIncomingDamage);
-			AddSpecialInfectedDamage(victim, attacker, ReflectIncomingDamage);
-			//IgnoreTeam = 2;
-		}
-		/*if ((damagetype & DMG_CRUSH)) {
-
-			bIsCrushCooldown[victim] = true;
-			LogMessage("%N crushed by an object for %d damage", victim, RoundToCeil(totalIncomingDamage));
-			CreateTimer(1.0, Timer_ResetCrushImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
-		}*/
+ 	if (IfInfectedIsAttackerDoStuff(attacker, victim) == -1) {
+		damage_ignore = 0.0;
+		return Plugin_Handled;
 	}
 	// IgnoreTeam = 1 when the attacker is survivor.
 	// IgnoreTeam = 2 when the attacker is infected.
@@ -1755,36 +1495,6 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 	}
 	damage_ignore = damage;
 	return Plugin_Changed;
-
-	//if (IgnoreDamage == 1) return -1;
-	//return 0;
-	/*if (IgnoreDamage == 1 || IgnoreTeam == 3 || IgnoreTeam == 2 && IsLegitimateClient(victim)) {
-
-		//if (IgnoreDamage == 1 && (IsWitch(victim) || IsCommonInfected(victim))) {
-
-			//if (GetInfectedHealth(victim) < 100) SetInfectedHealth(victim, 40000);
-			//damage_ignore = 1.0;
-			//return Plugin_Changed;
-			//return -1;
-		}
-		if ((damagetype & DMG_CRUSH) && IsLegitimateClientAlive(victim)) {
-
-			damage_ignore = 0.0;
-			return Plugin_Handled;
-		}
-		//damage_ignore = 0.0;
-		//return Plugin_Handled;
-		return -1;
-	}
-	else {
-
-		if (IgnoreTeam == 1 || IgnoreTeam == 2 || IgnoreTeam == 4) SetInfectedHealth(victim, 1);
-		else if (IgnoreTeam == 5) SetInfectedHealth(attacker, 1);
-
-		//damage_ignore = IgnoreDamage * 1.0;
-		//return Plugin_Changed;
-		return 0;
-	}*/
 }
 
 stock bool:IsMeleeAttacker(client) {
@@ -2021,81 +1731,55 @@ stock ThreatCalculator(client, iThreatAmount) {
 
 stock AddSpecialCommonDamage(client, entity, playerDamage, bool:IsStatusDamage = false, damagevariant = -1) {
 
-	if (!IsSpecialCommon(entity)) {
-
-		//ClearSpecialCommon(entity, _, playerDamage);
-		return 1;
-	}
+	if (!IsSpecialCommon(entity)) return 1;
 	new pos		= FindListPositionByEntity(entity, Handle:CommonList);
 	if (pos < 0) return 1;
-
 	new damageTotal = -1;
 	new healthTotal = -1;
-
 	new my_size	= GetArraySize(Handle:SpecialCommon[client]);
 	new my_pos	= FindListPositionByEntity(entity, Handle:SpecialCommon[client]);
-
-
 	if (my_pos >= 0 && playerDamage <= -1) {
-
 		// delete the mob.
 		RemoveFromArray(Handle:SpecialCommon[client], my_pos);
 		if (playerDamage == -2) return 0;
 		my_pos = -1;
 	}
 	if (my_pos < 0) {
-
 		new CommonHealth = GetCommonValueInt(entity, "base health?");
-
 		if (iBotLevelType == 1) CommonHealth += RoundToCeil(CommonHealth * (SurvivorLevels() * GetCommonValueFloat(entity, "health per level?")));
 		else CommonHealth += RoundToCeil(CommonHealth * (GetDifficultyRating(client) * GetCommonValueFloat(entity, "health per level?")));
-
 		// only add raid health if > 4 survivors.
 		new theCount = LivingSurvivorCount();
 		if (theCount >= iSurvivorModifierRequired) CommonHealth += RoundToCeil(CommonHealth * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
-
 		ResizeArray(Handle:SpecialCommon[client], my_size + 1);
 		SetArrayCell(Handle:SpecialCommon[client], my_size, entity, 0);
 		SetArrayCell(Handle:SpecialCommon[client], my_size, CommonHealth, 1);
 		SetArrayCell(Handle:SpecialCommon[client], my_size, 0, 2);
 		SetArrayCell(Handle:SpecialCommon[client], my_size, 0, 3);
 		SetArrayCell(Handle:SpecialCommon[client], my_size, 0, 4);
-
 		my_pos = my_size;
 	}
 	if (IsSpecialCommonInRange(entity, 't')) return 1;
 	if (playerDamage >= 0) {
-
 		damageTotal = GetArrayCell(Handle:SpecialCommon[client], my_pos, 2);
 		healthTotal = GetArrayCell(Handle:SpecialCommon[client], my_pos, 1);
-
 		new TrueHealthRemaining = RoundToCeil((1.0 - CheckTeammateDamages(entity, client)) * healthTotal);	// in case other players have damaged the mob - we can't just assume the remaining health without comparing to other players.
-		
 		if (damageTotal < 0) damageTotal = 0;
-
 		if (playerDamage > TrueHealthRemaining) playerDamage = TrueHealthRemaining;
 		SetArrayCell(Handle:SpecialCommon[client], my_pos, damageTotal + playerDamage, 2);
 		if (playerDamage > 0) {
-
 			GetProficiencyData(client, GetWeaponProficiencyType(client), RoundToCeil(playerDamage * fProficiencyExperienceEarned));
-
-			/*if (damagevariant == 1) AddTalentExperience(client, "endurance", playerDamage);
-			else if (damagevariant == -1) {
-
-				new bool:bIsMeleeAttack = IsMeleeAttacker(client);
-				if (!bIsMeleeAttack) AddTalentExperience(client, "agility", playerDamage);
-				else AddTalentExperience(client, "constitution", playerDamage);
-			}*/
 		}
 	}
 	else {
-
 		damageTotal = GetArrayCell(Handle:SpecialCommon[client], my_pos, 1);
 		SetArrayCell(Handle:SpecialCommon[client], my_pos, damageTotal + playerDamage, 1);
 	}
 	ThreatCalculator(client, playerDamage);
 	if (CheckIfEntityShouldDie(entity, client, playerDamage, IsStatusDamage) == 1) {
-
+		if (IsLegitimateClientAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR && IsIncapacitated(client)) {
+			GetAbilityStrengthByTrigger(client, entity, "K", FindZombieClass(client), playerDamage);
+		}
 		return (damageTotal + playerDamage);
 	}
 	return 1;
@@ -4267,8 +3951,7 @@ stock CheckTeammateDamagesEx(client, target, TotalDamage, bool:bSpellDeath = fal
 
 	// Ex is backwards, client, target
 	// CTD is target, client
-	if (CheckTeammateDamages(target, client) >= 1.0 ||
-		CheckTeammateDamages(target, client, true) >= 1.0) {
+	if (CheckTeammateDamages(target, client) >= 1.0 || CheckTeammateDamages(target, client, true) >= 1.0) {
 
 		if (IsLegitimateClientAlive(target)) {
 
@@ -8812,6 +8495,12 @@ stock Float:CheckTeammateDamages(infected, client = -1, bool:bIsMyDamageOnly = f
 	new cHealth = 0;
 	new tHealth = 0;
 	new Float:tBonus = 0.0;
+	new enemytype = -1;
+	if (IsLegitimateClient(infected)) enemytype = 0;
+	else if (IsWitch(infected)) enemytype = 1;
+	else if (IsSpecialCommon(infected)) enemytype = 2;
+	else enemytype = 3;
+	//else if (IsCommonInfected(infected)) enemytype = 3;
 	for (new i = 1; i <= MaxClients; i++) {
 
 		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
@@ -8826,28 +8515,28 @@ stock Float:CheckTeammateDamages(infected, client = -1, bool:bIsMyDamageOnly = f
 			True health: The actual health the infected player has remaining
 			E. Health: The health the infected has FOR YOU
 		*/
-		if (IsLegitimateClient(infected)) {
+		if (enemytype == 0) {
 
 			pos = FindListPositionByEntity(infected, Handle:InfectedHealth[i]);
 			if (pos < 0) continue;	// how?
 			cHealth = GetArrayCell(Handle:InfectedHealth[i], pos, 2);
 			tHealth = GetArrayCell(Handle:InfectedHealth[i], pos, 1);
 		}
-		else if (IsWitch(infected)) {
+		else if (enemytype == 1) {
 
 			pos = FindListPositionByEntity(infected, Handle:WitchDamage[i]);
 			if (pos < 0) continue;
 			cHealth = GetArrayCell(Handle:WitchDamage[i], pos, 2);
 			tHealth = GetArrayCell(Handle:WitchDamage[i], pos, 1);
 		}
-		else if (IsSpecialCommon(infected)) {
+		else if (enemytype == 2) {
 
 			pos = FindListPositionByEntity(infected, Handle:SpecialCommon[i]);
 			if (pos < 0) continue;
 			cHealth = GetArrayCell(Handle:SpecialCommon[i], pos, 2);
 			tHealth = GetArrayCell(Handle:SpecialCommon[i], pos, 1);
 		}
-		else if (IsCommonInfected(infected)) {
+		else {
 
 			pos = FindListPositionByEntity(infected, Handle:CommonInfectedDamage[i]);
 			if (pos < 0) continue;
@@ -9635,8 +9324,9 @@ public Action:CMD_ChatCommand(client, args) {
 
 stock CartelLevel(client) {
 
-	new CartelStrength = GetTalentStrength(client, "constitution") + GetTalentStrength(client, "agility") + GetTalentStrength(client, "resilience") + GetTalentStrength(client, "technique") + GetTalentStrength(client, "endurance") + GetTalentStrength(client, "luck");
-	return CartelStrength;
+	//new CartelStrength = GetTalentStrength(client, "constitution") + GetTalentStrength(client, "agility") + GetTalentStrength(client, "resilience") + GetTalentStrength(client, "technique") + GetTalentStrength(client, "endurance") + GetTalentStrength(client, "luck");
+	//return CartelStrength;
+	return PlayerLevel[client];
 }
 
 stock bool:IsOpenRPGMenu(String:searchString[]) {
@@ -10728,6 +10418,18 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool:bIsFalling 
 			}
 		}
 	}
+}
+
+stock bool:CheckIfHeadshot(attacker, victim, Handle:event) {
+	if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR) {
+		if (!b_IsHooked[attacker]) ChangeHook(attacker, true);
+		if (GetEventInt(event, "hitgroup") == 1) {
+			if (IsCommonInfected(victim) && !IsSpecialCommon(victim)) AddCommonInfectedDamage(attacker, victim, 9999, true);	// if someone shoots a common infected in the head, we want to auto-kill it.
+			else if (IsWitch(victim) || IsLegitimateClientAlive(victim)) GetAbilityStrengthByTrigger(attacker, victim, "headshot");
+			return true;			
+		}
+	}
+	return false;
 }
 
 stock CreateItemRoll(client, thekiller) {

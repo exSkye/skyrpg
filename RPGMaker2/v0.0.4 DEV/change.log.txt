@@ -1,5 +1,5 @@
 
-	RPGMaker2 v0.0.4.3 (RPG Construction Set)
+	RPGMaker2 v0.0.4.5 (RPG Construction Set)
 	By Skye
 
 	Other Credits:
@@ -12,6 +12,12 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.4.5
+	-	Added support for talents that only trigger when a player is crouching.
+	-	Added support for "wtr"(water), "grnd"(in the air), "onfire"(on... fire) and "ducking"(crouching) talent nodes firing outside of
+		damage calculation; these previously were only called when the damage event fired, but now they are called during OnPlayerRunCmd.
+	-	Fixed some more bugs on the back-end.
+	-	Changed the difficulty to be based on your level: (playerlevel * ratingDifficulty) + rating.
 	0.0.4.3
 	-	Configurable Attribute System added.
 		Attributes can be tied to any node and their multiplier will increase the efficacy of said node.
