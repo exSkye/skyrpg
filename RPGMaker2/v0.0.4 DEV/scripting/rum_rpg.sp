@@ -25,9 +25,6 @@
  * or <http://www.sourcemod.net/license.php>.
  */
 
- // line 4312 in functions explains default values in pawn (similar to c++)
- // why am i leaving comments up here.
-
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -36,27 +33,21 @@
 #define FRANCIS_MODEL			"models/survivors/survivor_biker.mdl"
 #define LOUIS_MODEL				"models/survivors/survivor_manager.mdl"
 #define BILL_MODEL				"models/survivors/survivor_namvet.mdl"
-
 #define TEAM_SPECTATOR		1
 #define TEAM_SURVIVOR		2
 #define TEAM_INFECTED		3
 #define MAX_ENTITIES		2048
 #define MAX_CHAT_LENGTH		1024
-
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-
-#define PLUGIN_VERSION				"v0.0.4.5"
+#define PLUGIN_VERSION				"v0.0.4.91"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
-
 #define PLUGIN_CONTACT				"skye"
 #define PLUGIN_NAME					"RPG Construction Set"
 #define PLUGIN_DESCRIPTION			"Fully-customizable and modular RPG, like the one for Atari."
-
 #define PLUGIN_URL					"https://discord.gg/tzgnQRbkWm"
-
 #define CONFIG_EVENTS				"rpg/events.cfg"
 #define CONFIG_MAINMENU				"rpg/mainmenu.cfg"
 #define CONFIG_MENUTALENTS			"rpg/talentmenu.cfg"
@@ -68,10 +59,8 @@
 #define CONFIG_PETS					"rpg/pets.cfg"
 #define CONFIG_WEAPONS				"rpg/weapondamages.cfg"
 #define CONFIG_COMMONAFFIXES		"rpg/commonaffixes.cfg"
-
 #define LOGFILE						"rum_rpg.txt"
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
-
 /*
 	==========
 				*/
@@ -79,10 +68,8 @@
 /*
 	==========
 				*/
-
 #define CVAR_SHOW			FCVAR_NOTIFY | FCVAR_PLUGIN
 #define DMG_HEADSHOT		2147483648
-
 #define ZOMBIECLASS_SMOKER											1
 #define ZOMBIECLASS_BOOMER											2
 #define ZOMBIECLASS_HUNTER											3
@@ -92,30 +79,23 @@
 #define ZOMBIECLASS_WITCH											7
 #define ZOMBIECLASS_TANK											8
 #define ZOMBIECLASS_SURVIVOR										0
-
 #define TANKSTATE_TIRED												0
 #define TANKSTATE_REFLECT											1
 #define TANKSTATE_FIRE												2
 #define TANKSTATE_DEATH												3
 #define TANKSTATE_TELEPORT											4
 #define TANKSTATE_HULK												5
-
 #define EFFECTOVERTIME_ACTIVATETALENT	0
 #define EFFECTOVERTIME_GETACTIVETIME	1
 #define EFFECTOVERTIME_GETCOOLDOWN		2
-
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
 #include <smlib>
 #include <l4d2_direct>
-//#include <left4dhooks>
-
 #include "wrap.inc"
 #include "left4downtown.inc"
 #include "l4d_stocks.inc"
-//#include <skyrpg>
-
 #undef REQUIRE_PLUGIN
 #include <readyup>
 #define REQUIRE_PLUGIN
@@ -868,6 +848,31 @@ new Handle:GetGoverningAttributeKeys[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeValues[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeSection[MAXPLAYERS + 1];
 new iRushingModuleEnabled;
+new iTanksAlwaysEnforceCooldown;
+new Handle:WeaponResultKeys[MAXPLAYERS + 1];
+new Handle:WeaponResultValues[MAXPLAYERS + 1];
+new Handle:WeaponResultSection[MAXPLAYERS + 1];
+new bool:shotgunCooldown[MAXPLAYERS + 1];
+new Float:fRatingFloor;
+new String:clientStatusEffectDisplay[MAXPLAYERS + 1][64];
+new String:clientTrueHealthDisplay[MAXPLAYERS + 1][64];
+new String:clientContributionHealthDisplay[MAXPLAYERS + 1][64];
+new currLivingSurvivors;
+new iExperienceDebtLevel;
+new iExperienceDebtEnabled;
+new Float:fExperienceDebtPenalty;
+new iShowDamageOnActionBar;
+new iDefaultIncapHealth;
+new Handle:GetAbilityCooldownKeys[MAXPLAYERS + 1];
+new Handle:GetAbilityCooldownValues[MAXPLAYERS + 1];
+new Handle:GetAbilityCooldownSection[MAXPLAYERS + 1];
+new Handle:GetTalentValueSearchKeys[MAXPLAYERS + 1];
+new Handle:GetTalentValueSearchValues[MAXPLAYERS + 1];
+new Handle:GetTalentValueSearchSection[MAXPLAYERS + 1];
+new iSkyLevelNodeUnlocks;
+new Handle:GetTalentKeyValueKeys[MAXPLAYERS + 1];
+new Handle:GetTalentKeyValueValues[MAXPLAYERS + 1];
+new Handle:GetTalentKeyValueSection[MAXPLAYERS + 1];
 
 public Action:CMD_DropWeapon(client, args) {
 
@@ -909,7 +914,18 @@ public Action:CMD_IAmStuck(client, args) {
 	return Plugin_Handled;
 }
 
+stock DoGunStuff(client) {
+	new targetgun = GetPlayerWeaponSlot(client, 0); //get the players primary weapon
+	if (!IsValidEdict(targetgun)) return; //check for validity
+	new iAmmoOffset = FindDataMapOffs(client, "m_iAmmo"); //get the iAmmo Offset
+	iAmmoOffset = GetEntData(client, (iAmmoOffset + GetWeaponResult(client, 1)));
+	PrintToChat(client, "reserve remaining: %d | reserve cap: %d", iAmmoOffset, GetWeaponResult(client, 2));
+	
+	return;
+}
+
 stock CMD_OpenRPGMenu(client) {
+	//DoGunStuff(client);
 	ClearArray(Handle:MenuStructure[client]);	// keeps track of the open menus.
 	VerifyAllActionBars(client);	// Because.
 	if (LoadProfileRequestName[client] != -1) {
@@ -1020,6 +1036,13 @@ public OnPluginStart() {
 }
 
 public Action:CMD_STAGGERTEST(client, args) {
+	/*new target = GetClientAimTarget(client, false);
+	decl String:targetName[64];
+	GetEntityClassname(target, targetName, sizeof(targetName));
+	PrintToChat(client, "entity name: %s", targetName);
+	GetEntPropString(target, Prop_Data, "m_iName", targetName, sizeof(targetName));
+	PrintToChat(client, "entity targetname: %s", targetName);*/
+
 	for (new i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
 		if (i == client) continue;
@@ -1417,12 +1440,23 @@ stock OnMapStartFunc() {
 			if (GetGoverningAttributeKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetGoverningAttributeKeys[i] = CreateArray(32);
 			if (GetGoverningAttributeValues[i] == INVALID_HANDLE || !b_FirstLoad) GetGoverningAttributeValues[i] = CreateArray(32);
 			if (GetGoverningAttributeSection[i] == INVALID_HANDLE || !b_FirstLoad) GetGoverningAttributeSection[i] = CreateArray(32);
+			if (WeaponResultKeys[i] == INVALID_HANDLE || !b_FirstLoad) WeaponResultKeys[i] = CreateArray(32);
+			if (WeaponResultValues[i] == INVALID_HANDLE || !b_FirstLoad) WeaponResultValues[i] = CreateArray(32);
+			if (WeaponResultSection[i] == INVALID_HANDLE || !b_FirstLoad) WeaponResultSection[i] = CreateArray(32);
+			if (GetAbilityCooldownKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetAbilityCooldownKeys[i] = CreateArray(32);
+			if (GetAbilityCooldownValues[i] == INVALID_HANDLE || !b_FirstLoad) GetAbilityCooldownValues[i] = CreateArray(32);
+			if (GetAbilityCooldownSection[i] == INVALID_HANDLE || !b_FirstLoad) GetAbilityCooldownSection[i] = CreateArray(32);
+			if (GetTalentValueSearchKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentValueSearchKeys[i] = CreateArray(32);
+			if (GetTalentValueSearchValues[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentValueSearchValues[i] = CreateArray(32);
+			if (GetTalentValueSearchSection[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentValueSearchSection[i] = CreateArray(32);
+			if (GetTalentKeyValueKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentKeyValueKeys[i] = CreateArray(32);
+			if (GetTalentKeyValueValues[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentKeyValueValues[i] = CreateArray(32);
+			if (GetTalentKeyValueSection[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentKeyValueSection[i] = CreateArray(32);
 		}
 		if (!b_FirstLoad) b_FirstLoad = true;
 		//LogMessage("AWAITING PARAMETERS");
 
 		if (!b_ConfigsExecuted) {
-
 			b_ConfigsExecuted = true;
 			if (hExecuteConfig == INVALID_HANDLE) hExecuteConfig = CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 			CreateTimer(10.0, Timer_GetCampaignName, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -1432,18 +1466,18 @@ stock OnMapStartFunc() {
 }
 
 public ReadyUp_GetCampaignStatus(mapposition) {
-
 	CurrentMapPosition = mapposition;
 }
 
 public OnMapStart() {
-
 	iTopThreat = 0;
 	// When the server restarts, for any reason, RPG will properly load.
 	//if (!b_FirstLoad) OnMapStartFunc();
 	// This can call more than once, and we only want it to fire once.
 	// The variable resets to false when a map ends.
 	PrecacheModel("models/infected/common_male_clown.mdl", true);
+	PrecacheModel("models/infected/common_male_ceda.mdl", true);
+	PrecacheModel("models/infected/common_male_fallen_survivor.mdl", true);
 	PrecacheModel("models/infected/common_male_riot.mdl", true);
 	PrecacheModel("models/infected/common_male_mud.mdl", true);
 	PrecacheModel("models/infected/common_male_jimmy.mdl", true);
@@ -1451,16 +1485,12 @@ public OnMapStart() {
 	PrecacheModel("models/infected/witch_bride.mdl", true);
 	PrecacheModel("models/infected/witch.mdl", true);
 	PrecacheModel("models/props_interiors/toaster.mdl", true);
-
-
 	PrecacheSound(JETPACK_AUDIO, true);
 
 	g_iSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
 	g_BeaconSprite = PrecacheModel("materials/sprites/halo01.vmt");
-
 	b_IsActiveRound = false;
 	MapRoundsPlayed = 0;
-
 	b_IsCampaignComplete			= false;
 	b_IsRoundIsOver					= true;
 	b_IsCheckpointDoorStartOpened	= false;
@@ -1508,12 +1538,9 @@ public Action:Timer_GetCampaignName(Handle:timer) {
 }
 
 public OnConfigsExecuted() {
-
 	if (!b_ConfigsExecuted) {
-
 		b_ConfigsExecuted = true;
 		if (hExecuteConfig == INVALID_HANDLE) {
-
 			hExecuteConfig = CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 		CreateTimer(10.0, Timer_GetCampaignName, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -1526,8 +1553,8 @@ stock CheckGamemode() {
 	decl String:TheRequiredGamemode[64];
 	GetConfigValue(TheRequiredGamemode, sizeof(TheRequiredGamemode), "gametype?");
 	if (!StrEqual(TheGamemode, TheRequiredGamemode, false)) {
-
 		LogMessage("Gamemode did not match, changing to %s", TheRequiredGamemode);
+		PrintToChatAll("Gamemode did not match, changing to %s", TheRequiredGamemode);
 		SetConVarString(g_Gamemode, TheRequiredGamemode);
 		decl String:TheMapname[64];
 		GetCurrentMap(TheMapname, sizeof(TheMapname));
@@ -1536,9 +1563,7 @@ stock CheckGamemode() {
 }
 
 public Action:Timer_ExecuteConfig(Handle:timer) {
-
 	if (ReadyUp_NtvConfigProcessing() == 0) {
-
 		// These are processed one-by-one in a defined-by-dependencies order, but you can place them here in any order you want.
 		// I've placed them here in the order they load for uniformality.
 		ReadyUp_ParseConfig(CONFIG_MAIN);
@@ -1574,25 +1599,20 @@ public Action:Timer_AutoRes(Handle:timer) {
 }
 
 stock bool:AnyHumans() {
-
 	for (new i = 1; i <= MaxClients; i++) {
-
 		if (IsLegitimateClient(i) && !IsFakeClient(i)) return true;
 	}
-
 	return false;
 }
 
 public ReadyUp_ReadyUpStart() {
-
 	CheckDifficulty();
-	if (!AnyHumans()) CheckGamemode();
+	CheckGamemode();
 	RoundTime = 0;
 	b_IsRoundIsOver = true;
 	iTopThreat = 0;
-	SetSurvivorsAliveHostname();
+	//SetSurvivorsAliveHostname();
 	CreateTimer(1.0, Timer_AutoRes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-
 	/*
 	When a new round starts, we want to forget who was the last person to speak on different teams.
 	*/
@@ -1600,11 +1620,21 @@ public ReadyUp_ReadyUpStart() {
 	Format(Spectator_LastChatUser, sizeof(Spectator_LastChatUser), "none");
 	Format(Survivor_LastChatUser, sizeof(Survivor_LastChatUser), "none");
 	Format(Infected_LastChatUser, sizeof(Infected_LastChatUser), "none");
+	new bool:TeleportPlayers = false;
+	new Float:teleportIntoSaferoom[3];
+
+	if (StrEqual(TheCurrentMap, "zerowarn_1r", false)) {
+		teleportIntoSaferoom[0] = 4087.998291;
+		teleportIntoSaferoom[1] = 11974.557617;
+		teleportIntoSaferoom[2] = -300.968750;
+		TeleportPlayers = true;
+	}
 
 	for (new i = 1; i <= MaxClients; i++) {
 
 		if (IsClientInGame(i)) {
 			if (GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
+			if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 
 			//if (GetClientTeam(i) == TEAM_SURVIVOR && !b_IsLoaded[i]) IsClientLoadedEx(i);
 			staggerCooldownOnTriggers[i] = false;
@@ -1747,13 +1777,13 @@ stock bool:PlayerHasWeakness(client) {
 	if (!IsLegitimateClientAlive(client)) return false;
 	if (IsSpecialCommonInRange(client, 'w')) return true;
 	if (!b_IsCheckpointDoorStartOpened || DoomTimer != 0) return true;
-	if (LastDeathTime[client] > GetEngineTime()) return true;
 	if (IsClientInRangeSpecialAmmo(client, "W", true) == -2.0) return true;	// the player is not weak if inside cleansing ammo.*
+	if (GetTalentStrengthByKeyValue(client, "activator ability effects?", "weakness") > 0) return true;
+	if (LastDeathTime[client] > GetEngineTime()) return true;
 	return false;
 }
 
 public ReadyUp_CheckpointDoorStartOpened() {
-
 	if (!b_IsCheckpointDoorStartOpened) {
 		b_IsCheckpointDoorStartOpened		= true;
 		b_RescueIsHere = false;
@@ -1770,13 +1800,12 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			SetArrayCell(Handle:RoundStatistics, i, 0);
 			if (CurrentMapPosition == 0) SetArrayCell(Handle:RoundStatistics, i, 0, 1);	// first map of campaign, reset the total.
 		}
-		//DestroyCommons();
 
+		//DestroyCommons();
 		decl String:pct[4];
 		Format(pct, sizeof(pct), "%");
 		new iMaxHandicap = 0;
 		new iMinHandicap = RatingPerLevel;
-
 		decl String:text[64];
 
 		for (new i = 1; i <= MaxClients; i++) {
@@ -1825,7 +1854,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 
 				if (IsLegitimateClientAlive(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
 
-					Rating[i] = 0;
+					VerifyMinimumRating(i, true);
 					RespawnImmunity[i] = false;
 				}
 			}
@@ -1856,7 +1885,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 
 		b_IsCampaignComplete				= false;
 		if (ReadyUpGameMode != 3) b_IsRoundIsOver						= false;
-		//PrintToChatAll("%t", "Round Statistics", white, green, AddCommasToString(CommonsKilled), orange, green, AddCommasToString(SpecialsKilled), blue, green, AddCommasToString(SurvivorsKilled), white, green, AddCommasToString(RoundDamageTotal), white, blue, MVPName, white, green, AddCommasToString(MVPDamage));
 		if (ReadyUpGameMode == 2) MapRoundsPlayed = 0;	// Difficulty leniency does not occur in versus.
 
 		SpecialsKilled				=	0;
@@ -1886,13 +1914,10 @@ public ReadyUp_CheckpointDoorStartOpened() {
 
 		//new RatingLevelMultiplier = GetConfigValueInt("rating level multiplier?");
 		for (new i = 1; i <= MaxClients; i++) {
-
 			if (IsLegitimateClient(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
-
 				if (!IsSurvivorBot(i) && !IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
-				if (Rating[i] < 0) Rating[i] = 0;
+				VerifyMinimumRating(i);
 				HealImmunity[i] = false;
-
 				//DefaultHealth[i] = StringToInt(GetConfigValue("survivor health?"));
 				//PlayerSpawnAbilityTrigger(i);
 				//RefreshSurvivor(i);
@@ -1905,14 +1930,10 @@ public ReadyUp_CheckpointDoorStartOpened() {
 				else if (!b_IsLoading[i]) OnClientLoaded(i);
 			}
 		}
-		
 		f_TankCooldown				=	-1.0;
 		ResetCDImmunity(-1);
-
 		DoomTimer = 0;
-
 		if (ReadyUpGameMode != 2) {
-
 			// It destroys itself when a round ends.
 			CreateTimer(1.0, Timer_DirectorPurchaseTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
@@ -1931,14 +1952,10 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		CreateTimer(1.0, Timer_ThreatSystem, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// threat system modulator
 		CreateTimer(0.05, Timer_IsSpecialCommonInRange, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);	// some special commons react based on range, not damage.
 		CreateTimer(fStaggerTickrate, Timer_StaggerTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		
-
 		if (GetConfigValueInt("common affixes?") == 1) {
-
 			ClearArray(Handle:CommonAffixes);
 			CreateTimer(0.5, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
-
 		ClearRelevantData();
 		LastLivingSurvivor = 1;
 		new size = GetArraySize(a_DirectorActions);
@@ -1948,13 +1965,10 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		//ClearArray(CommonInfectedQueue);
 		new theCount = LivingSurvivorCount();
 		if (theCount >= iSurvivorModifierRequired) {
-
 			PrintToChatAll("%t", "teammate bonus experience", blue, green, ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorExpMult) * 100.0, pct);
 		}
 		RefreshSurvivorBots();
-
 		if (iEnrageTime > 0) {
-
 			TimeUntilEnrage(text, sizeof(text));
 			PrintToChatAll("%t", "enrage in...", orange, green, text, orange);
 		}
@@ -1974,7 +1988,6 @@ stock RefreshSurvivorBots() {
 }
 
 stock SetClientMovementSpeed(client) {
-
 	if (IsValidEntity(client)) SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", fBaseMovementSpeed);
 }
 
@@ -2058,7 +2071,6 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 					SetArrayString(Handle:ActionBar[client], pos, actionpos);
 				}
 				else {
-
 					RequiresTarget = GetKeyValueInt(CastKeys[client], CastValues[client], "is single target?");
 					if (RequiresTarget > 0) {
 
@@ -2212,19 +2224,15 @@ public Action:CMD_TogglePvP(client, args) {
 }
 
 public Action:CMD_GiveLevel(client, args) {
-
 	decl String:thetext[64];
 	GetConfigValue(thetext, sizeof(thetext), "give player level flags?");
-
 	if ((HasCommandAccess(client, thetext) || client == 0) && args > 1) {
-
 		decl String:arg[MAX_NAME_LENGTH], String:arg2[64], String:arg3[64];
 		GetCmdArg(1, arg, sizeof(arg));
 		GetCmdArg(2, arg2, sizeof(arg2));
 		GetCmdArg(3, arg3, sizeof(arg3));
 		new targetclient = FindTargetClient(client, arg);
 		if (args < 3) {
-
 			if (IsLegitimateClient(targetclient) && PlayerLevel[targetclient] != StringToInt(arg2)) {
 
 				SetTotalExperienceByLevel(targetclient, StringToInt(arg2));
@@ -2509,7 +2517,7 @@ public Action:Timer_SaveAndClear(Handle:timer) {
 				RoundExperienceMultiplier[i] = 0.0;
 
 				// So, the round ends due a failed mission, whether it's coop or survival, and we reset all players ratings.
-				Rating[i] = 0;
+				VerifyMinimumRating(i, true);
 			}
 
 			if(iChaseEnt[i] && EntRefToEntIndex(iChaseEnt[i]) != INVALID_ENT_REFERENCE) AcceptEntityInput(iChaseEnt[i], "Kill");
@@ -2551,7 +2559,7 @@ stock CallRoundIsOver() {
 		if (b_IsActiveRound) b_IsActiveRound = false;
 
 		ClearArray(CommonAffixes);
-		SetSurvivorsAliveHostname();
+		//SetSurvivorsAliveHostname();
 		if (!b_IsMissionFailed) {
 
 			//InfectedLevel = HumanSurvivorLevels();
@@ -2567,7 +2575,7 @@ stock CallRoundIsOver() {
 					
 						if (IsPlayerAlive(i)) {
 
-							if (Rating[i] < 0 && CurrentMapPosition != 1) Rating[i] = 0;
+							if (Rating[i] < 0 && CurrentMapPosition != 1) VerifyMinimumRating(i);
 							if (RoundExperienceMultiplier[i] < 0.0) RoundExperienceMultiplier[i] = 0.0;
 							if (CurrentMapPosition != 1) {
 
@@ -2597,14 +2605,46 @@ stock CallRoundIsOver() {
 			Seconds -= 60;
 		}
 
+		//common is 0
+		//super is 1
+		//witch is 2
+		//si is 3
+		//tank is 4
+
+		decl String:roundStatisticsText[6][64];
+
 		PrintToChatAll("%t", "Round Time", orange, blue, Minutes, white, blue, Seconds, white);
 		if (CurrentMapPosition != 1) {
+			AddCommasToString(GetArrayCell(RoundStatistics, 0), roundStatisticsText[0], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 1), roundStatisticsText[1], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 2), roundStatisticsText[2], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 3), roundStatisticsText[3], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 4), roundStatisticsText[4], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 0) + GetArrayCell(RoundStatistics, 1) + GetArrayCell(RoundStatistics, 2) + GetArrayCell(RoundStatistics, 3) + GetArrayCell(RoundStatistics, 4), roundStatisticsText[5], sizeof(roundStatisticsText[]));
 
-			PrintToChatAll("%t", "round statistics", green, orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 0)), orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 1)), orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 2)), orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 3)), orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 4)), orange, green, AddCommasToString(GetArrayCell(RoundStatistics, 0) + GetArrayCell(RoundStatistics, 1) + GetArrayCell(RoundStatistics, 2) + GetArrayCell(RoundStatistics, 3) + GetArrayCell(RoundStatistics, 4)));
+			PrintToChatAll("%t", "round statistics", green, orange, blue,
+							roundStatisticsText[0], orange, blue,
+							roundStatisticsText[1], orange, blue,
+							roundStatisticsText[2], orange, blue,
+							roundStatisticsText[3], orange, blue,
+							roundStatisticsText[4], orange, green,
+							roundStatisticsText[5]);
 		}
 		else {
+			AddCommasToString(GetArrayCell(RoundStatistics, 0, 1), roundStatisticsText[0], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 1, 1), roundStatisticsText[1], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 2, 1), roundStatisticsText[2], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 3, 1), roundStatisticsText[3], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 4, 1), roundStatisticsText[4], sizeof(roundStatisticsText[]));
+			AddCommasToString(GetArrayCell(RoundStatistics, 0, 1) + GetArrayCell(RoundStatistics, 1, 1) + GetArrayCell(RoundStatistics, 2, 1) + GetArrayCell(RoundStatistics, 3, 1) + GetArrayCell(RoundStatistics, 4, 1), roundStatisticsText[5], sizeof(roundStatisticsText[]));
 
-			PrintToChatAll("%t", "campaign statistics", green, orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 0, 1)), orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 1, 1)), orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 2, 1)), orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 3, 1)), orange, blue, AddCommasToString(GetArrayCell(RoundStatistics, 4, 1)), orange, green, AddCommasToString(GetArrayCell(RoundStatistics, 0, 1) + GetArrayCell(RoundStatistics, 1, 1) + GetArrayCell(RoundStatistics, 2, 1) + GetArrayCell(RoundStatistics, 3, 1) + GetArrayCell(RoundStatistics, 4, 1)));
+			PrintToChatAll("%t", "campaign statistics", green, orange, blue,
+							roundStatisticsText[0], orange, blue,
+							roundStatisticsText[1], orange, blue,
+							roundStatisticsText[2], orange, blue,
+							roundStatisticsText[3], orange, blue,
+							roundStatisticsText[4], orange, green,
+							roundStatisticsText[5]);
 		}
 		
 		ResetArray(Handle:CommonInfected);
@@ -2619,7 +2659,9 @@ stock CallRoundIsOver() {
 		ClearArray(Handle:StaggeredTargets);
 
 		if (b_IsMissionFailed && StrContains(TheCurrentMap, "zerowarn", false) != -1) {
-			PrintToChatAll(">>>>>>>>>>>>>>>>>\nZero warning requires map restart on missionFail to prevent serverCrash.\nSorry for the inconvenience, Data will be preserved!!!\n<<<<<<<<<<<<<<<");
+			PrintToChatAll("\x04Zero warning:\n\nThis campaign requires map restart on missionFail to prevent serverCrash.\nSorry for the inconvenience, Data will be preserved!!!");
+			LogMessage("restarting zero warning.");
+			// need to force-teleport players here on new spawn: 4087.998291 11974.557617 -269.968750
 			CreateTimer(5.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
@@ -2897,7 +2939,6 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 stock LoadMainConfig() {
 	GetConVarString(FindConVar("z_difficulty"), sServerDifficulty, sizeof(sServerDifficulty));
 	if (strlen(sServerDifficulty) < 4) GetConfigValue(sServerDifficulty, sizeof(sServerDifficulty), "server difficulty?");
-
 	fHealSizeDefault			= GetConfigValueFloat("default aura size for heal types?");
 	fProficiencyExperienceMultiplier = GetConfigValueFloat("proficiency requirement multiplier?");
 	fProficiencyExperienceEarned = GetConfigValueFloat("experience multiplier proficiency?");
@@ -2933,6 +2974,7 @@ stock LoadMainConfig() {
 	iTankRush					= GetConfigValueInt("tank rush?");
 	iRushingModuleEnabled		= GetConfigValueInt("anti-rushing enabled?");
 	iTanksAlways				= GetConfigValueInt("tanks always active?");
+	iTanksAlwaysEnforceCooldown = GetConfigValueInt("tanks always enforce cooldown?");
 	fSprintSpeed				= GetConfigValueFloat("sprint speed?");
 	iRPGMode					= GetConfigValueInt("rpg mode?");
 	//fTankMultiplier				= GetConfigValueFloat("director tanks player multiplier?");
@@ -3106,12 +3148,18 @@ stock LoadMainConfig() {
 	fEffectOverTimeInterval		= GetConfigValueFloat("effect over time tick rate?");
 	//fStaggerTime				= GetConfigValueFloat("stagger debuff time?");
 	fStaggerTickrate			= GetConfigValueFloat("stagger tickrate?");
+	fRatingFloor				= GetConfigValueFloat("rating floor?");
+	iExperienceDebtLevel		= GetConfigValueInt("experience debt level?");
+	iExperienceDebtEnabled		= GetConfigValueInt("experience debt enabled?");
+	fExperienceDebtPenalty		= GetConfigValueFloat("experience debt penalty?");
+	iShowDamageOnActionBar		= GetConfigValueInt("show damage on action bar?");
+	iDefaultIncapHealth			= GetConfigValueInt("default incap health?");
+	iSkyLevelNodeUnlocks		= GetConfigValueInt("sky level default node unlocks?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
 
 	LogMessage("Main Config Loaded.");
 }
-
 //public Action:CMD_Backpack(client, args) { EquipBackpack(client); return Plugin_Handled; }
 
 public Action:CMD_BuyMenu(client, args) {
@@ -3296,14 +3344,12 @@ public ReadyUp_CoopMapFailed(iGamemode) {
 }
 
 stock bool:IsCommonRegistered(entity) {
-
 	if (FindListPositionByEntity(entity, Handle:CommonList) >= 0 ||
 		FindListPositionByEntity(entity, Handle:CommonInfected) >= 0) return true;
 	return false;
 }
 
 stock bool:IsSpecialCommon(entity) {
-
 	if (FindListPositionByEntity(entity, Handle:CommonList) >= 0) {
 
 		if (IsCommonInfected(entity)) return true;
