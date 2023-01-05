@@ -35,6 +35,22 @@ public Action:Timer_IsMeleeCooldown(Handle:timer, any:client) {
 	return Plugin_Stop;
 }
 
+public Action:Timer_ResetShotgunCooldown(Handle:timer, any:client) {
+	if (IsLegitimateClient(client)) shotgunCooldown[client] = false;
+	return Plugin_Stop;
+}
+
+bool:VerifyMinimumRating(client, bool:setMinimumRating = false) {
+	new minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
+	if (setMinimumRating || Rating[client] < minimumRating) Rating[client] = minimumRating;
+}
+
+bool:AllowShotgunToTriggerNodes(client) {
+	new bool:isshotgun = IsPlayerUsingShotgun(client);
+	if (!isshotgun || isshotgun && !shotgunCooldown[client]) return true;
+	return false;
+}
+
 stock CheckDifficulty() {
 
 	decl String:Difficulty[64];
@@ -64,6 +80,7 @@ public Action:Timer_GiveLaserBeam(Handle:timer, any:client) {
 public Action:Timer_DisplayHUD(Handle:timer) {
 
 	if (!b_IsActiveRound) return Plugin_Stop;
+	currLivingSurvivors = LivingSurvivorCount();
 
 	static iRotation = 0;
 	for (new i = 1; i <= MaxClients; i++) {
@@ -102,7 +119,7 @@ public Action:Timer_ShowHUD(Handle:timer) {
 	//CheckGamemode();
 
 	//RaidInfectedBotLimit();
-	SetSurvivorsAliveHostname();
+	//SetSurvivorsAliveHostname();
 	static bool:IsDark = false;
 	static bool:IsWeak = false;
 
@@ -167,7 +184,7 @@ public Action:Timer_ShowHUD(Handle:timer) {
 
 		Counter = -1;
 		iSurvivalCounter = -1;
-		SetSurvivorsAliveHostname();
+		//SetSurvivorsAliveHostname();
 		return Plugin_Stop;
 	}
 
@@ -725,19 +742,17 @@ public Action:Timer_IsIncapacitated(Handle:timer, any:client) {
 }
 
 public Action:Timer_Slow(Handle:timer, any:client) {
-
-	if (b_IsActiveRound && IsLegitimateClientAlive(client)) {
-
-		SetEntityMoveType(client, MOVETYPE_WALK);
+	if (!IsLegitimateClient(client)) return Plugin_Stop;
+	if (!b_IsActiveRound || !IsPlayerAlive(client)) {
 		SetSpeedMultiplierBase(client);
 		fSlowSpeed[client] = 1.0;
-	}
-	if (IsLegitimateClient(client)) {
-
 		KillTimer(ISSLOW[client]);
 		ISSLOW[client] = INVALID_HANDLE;
-		fSlowSpeed[client] = 1.0;
+		return Plugin_Stop;
 	}
+	//SetEntityMoveType(client, MOVETYPE_WALK);
+	SetSpeedMultiplierBase(client);
+	fSlowSpeed[client] = 1.0;
 	return Plugin_Stop;
 }
 
@@ -1351,7 +1366,6 @@ public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
 			SpawnAnyInfected(theClient);
 		}
 	}
-
 	new iTankRequired = GetAlwaysTanks(iSurvivors + iSurvivorBots);
 	if (iTankRequired != 0) {
 
@@ -1362,7 +1376,8 @@ public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
 
 			if (iInfectedCount - iTankCount < (iSurvivors + iSurvivorBots)) SpawnAnyInfected(theClient);
 			//if (!b_IsFinaleActive && iTankCount < iTankLimit && iTankCount < iTanksAlways) {
-			if (!b_IsFinaleActive && ((iTankRequired > 0 && iTankCount < iTankLimit + iTankRequired) || (iTankRequired == 0 && iTankCount < iSurvivors + iSurvivorBots))) {
+			// no finale active			don't force on this server		or if we do and not on cooldown
+			if (!b_IsFinaleActive && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) && ((iTankRequired > 0 && iTankCount < iTankLimit + iTankRequired) || (iTankRequired == 0 && iTankCount < iSurvivors + iSurvivorBots))) {
 
 				if (IsLegitimateClientAlive(theClient))	ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
 			}
@@ -1454,14 +1469,14 @@ stock bool:bIsDirectorTankEligible() {
 }
 
 stock ActiveTanks() {
+	new iSurvivors = TotalHumanSurvivors();
+	new iSurvivorBots = TotalSurvivors() - iSurvivors;
+	new count = GetAlwaysTanks(iSurvivors + iSurvivorBots);
 
-	new Count = 0;
 	for (new i = 1; i <= MaxClients; i++) {
-
-		if (IsClientInGame(i) && GetClientTeam(i) == TEAM_INFECTED && IsPlayerAlive(i) && FindZombieClass(i) == ZOMBIECLASS_TANK) Count++;
+		if (IsClientInGame(i) && GetClientTeam(i) == TEAM_INFECTED && IsPlayerAlive(i) && FindZombieClass(i) == ZOMBIECLASS_TANK) count++;
 	}
-
-	return Count;
+	return count;
 }
 
 stock DirectorTankLimit() {

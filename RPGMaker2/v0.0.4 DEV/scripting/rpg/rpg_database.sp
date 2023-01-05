@@ -13,8 +13,6 @@ MySQL_Init()
 	RatingPerLevel				= GetConfigValueInt("rating level multiplier?");
 	InfectedTalentLevel			= GetConfigValueInt("talent level multiplier?");
 	fEnrageModifier				= GetConfigValueFloat("enrage modifier?");
-	
-	Format(sHostname, sizeof(sHostname), "%s", Hostname);
 
 	if (iServerLevelRequirement > 0) {
 
@@ -22,10 +20,11 @@ MySQL_Init()
 
 			decl String:HostLevels[64];
 			//Format(HostLevels, sizeof(HostLevels), "Lv%s(TruR%s)", AddCommasToString(iServerLevelRequirement), AddCommasToString(iServerLevelRequirement * RatingPerLevel));
-			Format(HostLevels, sizeof(HostLevels), "Lv%s+", AddCommasToString(iServerLevelRequirement));
-			ReplaceString(sHostname, sizeof(sHostname), "{RS}", HostLevels);
+			Format(HostLevels, sizeof(HostLevels), "Lv%d+", iServerLevelRequirement);
+			ReplaceString(Hostname, sizeof(Hostname), "{RS}", HostLevels);
 		}
 	}
+	//Format(sHostname, sizeof(sHostname), "%s", Hostname);
 
 	GetConfigValue(RatingType, sizeof(RatingType), "db record?");
 	if (StrEqual(RatingType, "-1")) {
@@ -35,18 +34,18 @@ MySQL_Init()
 	}
 
 	//LogMessage("Setting hostname %s", Hostname);
-	//ServerCommand("hostname %s", Hostname);
-	SetSurvivorsAliveHostname();
+	ServerCommand("hostname %s", Hostname);
+	//SetSurvivorsAliveHostname();
 	SQL_TConnect(DBConnect, TheDBPrefix);
 }
 
 stock SetSurvivorsAliveHostname() {
 
-	//decl String:Newhost[512];
-	//Format(Newhost, sizeof(Newhost), "%s", sHostname);
-	//if (b_IsActiveRound) Format(Newhost, sizeof(Newhost), "%s - %d alive", sHostname, LivingSurvivors());
-	//else Format(Newhost, sizeof(Newhost), "%s - Intermission", sHostname);
-	ServerCommand("hostname %s", sHostname);
+	static String:Newhost[64];
+	Format(Newhost, sizeof(Newhost), "%s", sHostname);
+	if (b_IsActiveRound) Format(Newhost, sizeof(Newhost), "%s - %d alive", sHostname, LivingSurvivors());
+	else Format(Newhost, sizeof(Newhost), "%s - Intermission", sHostname);
+	ServerCommand("hostname %s", Newhost);
 }
 
 public ReadyUp_GroupMemberStatus(client, groupStatus) {
@@ -593,6 +592,7 @@ stock ResetData(client) {
 	CommonKills[client]				= 0;
 	CommonKillsHeadshot[client]		= 0;
 	bIsMeleeCooldown[client]		= false;
+	shotgunCooldown[client]			= false;
 	ClearArray(Handle:InfectedHealth[client]);
 	ClearArray(PlayerActiveAmmo[client]);
 	ClearArray(PlayActiveAbilities[client]);
@@ -1010,6 +1010,7 @@ stock SaveInfectedData(client) {
 
 stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = false) {
 
+	if (!IsLegitimateClient(client)) return;
 	new bool:IsLoadingData = b_IsLoading[client];
 	if (!IsLoadingData) {
 		LogMessage("Loading of Talents was completed for %N", client);
@@ -1125,6 +1126,8 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	//if (!IsFakeClient(client)) LogMessage(tquery);
 
 	if (Rating[client] > BestRating[client]) BestRating[client] = Rating[client];
+	new minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
+	if (Rating[client] < minimumRating) Rating[client] = minimumRating;
 
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `restt` = '%d', `restexp` = '%d', `lpl` = '%d', `resr` = '%d', `pri` = '%d', `survpoints` = '%s', `bec` = '%d', `%s` = '%d', `myrating %s` = '%d', `ratinghc %s` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, GetTime(), RestedExperience[client], LastPlayLength[client], resr[client], PreviousRoundIncaps[client], sPoints, BonusContainer[client], RatingType, BestRating[client], RatingType, Rating[client], RatingType, RatingHandicap[client], key);
 	SQL_TQuery(hDatabase, QueryResults4, tquery, client);
@@ -1939,7 +1942,7 @@ public QueryResults_LoadActionBar(Handle:owner, Handle:hndl, const String:error[
 			IsFound = true;
 		}
 
-		if (IsFound && !IsFakeClient(client)) PrintToChat(client, "%T", "Action Bar Loaded", client, orange, blue);
+		if (IsFound && !IsFakeClient(client)) PrintToChat(client, "\x04!~ Data Loaded ~!"); //PrintToChat(client, "%T", "Action Bar Loaded", client, orange, blue);
 		b_IsLoading[client] = false;
 		bIsTalentTwo[client] = false;
 	}
@@ -2097,6 +2100,7 @@ public OnClientDisconnect(client)
 		bIsTalentTwo[client] = false;
 		b_IsLoaded[client] = false;
 		bIsMeleeCooldown[client] = false;
+		shotgunCooldown[client] = false;
 		b_IsInSaferoom[client] = false;
 		b_IsArraysCreated[client] = false;
 		ResetData(client);
@@ -2128,6 +2132,19 @@ public ReadyUp_IsClientLoaded(client) {
 
 stock RUP_IsClientLoaded(client) {
 
+	CreateTimer(5.0, Timer_InitializeClientLoad, client, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
+	if (!IsLegitimateClient(client)) return Plugin_Stop;
+	PrintToChat(client, "\x04Loading your data...");
+	new Float:teleportIntoSaferoom[3];
+	if (StrEqual(TheCurrentMap, "zerowarn_1r", false)) {
+		teleportIntoSaferoom[0] = 4087.998291;
+		teleportIntoSaferoom[1] = 11974.557617;
+		teleportIntoSaferoom[2] = -300.968750;
+		TeleportEntity(client, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
+	}
 	//ToggleTank(client, true);
 	//ChangeHook(client);
 	b_IsLoaded[client] = false;
@@ -2155,6 +2172,7 @@ stock RUP_IsClientLoaded(client) {
 	ClearArray(Handle:InfectedHealth[client]);
 	ResizeArray(Handle:ActionBar[client], iActionBarSlots);
 	IsClientLoadedEx(client);
+	return Plugin_Stop;
 }
 
 stock IsClientLoadedEx(client) {
@@ -2255,7 +2273,7 @@ stock OnClientLoaded(client, bool:IsHooked = false) {
 
 		bIsEligibleMapAward[client] = true;
 	}
-	CreateTimer(0.1, Timer_LoadData, client, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(1.0, Timer_LoadData, client, TIMER_FLAG_NO_MAPCHANGE);
 
 	if (!IsSurvivorBot(client)) {	// unfortunately, survivor bots triggering in this way seem to cause a server crash
 
@@ -2267,6 +2285,13 @@ stock OnClientLoaded(client, bool:IsHooked = false) {
 			if (!HasCommandAccess(client, thetext)) KickClient(client, "\nYou do not have the privileges\nto access this server.\n");
 		}
 	}
+	/*if (StrEqual(TheCurrentMap, "zerowarn_1r", false)) {
+		new Float:teleportIntoSaferoom[3];
+		teleportIntoSaferoom[0] = 4087.998291;
+		teleportIntoSaferoom[1] = 11974.557617;
+		teleportIntoSaferoom[2] = -269.968750;
+		TeleportEntity(client, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
+	}*/
 }
 
 public Action:Timer_LoadData(Handle:timer, any:client) {

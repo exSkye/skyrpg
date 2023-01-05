@@ -16,6 +16,10 @@
 	{
 		"en"				"This node is independent from other nodes."
 	}
+	"effect over time talent info"
+	{
+		"en"				"This node is an Effect-over-Time."
+	}
 	"You cannot aim at anything"
 	{
 		"en"				"No aim target"
@@ -35,7 +39,22 @@
 	"Node Governing Attribute"
 	{
 		"#format"			"{1:s}"
-		"en"				"Governing Attribute: {1}"
+		"en"				"Governed By: {1}"
+	}
+	"primary aoe range"
+	{
+		"#format"			"{1:3.2f}"
+		"en"				"Primary AoE Range: {1}"
+	}
+	"secondary aoe range"
+	{
+		"#format"			"{1:3.2f}"
+		"en"				"Secondary AoE Range: {1}"
+	}
+	"multiply aoe range"
+	{
+		"#format"			"{1:3.2f}"
+		"en"				"Multiply Range: {1}"
 	}
 	"Survivor Sheet Info"
 	{
@@ -155,6 +174,10 @@
 	"attribute talents"
 	{
 		"en"				"Attributes\t\t\t"
+	}
+	"support talents"
+	{
+		"en"				"Support nodes\t\t"
 	}
 	"proficiency level up"
 	{
@@ -302,7 +325,7 @@
 	"player no longer eligible"
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
-		"en"				"{1}{2} {3}was removed from the server for falling below the rating requirement."
+		"en"				"{1}{2} {3}was removed from the server for falling below the score requirement."
 	}
 	"loading data cannot open menu"
 	{
@@ -448,7 +471,7 @@
 	"layer move locked"
 	{
 		"#format"			"{1:i},{2:i},{3:i}"
-		"en"				"(Preview Only) Layer {1}"
+		"en"				"(Preview Only) Layer {1}\nYou must first unlock an additional {3}\nmore nodes from the below trees."
 		//"en"				"(Preview Only) Layer {1}\nThis layer requires {3} more upgrades before\nyou can unlock deeper layers."
 	}
 	"prestige"
@@ -784,7 +807,7 @@
 	"level requirement kick"
 	{
 		"#format"			"{1:i},{2:s}"
-		"en"				"Requires {2} Rating (You are {1}\nvisit steamcommunity.com/groups/sky-rpg"
+		"en"				"Requires {2} Score (You are {1}\nvisit steamcommunity.com/groups/skyrpgdotprg"
 	}
 	"incap survivor health"
 	{
@@ -1045,10 +1068,15 @@
 		"#format"			"{1:3.2f}"
 		"en"				"\n!buy credits: {1}"
 	}
+	"Prestige Level Text"
+	{
+		"#format"			"{1:i},{2:i},{3:s}"
+		"en"				"Prestige {1}\n{3}"
+	}
 	"Player Level Text"
 	{
-		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s}"
-		"en"				"\t\tLv.{1} of {2}\n\t\t{4}\n{3} XP of {5} XP"
+		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s}"
+		"en"				"\t\tLv.{1} of {2}\n\t\t{4}\n{3} XP of {5} XP\nScore: {6}"
 	}
 	"Sky Level Text"
 	{
@@ -1058,12 +1086,12 @@
 	"RPG Header"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		"en"				"{1}\n \nTotal nodes unlocked: {2}/{3}\nNode unlocks remaining: {4}"
+		"en"				"{1}\n \nNodes unlocked: {2}/{3}\nNode Points: {4}"
 	}
 	"RPG Layer Eligible"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:i},{6:i}"
-		"en"				"{1}\n \nLayer {2} info:\nNodes unlocked: {5} of {6}\nNodes required to unlock next layer: {3} of {4}."
+		"en"				"{1}\n \nLayer {2} info:\nNodes unlocked: {5} of {6}\nRequired Nodes: {3} of {4}."
 	}
 	"RPG Layer Not Eligible"
 	{
@@ -1681,7 +1709,7 @@
 	}
 	"totem spirit"
 	{
-		"en"				"Totem Spirit\nRegen talents are converted to AoE damage based on your rating."
+		"en"				"Totem Spirit\nRegen talents are converted to AoE damage based on your score."
 	}
 	"blessed by the light"
 	{
@@ -1948,10 +1976,6 @@
 	{
 		"en"				"Commando"
 	}
-	"crusader hemomancer"
-	{
-		"en"				"Bloodwarrior"
-	}
 	"shaman hemomancer"
 	{
 		"en"				"Bloodknight"
@@ -1979,12 +2003,22 @@
 	"rating increase"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}+{2}{3} {4}rating"
+		"en"				"{1}+{2}{3} {4}score"
+	}	
+	"player killed special infected"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"en"				"{1}{2} {3}killed {4}{5}"
+	}
+	"killed special infected"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}{2} {3}died"
 	}
 	"team rating increase"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s}"
-		"en"				"{1}+{2}{3} {4}rating {5}({6}bonus: {7}+{8} {9}rating{10})"
+		"en"				"{1}+{2}{3} {4}score {5}({6}bonus: {7}+{8} {9}score{10})"
 	}
 	"Enable Class"
 	{
@@ -2401,12 +2435,13 @@
 	}
 	"prestige up available"
 	{
-		"en"				"Prestige (Level --> 1)"
+		"#format"			"{1:i}"
+		"en"				"Prestige (Level Resets)\nYour level resets to 1 but you earn\nan additional {1} node unlocks!"
 	}
 	"prestige unavailable"
 	{
-		"#format"			"{1:i},{2:s}"
-		"en"				"Prestige Unavailable (Lv.{1} & {2}XP Required)"
+		"#format"			"{1:s},{2:i}"
+		"en"				"Prestige (Locked)\n{1} more XP required."
 	}
 	"director priorities"
 	{
@@ -2424,9 +2459,17 @@
 	{
 		"en"				"Raises your overall Health pool."
 	}
-	"health regen i cooldown"
+	"health regen cdr i"
 	{
-		"en"				"Reduces the cooldown of all Regen I nodes."
+		"en"				"Regen Mastery I"
+	}
+	"health regen cdr ii"
+	{
+		"en"				"Regen Mastery II"
+	}
+	"health regen cooldown"
+	{
+		"en"				"Reduces the cooldown of all Regen nodes."
 	}
 	"health regen adr cdr i"
 	{
@@ -2434,7 +2477,7 @@
 	}
 	"health regen adr i cooldown"
 	{
-		"en"				"Reduces the cooldown of all Regen I nodes when you have [Ad]renaline."
+		"en"				"Reduces the cooldown of all Regen nodes when you have [Ad]renaline."
 	}
 	"survivor cooldown info"
 	{
@@ -2442,7 +2485,7 @@
 	}
 	"damage resistance i"
 	{
-		"en"				"Damage Resistance I"
+		"en"				"Damage Resist I"
 	}
 	"damage resistance i info"
 	{
@@ -2462,7 +2505,11 @@
 	}
 	"survivor adren health i"
 	{
-		"en"				"(Adrenaline) Health I"
+		"en"				"(Adren) Health I"
+	}
+	"survivor adren health ii"
+	{
+		"en"				"(Adren) Health II"
 	}
 	"survivor adren health info"
 	{
@@ -2472,6 +2519,14 @@
 	{
 		"en"				"(Weakness) Health I"
 	}
+	"survivor weak health ii"
+	{
+		"en"				"(Weakness) Health II"
+	}
+	"survivor weak health iii"
+	{
+		"en"				"(Weakness) Health III"
+	}
 	"survivor weak health info"
 	{
 		"en"				"Raises your overall Health pool when black & white."
@@ -2480,21 +2535,41 @@
 	{
 		"en"				"(Incapped) Health I"
 	}
+	"survivor incap health ii"
+	{
+		"en"				"(Incapped) Health II"
+	}
+	"survivor incap health iii"
+	{
+		"en"				"(Incapped) Health III"
+	}
 	"survivor incap health info"
 	{
 		"en"				"Raises your overall Health pool when in the\ndowned state."
 	}
 	"adren heal i"
 	{
-		"en"				"(Adrenaline) Heal I"
+		"en"				"(Adren) Heal I"
 	}
 	"adren heal i info"
 	{
 		"en"				"Heal for a percentage of damage dealt when [Ad]renaline is active."
 	}
+	"commons dmgdn i"
+	{
+		"en"				"Common Resist I"
+	}
+	"commons dmgdn ii"
+	{
+		"en"				"Common Resist II"
+	}
+	"commons dmgdn i info"
+	{
+		"en"				"Reduces incoming damage from common infected."
+	}
 	"bile dmgdn i"
 	{
-		"en"				"(Biled) Damage Resistance I"
+		"en"				"(Biled) Damage Resist I"
 	}
 	"bile dmgdn i info"
 	{
@@ -2502,7 +2577,7 @@
 	}
 	"weak dmgdn i"
 	{
-		"en"				"(Weakness) Damage Resistance I"
+		"en"				"(Weakness) Damage Resist I"
 	}
 	"weak dmgdn i info"
 	{
@@ -2510,11 +2585,47 @@
 	}
 	"adren dmgdn i"
 	{
-		"en"				"(Adrenaline) Damage Resistance I"
+		"en"				"(Adren) Damage Resist I"
 	}
 	"adren dmgdn i info"
 	{
 		"en"				"Reduce incoming damage when you have [Ad]renaline active."
+	}
+	"precision boost i"
+	{
+		"en"				"(Effect)Precision Boost I"
+	}
+	"precision boost ii"
+	{
+		"en"				"(Effect)Precision Boost II"
+	}
+	"precision boost"
+	{
+		"en"				"Limb and Head shots temporarily increase your movement speed."
+	}
+	"precision heal i"
+	{
+		"en"				"Precision Heal I"
+	}
+	"precision heal i info"
+	{
+		"en"				"Every 4th consecutive hit heals you if a limb or head shot."
+	}
+	"medic path i"
+	{
+		"en"				"(Effect)Medic Path I"
+	}
+	"medic path i info"
+	{
+		"en"				"After reviving an ally, deal increased damage for a while."
+	}
+	"medic path ii"
+	{
+		"en"				"(Effect)Medic Path II"
+	}
+	"medic path ii info"
+	{
+		"en"				"After reviving an ally, heal nearby allies for a percentage\nof their max health every tick."
 	}
 	"thorns i"
 	{
@@ -2530,7 +2641,67 @@
 	}
 	"thorns ii info"
 	{
+		"en"				"Reflects a mid percentage of the damage taken back at the attacker."
+	}
+	"thorns iii"
+	{
+		"en"				"Thorns III"
+	}
+	"thorns iii info"
+	{
 		"en"				"Reflects a large percentage of the damage taken back at the attacker."
+	}
+	"thorns iv"
+	{
+		"en"				"Thorns IV"
+	}
+	"thorns iv info"
+	{
+		"en"				"Reflects an enourmous percentage of the damage taken back at the attacker."
+	}
+	"progress bar speed i"
+	{
+		"en"				"Progress Bar Speed I"
+	}
+	"progress bar speed ii"
+	{
+		"en"				"Progress Bar Speed II"
+	}
+	"progress bar speed info"
+	{
+		"en"				"Reduces the time to use anything requiring a progress bar."
+	}
+	"commando path i"
+	{
+		"en"				"Commando Path I"
+	}
+	"commando path i info"
+	{
+		"en"				"Replenishes a percentage of ammo reserves for\nallies in range when you kill special infected."
+	}
+	"commando path ii"
+	{
+		"en"				"Commando Path II"
+	}
+	"commando path ii info"
+	{
+		"en"				"Replenish a percentage of your ammo reserve\nwhen you kill special infected."
+	}
+	"commando path iii"
+	{
+		"en"				"Commando Path III"
+	}
+	"commando path iii info"
+	{
+		"en"				"Replenishes a percentage of ammo reserves for you and\nallies within range on headshots."
+	}
+	"smg path i"
+	{
+		"en"				"SMG Path I"
+	}
+	"smg path i info"
+	{
+		"en"				"Consecutive limb or head shot hits with SMGs\nheal nearby teammates over a short period."
 	}
 	"healer path i"
 	{
@@ -2540,9 +2711,61 @@
 	{
 		"en"				"Healer Path II"
 	}
+	"healer path iii"
+	{
+		"en"				"Healer Path III"
+	}
+	"healer path iv"
+	{
+		"en"				"Healer Path IV"
+	}
+	"healer path v"
+	{
+		"en"				"(Effect)Healer Path V"
+	}
 	"healer path info"
 	{
 		"en"				"Bullet damage heals teammates for a percentage of damage dealt."
+	}
+	"healer path v info"
+	{
+		"en"				"Bullet heal damage is increased\nwhen healing teammates with bullets."
+	}
+	"overdose ab"
+	{
+		"en"				"Overdose"
+	}
+	"overdose ammo"
+	{
+		"en"				"(Equippable)Overdose"
+	}
+	"overdose ammo info"
+	{
+		"en"				"Temporarily-Increases the health pool of players affected."
+	}
+	"attack ab"
+	{
+		"en"				"Damage Up"
+	}
+	"attack ammo"
+	{
+		"en"				"(Equippable)Damage Up"
+	}
+	"attack ammo info"
+	{
+		"en"				"Increases the outgoing damage of any survivor in the field."
+	}
+	"berserk ab"
+	{
+		"en"				"Berserk"
+	}
+	"berserk ammo"
+	{
+		"en"				"(Equippable)Berserk"
+	}
+	"berserk ammo info"
+	{
+		"en"				"Increase the outgoing AND incoming damage\nof anything inside the field."
 	}
 	"adren ab"
 	{
@@ -2555,6 +2778,42 @@
 	"adren ammo info"
 	{
 		"en"				"Places a temporary adrenaline field at your aim target."
+	}
+	"focus ab"
+	{
+		"en"				"Focused"
+	}
+	"focus ability"
+	{
+		"en"				"(Equippable)Focused"
+	}
+	"focus info"
+	{
+		"en"				"Reduces cooldowns of all nodes."
+	}
+	"heal ammo ab"
+	{
+		"en"				"Heal AoE"
+	}
+	"heal ammo"
+	{
+		"en"				"(Equippable)Heal AoE"
+	}
+	"heal ammo info"
+	{
+		"en"				"Place a temporary healing field at your aim target."
+	}
+	"heal aura ab"
+	{
+		"en"				"Heal Aura"
+	}
+	"heal aura"
+	{
+		"en"				"(Equippable)Heal Aura"
+	}
+	"heal aura info"
+	{
+		"en"				"Create a temporary healing field that follows you around."
 	}
 	"reflect ab"
 	{
@@ -2580,6 +2839,42 @@
 	{
 		"en"				"Place a temporary damage-reduction field at your aim target."
 	}
+	"shield aura ab"
+	{
+		"en"				"Shield Aura"
+	}
+	"shield aura"
+	{
+		"en"				"(Equippable) Shield Aura"
+	}
+	"shield aura info"
+	{
+		"en"				"Create a temporary damage-reduction field that follows you."
+	}
+	"psycho path i"
+	{
+		"en"				"Psycho Path I"
+	}
+	"psycho path i info"
+	{
+		"en"				"Increase your health for each enemy in range."
+	}
+	"psycho path ii"
+	{
+		"en"				"Psycho Path II"
+	}
+	"psycho path ii info"
+	{
+		"en"				"Increase your damage for each enemy in range."
+	}
+	"lastresort i"
+	{
+		"en"				"(Incap)Last Resort"
+	}
+	"lastresort i info"
+	{
+		"en"				"All Pistol damage is increased when incapped for each enemy in range."
+	}
 	"elon path i"
 	{
 		"en"				"Elon Path I"
@@ -2604,6 +2899,14 @@
 	{
 		"en"				"All SMGs and Shotguns deal increased damage when not touching the ground."
 	}
+	"elon path iv"
+	{
+		"en"				"Elon Path IV"
+	}
+	"elon path iv info"
+	{
+		"en"				"All Snipers and Pistols deal increased damage when not touching the ground."
+	}
 	"shaman path i"
 	{
 		"en"				"Shaman Path I"
@@ -2612,9 +2915,49 @@
 	{
 		"en"				"Shaman Path II"
 	}
+	"shaman path iii"
+	{
+		"en"				"Shaman Path III"
+	}
+	"shaman path iv"
+	{
+		"en"				"Shaman Path IV"
+	}
+	"shaman path v"
+	{
+		"en"				"(Effect)Shaman Path V"
+	}
 	"shaman path info"
 	{
 		"en"				"Melee weapon damage heals teammates for a percentage of damage dealt."
+	}
+	"shaman path v info"
+	{
+		"en"				"Increases the heal amount done by melee weapon damage\nwhen healing teammates with melee weapons."
+	}
+	"bloodwarrior path i"
+	{
+		"en"				"Blood Warrior Path I"
+	}
+	"bloodwarrior path i info"
+	{
+		"en"				"When taking damage, heal allies within range for a percentage of\ndamage taken divided equally among them."
+	}
+	"bloodwarrior path ii"
+	{
+		"en"				"Blood Warrior Path II"
+	}
+	"bloodwarrior path ii info"
+	{
+		"en"				"When Blood Warrior Path I triggers, heals you for a\npercentage of the heal your allies received."
+	}
+	"bloodwarrior path iii"
+	{
+		"en"				"Blood Warrior Path III"
+	}
+	"bloodwarrior path iii info"
+	{
+		"en"				"When taking damage, heal allies within range for a percentage of\ndamage taken, divided equally, periodically."
 	}
 	"sniper path i"
 	{
@@ -2627,6 +2970,14 @@
 	"sniper path iii"
 	{
 		"en"				"Sniper Path III"
+	}
+	"sniper path iv"
+	{
+		"en"				"Sniper Path IV"
+	}
+	"sniper path iv info"
+	{
+		"en"				"Increases all melee and sniper rifle outgoing damage."
 	}
 	"sniper path info"
 	{
@@ -2644,17 +2995,65 @@
 	{
 		"en"				"Berserker Path III"
 	}
+	"berserker path iv"
+	{
+		"en"				"Berserker Path IV"
+	}
 	"berserker path info"
 	{
 		"en"				"Increases all shotgun and melee weapon outgoing damage."
+	}
+	"berserker path iv info"
+	{
+		"en"				"Increases all SMG and melee weapon damage."
 	}
 	"gunslinger path i"
 	{
 		"en"				"Gunslinger Path I"
 	}
+	"gunslinger path ii"
+	{
+		"en"				"Gunslinger Path II"
+	}
+	"gunslinger path iii"
+	{
+		"en"				"Gunslinger Path III"
+	}
 	"gunslinger path info"
 	{
 		"en"				"Increases single/twin pistol damage."
+	}
+	"deadeye path i"
+	{
+		"en"				"Dead Eye Path I"
+	}
+	"deadeye path ii"
+	{
+		"en"				"Dead Eye Path II"
+	}
+	"deadeye path info"
+	{
+		"en"				"Increase headshot damage with the scout and awp."
+	}
+	"deadeye path ii info"
+	{
+		"en"				"Increase headshot damage with all SRs and DMRs."
+	}
+	"surgeon path i"
+	{
+		"en"				"Surgeon Path I"
+	}
+	"surgeon path ii"
+	{
+		"en"				"Surgeon Path II"
+	}
+	"surgeon path info"
+	{
+		"en"				"Increase limb damage with the DEagle and awp."
+	}
+	"surgeon path ii info"
+	{
+		"en"				"Increases limb damage with all Pistols aand SMGs."
 	}
 	"specialist path i"
 	{
@@ -2668,6 +3067,14 @@
 	{
 		"en"				"Specialist Path III"
 	}
+	"specialist path iv"
+	{
+		"en"				"Specialist Path IV"
+	}
+	"specialist path iv info"
+	{
+		"en"				"Increases all weapon damage, including melee weapons."
+	}
 	"specialist path info"
 	{
 		"en"				"Increases all weapon damage, except melee weapons."
@@ -2676,17 +3083,57 @@
 	{
 		"en"				"Warblade Path I"
 	}
+	"warblade path ii"
+	{
+		"en"				"Warblade Path II"
+	}
 	"warblade path info"
 	{
 		"en"				"Increases all melee and pump shotgun damage when you are black and white."
+	}
+	"warblade path iii"
+	{
+		"en"				"Warblade Path III"
+	}
+	"warblade path iii info"
+	{
+		"en"				"Increase your health by a large amount;\nYou are permanently black and white."
+	}
+	"warblade path iv"
+	{
+		"en"				"Warblade Path IV"
+	}
+	"warblade path iv info"
+	{
+		"en"				"Increases all melee and pump shotgun damage;\nYou are permanently black and white."
+	}
+	"warblade path v"
+	{
+		"en"				"(Effect)Warblade Path V"
+	}
+	"warblade path v info"
+	{
+		"en"				"Increases health after dealing damage while black and white."
 	}
 	"defender path i"
 	{
 		"en"				"Defender Path I"
 	}
+	"defender path ii"
+	{
+		"en"				"Defender Path II"
+	}
 	"defender path info"
 	{
 		"en"				"Increases all melee weapon and pump shotgun damage."
+	}
+	"health regen wk i"
+	{
+		"en"				"(Weakness)Regen I"
+	}
+	"health regen wk i info"
+	{
+		"en"				"Regenerates a small amount of health over time when black and white."
 	}
 	"health regen i"
 	{
@@ -2712,6 +3159,14 @@
 	{
 		"en"				"Regenerates a large amount of health over time."
 	}
+	"health regen iv"
+	{
+		"en"				"Regen IV"
+	}
+	"health regen iv info"
+	{
+		"en"				"Regenerates a large amount of health over a short period of time."
+	}
 	"stamina i"
 	{
 		"en"				"Stamina I"
@@ -2728,6 +3183,30 @@
 	{
 		"en"				"Increases your stamina by a moderate amount."
 	}
+	"stamina iii"
+	{
+		"en"				"Stamina III"
+	}
+	"stamina iii info"
+	{
+		"en"				"Increases your stamina by a large amount."
+	}
+	"survivor health eot i"
+	{
+		"en"				"(Effect)Reactive Health I"
+	}
+	"survivor health eot"
+	{
+		"en"				"Increase your total health after taking damage."
+	}
+	"survivor health eot ii"
+	{
+		"en"				"(Effect)Reactive Health II"
+	}
+	"survivor health eot ii info"
+	{
+		"en"				"Increases nearby teammates total health after you take damage."
+	}
 	"survivor health i"
 	{
 		"en"				"Health I"
@@ -2740,6 +3219,14 @@
 	{
 		"en"				"Health III"
 	}
+	"survivor health iv"
+	{
+		"en"				"Health IV"
+	}
+	"survivor health v"
+	{
+		"en"				"Health V"
+	}
 	"damage up cdr i"
 	{
 		"en"				"Damage Mastery I"
@@ -2748,9 +3235,29 @@
 	{
 		"en"				"Reduces the cooldown of all Tier-I nodes that increase Damage."
 	}
-	"health regen cdr i"
+	"damage up cdr ii"
 	{
-		"en"				"Regen Mastery I"
+		"en"				"Damage Mastery II"
+	}
+	"damage up ii cooldown"
+	{
+		"en"				"Reduces the cooldown of all Tier-II nodes that increase Damage."
+	}
+	"damage up cdr iii"
+	{
+		"en"				"Damage Mastery III"
+	}
+	"damage up iii cooldown"
+	{
+		"en"				"Reduces the cooldown of all Tier-III nodes that increase Damage."
+	}
+	"damage up cdr iv"
+	{
+		"en"				"Damage Mastery IV"
+	}
+	"damage up iv cooldown"
+	{
+		"en"				"Reduces the cooldown of all Tier-IV nodes that increase damage."
 	}
 	"ability chance"
 	{
@@ -2816,9 +3323,29 @@
 	{
 		"en"				"Melee Talents\nWhen guns aren't good enough."
 	}
-	"weapon damage increase"
+	"headshot damage increase"
 	{
-		"en"				"All weapons deal increased damage."
+		"en"				"Increase weapon damage on headshots."
+	}
+	"headshot damage increase i"
+	{
+		"en"				"Headshot Damage I"
+	}
+	"headshot damage increase ii"
+	{
+		"en"				"Headshot Damage II"
+	}
+	"limb damage increase"
+	{
+		"en"				"Increase weapon damage to arms and legs."
+	}
+	"limb damage increase i"
+	{
+		"en"				"Limb Damage I"
+	}
+	"limb damage increase ii"
+	{
+		"en"				"Limb Damage II"
 	}
 	"weapon damage increase i"
 	{
@@ -2827,6 +3354,38 @@
 	"weapon damage increase ii"
 	{
 		"en"				"Weapon Damage II"
+	}
+	"weapon damage increase iii"
+	{
+		"en"				"Weapon Damage III"
+	}
+	"weapon damage increase"
+	{
+		"en"				"All gun weapons deal increased damage."
+	}
+	"masochist path i"
+	{
+		"en"				"Masoschistic Path I"
+	}
+	"masochist path i info"
+	{
+		"en"				"Increase damage for each status effect you have."
+	}
+	"melee damage increase i"
+	{
+		"en"				"Melee Damage I"
+	}
+	"melee damage increase ii"
+	{
+		"en"				"Melee Damage II"
+	}
+	"melee damage increase"
+	{
+		"en"				"All melee weapons deal increased damage."
+	}
+	"melee damage increase ii info"
+	{
+		"en"				"All melee weapons deal increased damage\nbased on common infected in range."
 	}
 	"tier1 damage increase"
 	{
@@ -2840,6 +3399,10 @@
 	{
 		"en"				"Tier1 Damage II"
 	}
+	"tier1 damage increase iii"
+	{
+		"en"				"Tier1 Damage III"
+	}
 	"tier2 damage increase"
 	{
 		"en"				"Tier 2 Weapons have increased damage.\n(assault rifles, auto-shotguns, and sniper rifles)"
@@ -2851,6 +3414,18 @@
 	"tier2 damage increase ii"
 	{
 		"en"				"Tier2 Damage II"
+	}
+	"tier2 damage increase iii"
+	{
+		"en"				"Tier2 Damage III"
+	}
+	"crouch damage increase"
+	{
+		"en"				"Increase all outgoing damage while crouching."
+	}
+	"crouch damage increase i"
+	{
+		"en"				"Crouch Damage I"
 	}
 	"burn damage increase"
 	{
@@ -2944,14 +3519,6 @@
 	{
 		"en"				"Survivors inside the spell will become a distraction."
 	}
-	"berserk ammo"
-	{
-		"en"				"Berserk"
-	}
-	"berserk ammo info"
-	{
-		"en"				"Increases all outgoing and incoming damage."
-	}
 	"Single Spell Talents"
 	{
 		"en"				"Focus Spells\nCasts a spell on a specific target."
@@ -2992,21 +3559,9 @@
 	{
 		"en"				"Recipients suffering Weakness [Wk] are immune\nwhile removing negative effects from\nthose who are not."
 	}
-	"overdose ammo"
-	{
-		"en"				"Overdose"
-	}
-	"overdose ammo info"
-	{
-		"en"				"Survivors within the aura have their\nhealth pool temporarily inflated."
-	}
 	"fire ammo"
 	{
 		"en"				"Fire"
-	}
-	"attack ammo"
-	{
-		"en"				"Bravery"
 	}
 	"damage shield"
 	{
@@ -3870,7 +4425,7 @@
 	"Talent Cooldown Info - No Points"
 	{
 		"#format"			"{1:3.2f}"
-		"en"				"Cooldown if unlocked\t: {1}s"
+		"en"				"Cooldown\t: {1}s"
 	}
 	"Talent Cooldown Info"
 	{
@@ -3880,7 +4435,7 @@
 	"Ability Info Raw"
 	{
 		"#format"			"{1:i},{2:i}"
-		"en"				"Node Bonus if unlocked: {2}"
+		"en"				"Node Bonus: {2}"
 	}
 	"Ability Info Raw Max"
 	{
@@ -3890,7 +4445,7 @@
 	"Ability Info Percent"
 	{
 		"#format"			"{1:3.3f},{2:s},{3:3.3f},{4:s}"
-		"en"				"Node Bonus if unlocked: {3}{4}"
+		"en"				"Node Bonus: {3}{4}"
 	}
 	"Ability Info Percent Max"
 	{
@@ -3900,22 +4455,22 @@
 	"Ability Info Time"
 	{
 		"#format"			"{1:3.3f},{2:3.3f}"
-		"en"				"Node Bonus if unlocked: {2}"
+		"en"				"Time\t\t\t: {2}s"
 	}
 	"Ability Info Time Max"
 	{
 		"#format"			"{1:3.3f}"
-		"en"				"Node Bonus: {1}s"
+		"en"				"Time\t\t\t: {1}s"
 	}
 	"Ability Info Distance"
 	{
 		"#format"			"{1:3.1f},{2:3.1f}"
-		"en"				"Node Bonus if unlocked: {2}"
+		"en"				"Distance: {2}units"
 	}
 	"Ability Info Distance Max"
 	{
 		"#format"			"{1:3.1f}"
-		"en"				"Node Bonus: {1}units"
+		"en"				"Distance: {1}units"
 	}
 	"Ability Info Aura"
 	{
@@ -4120,7 +4675,7 @@
 	}
 	"return to talent menu"
 	{
-		"en"				"Return to Talent Menu"
+		"en"				"Previous Menu"
 	}
 	"disable handicap"
 	{
@@ -4334,10 +4889,6 @@
 	{
 		"en"				"Places an AoE that occasionally heals allies."
 	}
-	"attack ammo info"
-	{
-		"en"				"Places an AoE that increases all damage output."
-	}
 	"fire ammo info"
 	{
 		"en"				"Places a fire trap AoE that ignites ANYTHING that enters."
@@ -4441,14 +4992,6 @@
 	"death field info"
 	{
 		"en"				"Creates a death field around the target\nhealing teammates within for a\nportion of the damage dealt."
-	}
-	"transference"
-	{
-		"en"				"Transference"
-	}
-	"transference info"
-	{
-		"en"				"Heals nearby teammates for a portion\nof your incoming damage."
 	}
 	"pulse wave"
 	{
@@ -4779,10 +5322,15 @@
 	{
 		"en"				"Passive Talents"
 	}
+	"Special Ammo Effect Strength"
+	{
+		"#format"			"{1:3.3f},{2:s}"
+		"en"				"Strength: {1}{2}"
+	}
 	"Special Ammo Time"
 	{
 		"#format"			"{1:3.2f}"
-		"en"				"Lifetime (if unlocked):\t{1}s"
+		"en"				"Lifetime:\t{1}s"
 	}
 	"Special Ammo Interval"
 	{
@@ -4792,17 +5340,17 @@
 	"Special Ammo Cooldown"
 	{
 		"#format"			"{1:3.2f}"
-		"en"				"Cooldown (if unlocked): {1}s"
+		"en"				"Cooldown: {1}s"
 	}
 	"Special Ammo Stamina"
 	{
 		"#format"			"{1:i}"
-		"en"				"Stamina cost (if unlocked): {1}"
+		"en"				"Stamina cost: {1}"
 	}
 	"Special Ammo Range"
 	{
 		"#format"			"{1:3.2f}"
-		"en"				"Range (if unlocked):\t\t{1}units"
+		"en"				"Range:\t\t{1}units"
 	}
 	"Special Ammo Time Max"
 	{
@@ -4914,19 +5462,19 @@
 	}
 	"Active Effects"
 	{
-		"en"				"Effects (Active)"
+		"en"				"On-Use:"
 	}
 	"Passive Effects"
 	{
-		"en"				"Effects (Passive)"
+		"en"				"Passively:"
 	}
 	"Toggle Effects"
 	{
-		"en"				"Effects (Toggle)"
+		"en"				"Toggle:"
 	}
 	"Cooldown Effects"
 	{
-		"en"				"Effects (When on Cooldown)"
+		"en"				"On-Cooldown:"
 	}
 	"Ability Cooldown"
 	{
@@ -4964,6 +5512,10 @@
 	"stagger Active Ability"
 	{
 		"en"				"Free yourself when ensnared by a special infected\nif activated before being ensnared."
+	}
+	"firewall Active Ability"
+	{
+		"en"				"Unleash an ultimate ability, setting yourself\nand all enemies around you ablaze."
 	}
 	"X Passive Ability"
 	{
@@ -5025,12 +5577,12 @@
 	"R Active Ability"
 	{
 		"#format"			"{1:3.2f},{2:s}"
-		"en"				"Life on Kill for {1}{2} of earned rating"
+		"en"				"Life on Kill for {1}{2} of earned score"
 	}
 	"R Passive Ability"
 	{
 		"#format"			"{1:3.2f},{2:s}"
-		"en"				"Life on Kill for {1}{2} of earned rating"
+		"en"				"Life on Kill for {1}{2} of earned score"
 	}
 	"r Disabled"
 	{
@@ -5079,7 +5631,7 @@
 	"t Passive Ability"
 	{
 		"#format"			"{1:3.2f},{2:s}"
-		"en"				"Reduces threat you generate, passively, by {1}{2}"
+		"en"				"reduce all threat generated by {1}{2}"
 	}
 	"V Active Ability"
 	{
@@ -5175,25 +5727,29 @@
 		"#format"			"{1:3.2f},{2:s}"
 		"en"				"Specials you kill explode for {1}{2} weapon damage as Fire."
 	}
-	"knife ability"
+	"transference ab"
 	{
-		"en"				"Knife"
+		"en"				"Transference"
 	}
-	"last chance ability"
+	"transference ability"
 	{
-		"en"				"Last Chance"
+		"en"				"(Equippable)Transference"
 	}
-	"second holster"
+	"transference info"
 	{
-		"en"				"Second Holster"
+		"en"				"Heal for a percentage of your earned score when you land the killing blow."
 	}
-	"basilisk armor ability"
+	"healers embrace ab"
 	{
-		"en"				"Basilisk Armor"
+		"en"				"Healers Embrace"
 	}
-	"featherfoot ability"
+	"healers embrace ability"
 	{
-		"en"				"Featherfoot"
+		"en"				"(Equippable)Healers Embrace"
+	}
+	"healers embrace info"
+	{
+		"en"				"This talent must be equipped to the action bar once unlocked."
 	}
 	"sharp eye ab"
 	{
@@ -5207,22 +5763,6 @@
 	{
 		"en"				"This talent must be equipped to the action bar once unlocked."
 	}
-	"focus ability"
-	{
-		"en"				"Focus"
-	}
-	"transference ability"
-	{
-		"en"				"Transference"
-	}
-	"life leech ability"
-	{
-		"en"				"Life Leech"
-	}
-	"meditation ability"
-	{
-		"en"				"Meditation"
-	}
 	"bloodlust ab"
 	{
 		"en"				"Bloodlust"
@@ -5234,6 +5774,30 @@
 	"bloodlust info"
 	{
 		"en"				"Increases all outgoing damage."
+	}
+	"fade ab"
+	{
+		"en"				"Fade"
+	}
+	"fade ability"
+	{
+		"en"				"(Equippable)Fade"
+	}
+	"fade info"
+	{
+		"en"				"This talent must be equipped to the action bar once unlocked."
+	}
+	"firewall ab"
+	{
+		"en"				"Fire Wall(Ultimate)"
+	}
+	"firewall ability"
+	{
+		"en"				"(Ultimate, Equippable)Fire Wall"
+	}
+	"firewall info"
+	{
+		"en"				"Cast a Fire Wall on yourself, taking burn damage\nequal to a percentage of your max health."
 	}
 	"knife ab"
 	{
@@ -5247,6 +5811,14 @@
 	{
 		"en"				"You can now parry special infected ensnares\nif this ability is active when you are ensnared."
 	}
+	"basilisk ab"
+	{
+		"en"				"Basilisk Armor"
+	}
+	"basilisk ability"
+	{
+		"en"				"(Equippable)Basilisk Armor"
+	}
 	"last chance ab"
 	{
 		"en"				"Last Chance"
@@ -5258,6 +5830,42 @@
 	"last chance info"
 	{
 		"en"				"Reduce almost-all incoming damage for a short period of time."
+	}
+	"second holster ab"
+	{
+		"en"				"Second Holster"
+	}
+	"second holster ability"
+	{
+		"en"				"(Equippable)Second Holster"
+	}
+	"second holster info"
+	{
+		"en"				"Swap between dual pistols and DEagle on the fly."
+	}
+	"featherweight ab"
+	{
+		"en"				"Featherweight"
+	}
+	"featherweight ability"
+	{
+		"en"				"(Equippable)Featherweight"
+	}
+	"featherweight info"
+	{
+		"en"				"Greatly-reduce your fall damage; fall from even greater\nheights than before!"
+	}
+	"meditation ab"
+	{
+		"en"				"Meditation"
+	}
+	"meditation ability"
+	{
+		"en"				"(Equippable)Meditation"
+	}
+	"meditation info"
+	{
+		"en"				"Increases your max stamina when not on cooldown."
 	}
 	"refresh ab"
 	{
@@ -5271,25 +5879,17 @@
 	{
 		"en"				"Heal yourself for a large portion of your health, instantly."
 	}
-	"phoenix ability"
+	"refresh aura ab"
 	{
-		"en"				"Rebirth"
+		"en"				"Refresh Aura"
 	}
-	"nature embrace ability"
+	"refresh aura"
 	{
-		"en"				"Nature's Embrace"
+		"en"				"(Equippable)Refresh Aura"
 	}
-	"unstable genetics ability"
+	"refresh aura info"
 	{
-		"en"				"Unstable Genetics"
-	}
-	"potluck ability"
-	{
-		"en"				"Pot Luck"
-	}
-	"potion master ability"
-	{
-		"en"				"Potion Master"
+		"en"				"Heal yourself and allies in range for a percentage\nof your weapon damage, instantly."
 	}
 	"stance ab"
 	{
@@ -5302,26 +5902,6 @@
 	"stance info"
 	{
 		"en"				"Makes infected AI target you."
-	}
-	"fade ability"
-	{
-		"en"				"Fade Away"
-	}
-	"rocketeer ability"
-	{
-		"en"				"Rocketeer"
-	}
-	"watergun ability"
-	{
-		"en"				"Water Gun"
-	}
-	"magma ability"
-	{
-		"en"				"Magma-Laced Bullets"
-	}
-	"wall of fire ability"
-	{
-		"en"				"Wall-of-Fire"
 	}
 	"Action Slot Range"
 	{
@@ -5433,12 +6013,12 @@
 	"enrage period"
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
-		"en"				"{1}>\n>>>>>>>>>>> {2}ENRAGE NOW ACTIVE {3}<<<<<<<<<<<\n>"
+		"en"				"{1}!!! {2}ENRAGE NOW ACTIVE {3}!!!"
 	}
 	"enrage in..."
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}>\n>>>>>>>>>>> ENRAGE IN {2}{3} {4}<<<<<<<<<<<\n>"
+		"en"				"{1}!!! ENRAGE IN {2}{3} {4}!!!"
 	}
 	"Creating New Class"
 	{
@@ -5453,7 +6033,7 @@
 	"Rushing Return To Team"
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
-		"en"				"{1}>>>>>>>>>> | {2}STOP RUSHING AND REGROUP WITH YOUR TEAM {3}| <<<<<<<<<<"
+		"en"				"{1}!!! {2}STOP RUSHING AND REGROUP WITH YOUR TEAM {3}!!!"
 	}
 }
 

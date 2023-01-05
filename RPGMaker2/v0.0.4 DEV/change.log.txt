@@ -1,5 +1,5 @@
 
-	RPGMaker2 v0.0.4.5 (RPG Construction Set)
+	RPGMaker2 v0.0.4.8 (RPG Construction Set)
 	By Skye
 
 	Other Credits:
@@ -12,6 +12,61 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.4.8
+	This update is entirely an optimization update!
+	With this update, server operators should see a noticeable difference in terms of stability and lag.
+	I've refactored MANY heavy-activity methods, so we should see less memory usage, less lag, and more overall stability.
+	- Fixed MANY memory leaks.
+	- Optimized A LOT of method calls.
+	- WAY BETTER Memory management this update. WAY, WAY, WAY BETTER.
+	0.0.4.7
+	Added new keys to allow for AoE (think: Hemomancy) style talents, and to allow talents to fire secondary effects.
+
+		- "primary aoe?" - makes the talent do an aoe effect on all eligible players. This is a float value for diameter range.
+		- "secondary aoe?" - aoe effects on the secondary effect of the talent, if set. This is a float value for diameter range.
+		<= 0.0 disables aoe, so omit if you don't want to use it.
+		
+		- "secondary effects?" - effects that fire off after the primary effect is successful.
+		- "status effect multiplier?" - multiplies the talent strength by the # of activate status effects on the player.
+		- Added new "ability trigger?" values:
+			"C" - When a player kills a witch, super common, or common infected. It was listed in the legend but was never coded in.
+			- "didStagger" - the player who caused the stagger.
+			  "wasStagger" - the player who was staggered.
+			  these fire with a 2-second cooldown when survivors or SI are staggered.
+			
+			- "aoegive" the player whose aoe it was.
+			- "aoereceive" when a players talent affects other players via "primary aoe?" or "secondary aoe?"
+			these only fire if the aoe hit at least one teammate.
+			
+			- "didHeals" when a player heals a teammate with a gun or melee weapon.
+			- "wasHealed" when a player is healed by a teammate who used a gun or melee weapon.
+			
+			- "witchkill" when a player lands the killing blow on a witch.
+			
+		Even more ability triggers, but these are ALL related to weapon range modifications:
+		These should all be compounding talents.
+			- These must all have survivor effects of "d"
+			- "gunRNG" - this is gun range modifier. It modifies the base range before all other multipliers are considered.
+			- "ICwRNG" - In-combat weapon range bonus. Write a story, like "you're so much more-focused when you're in combat, so you have better proficiency or something."
+			- "OCwRNG" - This would only affect spells cast when out-of-combat since they're based on weapon damage which is based on range.
+			- "ammoreserve" - This modifies the total ammo reserve of a weapon.
+			Ammo Reserve bonuses could be for all weapons or they could be for specific weapons.
+		
+		- If you want spells/ammos to follow the creator around and have an aura effect, set this key to 1:
+			- "is aura instead?"
+		- Effect over time keys:
+			- "is effect over time?"	- is this talent an effect over time?
+			- "cooldown trigger?"		- fires this off when the cooldown period ends.
+			- "inactive trigger?"		- fires this off when the active period ends.
+			- "buff bar text?"			- If the AoE effect has a buff bar indicator, put it here.
+			e.g.: "buff bar text?"	"hemo" would display as [hemo]
+		- Added a few new ability effects:
+		"r1bullet" - refunds 1 bullet * roundUp(talentStr)
+		"rrbullet" - refunds a raw amount of bullets. amount = roundUp(talentStr)
+		"rpbullet" - refunds a percentage of bullets equal to (talentStr * reserveCap)
+	0.0.4.6
+	-	Changed effect over time triggers to be called on the same tick as active effect over time nodes. I did this so that
+		effects first tick is on the same tick as they are activated.
 	0.0.4.5
 	-	Added support for talents that only trigger when a player is crouching.
 	-	Added support for "wtr"(water), "grnd"(in the air), "onfire"(on... fire) and "ducking"(crouching) talent nodes firing outside of

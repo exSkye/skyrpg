@@ -3,7 +3,14 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 	decl String:text[512], String:stext[512];
 	new CurRPGMode = iRPGMode;
 
+	decl String:currExperience[64];
+	decl String:targExperience[64];
+	decl String:ratingFormatted[64];
+
 	if (bot == 0) {
+		AddCommasToString(ExperienceLevel[client], currExperience, sizeof(currExperience));
+		AddCommasToString(CheckExperienceRequirement(client), targExperience, sizeof(targExperience));
+		AddCommasToString(Rating[client], ratingFormatted, sizeof(ratingFormatted));
 
 		decl String:PointsText[64];
 		Format(PointsText, sizeof(PointsText), "%T", "Points Text", client, Points[client]);
@@ -15,7 +22,9 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 
 			new TotalPoints = TotalPointsAssigned(client);
 			decl String:PlayerLevelText[256];
-			Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, AddCommasToString(ExperienceLevel[client]), MenuExperienceBar(client), AddCommasToString(CheckExperienceRequirement(client)), AddCommasToString(Rating[client]));
+			MenuExperienceBar(client, _, _, PlayerLevelText, sizeof(PlayerLevelText));
+			Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted);
+			if (SkyLevel[client] > 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Prestige Level Text", client, SkyLevel[client], iSkyLevelMax, PlayerLevelText);
 			new maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
 			if (CheckRPGMode != 0) {
 				Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
@@ -30,34 +39,28 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 				}
 			}
 			if (CheckRPGMode != 1) Format(text, sizeof(text), "%s\n%s", text, PointsText);
-			//Format(stext, sizeof(stext), "%T", "Class Level Text", client, TheClass, AddCommasToString(CartelLevel(client)));
-			//Format(stext, sizeof(stext), "Class: %s", stext);
-			//Format(stext, sizeof(stext), "%s\n \nDifficulty: %s (%s)", stext, AddCommasToString(Rating[client]), AddCommasToString(TruRating(client)));
-			//Format(text, sizeof(text), "%s\n \n%s", text, stext);
-			//Format(text, sizeof(text), "%s\n \n%s", text, stext);
-
-			//new RestedExperienceMaximum = GetConfigValueInt("rested experience maximum?");
-			//if (RestedExperienceMaximum < 1) RestedExperienceMaximum = CheckExperienceRequirement(client);
-			//if (RestedExperience[client] > 0) Format(text, sizeof(text), "%T", "Menu Rested Experience", client, text, AddCommasToString(RestedExperience[client]), AddCommasToString(RestedExperienceMaximum), RoundToCeil(100.0 * GetConfigValueFloat("rested experience multiplier?")));
-			if (ExperienceDebt[client] > 0 && GetConfigValueInt("experience debt enabled?") == 1 && PlayerLevel[client] >= GetConfigValueInt("experience debt level?")) {
-
-				Format(text, sizeof(text), "%T", "Menu Experience Debt", client, text, AddCommasToString(ExperienceDebt[client]), RoundToCeil(100.0 * GetConfigValueFloat("experience debt penalty?")));
+			if (ExperienceDebt[client] > 0 && iExperienceDebtEnabled == 1 && PlayerLevel[client] >= iExperienceDebtLevel) {
+				AddCommasToString(ExperienceDebt[client], currExperience, sizeof(currExperience));
+				Format(text, sizeof(text), "%T", "Menu Experience Debt", client, text, currExperience, RoundToCeil(100.0 * fExperienceDebtPenalty));
 			}
 		}
 		else if (CurRPGMode == 0) Format(text, sizeof(text), "%s", PointsText);
 		else Format(text, sizeof(text), "Control Panel");
 	}
 	else {
+		AddCommasToString(ExperienceLevel_Bots, currExperience, sizeof(currExperience));
+		AddCommasToString(CheckExperienceRequirement(-1, true), targExperience, sizeof(targExperience));
+		AddCommasToString(GetUpgradeExperienceCost(-1), ratingFormatted, sizeof(ratingFormatted));
 
 		if (CurRPGMode == 0 || CurRPGMode == 2 && bot == -1) Format(text, sizeof(text), "%T", "Menu Header 0 Director", client, Points_Director);
 		else if (CurRPGMode == 1) {
 
 			// Bots level up strictly based on experience gain. Honestly, I have been thinking about removing talent-based leveling.
-			Format(text, sizeof(text), "%T", "Menu Header 1 Talents Bot", client, PlayerLevel_Bots, iMaxLevel, AddCommasToString(ExperienceLevel_Bots), AddCommasToString(CheckExperienceRequirement(-1, true)), AddCommasToString(GetUpgradeExperienceCost(-1)));
+			Format(text, sizeof(text), "%T", "Menu Header 1 Talents Bot", client, PlayerLevel_Bots, iMaxLevel, currExperience, targExperience, ratingFormatted);
 		}
 		else if (CurRPGMode == 2) {
 
-			Format(text, sizeof(text), "%T", "Menu Header 2 Talents Bot", client, PlayerLevel_Bots, iMaxLevel, AddCommasToString(ExperienceLevel_Bots), AddCommasToString(CheckExperienceRequirement(-1, true)), AddCommasToString(GetUpgradeExperienceCost(-1)), Points_Director);
+			Format(text, sizeof(text), "%T", "Menu Header 2 Talents Bot", client, PlayerLevel_Bots, iMaxLevel, currExperience, targExperience, ratingFormatted, Points_Director);
 		}
 	}
 	ReplaceString(text, sizeof(text), "PCT", "%%", true);
@@ -65,17 +68,6 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 	if (!bIsPanel) SetMenuTitle(menu, text);
 	else DrawPanelText(menu, text);
 }
-
-/*stock VerifyUpgradeExperienceCost(client) {
-
-	if (GetUpgradeExperienceCost(client) > CheckExperienceRequirement(client) && PlayerUpgradesTotal[client] < MaximumPlayerUpgrades(client)) {
-
-		if (FreeUpgrades[client] < MaximumPlayerUpgrades(client) - PlayerUpgradesTotal[client]) {
-
-			FreeUpgrades[client] += (MaximumPlayerUpgrades(client) - PlayerUpgradesTotal[client] - FreeUpgrades[client]);
-		}
-	}
-}*/
 
 stock bool:CheckKillPositions(client, bool:b_AddPosition) {
 
@@ -565,6 +557,8 @@ stock GetTeamComposition(client) {
 	ClearArray(Handle:RPGMenuPosition[client]);
 
 	decl String:text[512];
+	decl String:ratingText[64];
+	decl String:levelText[64];
 
 	new myteam = GetClientTeam(client);
 	for (new i = 1; i <= MaxClients; i++) {
@@ -572,7 +566,9 @@ stock GetTeamComposition(client) {
 		if (!IsLegitimateClient(i) || myteam != GetClientTeam(i)) continue;
 
 		GetClientName(i, text, sizeof(text));
-		Format(text, sizeof(text), "[Rating: %s] (Lv.%s) %s", AddCommasToString(Rating[i]), AddCommasToString(PlayerLevel[i]), text);
+
+		AddCommasToString(Rating[i], ratingText, sizeof(ratingText));
+		Format(text, sizeof(text), "[Rating: %s] (Lv.%d) %s", ratingText, PlayerLevel[i], text);
 		AddMenuItem(menu, text, text);
 	}
 	SetMenuExitBackButton(menu, true);
@@ -781,10 +777,17 @@ stock ShowActionBar(client) {
 	new Handle:menu = CreateMenu(ActionBarHandle);
 
 	decl String:text[128], String:talentname[64];
-	Format(text, sizeof(text), "Stamina: %d (Max: %d)", SurvivorStamina[client], GetPlayerStamina(client));
-	
-	new baseWeaponDamage = DataScreenWeaponDamage(client);
-	if (baseWeaponDamage > 0) Format(text, sizeof(text), "%s\nBullet Damage: %s", text, AddCommasToString(baseWeaponDamage));
+	Format(text, sizeof(text), "Stamina: %d/%d", SurvivorStamina[client], GetPlayerStamina(client));
+	static baseWeaponDamage = 0;
+	static String:baseWeaponDamageText[64];
+	if (iShowDamageOnActionBar == 1) {
+		baseWeaponDamage = DataScreenWeaponDamage(client);
+		if (baseWeaponDamage > 0) {
+			AddCommasToString(baseWeaponDamage, baseWeaponDamageText, sizeof(baseWeaponDamageText));
+			Format(text, sizeof(text), "%s\nBullet DMG: %s", text, baseWeaponDamageText);
+		}
+	}
+	//if (baseWeaponDamage > 0) Format(text, sizeof(text), "%s\nBullet Damage: %s", text, AddCommasToString(baseWeaponDamage));
 	SetMenuTitle(menu, text);
 	new size = iActionBarSlots;
 	new Float:AmmoCooldownTime = -1.0, Float:fAmmoCooldownTime = -1.0, Float:fAmmoCooldown = 0.0, Float:fAmmoActive = 0.0;
@@ -816,7 +819,6 @@ stock ShowActionBar(client) {
 		else Format(text, sizeof(text), "%T", "No Action Equipped", client);
 
 		Format(text, sizeof(text), "!%s%d:\t%s", acmd, i+1, text);
-
 		if (TalentStrength > 0) {
 
 			bIsAbility = IsAbilityTalent(client, talentname);
@@ -824,31 +826,7 @@ stock ShowActionBar(client) {
 			if (!bIsAbility) {
 
 				ManaCost = RoundToCeil(GetSpecialAmmoStrength(client, talentname, 2));
-				if (ManaCost > 0) Format(text, sizeof(text), "%s\nCost: %d Mana", text, ManaCost);
-			}
-			else if (bIsAbility && AbilityDoesDamage(client, talentname)) {
-
-				TheAbilityMultiplier = GetAbilityMultiplier(client, "0", _, talentname);
-				baseWeaponDamage = RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
-
-				Format(text, sizeof(text), "%s\nDamage: %d", text, baseWeaponDamage);
-			}
-
-			if (bIsAbility) {
-
-				AmmoCooldownTime = GetAmmoCooldownTime(client, talentname, true);
-				fAmmoCooldownTime = AmmoCooldownTime;
-
-				// abilities dont show active time correctly (NOT FIXED)
-				fAmmoActive = GetAbilityValue(client, talentname, "active time?");
-				if (fAmmoCooldownTime != -1.0) {
-
-					fAmmoCooldown = GetSpellCooldown(client, talentname);
-					AmmoCooldownTime = fAmmoActive - (fAmmoCooldown - fAmmoCooldownTime);
-				}
-				//PrintToChat(client, "%s %3.3f", talentname, AmmoCooldownTime);
-			}
-			else {
+				if (ManaCost > 0) Format(text, sizeof(text), "%s\nStamina Cost: %d", text, ManaCost);
 
 				AmmoCooldownTime = GetAmmoCooldownTime(client, talentname);
 				fAmmoCooldownTime = AmmoCooldownTime;
@@ -864,6 +842,24 @@ stock ShowActionBar(client) {
 				else {
 
 					AmmoCooldownTime = GetSpecialAmmoStrength(client, talentname);
+				}
+			}
+			else {
+				if (AbilityDoesDamage(client, talentname)) {
+					TheAbilityMultiplier = GetAbilityMultiplier(client, "0", _, talentname);
+					baseWeaponDamage = RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
+
+					Format(text, sizeof(text), "%s\nDamage: %d", text, baseWeaponDamage);
+				}
+				AmmoCooldownTime = GetAmmoCooldownTime(client, talentname, true);
+				fAmmoCooldownTime = AmmoCooldownTime;
+
+				// abilities dont show active time correctly (NOT FIXED)
+				fAmmoActive = GetAbilityValue(client, talentname, "active time?");
+				if (fAmmoCooldownTime != -1.0) {
+
+					fAmmoCooldown = GetSpellCooldown(client, talentname);
+					AmmoCooldownTime = fAmmoActive - (fAmmoCooldown - fAmmoCooldownTime);
 				}
 			}
 			if (bIsAbility && AmmoCooldownTime != -1.0 && AmmoCooldownTime > 0.0 || !bIsAbility && (AmmoCooldownTime > 0.0 || AmmoCooldownTime == -1.0)) Format(text, sizeof(text), "%s\nActive: %3.2fs", text, AmmoCooldownTime);
@@ -1197,6 +1193,8 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 
 	decl String:translationInfo[64];
 
+	decl String:formattedText[64];
+
 	for (new i = 0; i < size; i++) {
 
 		// Pull data from the parsed config.
@@ -1279,21 +1277,24 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 				//if (PlayerUpgradesTotal[client] < MaximumPlayerUpgrades(client)) continue; //Format(text, sizeof(text), "%T", "level up unavailable", client, MaximumPlayerUpgrades(client) - PlayerUpgradesTotal[client]);
 				if (iIsLevelingPaused[client] == 1) {
 
-					if (ExperienceLevel[client] >= XPRequired) Format(text, sizeof(text), "%T", "level up available", client, AddCommasToString(XPRequired));
-					else Format(text, sizeof(text), "%T", "level up unavailable", client, AddCommasToString(XPRequired - ExperienceLevel[client]));
+					if (ExperienceLevel[client] >= XPRequired) {
+						AddCommasToString(XPRequired, formattedText, sizeof(formattedText));
+						Format(text, sizeof(text), "%T", "level up available", client, formattedText);
+					}
+					else {
+						AddCommasToString(XPRequired - ExperienceLevel[client], formattedText, sizeof(formattedText));
+						Format(text, sizeof(text), "%T", "level up unavailable", client, formattedText);
+					}
 				}
 				else continue;
-				/*}
-				else {
-
-					if (PlayerLevelUpgrades_Bots < MaxUpgradesPerLevel()) Format(text, sizeof(text), "%T", "level up unavailable", client, MaxUpgradesPerLevel() - PlayerLevelUpgrades_Bots);
-					else Format(text, sizeof(text), "%T", "level up available", client, AddCommasToString(CheckExperienceRequirement(-1)));
-				}*/
 			}
-			else if (StrEqual(configname, "prestige")) {
+			else if (StrEqual(configname, "prestige") && SkyLevel[client] < iSkyLevelMax && PlayerLevel[client] == iMaxLevel) {// we now require players to be max level to see the prestige information.
 
-				if (ExperienceLevel[client] >= XPRequired && PlayerLevel[client] == iMaxLevel) Format(text, sizeof(text), "%T", "prestige up available", client);
-				else Format(text, sizeof(text), "%T", "prestige unavailable", client, iMaxLevel, AddCommasToString(XPRequired));
+				if (ExperienceLevel[client] >= XPRequired) Format(text, sizeof(text), "%T", "prestige up available", client, GetPrestigeLevelNodeUnlocks(SkyLevel[client]));
+				else {
+					AddCommasToString(XPRequired - ExperienceLevel[client], formattedText, sizeof(formattedText));
+					Format(text, sizeof(text), "%T", "prestige unavailable", client, formattedText, GetPrestigeLevelNodeUnlocks(SkyLevel[client]));
+				}
 			}
 			else if (StrEqual(configname, "layerup")) {
 				if (PlayerCurrentMenuLayer[client] <= 1) continue;
@@ -1586,14 +1587,20 @@ stock Float:PlayerBuffLevel(client) {
 
 stock MaximumPlayerUpgrades(client, bool:getNodeCountInstead = false) {
 
-	if (!getNodeCountInstead) return PlayerLevel[client];
+	if (!getNodeCountInstead) {
+		if (SkyLevel[client] < 1) return PlayerLevel[client];
+		new count = 0;
+		for (new i = 1; i < SkyLevel[client] + 1; i++) {
+			count += GetPrestigeLevelNodeUnlocks(i);
+		}
+		return count + PlayerLevel[client];
+	}
 	return nodesInExistence;
 }
 
 stock VerifyMaxPlayerUpgrades(client) {
 
 	if (PlayerUpgradesTotal[client] + FreeUpgrades[client] > MaximumPlayerUpgrades(client)) {
-		PrintToChatAll("7");
 		FreeUpgrades[client]								=	MaximumPlayerUpgrades(client);
 		UpgradesAvailable[client]							=	0;
 		PlayerUpgradesTotal[client]							=	0;
@@ -1629,6 +1636,10 @@ stock LoadProficiencyData(client) {
 	new CurLevel = 0;
 	new CurExp = 0;
 	new CurGoal = 0;
+	decl String:theExperienceBar[64];
+
+	decl String:currAmount[64];
+	decl String:currTarget[64];
 	for (new i = 0; i <= 7; i++) {
 		CurLevel = GetProficiencyData(client, i);
 		CurExp = GetProficiencyData(client, i, _, 1);
@@ -1642,8 +1653,12 @@ stock LoadProficiencyData(client) {
 		else if (i == 5) Format(text, sizeof(text), "%T", "assault proficiency", client);
 		else if (i == 6) Format(text, sizeof(text), "%T", "medic proficiency", client);
 		else if (i == 7) Format(text, sizeof(text), "%T", "grenade proficiency", client);
+		
+		MenuExperienceBar(client, CurExp, CurGoal, theExperienceBar, sizeof(theExperienceBar));
 
-		Format(text, sizeof(text), "%s Lv.%d %s %s %sXP", text, CurLevel, AddCommasToString(CurExp), MenuExperienceBar(client, CurExp, CurGoal), AddCommasToString(CurGoal));
+		AddCommasToString(CurExp, currAmount, sizeof(currAmount));
+		AddCommasToString(CurGoal, currTarget, sizeof(currTarget));
+		Format(text, sizeof(text), "%s Lv.%d %s %s %sXP", text, CurLevel, currAmount, theExperienceBar, currTarget);
 		AddMenuItem(menu, text, text, ITEMDRAW_DISABLED);
 	}
 	SetMenuExitBackButton(menu, true);
@@ -1720,6 +1735,8 @@ public Handle:DisplayTheLeaderboards(client) {
 	decl String:testelim[4];
 	Format(testelim, sizeof(testelim), " ");
 
+	decl String:textFormatted[64];
+
 	if (TheLeaderboardsPageSize[client] > 0) {
 
 		Format(text, sizeof(text), "Name\t(Level)\t(Rating)");
@@ -1734,11 +1751,14 @@ public Handle:DisplayTheLeaderboards(client) {
 			TheLeaderboardsData[client]		= GetArrayCell(TheLeaderboards[client], 0, 1);
 			GetArrayString(Handle:TheLeaderboardsData[client], i, tquery, sizeof(tquery));
 
-			Format(text, sizeof(text), "%s\t(%s)", text, AddCommasToString(StringToInt(tquery)));
+			AddCommasToString(StringToInt(tquery), textFormatted, sizeof(textFormatted));
+			Format(text, sizeof(text), "%s\t(%s)", text, textFormatted);
 
 			TheLeaderboardsData[client]		= GetArrayCell(TheLeaderboards[client], 0, 3);
 			GetArrayString(Handle:TheLeaderboardsData[client], i, tquery, sizeof(tquery));
-			Format(text, sizeof(text), "%s\t(%s)", text, AddCommasToString(StringToInt(tquery)));
+			
+			AddCommasToString(StringToInt(tquery), textFormatted, sizeof(textFormatted));
+			Format(text, sizeof(text), "%s\t(%s)", text, textFormatted);
 
 			DrawPanelText(menu, text);
 
@@ -1914,6 +1934,8 @@ public Handle:ShowThreatMenu(client) {
 
 	decl String:tClient[64];
 
+	decl String:threatLevelText[64];
+
 	Format(text, sizeof(text), "%T", "threat meter title", client);
 	//new pos = GetThreatPos(client);
 	if (iThreatLevel[client] > 0) {
@@ -1936,7 +1958,8 @@ public Handle:ShowThreatMenu(client) {
 		}
 		else Format(tBar, sizeof(tBar), ">");
 		GetClientName(client, tClient, sizeof(tClient));
-		Format(tBar, sizeof(tBar), "%s%s %s", tBar, AddCommasToString(iThreatLevel[client]), tClient);
+		AddCommasToString(iThreatLevel[client], threatLevelText, sizeof(threatLevelText));
+		Format(tBar, sizeof(tBar), "%s%s %s", tBar, threatLevelText, tClient);
 		Format(text, sizeof(text), "%s\nYou:\n%s\n\t\nTeam:", text, tBar);
 		//}
 	}
@@ -1970,7 +1993,8 @@ public Handle:ShowThreatMenu(client) {
 				Format(tBar, sizeof(tBar), "%s>", tBar);
 			}
 			else Format(tBar, sizeof(tBar), ">");
-			Format(tBar, sizeof(tBar), "%s%s %s", tBar, AddCommasToString(iThreatTarget), text);
+			AddCommasToString(iThreatTarget, threatLevelText, sizeof(threatLevelText));
+			Format(tBar, sizeof(tBar), "%s%s %s", tBar, threatLevelText, text);
 			DrawPanelText(menu, tBar);
 		}
 	}
@@ -2124,7 +2148,8 @@ public Handle:CharacterSheetMenu(client) {
 		decl String:targetName[64];
 		//new typeOfAimTarget = DataScreenTargetName(client, targetName, sizeof(targetName));
 		decl String:weaponDamage[64];
-		Format(weaponDamage, sizeof(weaponDamage), "%s", AddCommasToString(DataScreenWeaponDamage(client)));
+		AddCommasToString(DataScreenWeaponDamage(client), weaponDamage, sizeof(weaponDamage));
+		Format(weaponDamage, sizeof(weaponDamage), "%s", weaponDamage);
 
 		Format(text, sizeof(text), "%T", "Survivor Sheet Info", client);
 		if (StrContains(text, "{AIMTARGET}", true) != -1) {
@@ -2173,7 +2198,6 @@ public Handle:CharacterSheetMenu(client) {
 	else Format(text, sizeof(text), "%T", "Character Sheet (Infected Page)", client);
 	AddMenuItem(menu, text, text);
 
-
 	SetMenuExitBackButton(menu, true);
 	DisplayMenu(menu, client, 0);
 }
@@ -2183,11 +2207,16 @@ stock bool:IsWeaponPermittedFound(client, String:WeaponsPermitted[], String:Play
 	if (StrContains(WeaponsPermitted, "{ALLSMG}", true) != -1 && StrContains(PlayerWeapon, "smg", false) != -1 ||
 		StrContains(WeaponsPermitted, "{ALLSHOTGUN}", true) != -1 && StrContains(PlayerWeapon, "shotgun", false) != -1 ||
 		StrContains(WeaponsPermitted, "{PUMP}", true) != -1 && (StrContains(PlayerWeapon, "pump", false) != -1 || StrContains(PlayerWeapon, "chrome", false) != -1) ||
-		StrContains(WeaponsPermitted, "{ALLRIFLE}", true) != -1 && StrContains(PlayerWeapon, "rifle", false) && StrContains(PlayerWeapon, "hunting", false) == -1 ||
+		StrContains(WeaponsPermitted, "{ALLRIFLE}", true) != -1 && StrContains(PlayerWeapon, "rifle", false) != -1 && StrContains(PlayerWeapon, "hunting", false) == -1 ||
+		StrContains(WeaponsPermitted, "{M60}", true) != -1 && StrContains(PlayerWeapon, "m60", false) != -1 ||
 		StrContains(WeaponsPermitted, "{ALLSNIPER}", true) != -1 && StrContains(PlayerWeapon, "sniper", false) != -1 ||
 		StrContains(WeaponsPermitted, "{ALLPISTOL}", true) != -1 && StrContains(PlayerWeapon, "pistol", false) != -1 ||
 		StrContains(WeaponsPermitted, "{MAGNUM}", true) != -1 && StrContains(PlayerWeapon, "magnum", false) != -1 ||
+		StrContains(WeaponsPermitted, "{50CAL}", true) != -1 && (StrContains(PlayerWeapon, "magnum", false) != -1 || StrContains(PlayerWeapon, "awp", false) != -1) ||
+		StrContains(WeaponsPermitted, "{SR}", true) != -1 && (StrContains(PlayerWeapon, "awp", false) != -1 || StrContains(PlayerWeapon, "scout", false) != -1) ||
+		StrContains(WeaponsPermitted, "{DMR}", true) != -1 && (StrContains(PlayerWeapon, "hunting", false) != -1 || StrContains(PlayerWeapon, "military", false) != -1) ||
 		StrContains(WeaponsPermitted, "{PISTOL}", true) != -1 && (StrContains(PlayerWeapon, "pistol", false) != -1 && StrContains(PlayerWeapon, "magnum", false) == -1) ||
+		StrContains(WeaponsPermitted, "{GUNS}", true) != -1 && !IsMeleeAttacker(client) ||
 		StrContains(WeaponsPermitted, "{MELEE}", true) != -1 && IsMeleeAttacker(client) ||
 		StrContains(WeaponsPermitted, "{TIER1}", true) != -1 &&
 			(StrContains(PlayerWeapon, "smg", false) != -1 || StrContains(PlayerWeapon, "chrome", false) != -1 ||
@@ -2265,7 +2294,8 @@ stock GetCharacterSheetData(client, String:stringRef[], theSize, request, zombie
 
 	//if (request % 2 == 0) Format(stringRef, theSize, "%3.3f", fResult);
 	//else Format(stringRef, theSize, "%d", iResult);
-	Format(stringRef, theSize, "%s", AddCommasToString(iResult));
+	AddCommasToString(iResult, stringRef, theSize);
+	//Format(stringRef, theSize, "%s", AddCommasToString(iResult));
 	return 0;
 }
 
@@ -2537,8 +2567,8 @@ stock ReadProfiles(client, String:target[] = "none") {
 	new owner = client;
 	if (LoadTarget[owner] != -1 && LoadTarget[owner] != owner && IsSurvivorBot(LoadTarget[owner])) client = LoadTarget[owner]; 
 
-	if (!StrEqual(target, "all", false)) Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `total upgrades` <= '%d';", TheDBPrefix, key, pct, PlayerLevel[client]);
-	else Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s+SavedProfile%s' AND `total upgrades` <= '%d';", TheDBPrefix, pct, PROFILE_VERSION, PlayerLevel[client]);
+	if (!StrEqual(target, "all", false)) Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `total upgrades` <= '%d';", TheDBPrefix, key, pct, MaximumPlayerUpgrades(client));
+	else Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s+SavedProfile%s' AND `total upgrades` <= '%d';", TheDBPrefix, pct, PROFILE_VERSION, MaximumPlayerUpgrades(client));
 	//PrintToChat(client, tquery);
 	//decl String:tqueryE[512];
 	//SQL_EscapeString(Handle:hDatabase, tquery, tqueryE, sizeof(tqueryE));
@@ -2795,49 +2825,28 @@ public BuildSubMenuHandle(Handle:menu, MenuAction:action, client, slot)
 				if (AbilityTalent != 1 && isSpecialAmmo != 1) continue;
 				if (PlayerTalentPoints < 1) continue;
 			}
-
 			isSubMenu = GetKeyValueInt(MenuKeys[client], MenuValues[client], "is sub menu?");
 			TalentLevelRequired = GetKeyValueInt(MenuKeys[client], MenuValues[client], "minimum level required?");
 			//iSkyLevelReq	=	GetKeyValueInt(MenuKeys[client], MenuValues[client], "sky level requirement?");
 			//nodeUnlockCost = GetKeyValueInt(MenuKeys[client], MenuValues[client], "node unlock cost?", "1");
-			
 			FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), MenuKeys[client], MenuValues[client], "talents required?");
 			//if (!TalentRequirementsMet(client, sTalentsRequired)) continue;
-
 			if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is item?") == 1) continue;
 			pos++;
-
 			FormatKeyValue(SurvEffects, sizeof(SurvEffects), MenuKeys[client], MenuValues[client], "survivor ability effects?");
-
 			if (pos == slot) break;
 		}
 
 		if (isSubMenu == 1 || isSubMenu == 2) {
-
-			/*if (isSubMenu == 2) {
-
-				bEquipSpells[client] = true;
-				FormatKeyValue(TalentName, sizeof(TalentName), MenuKeys[client], MenuValues[client], "target menu?");
-			}
-			else {
-				if (bEquipSpells[client]) PrintToChat(client, "disabling equip spells.");
-				bEquipSpells[client] = false;
-			}*/
-
 			if (PlayerLevel[client] < TalentLevelRequired) {
-
 				BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
 			}
 			else {
-
-
-
 				// If the player is eligible we open a new sub-menu.
 				BuildSubMenu(client, TalentName, MenuSelection[client], OpenedMenu[client]);
 			}
 		}
 		else {
-
 			PlayerTalentPoints = GetTalentStrength(client, TalentName);
 			//if (AbilityTalent == 1 || PlayerLevel[client] >= TalentLevelRequired || bEquipSpells[client]) {// submenu 2 is to send to spell equip screen *Flex*
 			if (PlayerLevel[client] >= TalentLevelRequired || bEquipSpells[client]) {// submenu 2 is to send to spell equip screen *Flex*
@@ -2850,7 +2859,6 @@ public BuildSubMenuHandle(Handle:menu, MenuAction:action, client, slot)
 				else ShowTalentInfoScreen(client, TalentName, MenuKeys[client], MenuValues[client]);
 			}
 			else {
-
 				decl String:TalentName_temp[64];
 				Format(TalentName_temp, sizeof(TalentName_temp), "%T", TalentName, client);
 
@@ -3037,6 +3045,21 @@ public Handle:TalentInfoScreen (client) {
 		Format(text, sizeof(text), "%T", "Node Governing Attribute", client, text);
 		DrawPanelText(menu, text);
 	}
+	new Float:AoEEffectRange = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "primary aoe?");
+	if (AoEEffectRange > 0.0) {
+		Format(text, sizeof(text), "%T", "primary aoe range", client, AoEEffectRange);
+		DrawPanelText(menu, text);
+	}
+	AoEEffectRange = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "secondary aoe?");
+	if (AoEEffectRange > 0.0) {
+		Format(text, sizeof(text), "%T", "secondary aoe range", client, AoEEffectRange);
+		DrawPanelText(menu, text);
+	}
+	AoEEffectRange = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "multiply range?");
+	if (AoEEffectRange > 0.0) {
+		Format(text, sizeof(text), "%T", "multiply aoe range", client, AoEEffectRange);
+		DrawPanelText(menu, text);
+	}
 
 	decl String:TalentInfo[128];
 	new AbilityType = 0;
@@ -3051,6 +3074,8 @@ public Handle:TalentInfoScreen (client) {
 			new Float:i_AbilityTime = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], 2);
 			new Float:i_AbilityTimeNext = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], 2, true);
 
+			new bool:IsEffectOverTime = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is effect over time?") == 1) ? true : false;
+
 			/*
 				ability type ONLY EXISTS for displaying different information to the players via menus.
 				the EXCEPTION to this is type 3, where rpg_functions.sp line 2428 makes a check using it.
@@ -3058,10 +3083,9 @@ public Handle:TalentInfoScreen (client) {
 				Otherwise, it's just how we translate it for the player to understand.
 			*/
 			AbilityType = StringToInt(GetKeyValue(PurchaseKeys[client], PurchaseValues[client], "ability type?"));
+			if (AbilityType < 0) AbilityType = 0;	// if someone forgets to set this, we have to set it to the default value.
 			//if (TalentPointAmount > 0) s_PenaltyPoint = 0.0;
 			if (TalentType <= 0) {
-
-				
 				if (TalentPointAmount < 1) {
 					if (AbilityType == 0) Format(text, sizeof(text), "%T", "Ability Info Percent", client, s_TalentPoints * 100.0, pct, s_OtherPointNext * 100.0, pct);
 					else if (AbilityType == 1) Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
@@ -3076,6 +3100,12 @@ public Handle:TalentInfoScreen (client) {
 				}
 				DrawPanelText(menu, text);
 				//DrawPanelText(menu, TalentIdCode);
+				if (IsEffectOverTime) {
+					// Effects over time ALWAYS show the period of time.
+					if (TalentPointAmount < 1) Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
+					else Format(text, sizeof(text), "%T", "Ability Info Time Max", client, i_AbilityTime);
+					DrawPanelText(menu, text);
+				}
 			}
 		}
 		else {
@@ -3116,6 +3146,8 @@ public Handle:TalentInfoScreen (client) {
 				Format(text, sizeof(text), "%T", "Special Ammo Range Max", client, GetSpecialAmmoStrength(client, TalentName, 3));
 				DrawPanelText(menu, text);
 			}
+			Format(text, sizeof(text), "%T", "Special Ammo Effect Strength", client, GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "effect strength?"), pct);
+			DrawPanelText(menu, text);
 			//DrawPanelText(menu, TalentIdCode);
 		}
 	}
@@ -3157,9 +3189,18 @@ public Handle:TalentInfoScreen (client) {
 
 		// draw the talent type 1 leveling information and a return option only.
 		new talentlevel = GetTalentLevel(client, TalentName);
-		new talentexperience = GetTalentLevel(client, TalentName, true);
-		new talentrequirement = CheckExperienceRequirementTalents(client, TalentName);
-		Format(text, sizeof(text), "%T", "cartel experience screen", client, talentlevel, AddCommasToString(talentexperience), AddCommasToString(talentrequirement), TalentName_Temp, MenuExperienceBar(client, talentexperience, talentrequirement));
+
+		new iTalentExperience = GetTalentLevel(client, TalentName, true);
+		decl String:talentexperience[64];
+		AddCommasToString(iTalentExperience, talentexperience, sizeof(talentexperience));
+
+		new iTalentRequirement = CheckExperienceRequirementTalents(client, TalentName);
+		decl String:talentrequirement[64];
+		AddCommasToString(iTalentRequirement, talentrequirement, sizeof(talentrequirement));
+
+		decl String:theExperienceBar[64];
+		MenuExperienceBar(client, iTalentExperience, iTalentRequirement, theExperienceBar, sizeof(theExperienceBar));
+		Format(text, sizeof(text), "%T", "cartel experience screen", client, talentlevel, talentexperience, talentrequirement, TalentName_Temp, theExperienceBar);
 		DrawPanelText(menu, text);
 	}
 	Format(text, sizeof(text), "%T", "return to talent menu", client);
@@ -3192,13 +3233,19 @@ public Handle:TalentInfoScreen (client) {
 	}
 	if (AbilityType == 1) {	// show the player what the buff shows as on the buff bar because we aren't monsters like Fatshark.
 		FormatEffectOverTimeBuffs(client, text, sizeof(text), GetTalentPosition(client, TalentName));
-		Format(text, sizeof(text), "%T", "buff visual display text", client, text);
-		DrawPanelText(menu, text);
+		if (!StrEqual(text, "-1")) {
+			Format(text, sizeof(text), "%T", "buff visual display text", client, text);
+			DrawPanelText(menu, text);
+		}
 	}
 	new isCompoundingTalent = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "compounding talent?");	// -1 if no value is provided.
 	if (isCompoundingTalent >= 0) {
 		if (isCompoundingTalent == 1) Format(text, sizeof(text), "%T", "compounding talent info", client);
 		else Format(text, sizeof(text), "%T", "not compounding talent info", client);
+		DrawPanelText(menu, text);
+	}
+	if (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is effect over time?") == 1) {
+		Format(text, sizeof(text), "%T", "effect over time talent info", client);
 		DrawPanelText(menu, text);
 	}
 	return menu;
