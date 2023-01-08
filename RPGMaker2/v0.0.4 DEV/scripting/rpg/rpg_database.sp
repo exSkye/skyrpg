@@ -2137,7 +2137,6 @@ stock RUP_IsClientLoaded(client) {
 
 public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
-	PrintToChat(client, "\x04Loading your data...");
 	new Float:teleportIntoSaferoom[3];
 	if (StrEqual(TheCurrentMap, "zerowarn_1r", false)) {
 		teleportIntoSaferoom[0] = 4087.998291;
@@ -2145,6 +2144,7 @@ public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
 		teleportIntoSaferoom[2] = -300.968750;
 		TeleportEntity(client, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 	}
+	if (b_IsLoaded[client]) return Plugin_Stop;
 	//ToggleTank(client, true);
 	//ChangeHook(client);
 	b_IsLoaded[client] = false;

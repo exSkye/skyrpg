@@ -151,14 +151,11 @@ public Action:Timer_ShowHUD(Handle:timer) {
 
 		for (new i = 1; i <= MaxClients; i++) {
 
-			if (IsLegitimateClient(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
-
-				IsSpecialAmmoEnabled[i][0] = 0.0;
-
-				if (IsPlayerAlive(i)) AwardExperience(i, _, _, true);
-				else {
-
-					Defibrillator(i, _, true);
+			if (IsLegitimateClient(i)) {
+				if (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i)) {
+					IsSpecialAmmoEnabled[i][0] = 0.0;
+					if (IsPlayerAlive(i)) AwardExperience(i, _, _, true);
+					else Defibrillator(i, _, true);
 				}
 			}
 			/*else if (IsLegitimateClientAlive(i) && IsFakeClient(i) && GetClientTeam(i) == TEAM_INFECTED) {
@@ -405,6 +402,26 @@ public Action:Timer_SlowPlayer(Handle:timer, any:client) {
 	}
 	//SlowMultiplierTimer[client] = INVALID_HANDLE;
 	return Plugin_Stop;
+}
+
+stock GetTimePlayed(client, String:s[], size) {
+	new seconds = TimePlayed[client];
+	new minutes = 0;
+	new hours = 0;
+	new days = 0;
+	while (seconds >= 86400) {
+		days++;
+		seconds -= 86400;
+	}
+	while (seconds >= 3600) {
+		hours++;
+		seconds -= 3600;
+	}
+	while (seconds >= 60) {
+		minutes++;
+		seconds -= 60;
+	}
+	Format(s, size, "%d Days, %d Hours, %d Minutes, %d Second(s)", days, hours, minutes, seconds);
 }
 
 /*public Action:Timer_AwardSkyPoints(Handle:timer) {
@@ -1230,6 +1247,15 @@ stock bool:IsClientSorted(client) {
 	return false;
 }
 
+public Action:Timer_PlayTime(Handle:timer) {
+	if (!b_IsActiveRound) return Plugin_Stop;
+	for (new i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || GetClientTeam(i) == TEAM_SPECTATOR) continue;
+		TimePlayed[i]++;
+	}
+	return Plugin_Continue;
+}
+
 public Action:Timer_ThreatSystem(Handle:timer) {
 
 	static cThreatTarget			= -1;
@@ -1517,11 +1543,11 @@ stock DirectorPurchase(Handle:Keys, Handle:Values, pos) {
 
 	PointCost				=	GetKeyValueFloat(Keys, Values, "point cost?") + (GetKeyValueFloat(Keys, Values, "cost handicap?") * LivingHumanSurvivors());
 	PointCostMin			=	GetKeyValueFloat(Keys, Values, "point cost minimum?") + (GetKeyValueFloat(Keys, Values, "min cost handicap?") * LivingHumanSurvivors());
-	Format(Parameter, sizeof(Parameter), "%s", GetKeyValue(Keys, Values, "parameter?"));
+	FormatKeyValue(Parameter, sizeof(Parameter), Keys, Values, "parameter?");
 	Count					=	GetKeyValueInt(Keys, Values, "count?");
-	Format(Command, sizeof(Command), "%s", GetKeyValue(Keys, Values, "command?"));
+	FormatKeyValue(Command, sizeof(Command), Keys, Values, "command?");
 	IsPlayerDrop			=	GetKeyValueInt(Keys, Values, "drop?");
-	Format(Model, sizeof(Model), "%s", GetKeyValue(Keys, Values, "model?"));
+	FormatKeyValue(Model, sizeof(Model), Keys, Values, "model?");
 	MinimumDelay			=	GetKeyValueFloat(Keys, Values, "minimum delay?");
 
 	if (PointCost > 1.0) {
@@ -1575,7 +1601,11 @@ stock DirectorPurchase(Handle:Keys, Handle:Values, pos) {
 	}
 
 	if (!StrEqual(Parameter, "common")) ExecCheatCommand(Client, Command, Parameter);
-	else SpawnCommons(Client, Count, Command, Parameter, Model, IsPlayerDrop, GetKeyValue(Keys, Values, "supercommon?"));
+	else {
+		decl String:superCommonType[64];
+		FormatKeyValue(superCommonType, sizeof(superCommonType), Keys, Values, "supercommon?");
+		SpawnCommons(Client, Count, Command, Parameter, Model, IsPlayerDrop, superCommonType);
+	}
 }
 
 /*stock InsertInfected(survivor, infected) {

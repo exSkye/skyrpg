@@ -118,7 +118,7 @@ stock GiveClientStoreItem(client, pos) {
 	GetArrayString(Give_Store_Section, 0, SectionName, sizeof(SectionName));
 
 	Duration		= GetKeyValueInt(Give_Store_Keys, Give_Store_Values, "duration?");
-	Format(ItemEffect, sizeof(ItemEffect), "%s", GetKeyValue(Give_Store_Keys, Give_Store_Values, "item effect?"));
+	FormatKeyValue(ItemEffect, sizeof(ItemEffect), Give_Store_Keys, Give_Store_Values, "item effect?");
 	Amount			= GetKeyValueInt(Give_Store_Keys, Give_Store_Values, "amount?");
 	AmountMin		= GetKeyValueFloat(Give_Store_Keys, Give_Store_Values, "amount min?");
 	AmountMax		= GetKeyValueFloat(Give_Store_Keys, Give_Store_Values, "amount max?");
@@ -191,7 +191,7 @@ public BuildStoreHandle(Handle:menu, MenuAction:action, client, slot) {
 
 		StoreCost		= GetKeyValueInt(MenuKeys[client], MenuValues[client], "store cost?");
 		Duration		= GetKeyValueInt(MenuKeys[client], MenuValues[client], "duration?");
-		Format(ItemEffect, sizeof(ItemEffect), "%s", GetKeyValue(MenuKeys[client], MenuValues[client], "item effect?"));
+		FormatKeyValue(ItemEffect, sizeof(ItemEffect), MenuKeys[client], MenuValues[client], "item effect?");
 		Amount			= GetKeyValueInt(MenuKeys[client], MenuValues[client], "amount?");
 		AmountMin		= GetKeyValueFloat(MenuKeys[client], MenuValues[client], "amount min?");
 		AmountMax		= GetKeyValueFloat(MenuKeys[client], MenuValues[client], "amount max?");

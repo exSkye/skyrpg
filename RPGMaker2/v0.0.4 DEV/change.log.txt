@@ -12,6 +12,83 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.5 (includes 0.0.4.9)
+	A lot of changes to get the plugin ready for its final public release.
+	There were major optimizations for this release.
+	The most-notable is another refactoring pass of the GetAbilityStrengthByTrigger method.
+	It still needs to be refactored again, and I'll make another pass at that in the next update.
+
+	I have not added a crafting system, and will re-evaluate doing so in the future, but am happy with the state of the RPG.
+	I may add new nodes if I develop any new types of node; some node types aren't on display in the talent menu, unfortunately.
+	The default talentmenu.cfg has 215 total nodes, 60 of which are attributes.
+	Additional version releases will occur for bug fixes and the conversion from sourcepawn(pawn) to newsyntax(C#)
+
+	If you are creating a "weapon damage+" node and it SPECIFICALLY increases weapon damage, you MUST set "compounding talent?" to "1"
+	If you are creating a "deal x damage in y scenario" even if it INCREASES weapon damage, you ARE ALLOWED to set "compounding talent?" to "0"
+
+	Compounding is checked when determing a weapons damage. This is the # that you see on the action bar, if your server administrator has that feature enabled.
+	Server operators can enable this feature with "show damage on action bar?" "1" in their config.cfg.
+
+	For the "ability trigger?" key, we have new values:
+	limbshot - when hitting arms or legs.
+	headshot - when hitting headshots - this trigger calls on ALL headshots (specials, commons, witches, etc.) (but do please note that non-super commons die automatically from headshots.)
+
+	Added new values for "weapons permitted?" key:
+	{DMR} - Specifically for the hunting rifle and military rifles.
+	{SR} - Specifically for the scout and awp sniper rifles.
+	{GUNS} - For all guns (all tier 1 and tier 2, no melee weapons.)
+	{M60} - This has its own category, but it's also included in {ALLRIFLE} and {GUNS} and {TIER2}
+
+	Added new keys for talents associated with talent strength multiplication.
+	"multiply range?" - Does this talent multiply its "talent upgrade strength value?" value?
+	if "multiply range?" is > 0.0, then the following 5 keys will be considered; they can be omitted, or set to 0 (disable) or 1 (enable)
+	
+	"multiply commons?"	"1" - be careful setting this to 1, as it will affect ALL common infected in range (I might add a multiply # limit in the next... will probably, update.)
+	"multiply supers?"	"1" - supers are the colored, glowing common infected with special abilities.
+	"multiply witches?"	"1"
+	"multiply specials?"	"1"
+	"multiply survivors?"	"0"
+
+	Added new talent key:
+	"compound with?"	- if this is a compounding talent, but it's called outside of compounding requests, you can force it to compound with other talents by setting this value.
+				  this only works if "compounding talent?" is set to "1" for this talent. Still a beta feature, needs additional testing.
+	"status effect multiplier?" - if enabled, multiples the "talent upgrade strength value?" by the # of current status effects you have, both positive and negative.
+						I will add a feature in the future to allow you to opt between positive, negative, or both.
+	
+	
+	Character Sheet:
+	The character sheet shows you important data pertaining to the enemies and to your own build.
+	The enemy health and damage values will rise as your score rises.
+	(These variables go in your skyrpg_phrases.txt / translations file.)
+	The character sheet can be modified in its translation file to show all (or none) of the information below on the action bar.
+	I've added the default translations before, and while I was going to explain what each individual value is for, I think they're quite self-explanatory thanks to the translation!
+
+	Please note that you will have to add support for other languages if needed, as only English is supported on my end.
+	If you do add support for other languages, it would be great if you could submit the skyrpg_phrases.lang.txt so we can list it on the github.
+	"Survivor Sheet Info"
+	{
+		"en"				"Playtime: {PLAYTIME}\nMax Health: {MYHP}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}\n \nConstitution:  {CON}\nAgility:\t\t\t{AGI}\nResilience:\t {RES}\nTechnique:\t {TEC}\nEndurance:\t{END}\nLuck:\t\t\t {LUC}"
+	}
+	"Infected Sheet Info"
+	{
+		"en"				"Infected Character Data\n \nCommons HP: {CH}\tDMG: {CD}\nWitch HP: {WH}\tDMG: {WD}\nHunter HP: {HUNTERHP}\tDMG: {HUNTERDMG}\nSmoker HP: {SMOKERHP}\tDMG: {SMOKERDMG}\nBoomer HP: {BOOMERHP}\tDMG: {BOOMERDMG}\nSpitter HP: {SPITTERHP}\tDMG: {SPITTERDMG}\nJockey HP: {JOCKEYHP}\tDMG: {JOCKEYDMG}\nCharger HP: {CHARGERHP}\tDMG: {CHARGERDMG}\nTank HP: {TANKHP}\tDMG: {TANKDMG}"
+	}
+
+	"target team required?" is now deprecated and will be removed from the talentmenu.cfg in the next update.
+	new values for "target ability effects?" and "activator ability effects?"
+
+	"speed"	- increases movement speed (this is the opposite of "s" which slows targets.)
+	
+
+	New config.cfg variables:
+	"max sky level?"				"5"	- Variable existed, but was disabled previously. When a player is max level, the prestige option will appear in the menu.
+	"sky level default node unlocks?"	"0"	- How many bonus talent nodes does a player get per prestige level? 0 adds an amount equal to their new prestige level, so if the max were 5, you would get 15 additional, via 1+2+3+4+5.
+	"default incap health?"			"300" - I rewrote the incap state sub-system, as players were dying immediately and it needed a total rework. This sets the base incap health before talents are considered.
+	"show damage on action bar?"		"1"	- As described above, this toggles the "Bullet DMG:" information from being visible/calculated in real-time on the action bar.
+	"rating floor?"				"0.5" - Your lowest rating (from dying) can only be this percent of your leaderboard (high) score. This is a percentage; 0.5 is 50%.
+
+	These are default values.
+	
 	0.0.4.8
 	This update is entirely an optimization update!
 	With this update, server operators should see a noticeable difference in terms of stability and lag.

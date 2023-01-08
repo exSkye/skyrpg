@@ -58,7 +58,7 @@
 	}
 	"Survivor Sheet Info"
 	{
-		"en"				"Max Health: {MYHP}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}\n \nConstitution:  {CON}\nAgility:\t\t\t{AGI}\nResilience:\t {RES}\nTechnique:\t {TEC}\nEndurance:\t{END}\nLuck:\t\t\t {LUC}"
+		"en"				"Playtime: {PLAYTIME}\nMax Health: {MYHP}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}\n \nConstitution:  {CON}\nAgility:\t\t\t{AGI}\nResilience:\t {RES}\nTechnique:\t {TEC}\nEndurance:\t{END}\nLuck:\t\t\t {LUC}"
 	}
 	"Infected Sheet Info"
 	{

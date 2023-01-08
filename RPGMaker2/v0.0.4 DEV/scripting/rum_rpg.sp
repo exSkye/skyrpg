@@ -33,14 +33,16 @@
 #define FRANCIS_MODEL			"models/survivors/survivor_biker.mdl"
 #define LOUIS_MODEL				"models/survivors/survivor_manager.mdl"
 #define BILL_MODEL				"models/survivors/survivor_namvet.mdl"
+
 #define TEAM_SPECTATOR		1
 #define TEAM_SURVIVOR		2
 #define TEAM_INFECTED		3
 #define MAX_ENTITIES		2048
 #define MAX_CHAT_LENGTH		1024
+
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v0.0.4.91"
+#define PLUGIN_VERSION				"v0.0.5"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -64,6 +66,7 @@
 /*
 	==========
 				*/
+
 #define DEBUG				false
 /*
 	==========
@@ -1048,7 +1051,7 @@ public Action:CMD_STAGGERTEST(client, args) {
 		if (i == client) continue;
 
 		StaggerPlayer(client, i);
-		//StaggerPlayer(i, client);
+		StaggerPlayer(i, client);
 		break;
 	}
 	return Plugin_Handled;
@@ -1069,8 +1072,10 @@ public Action:CMD_FBEGIN(client, args) {
 public Action:Cmd_GetOrigin(client, args) {
 
 	new Float:OriginP[3];
+	decl String:sMelee[64];
+	GetMeleeWeapon(client, sMelee, sizeof(sMelee));
 	GetClientAbsOrigin(client, OriginP);
-	PrintToChat(client, "[0] %3.3f [1] %3.3f [2] %3.3f\n%s", OriginP[0], OriginP[1], OriginP[2], GetMeleeWeapon(client));
+	PrintToChat(client, "[0] %3.3f [1] %3.3f [2] %3.3f\n%s", OriginP[0], OriginP[1], OriginP[2], sMelee);
 	return Plugin_Handled;
 }
 
@@ -1948,6 +1953,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		CreateTimer(fEffectOverTimeInterval, Timer_EffectOverTime, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		if (DoomSUrvivorsRequired != 0) CreateTimer(1.0, Timer_Doom, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(fSpecialAmmoInterval, Timer_SpecialAmmoData, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(1.0, Timer_PlayTime, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(0.5, Timer_EntityOnFire, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// Fire status effect
 		CreateTimer(1.0, Timer_ThreatSystem, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// threat system modulator
 		CreateTimer(0.05, Timer_IsSpecialCommonInRange, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);	// some special commons react based on range, not damage.
@@ -2462,14 +2468,11 @@ public Action:CMD_GiveStorePoints(client, args) {
 
 	PrintToChat(client, "%T", "Store Points Award Given", client, white, green, arg2, white, orange, Name);
 	PrintToChat(targetclient, "%T", "Store Points Award Received", client, white, green, arg2, white);
-
 	return Plugin_Handled;
 }
 
 public ReadyUp_CampaignComplete() {
-
 	if (!b_IsCampaignComplete) {
-
 		b_IsCampaignComplete			= true;
 		CallRoundIsOver();
 		WipeDebuffs(true);
@@ -2477,8 +2480,9 @@ public ReadyUp_CampaignComplete() {
 }
 
 public Action:CMD_MyWeapon(client, args){
-
-	PrintToChat(client, "%s", GetWeaponName(client));
+	decl String:myWeapon[64];
+	GetWeaponName(client, myWeapon, sizeof(myWeapon));
+	PrintToChat(client, "%s", myWeapon);
 	return Plugin_Handled;
 }
 public Action:CMD_CollectBonusExperience(client, args) {
@@ -2500,7 +2504,6 @@ public Action:CMD_CollectBonusExperience(client, args) {
 }
 
 public ReadyUp_RoundIsOver(gamemode) {
-
 	CallRoundIsOver();
 }
 

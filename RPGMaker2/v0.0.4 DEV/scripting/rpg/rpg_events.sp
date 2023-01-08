@@ -375,23 +375,9 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 
 	decl String:AbilityUsed[PLATFORM_MAX_PATH];
 	decl String:abilities[PLATFORM_MAX_PATH];
-	//decl String:ActivatorAbility[PLATFORM_MAX_PATH];
-	//decl String:TargetAbility[PLATFORM_MAX_PATH];
-
-
-	//new attacker = GetClientOfUserId(GetEventInt(event, GetKeyValue(CallKeys, CallValues, "perpetrator?")));
-	//if (IsWitch(victim)) PrintToChatAll("Wiotch!!");
-	//if (!IsWitch(victim) && !IsCommonInfected(victim) && IsLegitimateClient(victim) && IsFakeClient(victim) && GetClientTeam(victim) == TEAM_SURVIVOR) return 0;
 
 	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "health?");
 	new healthvalue = GetEventInt(event, ThePerp);
-	//PrintToChat(attacker, "damage: %d", healthvalue);
-
-	//if (StrContains(event_name, "hurt", false) != -1) {
-
-		//new theresult = RPG_OnTakeDamage(victim, attacker, attacker, healthvalue * 1.0, damagetype);
-		//return theresult;
-	//}
 
 	new isdamageaward = GetKeyValueInt(CallKeys, CallValues, "damage award?");
 	//new healing = GetKeyValueInt(CallKeys, CallValues, "healing?");
@@ -848,14 +834,10 @@ stock bool:IsCoveredInVomit(client, owner = -1, bool:IsDestroy = false) {
 	return false;		// this ONLY occurs if no owner is specified, ie it clears the client everywhere in the array.
 }
 
-stock String:StoreItemName(client, pos) {
+stock StoreItemName(client, pos, String:s[], size) {
 
-	decl String:Name[64];
 	StoreItemNameSection[client]					= GetArrayCell(a_Store, pos, 2);
-
-	GetArrayString(StoreItemNameSection[client], 0, Name, sizeof(Name));
-
-	return Name;
+	GetArrayString(StoreItemNameSection[client], 0, s, size);
 }
 
 stock bool:IsStoreItem(client, String:EName[], bool:b_IsAwarding = true) {
@@ -2973,12 +2955,12 @@ stock bool:SameTeam_OnTakeDamage(healer, target, iHealerAmount, bool:IsDamageTal
 
 		 		//https://pastebin.com/tLLK9kZM
 		 		if (!TheBool) {
-					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", FindZombieClass(healer), iHealerAmount, _, _, "d", 2, true));
-					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", FindZombieClass(healer), iHealerAmount, _, _, "healshot", 2, true));
+					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "d", 2, true));
+					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "healshot", 2, true));
 				}
 		 		else {
-					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", FindZombieClass(healer), iHealerAmount, _, _, "d", 2, true));
-					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", FindZombieClass(healer), iHealerAmount, _, _, "healmelee", 2, true));
+					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "d", 2, true));
+					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "healmelee", 2, true));
 				}
 		 		if ((GetClientTeam(healer) == TEAM_SURVIVOR || IsSurvivorBot(healer)) && iHealerAmount > 0) {
 		 			if (bIsInCombat[target]) {

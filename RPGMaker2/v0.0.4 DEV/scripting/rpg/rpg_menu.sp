@@ -1608,12 +1608,9 @@ stock VerifyMaxPlayerUpgrades(client) {
 	}
 }
 
-stock String:UpgradesUsed(client) {
-
-	decl String:text[512];
-	Format(text, sizeof(text), "%T", "Upgrades Used", client);
-	Format(text, sizeof(text), "(%s: %d / %d)", text, PlayerUpgradesTotal[client], MaximumPlayerUpgrades(client));
-	return text;
+stock UpgradesUsed(client, String:text[], size) {
+	Format(text, size, "%T", "Upgrades Used", client);
+	Format(text, size, "(%s: %d / %d)", text, PlayerUpgradesTotal[client], MaximumPlayerUpgrades(client));
 }
 
 stock LoadInventory(client) {
@@ -2148,10 +2145,15 @@ public Handle:CharacterSheetMenu(client) {
 		decl String:targetName[64];
 		//new typeOfAimTarget = DataScreenTargetName(client, targetName, sizeof(targetName));
 		decl String:weaponDamage[64];
+		decl String:otherText[64];
 		AddCommasToString(DataScreenWeaponDamage(client), weaponDamage, sizeof(weaponDamage));
 		Format(weaponDamage, sizeof(weaponDamage), "%s", weaponDamage);
 
 		Format(text, sizeof(text), "%T", "Survivor Sheet Info", client);
+		if (StrContains(text, "{PLAYTIME}", true) != -1) {
+			GetTimePlayed(client, otherText, sizeof(otherText));
+			ReplaceString(text, sizeof(text), "{PLAYTIME}", otherText);
+		}
 		if (StrContains(text, "{AIMTARGET}", true) != -1) {
 			ReplaceString(text, sizeof(text), "{AIMTARGET}", targetName);
 		}
@@ -3082,7 +3084,7 @@ public Handle:TalentInfoScreen (client) {
 
 				Otherwise, it's just how we translate it for the player to understand.
 			*/
-			AbilityType = StringToInt(GetKeyValue(PurchaseKeys[client], PurchaseValues[client], "ability type?"));
+			AbilityType = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ability type?");
 			if (AbilityType < 0) AbilityType = 0;	// if someone forgets to set this, we have to set it to the default value.
 			//if (TalentPointAmount > 0) s_PenaltyPoint = 0.0;
 			if (TalentType <= 0) {
