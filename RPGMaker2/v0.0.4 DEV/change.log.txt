@@ -12,6 +12,9 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.5.1
+	Fixed a bug that caused Burn damage to re-apply in perpetuity if "debuff limit?" in the config.cfg was set higher than 1.
+
 	0.0.5 (includes 0.0.4.9)
 	A lot of changes to get the plugin ready for its final public release.
 	There were major optimizations for this release.

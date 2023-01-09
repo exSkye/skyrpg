@@ -810,7 +810,8 @@ stock CreateNewPlayerEx(client) {
 	SetArrayString(Handle:ChatSettings[client], 1, tquery);
 	SetArrayString(Handle:ChatSettings[client], 2, tquery);
 
-	PlayerLevel[client]				=	iPlayerStartingLevel;
+	if (IsSurvivorBot(client) || IsFakeClient(client)) PlayerLevel[client] = iBotPlayerStartingLevel;
+	else PlayerLevel[client]				=	iPlayerStartingLevel;
 	SetTotalExperienceByLevel(client, PlayerLevel[client]);
 	ChallengeEverything(client);
 
@@ -877,7 +878,7 @@ stock CreateNewPlayerEx(client) {
 	//SQL_EscapeString(hDatabase, tquery, tquery, sizeof(tquery));
 	SQL_TQuery(hDatabase, QuerySaveNewPlayer, tquery, client);
 
-	CreateTimer(3.0, Timer_LoggedUsers, client, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(5.0, Timer_LoggedUsers, client, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Query_CheckIfDataExists(Handle:owner, Handle:hndl, const String:error[], any:client) {
@@ -1220,7 +1221,7 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	SQL_TQuery(hDatabase, QueryResults8, tquery, client);
 	if (IsNewPlayer) {
 
-		CreateTimer(3.0, Timer_LoadNewPlayer, client, TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(5.0, Timer_LoadNewPlayer, client, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	//else if (StrContains(key, "BOT", false) != -1 && IsSurvivorBot(client) || StrContains(key, "BOT", false) == -1 && !IsFakeClient(client)) {
 
@@ -1231,18 +1232,18 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 }
 
 public Action:Timer_LoadNewPlayer(Handle:timer, any:client) {
-
-	if (IsLegitimateClient(client)) {
-
-		//bIsTalentTwo[client] = true;
-		LogMessage("Loading profile for new player %N", client);
-		if (forceProfileOnNewPlayers == 1 && !StrEqual(DefaultProfileName, "-1")) {
-			b_IsLoading[client] = true;
-			LoadTarget[client] = -1;
-			LoadProfileEx(client, DefaultProfileName);
-		}
+	if (!IsLegitimateClient(client)) return Plugin_Stop;
+	if (forceProfileOnNewPlayers != 1) b_IsLoading[client] = false;
+	else {
+		b_IsLoading[client] = true;
+		LoadTarget[client] = -1;
+		if (IsSurvivorBot(client) && !StrEqual(DefaultBotProfileName, "-1")) LoadProfileEx(client, DefaultBotProfileName);
+		else if (GetClientTeam(client) == TEAM_INFECTED && !StrEqual(DefaultInfectedProfileName, "-1")) LoadProfileEx(client, DefaultInfectedProfileName);
+		else if (GetClientTeam(client) == TEAM_SURVIVOR && !StrEqual(DefaultProfileName, "-1")) LoadProfileEx(client, DefaultProfileName);
 		else b_IsLoading[client] = false;
 	}
+	if (b_IsLoading[client]) LogMessage("Loading profile for new player %N", client);
+	return Plugin_Stop;
 }
 
 stock LoadDirectorActions() {

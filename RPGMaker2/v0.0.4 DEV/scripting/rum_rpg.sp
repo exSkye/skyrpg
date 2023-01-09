@@ -42,7 +42,7 @@
 
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v0.0.5"
+#define PLUGIN_VERSION				"v0.0.5.1"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -625,6 +625,7 @@ new Float:fStamRegenTimeAdren;
 new Float:fBaseMovementSpeed;
 new Float:fFatigueMovementSpeed;
 new iPlayerStartingLevel;
+new iBotPlayerStartingLevel;
 new Float:fOutOfCombatTime;
 new iWitchDamageInitial;
 new Float:fWitchDamageScaleLevel;
@@ -846,6 +847,7 @@ new String:RPGMenuCommand[64];
 new RPGMenuCommandExplode;
 new PrestigeLevel[MAXPLAYERS + 1];
 new String:DefaultProfileName[64];
+new String:DefaultBotProfileName[64];
 new String:DefaultInfectedProfileName[64];
 new Handle:GetGoverningAttributeKeys[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeValues[MAXPLAYERS + 1];
@@ -876,11 +878,10 @@ new iSkyLevelNodeUnlocks;
 new Handle:GetTalentKeyValueKeys[MAXPLAYERS + 1];
 new Handle:GetTalentKeyValueValues[MAXPLAYERS + 1];
 new Handle:GetTalentKeyValueSection[MAXPLAYERS + 1];
+new bool:bNoNewFireDebuff[MAXPLAYERS + 1];
 
 public Action:CMD_DropWeapon(client, args) {
-
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
-
 	if (!IsValidEntity(CurrentEntity) || CurrentEntity < 1) return Plugin_Handled;
 	decl String:EntityName[64];
 
@@ -904,9 +905,7 @@ public Action:CMD_DropWeapon(client, args) {
 }
 
 public Action:CMD_IAmStuck(client, args) {
-
 	if (L4D2_GetInfectedAttacker(client) == -1 && !AnyTanksNearby(client, 512.0)) {
-
 		new target = FindAnyRandomClient(true, client);
 		if (target > 0) {
 			GetClientAbsOrigin(target, Float:DeathLocation[client]);
@@ -2995,6 +2994,7 @@ stock LoadMainConfig() {
 	fBaseMovementSpeed			= GetConfigValueFloat("base movement speed?");
 	fFatigueMovementSpeed		= GetConfigValueFloat("fatigue movement speed?");
 	iPlayerStartingLevel		= GetConfigValueInt("new player starting level?");
+	iBotPlayerStartingLevel		= GetConfigValueInt("new bot player starting level?");
 	fOutOfCombatTime			= GetConfigValueFloat("out of combat time?");
 	iWitchDamageInitial			= GetConfigValueInt("witch damage initial?");
 	fWitchDamageScaleLevel		= GetConfigValueFloat("witch damage scale level?");
@@ -3159,6 +3159,7 @@ stock LoadMainConfig() {
 	iDefaultIncapHealth			= GetConfigValueInt("default incap health?");
 	iSkyLevelNodeUnlocks		= GetConfigValueInt("sky level default node unlocks?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
+	GetConfigValue(DefaultBotProfileName, sizeof(DefaultBotProfileName), "new bot player profile?");
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
 
 	LogMessage("Main Config Loaded.");

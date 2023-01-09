@@ -1417,8 +1417,8 @@ stock DoBurn(attacker, victim, baseWeaponDamage) {
 	}
  	if (IsLegitimateClientAlive(victim) && GetClientStatusEffect(victim, Handle:EntityOnFire, "burn") < iDebuffLimit) {
 
-		if (ISEXPLODE[victim] == INVALID_HANDLE) CreateAndAttachFlame(victim, RoundToCeil(baseWeaponDamage * TheInfernoMult), 1.0, 0.1, hAttacker, "burn");
-		else CreateAndAttachFlame(victim, RoundToCeil((baseWeaponDamage * TheInfernoMult) * TheScorchMult), 1.0, 0.1, hAttacker, "burn");
+		if (ISEXPLODE[victim] == INVALID_HANDLE) CreateAndAttachFlame(victim, RoundToCeil(baseWeaponDamage * TheInfernoMult), 10.0, 0.5, hAttacker, "burn");
+		else CreateAndAttachFlame(victim, RoundToCeil((baseWeaponDamage * TheInfernoMult) * TheScorchMult), 10.0, 0.5, hAttacker, "burn");
  	}
 }
 

@@ -1033,131 +1033,129 @@ stock FindRandomSurvivorClient(client, bool:bIsTeleportTo = false, bool:bPriorit
 stock CheckTankSubroutine(tank, survivor = 0, damage = 0, bool:TankIsVictim = false) {
 
 	if (iRPGMode == -1) return;
+	if (!IsLegitimateClientAlive(tank) || FindZombieClass(tank) != ZOMBIECLASS_TANK) return;	
 
 	//if (IsSurvivalMode) return;
 
-	if (IsLegitimateClientAlive(tank) && FindZombieClass(tank) == ZOMBIECLASS_TANK) {
+	new DeathState		= ChangeTankState(tank, "death", _, true);
 
-		new DeathState		= ChangeTankState(tank, "death", _, true);
+	if (DeathState != 1 && (IsSpecialCommonInRange(tank, 'w') || IsClientInRangeSpecialAmmo(tank, "W") == -2.0)) {
 
-		if (DeathState != 1 && (IsSpecialCommonInRange(tank, 'w') || IsClientInRangeSpecialAmmo(tank, "W") == -2.0)) {
+		//ChangeTankState(client, "hulk", true);
+		ChangeTankState(tank, "death");
+	}
 
-			//ChangeTankState(client, "hulk", true);
-			ChangeTankState(tank, "death");
+	//if (survivor == 0 && damage == 0 && !(GetEntityFlags(tank) & FL_ONFIRE) && !SurvivorsInRange(tank)) ChangeTankState(tank, "teleporter");
+
+	//new TankEnrageMechanic			= GetConfigValueInt("boss tank enrage count?");
+	//new Float:TankTeleportMechanic	= GetConfigValueFloat("boss tank teleport distance?");
+
+	if (GetEntityFlags(tank) & FL_INWATER) {
+
+		ChangeTankState(tank, "burn", true);
+	}
+	//new bool:IsDeath = false;
+
+	//new DeathState		= ChangeTankState(tank, "death", _, true);
+	new BurnState		= ChangeTankState(tank, "burn", _, true);
+	//new bool:IsOnFire = false;
+	if ((GetEntityFlags(tank) & FL_ONFIRE) && BurnState != 1) {
+
+		ExtinguishEntity(tank);
+	}
+	new bool:IsBiled	= IsCoveredInBile(tank);
+	new IsHulkState		= ChangeTankState(tank, "hulk", _, true);
+
+	if (IsHulkState == 1) {
+
+		if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 0.75);
+		else SetSpeedMultiplierBase(tank, 1.5);
+
+		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
+		SetEntityRenderColor(tank, 0, 255, 0, 255);
+	}
+	else if (DeathState == 1) {
+
+		if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 0.5);
+		else SetSpeedMultiplierBase(tank, 1.0);
+
+		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
+		SetEntityRenderColor(tank, 0, 0, 0, 255);
+	}
+	else if (BurnState == 1) {
+
+		if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 1.0);
+		else SetSpeedMultiplierBase(tank, 1.5);
+
+		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
+		SetEntityRenderColor(tank, 255, 0, 0, 255);
+		if (!(GetEntityFlags(tank) & FL_ONFIRE)) IgniteEntity(tank, 3.0);
+	}
+	if (BurnState != 1) ExtinguishEntity(tank);
+	/*if (BurnState) {
+
+		SetSpeedMultiplierBase(tank, 1.0);
+		ChangeTankState(tank, "hulk", true);
+		IsHulkState = 0;
+		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
+		SetEntityRenderColor(tank, 255, 0, 0, 255);
+	}*/
+
+	if (survivor == 0 || !IsLegitimateClientAlive(survivor) || GetClientTeam(survivor) != TEAM_SURVIVOR) return;
+
+	//decl String:ClassRoles[64];
+
+	//new Float:IsSurvivorWeak = IsClientInRangeSpecialAmmo(survivor, "W");
+	//new Float:IsSurvivorReflect = 0.0;
+	new bool:IsSurvivorBiled = false;
+
+	if (IsLegitimateClientAlive(survivor) && GetClientTeam(survivor) == TEAM_SURVIVOR) {
+
+		//IsClientInRangeSpecialAmmo(survivor, "R");
+		//IsCoveredInVomit(survivor);
+	}
+
+	if (!TankIsVictim) {
+
+		if (BurnState == 1) {
+
+			new Count = GetClientStatusEffect(survivor, Handle:EntityOnFire, "burn");
+
+			if (!IsSurvivorBiled && Count < iDebuffLimit) {
+
+				//if (IsSurvivorReflect) CreateAndAttachFlame(tank, RoundToCeil(damage * 0.1), 10.0, 1.0, survivor, "burn");
+				//else
+				if (Count == 0) Count = 1;
+				CreateAndAttachFlame(survivor, RoundToCeil((damage * fBurnPercentage) / Count), 10.0, 0.5, tank, "burn");
+			}
 		}
-
-		//if (survivor == 0 && damage == 0 && !(GetEntityFlags(tank) & FL_ONFIRE) && !SurvivorsInRange(tank)) ChangeTankState(tank, "teleporter");
-
-		//new TankEnrageMechanic			= GetConfigValueInt("boss tank enrage count?");
-		//new Float:TankTeleportMechanic	= GetConfigValueFloat("boss tank teleport distance?");
-
-		if (GetEntityFlags(tank) & FL_INWATER) {
-
-			ChangeTankState(tank, "burn", true);
-		}
-		//new bool:IsDeath = false;
-
-		//new DeathState		= ChangeTankState(tank, "death", _, true);
-		new BurnState		= ChangeTankState(tank, "burn", _, true);
-		//new bool:IsOnFire = false;
-		if ((GetEntityFlags(tank) & FL_ONFIRE) && BurnState != 1) {
-
-			ExtinguishEntity(tank);
-		}
-		new bool:IsBiled	= IsCoveredInBile(tank);
-		new IsHulkState		= ChangeTankState(tank, "hulk", _, true);
-
-		if (IsHulkState == 1) {
-
-			if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 0.75);
-			else SetSpeedMultiplierBase(tank, 1.5);
-
-			SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-			SetEntityRenderColor(tank, 0, 255, 0, 255);
-		}
+		if (DeathState == 0) ChangeTankState(tank, "hulk");
+		else if (IsHulkState == 1) ChangeTankState(tank, "death");
 		else if (DeathState == 1) {
 
-			if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 0.5);
-			else SetSpeedMultiplierBase(tank, 1.0);
+			new SurvivorHealth = GetClientTotalHealth(survivor);
 
-			SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-			SetEntityRenderColor(tank, 0, 0, 0, 255);
-		}
-		else if (BurnState == 1) {
+			new SurvivorHalfHealth = SurvivorHealth / 2;
+			if (SurvivorHalfHealth / GetMaximumHealth(survivor) > 0.25) {
 
-			if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 1.0);
-			else SetSpeedMultiplierBase(tank, 1.5);
-
-			SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-			SetEntityRenderColor(tank, 255, 0, 0, 255);
-			if (!(GetEntityFlags(tank) & FL_ONFIRE)) IgniteEntity(tank, 3.0);
-		}
-		if (BurnState != 1) ExtinguishEntity(tank);
-		/*if (BurnState) {
-
-			SetSpeedMultiplierBase(tank, 1.0);
-			ChangeTankState(tank, "hulk", true);
-			IsHulkState = 0;
-			SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-			SetEntityRenderColor(tank, 255, 0, 0, 255);
-		}*/
-
-		if (survivor == 0 || !IsLegitimateClientAlive(survivor) || GetClientTeam(survivor) != TEAM_SURVIVOR) return;
-
-		//decl String:ClassRoles[64];
-
-		//new Float:IsSurvivorWeak = IsClientInRangeSpecialAmmo(survivor, "W");
-		//new Float:IsSurvivorReflect = 0.0;
-		new bool:IsSurvivorBiled = false;
-
-		if (IsLegitimateClientAlive(survivor) && GetClientTeam(survivor) == TEAM_SURVIVOR) {
-
-			//IsClientInRangeSpecialAmmo(survivor, "R");
-			//IsCoveredInVomit(survivor);
-		}
-
-		if (!TankIsVictim) {
-
-			if (BurnState == 1) {
-
-				new Count = GetClientStatusEffect(survivor, Handle:EntityOnFire, "burn");
-
-				if (!IsSurvivorBiled && Count < iDebuffLimit) {
-
-					//if (IsSurvivorReflect) CreateAndAttachFlame(tank, RoundToCeil(damage * 0.1), 10.0, 1.0, survivor, "burn");
-					//else
-					if (Count == 0) Count = 1;
-					CreateAndAttachFlame(survivor, RoundToCeil((damage * fBurnPercentage) / Count), 10.0, 1.0, tank, "burn");
-				}
-			}
-			if (DeathState == 0) ChangeTankState(tank, "hulk");
-			else if (IsHulkState == 1) ChangeTankState(tank, "death");
-			else if (DeathState == 1) {
-
-				new SurvivorHealth = GetClientTotalHealth(survivor);
-
-				new SurvivorHalfHealth = SurvivorHealth / 2;
-				if (SurvivorHalfHealth / GetMaximumHealth(survivor) > 0.25) {
-
-					SetClientTotalHealth(survivor, SurvivorHalfHealth);
-					AddSpecialInfectedDamage(survivor, tank, SurvivorHalfHealth, true);
-				}
-			}
-			else if (IsHulkState == 1) {
-
-				CreateExplosion(survivor, damage, tank, true);
+				SetClientTotalHealth(survivor, SurvivorHalfHealth);
+				AddSpecialInfectedDamage(survivor, tank, SurvivorHalfHealth, true);
 			}
 		}
-		else {
+		else if (IsHulkState == 1) {
 
-			if (IsBiled) {
+			CreateExplosion(survivor, damage, tank, true);
+		}
+	}
+	else {
 
-				if (BurnState == 1) ChangeTankState(tank, "hulk");
-				if (!ISBILED[survivor]) {
-					SDKCall(g_hCallVomitOnPlayer, survivor, tank, true);
-					CreateTimer(15.0, Timer_RemoveBileStatus, survivor, TIMER_FLAG_NO_MAPCHANGE);
-					ISBILED[survivor] = true;
-				}
+		if (IsBiled) {
+
+			if (BurnState == 1) ChangeTankState(tank, "hulk");
+			if (!ISBILED[survivor]) {
+				SDKCall(g_hCallVomitOnPlayer, survivor, tank, true);
+				CreateTimer(15.0, Timer_RemoveBileStatus, survivor, TIMER_FLAG_NO_MAPCHANGE);
+				ISBILED[survivor] = true;
 			}
 		}
 	}
@@ -1270,7 +1268,7 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 		bIsCrushCooldown[victim] = true;
 		CreateTimer(1.0, Timer_ResetCrushImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
 	}
-	if ((damagetype & DMG_BURN) && IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !IsSurvivorBot(victim)) {
+	if ((damagetype & DMG_BURN) && !bNoNewFireDebuff[victim] && IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !IsSurvivorBot(victim)) {
 
 		new iBurnCounter = GetClientStatusEffect(victim, Handle:EntityOnFire, "burn");
 		//new iBurnDamage = RoundToCeil((1.0 * GetDifficultyRating(victim)) * (iBurnCounter + 1));
@@ -1284,7 +1282,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 			else {
 
 				fOnFireDebuff[victim] = fOnFireDebuffDelay;
-				CreateAndAttachFlame(victim, ((iBurnCounter + 1) * PlayerLevel[victim]), 10.0, 0.4, FindInfectedClient(true), "burn");
+				bNoNewFireDebuff[victim] = true;
+				CreateAndAttachFlame(victim, (iBurnCounter + 1) + PlayerLevel[victim], 10.0, 0.5, FindInfectedClient(true), "burn");
 			}
 		}
 		//PrintToChatAll("BURN: %d", iBurnDamage);
@@ -4104,7 +4103,7 @@ stock ActivateAbilityEx(activator, target, d_Damage, String:Effects[], Float:g_T
 		else if (StrEqual(Effects, "c")) {
 
 			//CreateCombustion(target, g_TalentStrength, g_TalentTime);
-			if (FindZombieClass(target) != ZOMBIECLASS_TANK) CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.25, activator, "burn");
+			if (FindZombieClass(target) != ZOMBIECLASS_TANK) CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.5, activator, "burn");
 		}
 		else if (StrEqual(Effects, "d")) {
 
@@ -4909,7 +4908,7 @@ stock CreateCommonAffix(entity) {
 		and the plugin will check every so often to see if a player has such an entity attached to them.
 		If they do, they'll burn. Players can have multiple of these, so it is dangerous.
 */
-stock CreateAndAttachFlame(client, damage = 0, Float:lifetime = 600.0, Float:tickInt = 1.0, owner = -1, String:DebuffName[] = "burn", Float:tickIntContinued = -2.0) {
+stock CreateAndAttachFlame(client, damage = 0, Float:lifetime = 10.0, Float:tickInt = 1.0, owner = -1, String:DebuffName[] = "burn", Float:tickIntContinued = -2.0) {
 
 	if (IsSurvivalMode && IsCommonInfected(client)) {
 
@@ -4939,10 +4938,10 @@ stock CreateAndAttachFlame(client, damage = 0, Float:lifetime = 600.0, Float:tic
 	if (tickIntContinued <= 0.0) tickIntContinued = tickInt;
 	Format(t_EntityOnFire, sizeof(t_EntityOnFire), "%d+%d+%3.2f+%3.2f+%3.2f+%s+%s", client, damage, lifetime, tickInt, tickIntContinued, SteamID, DebuffName);
 	PushArrayString(Handle:EntityOnFire, t_EntityOnFire);
+	bNoNewFireDebuff[client] = false;
 	if (StrEqual(DebuffName, "burn", false)) {
 
-		if (IsLegitimateClient(client) && !(GetEntityFlags(client) & FL_ONFIRE)) {
-
+		if (IsLegitimateClient(client)) {
 			//if (FindZombieClass(client) == ZOMBIECLASS_TANK) LogMessage("CreateAndAttachFlame() on tank");
 			IgniteEntity(client, lifetime);
 		}
@@ -5169,26 +5168,26 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 		}
 		return Plugin_Stop;
 	}
-	static String:Value[64];
-	static String:Evaluate[7][512];
-	static Client = 0;
-	static damage = 0;
-	static Owner = 0;
-	static Float:FlTime = 0.0;
-	static Float:TickInt = 0.0;
-	static Float:TickIntOriginal = 0.0;
-	static t_Damage = 0;
+	decl String:Value[64];
+	decl String:Evaluate[7][512];
+	new Client = 0;
+	new damage = 0;
+	new Owner = 0;
+	new Float:FlTime = 0.0;
+	new Float:TickInt = 0.0;
+	new Float:TickIntOriginal = 0.0;
+	new t_Damage = 0;
 	//decl String:t_Delim[2][64];
-	static String:t_EntityOnFire[64];
-	static String:ModelName[64];
-	static DamageShield = 0;
+	decl String:t_EntityOnFire[64];
+	decl String:ModelName[64];
+	new DamageShield = 0;
 
 	//decl String:EntityClassname[64];
 	//decl String:Remainder[64];
 	//decl String:SteamID[64];
 
-	//new size = GetArraySize(Handle:EntityOnFire);
-	for (new i = 0; i < GetArraySize(Handle:EntityOnFire); i++) {
+	new size = GetArraySize(Handle:EntityOnFire);
+	for (new i = 0; i < size; i++) {
 
 		GetArrayString(Handle:EntityOnFire, i, Value, sizeof(Value));
 		ExplodeString(Value, "+", Evaluate, 7, 512);
@@ -5201,6 +5200,12 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 			//size = GetArraySize(Handle:EntityOnFire);
 			continue;
 		}
+		if ((GetEntityFlags(Client) & FL_INWATER)) {
+			ExtinguishEntity(Client);
+			RemoveFromArray(Handle:EntityOnFire, i);
+			continue;
+		}
+		//if (bNoNewFireDebuff[Client]) bNoNewFireDebuff[Client] = false;
 		/*
 
 			Grab the damage n stuff
@@ -5213,14 +5218,12 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 		TickIntOriginal = StringToFloat(Evaluate[4]);
 		if (!StrEqual(Evaluate[5], "-1", false)) Owner = FindClientWithAuthString(Evaluate[5]);
 
-		FlTime -= 0.5;
-		TickInt -= 0.5;
-		if (TickInt <= 0.0) {
+		if (TickInt - 0.5 <= 0.0) {
 
 			TickInt = TickIntOriginal;
 
 			t_Damage = RoundToCeil(damage / (FlTime / TickInt));
-			damage -= t_Damage;
+			//damage -= t_Damage;
 
 			// HERE WE FIND OUT IF THE COMMON OR WITCH OR WHATEVER IS IMMUNE TO THE DAMAGE
 			//CODEBEAN
@@ -5238,11 +5241,11 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 					else SetClientTotalHealth(Client, t_Damage);
 				}
 				else EntityStatusEffectDamage(Client, t_Damage);
-				if (StrEqual(Evaluate[6], "burn", false) && FindZombieClass(Client) != ZOMBIECLASS_TANK) {
+				/*if (!(GetEntityFlags(Client) & FL_ONFIRE) && StrEqual(Evaluate[6], "burn", false) && FindZombieClass(Client) != ZOMBIECLASS_TANK) {
 
-					IgniteEntity(Client, TickInt);
-				}
-				else if (StrEqual(Evaluate[6], "acid", false)) CreateAcid(FindInfectedClient(true), Client, 48.0);
+					IgniteEntity(Client, FlTime - 0.5);
+				}*/
+				if (StrEqual(Evaluate[6], "acid", false)) CreateAcid(FindInfectedClient(true), Client, 48.0);
 				if (IsLegitimateClientAlive(Owner)) {
 
 					HexingContribution[Owner] += t_Damage;
@@ -5251,14 +5254,14 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 				if (StrEqual(Evaluate[5], "-2", false)) CleansingContribution[Client] += t_Damage;
 			}
 		}
-		if (FlTime <= 0.0 || damage <= 0) {
+		if (FlTime - 0.5 <= 0.0 || damage <= 0) {
 
 			RemoveFromArray(Handle:EntityOnFire, i);
 			//if (i > 0) i--;
 			//size = GetArraySize(Handle:EntityOnFire);
 			continue;
 		}
-		Format(t_EntityOnFire, sizeof(t_EntityOnFire), "%d+%d+%3.2f+%3.2f+%3.2f+%s+%s", Client, damage, FlTime, TickInt, TickIntOriginal, Evaluate[5], Evaluate[6]);
+		Format(t_EntityOnFire, sizeof(t_EntityOnFire), "%d+%d+%3.2f+%3.2f+%3.2f+%s+%s", Client, damage -= t_Damage, FlTime - 0.5, TickInt - 0.5, TickIntOriginal, Evaluate[5], Evaluate[6]);
 		//ogMessage("ON FIRE CONTINUE %s", t_EntityOnFire);
 		SetArrayString(Handle:EntityOnFire, i, t_EntityOnFire);
 	}
