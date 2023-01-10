@@ -33,17 +33,14 @@
 #define FRANCIS_MODEL			"models/survivors/survivor_biker.mdl"
 #define LOUIS_MODEL				"models/survivors/survivor_manager.mdl"
 #define BILL_MODEL				"models/survivors/survivor_namvet.mdl"
-
 #define TEAM_SPECTATOR		1
 #define TEAM_SURVIVOR		2
 #define TEAM_INFECTED		3
 #define MAX_ENTITIES		2048
 #define MAX_CHAT_LENGTH		1024
-
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v0.0.5.2"
-
+#define PLUGIN_VERSION				"v0.0.5.3"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -64,14 +61,9 @@
 #define CONFIG_COMMONAFFIXES		"rpg/commonaffixes.cfg"
 #define LOGFILE						"rum_rpg.txt"
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
-/*
-	==========
-				*/
-
+//	================================
 #define DEBUG				false
-/*
-	==========
-				*/
+//	================================
 #define CVAR_SHOW			FCVAR_NOTIFY | FCVAR_PLUGIN
 #define DMG_HEADSHOT		2147483648
 #define ZOMBIECLASS_SMOKER											1
@@ -3173,7 +3165,6 @@ stock LoadMainConfig() {
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
 	GetConfigValue(defaultLoadoutWeaponPrimary, sizeof(defaultLoadoutWeaponPrimary), "default loadout primary weapon?");
 	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
-
 	LogMessage("Main Config Loaded.");
 }
 //public Action:CMD_Backpack(client, args) { EquipBackpack(client); return Plugin_Handled; }

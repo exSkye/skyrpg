@@ -12,6 +12,12 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.5.3
+	-	Changed damage calculation for [Bu]rn and [Ac]id Burn:
+		Previously: damage + (burnTypeDebuffCount + 1) + playerLevel
+		Now: damage * (burnTypeDebuffCount + 1)
+	-	Corrected a logic error where Witches that receive spell damage before bullet damage die instantly.
+	-	Did another refactoring pass on the OnTakeDamage() method; Optimization is an ongoing struggle, but I am continuing to make optimization attempts.
 	0.0.5.2
 	-	Changed logic for who can earn hexing contribution; previously it could be earned by damaging teammates with DoTs, indirectly.
 		You can now only earn hexing contribution for damaging infected (when survivor, and vice versa.)

@@ -794,6 +794,22 @@ stock GetSurvivorBotName(client, String:TheBuffer[], TheSize) {
 	else if (StrEqual(TheModel, FRANCIS_MODEL)) Format(TheBuffer, TheSize, "Francis");
 }
 
+stock ForceLoadDefaultProfiles(loadtarget) {
+	if (!IsLegitimateClient(loadtarget)) return;
+	if (GetClientTeam(loadtarget) == TEAM_SURVIVOR) {
+		if (IsSurvivorBot(loadtarget)) {
+			SetTotalExperienceByLevel(loadtarget, iBotPlayerStartingLevel);
+			LoadProfileEx(loadtarget, DefaultBotProfileName);
+		}
+		else {
+			SetTotalExperienceByLevel(loadtarget, iPlayerStartingLevel);
+			LoadProfileEx(loadtarget, DefaultProfileName);
+		}
+	}
+	else LoadProfileEx(loadtarget, DefaultInfectedProfileName);
+	return;
+}
+
 stock bool:IsSurvivorBot(client) {
 
 	if (IsLegitimateClient(client) && IsFakeClient(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
@@ -1175,136 +1191,184 @@ public Action:Hook_SetTransmit(entity, client) {
  */
 
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, &damagetype) {
-	//PrintToChatAll("damage: %3.3f", damage_ignore);
-
-//stock OnTakeDamage(victim, attacker, inflictor, Float:damage, damagetype) {
-
-	new baseWeaponDamage = 0;
-	if (IsLegitimateClient(attacker) && (GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker))) {
-
-		VerifyHandicap(attacker);
-		baseWeaponDamage = GetBaseWeaponDamage(attacker, victim, _, _, _, damagetype);
-		//PrintToChat(attacker, "damage: %d", baseWeaponDamage);
-	}
-
-	new Float:damage = damage_ignore;
-	if (damage <= 0.0) {
-
-		// So survivor bots will now damage jimmy gibbs and riot police as if they were not uncommon infected.
-		// If we don't do this, the bots don't understand that the weapons that the uncommons are immune to, and if they are in
-		// possession of said weapon, will just shoot the bots indefinitely.
-
-		if (!IsSurvivorBot(attacker)) {
-
-			damage_ignore = 0.0;
-			return Plugin_Handled;
-		}
-	}
-
-	/*new bool:blockAttackerAttack = DontAllowShotgunDamage(attacker);
-	if (blockAttackerAttack) {
-		damage_ignore = 0.0;
-		return Plugin_Handled;
-	}*/
-
-	new bool:bIsEnrageActive = IsEnrageActive();
-	if (bIsEnrageActive && (!IsLegitimateClient(attacker) || GetClientTeam(attacker) == TEAM_INFECTED)) {
-
-		damage *= fEnrageModifier;
-	}
-	//new IgnoreDamage = 1;
-	//new IgnoreTeam = 0;
-	decl String:ModelName[64];
-	decl String:TheMapName[64];
-	GetCurrentMap(TheMapName, sizeof(TheMapName));
-
-	if (IsLegitimateClientAlive(attacker) && b_IsLoading[attacker] && GetClientTeam(attacker) == TEAM_SURVIVOR) {
-
-		damage_ignore = 0.0;
-		return Plugin_Handled;
-	}
-	if (IsLegitimateClientAlive(victim) && b_IsLoading[victim] && GetClientTeam(victim) == TEAM_SURVIVOR) {
-
-		damage_ignore = 0.0;
-		return Plugin_Handled;
-	}
-
-	if (IsLegitimateClientAlive(attacker) && !HasSeenCombat[attacker]) HasSeenCombat[attacker] = true;
-	if (IsLegitimateClientAlive(victim) && !HasSeenCombat[victim]) HasSeenCombat[victim] = true;
-
-	new loadtarget[2];
-	loadtarget[0] = -1;
-	loadtarget[1] = -1;
-	if (IsLegitimateClientAlive(attacker) && !b_IsLoading[attacker] && PlayerLevel[attacker] < iPlayerStartingLevel) loadtarget[0] = attacker;
-	if (IsLegitimateClientAlive(victim) && !b_IsLoading[victim] && PlayerLevel[victim] < iPlayerStartingLevel) loadtarget[1] = victim;
-
-	for (new i = 0; i < 2; i++) {
-
-		if (IsLegitimateClientAlive(loadtarget[i]) && GetClientTeam(loadtarget[i]) == TEAM_SURVIVOR) {
-
-			SetTotalExperienceByLevel(loadtarget[i], iPlayerStartingLevel);
-			if (GetClientTeam(loadtarget[i]) == TEAM_SURVIVOR) LoadProfileEx(loadtarget[i], DefaultProfileName);
-			else if (GetClientTeam(loadtarget[i]) == TEAM_INFECTED) LoadProfileEx(loadtarget[i], DefaultInfectedProfileName);
-		}
-	}
 	if (!b_IsActiveRound || b_IsSurvivalIntermission) {
 
 		damage_ignore = 0.0;
 		return Plugin_Handled;
 	}
-	if (IsLegitimateClientAlive(victim) && RespawnImmunity[victim]) {
-
-		damage_ignore = 0.0;
-		return Plugin_Handled;
-	}
-	new Float:TheAbilityMultiplier = 0.0;
-	if ((damagetype & DMG_CRUSH) && IsLegitimateClientAlive(victim)) {
-
-		if (bIsCrushCooldown[victim]) {
-
+	new Float:damage = damage_ignore;
+	if (damage <= 0.0) {
+		// So survivor bots will now damage jimmy gibbs and riot police as if they were not uncommon infected.
+		// If we don't do this, the bots don't understand that the weapons that the uncommons are immune to, and if they are in
+		// possession of said weapon, will just shoot the bots indefinitely.
+		if (!IsSurvivorBot(attacker)) {
 			damage_ignore = 0.0;
 			return Plugin_Handled;
 		}
-		bIsCrushCooldown[victim] = true;
-		CreateTimer(1.0, Timer_ResetCrushImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
 	}
-	if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && (!IsSurvivorBot(victim) || iCanSurvivorBotsBurn == 1)) {
-		/*if (IsLegitimateClient(attacker) && FindZombieClass(attacker) == ZOMBIECLASS_SPITTER) {
-			if (!IsFakeClient(victim)) PrintToChat(victim, "damagetype: %d", damagetype);
-		}*/
+	new bool:bIsEnrageActive = IsEnrageActive();
+	new baseWeaponDamage = 0;
+	new loadtarget = -1;
+	new Float:TheAbilityMultiplier = 0.0;
+	new cTank = -1;
+	new BuffDamage = 0;
+ 	new DamageShield = 0;
+ 	new ReflectIncomingDamage = 0;
+ 	decl String:TheCommonValue[10];
+	new Float:absorbTalentStrength = 0.0;
+	new theCount = LivingSurvivorCount();
+	/*
+		Code for LEGITIMATE attackers goes here.
+		This only handles survivors and special infected attackers; witches, commons, and super attackers are at the bottom of this method.
+	*/
+	if (IsLegitimateClient(attacker)) {
+		if (b_IsLoading[attacker]) {	// may cause issues if infected players are stuck in loading; they shouldn't be, guess we'll find out.
+			damage_ignore = 0.0;
+			return Plugin_Handled;
+		}
+		else if (!IsFakeClient(attacker) && PlayerLevel[attacker] < iPlayerStartingLevel || (IsFakeClient(attacker) || IsSurvivorBot(attacker)) && PlayerLevel[attacker] < iBotPlayerStartingLevel) {
+			loadtarget = attacker;
+			ForceLoadDefaultProfiles(loadtarget);
+		}
+		b_IsDead[attacker] = false;
+		LastAttackTime[attacker] = GetEngineTime();
+		if (!HasSeenCombat[attacker]) HasSeenCombat[attacker] = true;
+		if (IsLegitimateClient(victim)) {
+			if (RespawnImmunity[victim]) {
+				damage_ignore = 0.0;
+				return Plugin_Handled;
+			}
+		}
+		if (GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker)) {
+			VerifyHandicap(attacker);
+			baseWeaponDamage = GetBaseWeaponDamage(attacker, victim, _, _, _, damagetype);
 
-		decl String:effectToCreate[10];
-		if ((damagetype & DMG_BURN) && !DebuffOnCooldown(victim, "burn")) Format(effectToCreate, sizeof(effectToCreate), "burn");
-		else if ((damagetype & DMG_SPITTERACID1 || damagetype & DMG_SPITTERACID2) && !DebuffOnCooldown(victim, "acid")) Format(effectToCreate, sizeof(effectToCreate), "acid");
-		else Format(effectToCreate, sizeof(effectToCreate), "-1");
+			if (bAutoRevive[attacker] && !IsIncapacitated(attacker)) bAutoRevive[attacker] = false;
+		}
+		else if (GetClientTeam(attacker) == TEAM_INFECTED) {
+			if (bIsEnrageActive) damage *= fEnrageModifier;
+			if (FindZombieClass(attacker) == ZOMBIECLASS_TANK) cTank = attacker;
+		}
+	}
+	if (IsLegitimateClient(victim)) {
+		if (b_IsLoading[victim]) {
+			damage_ignore = 0.0;
+			return Plugin_Handled;
+		}
+		else if (!IsFakeClient(victim) && PlayerLevel[victim] < iPlayerStartingLevel || (IsFakeClient(victim) || IsSurvivorBot(victim)) && PlayerLevel[victim] < iBotPlayerStartingLevel) {
+			loadtarget = victim;
+			ForceLoadDefaultProfiles(loadtarget);
+		}
+		b_IsDead[victim] = false;
+		LastAttackTime[victim] = GetEngineTime();
+		if (!HasSeenCombat[victim]) HasSeenCombat[victim] = true;
+		if ((damagetype & DMG_CRUSH)) {
+			if (bIsCrushCooldown[victim]) {
 
-		if (!StrEqual(effectToCreate, "-1")) {
-			new iBurnCounter = GetClientStatusEffect(victim, Handle:EntityOnFire, effectToCreate);
-			//new iBurnDamage = RoundToCeil((1.0 * GetDifficultyRating(victim)) * (iBurnCounter + 1));
-			if (iBurnCounter < iDebuffLimit && fOnFireDebuff[victim] <= 0.0) {
+				damage_ignore = 0.0;
+				return Plugin_Handled;
+			}
+			bIsCrushCooldown[victim] = true;
+			CreateTimer(1.0, Timer_ResetCrushImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
+		}
+		if (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim)) {
+			if (!IsSurvivorBot(victim) || iCanSurvivorBotsBurn == 1) {
+				decl String:effectToCreate[10];
+				if ((damagetype & DMG_BURN) && !DebuffOnCooldown(victim, "burn")) Format(effectToCreate, sizeof(effectToCreate), "burn");
+				else if ((damagetype & DMG_SPITTERACID1 || damagetype & DMG_SPITTERACID2) && !DebuffOnCooldown(victim, "acid")) Format(effectToCreate, sizeof(effectToCreate), "acid");
+				else Format(effectToCreate, sizeof(effectToCreate), "-1");
 
-				if (fOnFireDebuff[victim] == -1.0) {
+				if (!StrEqual(effectToCreate, "-1")) {
+					new iBurnCounter = GetClientStatusEffect(victim, Handle:EntityOnFire, effectToCreate);
+					if (iBurnCounter < iDebuffLimit && fOnFireDebuff[victim] <= 0.0) {
 
-					ExtinguishEntity(victim);
-					fOnFireDebuff[victim] = 0.0;
-				}
-				else {
+						if (fOnFireDebuff[victim] == -1.0) {
 
-					fOnFireDebuff[victim] = fOnFireDebuffDelay;
-					PushArrayString(Handle:ApplyDebuffCooldowns[victim], effectToCreate);
-					//bNoNewFireDebuff[victim] = true;
-					CreateAndAttachFlame(victim, RoundToCeil(damage + (iBurnCounter + 1) + PlayerLevel[victim]), 10.0, 0.5, FindInfectedClient(true), effectToCreate);
+							ExtinguishEntity(victim);
+							fOnFireDebuff[victim] = 0.0;
+						}
+						else {
+
+							fOnFireDebuff[victim] = fOnFireDebuffDelay;
+							PushArrayString(Handle:ApplyDebuffCooldowns[victim], effectToCreate);
+							CreateAndAttachFlame(victim, RoundToCeil(damage * (iBurnCounter + 1)), 10.0, 0.5, FindInfectedClient(true), effectToCreate);
+						}
+					}
+					damage_ignore = 0.0;
+					return Plugin_Handled;
 				}
 			}
-			//PrintToChatAll("BURN: %d", iBurnDamage);
+			if (IsCommonInfected(attacker) || IsWitch(attacker) || IsLegitimateClient(attacker) && GetClientTeam(attacker) != GetClientTeam(victim)) {
+				CombatTime[victim] = GetEngineTime() + fOutOfCombatTime;
+				JetpackRecoveryTime[victim] = GetEngineTime() + 1.0;
+				ToggleJetpack(victim, true);
 
-			damage_ignore = 0.0;
-			return Plugin_Handled;
+				if (IsWitch(attacker)) {
+					new i_WitchDamage = iWitchDamageInitial;
+					if (IsSpecialCommonInRange(attacker, 'b')) i_WitchDamage += GetSpecialCommonDamage(i_WitchDamage, attacker, 'b', victim);
+					if (fWitchDamageScaleLevel > 0.0 && iRPGMode >= 1) {
+						if (iBotLevelType == 0) i_WitchDamage += RoundToCeil(fWitchDamageScaleLevel * GetDifficultyRating(victim));
+						else i_WitchDamage += RoundToCeil(fWitchDamageScaleLevel * SurvivorLevels());
+					}
+					if (theCount >= iSurvivorModifierRequired) i_WitchDamage += RoundToCeil(i_WitchDamage * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+					if (IsClientInRangeSpecialAmmo(victim, "D") == -2.0) DamageShield = RoundToCeil(i_WitchDamage * IsClientInRangeSpecialAmmo(victim, "D", false, _, i_WitchDamage * 1.0));
+					if (DamageShield > 0) {
+						i_WitchDamage -= DamageShield;
+						if (i_WitchDamage < 0) i_WitchDamage = 0;
+					}
+					TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
+					if (TheAbilityMultiplier >= 1.0) {	// Damage taken reduced to 0.
+						damage_ignore = 0.0;
+						return Plugin_Handled;
+					}
+					else if (TheAbilityMultiplier > 0.0) {	// Damage received is reduced by the amount.
+						i_WitchDamage -= RoundToCeil(i_WitchDamage * TheAbilityMultiplier);
+					}
+					if (IsSurvivalMode || RPGRoundTime() < iEnrageTime) Points_Director += (fWitchDirectorPoints * i_WitchDamage);
+					else Points_Director += (fEnrageDirectorPoints * i_WitchDamage);
+					absorbTalentStrength = GetAbilityStrengthByTrigger(victim, attacker, "L", _, i_WitchDamage, _, _, "o", _, true); // true means we just get the result and don't execute the ability.
+					i_WitchDamage -= RoundToCeil(i_WitchDamage * absorbTalentStrength);
+					SetClientTotalHealth(victim, i_WitchDamage);
+					ReceiveWitchDamage(victim, attacker, i_WitchDamage);
+					// Reflect damage.
+					if (IsClientInRangeSpecialAmmo(victim, "R") == -2.0) ReflectIncomingDamage = RoundToCeil(i_WitchDamage * IsClientInRangeSpecialAmmo(victim, "R", false, _, i_WitchDamage * 1.0));
+					if (ReflectIncomingDamage > 0) AddWitchDamage(victim, attacker, ReflectIncomingDamage);
+				}
+			}
+			if (damagetype & DMG_FALL) {
+				new DMGFallDamage = RoundToCeil(damage_ignore);
+				new MyInfectedAttacker = L4D2_GetInfectedAttacker(victim);
+				if (MyInfectedAttacker != -1) DMGFallDamage = RoundToCeil(DMGFallDamage * 0.4);
+				TheAbilityMultiplier = GetAbilityMultiplier(victim, "F");
+				if (TheAbilityMultiplier > 0.0) DMGFallDamage -= RoundToCeil(DMGFallDamage * TheAbilityMultiplier);
+				if (DMGFallDamage < 100) {
+					DMGFallDamage = RoundToCeil((damage_ignore * 0.01) * GetMaximumHealth(victim));
+					SetClientTotalHealth(victim, DMGFallDamage, _, true);
+				}
+				else if (DMGFallDamage >= 100 && DMGFallDamage < 200) SetClientTotalHealth(victim, GetClientTotalHealth(victim), _, true);
+				else IncapacitateOrKill(victim, _, _, true);
+				damage_ignore = 0.0;
+				return Plugin_Handled;
+			}
+			if (damagetype & DMG_DROWN) {
+				if (!IsIncapacitated(victim)) SetClientTotalHealth(victim, GetClientTotalHealth(victim));
+				else IncapacitateOrKill(victim, _, _, true);
+				damage_ignore = 0.0;
+				return Plugin_Handled;
+			}
+		}
+		else {	// infected victim.
+			if (FindZombieClass(victim) == ZOMBIECLASS_TANK) cTank = victim;
+			//Checks if a Common Defender or a Defender Tank is in range if the 2nd arg isn't left blank
+			if (IsSpecialCommonInRange(victim, 't') || DrawSpecialInfectedAffixes(victim, victim) == 1) {
+
+				// If a Defender is within range, the entity is immune.
+				// If the entity is a tyrant, it's also immune.
+				damage_ignore = 0.0;
+				return Plugin_Handled;
+			}
 		}
 	}
-	new cTank = -1;
-	if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_INFECTED && FindZombieClass(attacker) == ZOMBIECLASS_TANK) cTank = attacker;
-	else if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_INFECTED && FindZombieClass(victim) == ZOMBIECLASS_TANK) cTank = victim;
 	if (cTank > 0) {
 
 		if (IsSpecialCommonInRange(cTank, 't') && !bIsDefenderTank[cTank]) {
@@ -1315,124 +1379,14 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 			SetEntityRenderColor(cTank, 0, 0, 255, 200);
 		}
 	}
-	if (IsCommonInfected(victim) || IsWitch(victim) || (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_INFECTED)) {
-
-		//Commons, Witches, and Special Infected.			Checks if a defender tank is in range if the 2nd arg isn't left blank
+	if (IsCommonInfected(victim) || IsWitch(victim)) {
+		//Checks if a Common Defender or a Defender Tank is in range if the 2nd arg isn't left blank
 		if (IsSpecialCommonInRange(victim, 't') || DrawSpecialInfectedAffixes(victim, victim) == 1) {
 
 			// If a Defender is within range, the entity is immune.
 			// If the entity is a tyrant, it's also immune.
 			damage_ignore = 0.0;
 			return Plugin_Handled;
-		}
-		
- 		GetEntPropString(victim, Prop_Data, "m_ModelName", ModelName, sizeof(ModelName));
-	}
-	if (IsLegitimateClient(attacker) && bAutoRevive[attacker] && !IsIncapacitated(attacker)) bAutoRevive[attacker] = false;
-
-	// We want to know what the most recent time a player took damage was. This is so some abilities are active only within a certain period of that time OR don't activate until a certain period after.
-	if (IsLegitimateClientAlive(attacker)) LastAttackTime[attacker] = GetEngineTime();
-	if (IsLegitimateClientAlive(victim)) LastAttackTime[victim] = GetEngineTime();
-
-	if (IsLegitimateClientAlive(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim))) {
-
-		CombatTime[victim] = GetEngineTime() + fOutOfCombatTime;
-		JetpackRecoveryTime[victim] = GetEngineTime() + 1.0;
-		ToggleJetpack(victim, true);
-
-		if (damagetype & DMG_FALL || !IsLegitimateClient(attacker) && !IsCommonInfected(attacker) && !IsWitch(attacker)) {//CheckFallDamage(victim);
-
-			//if (IsLegitimateClientAlive(attacker)) PrintToChat(victim, "%N caused the fall.", attacker);
-
-			if (damagetype & DMG_FALL) {
-
-				//new IncapFallDamage = RoundToCeil((damage * 0.005) * GetMaximumHealth(victim));
-				//new DeathFallDamage = 
-
-				new DMGFallDamage = RoundToCeil(damage_ignore);
-				new MyInfectedAttacker = L4D2_GetInfectedAttacker(victim);
-				if (MyInfectedAttacker != -1) DMGFallDamage = RoundToCeil(DMGFallDamage * 0.4);
-				//if (damage < 100) DMGFallDamage = RoundToCeil((damage * 0.01) * GetMaximumHealth(victim));
-				TheAbilityMultiplier = GetAbilityMultiplier(victim, "F");
-				if (TheAbilityMultiplier > 0.0) DMGFallDamage -= RoundToCeil(DMGFallDamage * TheAbilityMultiplier);
-		
-				if (DMGFallDamage < 100) {
-
-					DMGFallDamage = RoundToCeil((damage_ignore * 0.01) * GetMaximumHealth(victim));
-					SetClientTotalHealth(victim, DMGFallDamage, _, true);
-				}
-				else if (DMGFallDamage >= 100 && DMGFallDamage < 200) SetClientTotalHealth(victim, GetClientTotalHealth(victim), _, true);
-				else IncapacitateOrKill(victim, _, _, true);
-				//if (GetClientTotalHealth(victim) > DMGFallDamage) SetClientTotalHealth(victim, DMGFallDamage);// SetEntityHealth(victim, GetClientHealth(victim) - RoundToCeil(GetMaximumHealth(victim) * clientVel[2]));
-				//else IncapacitateOrKill(victim, _, _, true);
-				//else SetClientTotalHealth(victim, GetClientTotalHealth(victim));
-
-				damage_ignore = 0.0;
-				return Plugin_Handled;
-			}
-		}
-		if (damagetype & DMG_DROWN) {
-
-			if (!IsIncapacitated(victim)) SetClientTotalHealth(victim, GetClientTotalHealth(victim));
-			else IncapacitateOrKill(victim, _, _, true);
-			damage_ignore = 0.0;
-			return Plugin_Handled;
-		}
-	}
-
- 	new BuffDamage = 0;
- 	new DamageShield = 0;
- 	new ReflectIncomingDamage = 0;
- 	decl String:TheCommonValue[10];
-	new Float:absorbTalentStrength = 0.0;
-
- 	new theCount = LivingSurvivorCount();
-
-	if (IsLegitimateClient(attacker) && (GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker))) b_IsDead[attacker] = false;
-	if (IsLegitimateClient(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim))) b_IsDead[victim] = false;
-	if (IsWitch(attacker) && IsLegitimateClient(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim))) {
-
-		new i_WitchDamage = iWitchDamageInitial;
-		if (IsSpecialCommonInRange(attacker, 'b')) i_WitchDamage += GetSpecialCommonDamage(i_WitchDamage, attacker, 'b', victim);
-		if (fWitchDamageScaleLevel > 0.0 && iRPGMode >= 1) {
-			if (iBotLevelType == 0) i_WitchDamage += RoundToCeil(fWitchDamageScaleLevel * GetDifficultyRating(victim));
-			else i_WitchDamage += RoundToCeil(fWitchDamageScaleLevel * SurvivorLevels());
-		}
-		
-		if (theCount >= iSurvivorModifierRequired) i_WitchDamage += RoundToCeil(i_WitchDamage * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
-		if (IsClientInRangeSpecialAmmo(victim, "D") == -2.0) DamageShield = RoundToCeil(i_WitchDamage * IsClientInRangeSpecialAmmo(victim, "D", false, _, i_WitchDamage * 1.0));
-		if (DamageShield > 0) {
-			i_WitchDamage -= DamageShield;
-			if (i_WitchDamage < 0) i_WitchDamage = 0;
-		}
-		TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
-		if (TheAbilityMultiplier >= 1.0) {	// Damage taken reduced to 0.
-			damage_ignore = 0.0;
-			return Plugin_Handled;
-		}
-		else if (TheAbilityMultiplier > 0.0) {	// Damage received is reduced by the amount.
-
-			i_WitchDamage -= RoundToCeil(i_WitchDamage * TheAbilityMultiplier);
-		}
-
-		if (IsSurvivalMode || RPGRoundTime() < iEnrageTime) Points_Director += (fWitchDirectorPoints * i_WitchDamage);
-		else Points_Director += (fEnrageDirectorPoints * i_WitchDamage);
-
-		absorbTalentStrength = GetAbilityStrengthByTrigger(victim, attacker, "L", _, i_WitchDamage, _, _, "o", _, true); // true means we just get the result and don't execute the ability.
-		i_WitchDamage -= RoundToCeil(i_WitchDamage * absorbTalentStrength);
-
-		SetClientTotalHealth(victim, i_WitchDamage);
-		ReceiveWitchDamage(victim, attacker, i_WitchDamage);
-		//GetAbilityStrengthByTrigger(victim, attacker, "L", FindZombieClass(victim), i_WitchDamage);
-
-		// Reflect damage.
-		if (IsClientInRangeSpecialAmmo(victim, "R") == -2.0) ReflectIncomingDamage = RoundToCeil(i_WitchDamage * IsClientInRangeSpecialAmmo(victim, "R", false, _, i_WitchDamage * 1.0));
-		
-		if (ReflectIncomingDamage > 0) {
-
-			//IgnoreDamage = AddWitchDamage(victim, attacker, ReflectIncomingDamage);
-			AddWitchDamage(victim, attacker, ReflectIncomingDamage);
-			//IgnoreTeam = 5;
 		}
 	}
 	if (IfCommonInfectedIsAttackerDoStuff(attacker, victim, damagetype) == -1) {
@@ -1587,6 +1541,11 @@ stock bool:IsEnsnarer(client, class = 0) {
 		zombieclass == ZOMBIECLASS_CHARGER) return true;
 	return false;
 }
+
+/*bool:HasInstanceGenerated(client, target) {
+	if (FindListPositionByEntity(target, InfectedHealth[client]) >= 0) return true;
+	return false;
+}*/
 
 stock AddSpecialInfectedDamage(client, target, TotalDamage, bool:IsTankingInstead = false, damagevariant = -1) {
 
@@ -3890,7 +3849,7 @@ stock ReflectDamage(client, target, AttackDamage) {
 	}
 	else if (IsWitch(target)) {
 
-		if (FindListPositionByEntity(target, Handle:WitchList) < 0) OnWitchCreated(target, true);
+		if (FindListPositionByEntity(target, Handle:WitchList) < 0) OnWitchCreated(target);
 		AddWitchDamage(client, target, AttackDamage, true);
 	}
 	else if (IsLegitimateClientAlive(target)) {
@@ -8044,8 +8003,8 @@ stock OnWitchCreated(entity, bool:bIsDestroyed = false, lastHitAttacker = 0) {
 		*/
 		//LogMessage("[WITCH_LIST] Witch Created %d", entity);
 		PushArrayCell(Handle:WitchList, entity);
+		SetInfectedHealth(entity, 50000);
 		SDKHook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
-		SetInfectedHealth(entity, 99999);
 
 		//CreateMyHealthPool(entity);
 	}
@@ -8064,11 +8023,11 @@ stock OnWitchCreated(entity, bool:bIsDestroyed = false, lastHitAttacker = 0) {
 		}
 		else {
 
-			CalculateInfectedDamageAward(entity, lastHitAttacker);
+			CalculateInfectedDamageAward(entity, lastHitAttacker, pos);
 			//ogMessage("[WITCH_LIST] Witch %d Killed", entity);
-			SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
-			AcceptEntityInput(entity, "Kill");
-			RemoveFromArray(Handle:WitchList, pos);		// Delete the witch. Forever.
+			//SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
+			//AcceptEntityInput(entity, "Kill");
+			//RemoveFromArray(Handle:WitchList, pos);		// Delete the witch. Forever. now occurs in CalculateInfectedDamageAward()
 		}
 	}
 }
@@ -8488,7 +8447,7 @@ public OnEntityCreated(entity, const String:classname[]) {
 	if (StrEqual(classname, "infected", false)) {
 
 		if (!b_IsActiveRound) return;
-		SetInfectedHealth(entity, 99999);
+		SetInfectedHealth(entity, 50000);
 		OnCommonInfectedCreated(entity);	// ALL commons (including specials) get stored.
 		SDKHook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
 		if (iCommonAffixes == 1) CreateCommonAffix(entity);
@@ -8500,7 +8459,10 @@ public OnEntityCreated(entity, const String:classname[]) {
 			RemoveFromArray(Handle:CommonInfectedQueue, 0);
 		}
 	}
-	else if (b_IsActiveRound && IsWitch(entity)) OnWitchCreated(entity);
+	else if (b_IsActiveRound && IsWitch(entity)) {
+		SetInfectedHealth(entity, 50000);
+		OnWitchCreated(entity);
+	}
 }
 
 bool:IsWitch(entity) {

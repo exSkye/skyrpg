@@ -453,7 +453,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 	}
 
 	if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
-		if (!IsLegitimateClient(victim)) SetInfectedHealth(victim, 99999);	// we don't want NPC zombies to die prematurely.
+		if (IsCommonInfected(victim) || IsWitch(victim)) SetInfectedHealth(victim, 50000);	// we don't want NPC zombies to die prematurely.
 		if (IsLegitimateClient(attacker) && IsPlayerUsingShotgun(attacker)) {
 			if (!shotgunCooldown[attacker]) CheckIfHeadshot(attacker, victim, event, healthvalue);
 			else return 0;
@@ -2577,7 +2577,7 @@ stock CheckMinimumRate(client) {
 	if (Rating[client] < 0) Rating[client] = 0;
 }
 
-stock CalculateInfectedDamageAward(client, killerblow = 0) {
+stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 
 	new ClientType = -1;
 	if (IsLegitimateClient(client) && GetClientTeam(client) == TEAM_INFECTED && !IsSurvivorBot(client)) {
@@ -2766,6 +2766,11 @@ stock CalculateInfectedDamageAward(client, killerblow = 0) {
 		else if (ClientType == 1) RemoveFromArray(Handle:WitchDamage[i], pos);
 		else if (ClientType == 2) RemoveFromArray(Handle:SpecialCommon[i], pos);
 		else if (ClientType == 3) RemoveFromArray(Handle:CommonInfectedDamage[i], pos);
+	}
+	if (IsWitch(client)) {
+		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+		AcceptEntityInput(client, "Kill");
+		if (entityPos >= 0) RemoveFromArray(Handle:WitchList, entityPos);		// Delete the witch. Forever.
 	}
 	if (IsLegitimateClientAlive(client) && GetClientTeam(client) == TEAM_INFECTED && !IsSurvivorBot(client)) {
 
