@@ -12,6 +12,29 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.5.2
+	-	Changed logic for who can earn hexing contribution; previously it could be earned by damaging teammates with DoTs, indirectly.
+		You can now only earn hexing contribution for damaging infected (when survivor, and vice versa.)
+	-	Commented out code for "model size?" for super commons (it is now deprecated in commonaffixes.cfg) as it was causing commons to somehow invert and run upside-down.
+	-	Added support for Acid Burn [Ac] debuff; is applied when a player stands in spit.
+		When a player drops their last [Ac] debuff, they drop a pile of spit on their location; they will be immune to [Ac] debuffs for 3 seconds at this point to give them a chance to get out of it.
+	-	Added new variable for config.cfg: "survivor bots debuffs allowed?"
+		If set to 1, survivor bots can accrue stacks of [Ac] and [Bu], otherwise, they take damage in fire and acid, but don't acquire debuff stacks.
+		-	Note: This variable is intended to be enabled for a more-difficult COOP experience (with bots) or for Versus, or finally, Infected Campaign servers.
+	-	Added new variables for config.cfg:
+		"default loadout primary weapon?"	"weapon_rifle_ak47"
+		"default loadout secondary weapon?"	"weapon_pistol_magnum"
+		- Default values shown above; when a new player joins the server for the first time, until they set a primary/secondary in their loadout screen, the default weapons will be applied to their build.
+	-	Changed how Combat State works.
+		- Players now only enter combat when taking infected damage; attacking no longer auto-matically enters the player into combat.
+			- This change was made so that out-of-combat talents can be more-effective.
+			  All talents, by default, do not require an in-combat, or out-of-combat state.
+			  To set a combat state, use:
+			- "combat state required?"
+			  If set to -1 or omitted, no combat state is required.
+			  If set to 0, out-of-combat state is required.
+			  If set to 1, in-combat state is required.
+
 	0.0.5.1
 	Fixed a bug that caused Burn damage to re-apply in perpetuity if "debuff limit?" in the config.cfg was set higher than 1.
 

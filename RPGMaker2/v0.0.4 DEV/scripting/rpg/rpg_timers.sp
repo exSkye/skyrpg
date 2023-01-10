@@ -1236,6 +1236,24 @@ stock SortThreatMeter() {
 	}
 }
 
+public Action:Timer_AcidCooldown(Handle:timer, any:client) {
+	if (IsLegitimateClient(client)) DebuffOnCooldown(client, "acid", true);
+	return Plugin_Stop;
+}
+
+bool:DebuffOnCooldown(client, String:debuffToSearchFor[], bool:removeDebuffCooldown = false) {
+	decl String:result[64];
+	new size = GetArraySize(ApplyDebuffCooldowns[client]);
+	for (new pos = 0; pos < size; pos++) {
+		GetArrayString(ApplyDebuffCooldowns[client], pos, result, sizeof(result));
+		if (!StrEqual(debuffToSearchFor, result)) continue;
+		if (!removeDebuffCooldown) return true;
+		RemoveFromArray(ApplyDebuffCooldowns[client], pos);
+		break;
+	}
+	return false;
+}
+
 stock bool:IsClientSorted(client) {
 
 	new size = GetArraySize(Handle:hThreatSort);

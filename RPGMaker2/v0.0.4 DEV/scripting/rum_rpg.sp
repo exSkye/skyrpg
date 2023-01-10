@@ -42,7 +42,7 @@
 
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v0.0.5.1"
+#define PLUGIN_VERSION				"v0.0.5.2"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -878,7 +878,10 @@ new iSkyLevelNodeUnlocks;
 new Handle:GetTalentKeyValueKeys[MAXPLAYERS + 1];
 new Handle:GetTalentKeyValueValues[MAXPLAYERS + 1];
 new Handle:GetTalentKeyValueSection[MAXPLAYERS + 1];
-new bool:bNoNewFireDebuff[MAXPLAYERS + 1];
+new Handle:ApplyDebuffCooldowns[MAXPLAYERS + 1];
+new iCanSurvivorBotsBurn;
+new String:defaultLoadoutWeaponPrimary[64];
+new String:defaultLoadoutWeaponSecondary[64];
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1456,7 +1459,9 @@ stock OnMapStartFunc() {
 			if (GetTalentKeyValueKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentKeyValueKeys[i] = CreateArray(32);
 			if (GetTalentKeyValueValues[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentKeyValueValues[i] = CreateArray(32);
 			if (GetTalentKeyValueSection[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentKeyValueSection[i] = CreateArray(32);
+			if (ApplyDebuffCooldowns[i] == INVALID_HANDLE || !b_FirstLoad) ApplyDebuffCooldowns[i] = CreateArray(32);
 		}
+
 		if (!b_FirstLoad) b_FirstLoad = true;
 		//LogMessage("AWAITING PARAMETERS");
 
@@ -3158,9 +3163,12 @@ stock LoadMainConfig() {
 	iShowDamageOnActionBar		= GetConfigValueInt("show damage on action bar?");
 	iDefaultIncapHealth			= GetConfigValueInt("default incap health?");
 	iSkyLevelNodeUnlocks		= GetConfigValueInt("sky level default node unlocks?");
+	iCanSurvivorBotsBurn		= GetConfigValueInt("survivor bots debuffs allowed?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
 	GetConfigValue(DefaultBotProfileName, sizeof(DefaultBotProfileName), "new bot player profile?");
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
+	GetConfigValue(defaultLoadoutWeaponPrimary, sizeof(defaultLoadoutWeaponPrimary), "default loadout primary weapon?");
+	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
 
 	LogMessage("Main Config Loaded.");
 }
@@ -3234,7 +3242,6 @@ public Action:CMD_DataEraseBot(client, args) {
 }
 
 stock DeleteAndCreateNewData(client, bool:IsBot = false) {
-
 	//decl String:thetext[64];
 	//GetConfigValue(thetext, sizeof(thetext), "database prefix?");
 	decl String:key[64];
@@ -3246,7 +3253,6 @@ stock DeleteAndCreateNewData(client, bool:IsBot = false) {
 		GetClientAuthString(client, key, sizeof(key));
 		Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` = '%s';", TheDBPrefix, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
-
 		ResetData(client);
 		CreateNewPlayerEx(client);
 
@@ -3262,12 +3268,10 @@ stock DeleteAndCreateNewData(client, bool:IsBot = false) {
 				if (IsSurvivorBot(i)) KickClient(i);
 			}
 
-			GetConfigValue(key, sizeof(key), "survivor team?");
-			Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%s%s%s';", TheDBPrefix, pct, key, pct);
+			Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%s%s%s';", TheDBPrefix, pct, sBotTeam, pct);
 			LogMessage(tquery);
 			//Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE 'STEAM';", TheDBPrefix);
 			SQL_TQuery(hDatabase, QueryResults, tquery, client);
-
 			PrintToChatAll("%t", "bot data deleted", orange, blue);
 		}
 	}

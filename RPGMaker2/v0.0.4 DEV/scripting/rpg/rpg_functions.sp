@@ -723,7 +723,7 @@ stock TryToDamagePlayerInfected(attacker, victim, baseWeaponDamage, damagetype) 
 		if (FindZombieClass(victim) == ZOMBIECLASS_TANK) CheckTankSubroutine(victim, attacker, baseWeaponDamage, true);
 	}
 	if (IsLegitimateClientAlive(victim)) AddSpecialInfectedDamage(attacker, victim, baseWeaponDamage);
-	CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
+	//CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
 	return 1;
 }
 
@@ -762,7 +762,7 @@ stock TryToDamageNonPlayerInfected(attacker, victim, baseWeaponDamage) {
 				if (!IsSurvivorBot(attacker) && StrContains(TheCommonValue, "d", true) != -1) CreateDamageStatusEffect(victim, 3, attacker, baseWeaponDamage);		// attacker is not target but just used to pass for reference.
 			}
 		}
-		CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
+		//CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
 	}
 	return 1;
 }
@@ -1268,28 +1268,36 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 		bIsCrushCooldown[victim] = true;
 		CreateTimer(1.0, Timer_ResetCrushImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
 	}
-	if ((damagetype & DMG_BURN) && !bNoNewFireDebuff[victim] && IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !IsSurvivorBot(victim)) {
+	if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && (!IsSurvivorBot(victim) || iCanSurvivorBotsBurn == 1)) {
 
-		new iBurnCounter = GetClientStatusEffect(victim, Handle:EntityOnFire, "burn");
-		//new iBurnDamage = RoundToCeil((1.0 * GetDifficultyRating(victim)) * (iBurnCounter + 1));
-		if (iBurnCounter < iDebuffLimit && fOnFireDebuff[victim] <= 0.0) {
+		decl String:effectToCreate[10];
+		if ((damagetype & DMG_BURN) && !DebuffOnCooldown(victim, "burn")) Format(effectToCreate, sizeof(effectToCreate), "burn");
+		else if ((damagetype & DMG_ACID) && !DebuffOnCooldown(victim, "acid")) Format(effectToCreate, sizeof(effectToCreate), "acid");
+		else Format(effectToCreate, sizeof(effectToCreate), "-1");
 
-			if (fOnFireDebuff[victim] == -1.0) {
+		if (!StrEqual(effectToCreate, "-1")) {
+			new iBurnCounter = GetClientStatusEffect(victim, Handle:EntityOnFire, effectToCreate);
+			//new iBurnDamage = RoundToCeil((1.0 * GetDifficultyRating(victim)) * (iBurnCounter + 1));
+			if (iBurnCounter < iDebuffLimit && fOnFireDebuff[victim] <= 0.0) {
 
-				ExtinguishEntity(victim);
-				fOnFireDebuff[victim] = 0.0;
+				if (fOnFireDebuff[victim] == -1.0) {
+
+					ExtinguishEntity(victim);
+					fOnFireDebuff[victim] = 0.0;
+				}
+				else {
+
+					fOnFireDebuff[victim] = fOnFireDebuffDelay;
+					PushArrayString(Handle:ApplyDebuffCooldowns[victim], effectToCreate);
+					//bNoNewFireDebuff[victim] = true;
+					CreateAndAttachFlame(victim, RoundToCeil(damage + (iBurnCounter + 1) + PlayerLevel[victim]), 10.0, 0.5, FindInfectedClient(true), effectToCreate);
+				}
 			}
-			else {
+			//PrintToChatAll("BURN: %d", iBurnDamage);
 
-				fOnFireDebuff[victim] = fOnFireDebuffDelay;
-				bNoNewFireDebuff[victim] = true;
-				CreateAndAttachFlame(victim, (iBurnCounter + 1) + PlayerLevel[victim], 10.0, 0.5, FindInfectedClient(true), "burn");
-			}
+			damage_ignore = 0.0;
+			return Plugin_Handled;
 		}
-		//PrintToChatAll("BURN: %d", iBurnDamage);
-
-		damage_ignore = 0.0;
-		return Plugin_Handled;
 	}
 	new cTank = -1;
 	if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_INFECTED && FindZombieClass(attacker) == ZOMBIECLASS_TANK) cTank = attacker;
@@ -4877,7 +4885,7 @@ stock CreateCommonAffix(entity) {
 		if (StrContains(AuraEffectCCA, "f", true) != -1) CreateAndAttachFlame(entity, _, _, _, _, "burn");
 		//else if (StrContains(AuraEffectCCA, "a", true) != -1) CreateAndAttachFlame(entity, _, _, _, _, "acid");		// true for it to deal no damage.
 
-		SetEntPropFloat(entity, Prop_Send, "m_flModelScale", GetKeyValueFloat(CCAKeys, CCAValues, "model size?"));
+		//SetEntPropFloat(entity, Prop_Send, "m_flModelScale", GetKeyValueFloat(CCAKeys, CCAValues, "model size?"));
 
 		//if (flMovementSpeed < 0.5) flMovementSpeed = 1.0;
 		//SetEntPropFloat(entity, Prop_Data, "m_flSpeed", flMovementSpeed);
@@ -4938,7 +4946,8 @@ stock CreateAndAttachFlame(client, damage = 0, Float:lifetime = 10.0, Float:tick
 	if (tickIntContinued <= 0.0) tickIntContinued = tickInt;
 	Format(t_EntityOnFire, sizeof(t_EntityOnFire), "%d+%d+%3.2f+%3.2f+%3.2f+%s+%s", client, damage, lifetime, tickInt, tickIntContinued, SteamID, DebuffName);
 	PushArrayString(Handle:EntityOnFire, t_EntityOnFire);
-	bNoNewFireDebuff[client] = false;
+	//bNoNewFireDebuff[client] = false;
+	DebuffOnCooldown(client, DebuffName, true); // using an array so we can store all the cooldowns in one place. this removes the cooldown.
 	if (StrEqual(DebuffName, "burn", false)) {
 
 		if (IsLegitimateClient(client)) {
@@ -5245,8 +5254,7 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 
 					IgniteEntity(Client, FlTime - 0.5);
 				}*/
-				if (StrEqual(Evaluate[6], "acid", false)) CreateAcid(FindInfectedClient(true), Client, 48.0);
-				if (IsLegitimateClientAlive(Owner)) {
+				if (Client != Owner && IsLegitimateClientAlive(Owner) && (!IsLegitimateClient(Client) || GetClientTeam(Client) != GetClientTeam(Owner))) {
 
 					HexingContribution[Owner] += t_Damage;
 					GetAbilityStrengthByTrigger(Client, Owner, "L", FindZombieClass(Client), t_Damage);
@@ -5257,6 +5265,14 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 		if (FlTime - 0.5 <= 0.0 || damage <= 0) {
 
 			RemoveFromArray(Handle:EntityOnFire, i);
+			size = GetArraySize(EntityOnFire);
+			if (StrEqual(Evaluate[6], "acid", false) && GetClientStatusEffect(Client, Handle:EntityOnFire, "acid") < 1) {
+				if (!DebuffOnCooldown(Client, "acid")) {
+					PushArrayString(ApplyDebuffCooldowns[Client], "acid");	// prevents the user who drops the acid from automatically-receiving more acid burn stacks (likely in perpetuity)
+					CreateTimer(3.0, Timer_AcidCooldown, Client, TIMER_FLAG_NO_MAPCHANGE);
+				}
+				CreateAcid(FindInfectedClient(true), Client);
+			}
 			//if (i > 0) i--;
 			//size = GetArraySize(Handle:EntityOnFire);
 			continue;
@@ -8699,12 +8715,7 @@ stock GetStatusEffects(client, EffectType = 0, String:theStringToStoreItIn[], th
 		Format(theStringToStoreItIn, theSizeOfTheString, "[-]");
 		if (DoomTimer != 0) Format(theStringToStoreItIn, theSizeOfTheString, "[Dm%d]%s", iDoomTimer - DoomTimer, theStringToStoreItIn);
 		if (bIsSurvivorFatigue[client]) Format(theStringToStoreItIn, theSizeOfTheString, "[Fa]%s", theStringToStoreItIn);
-		/*Count = GetClientStatusEffect(client, Handle:EntityOnFire, "burn");
-		if (Count > 1) Format(theStringToStoreItIn, theSizeOfTheString, "[Bu%d]%s", Count, theStringToStoreItIn);
-		Count = GetClientStatusEffect(client, Handle:EntityOnFire, "acid")
-		if (Count > 1) Format(theStringToStoreItIn, theSizeOfTheString, "[Ab%d]%s", Count, theStringToStoreItIn);
-		Count = GetClientStatusEffect(client, Handle:EntityOnFire, "reflect");
-		if (Count > 1) Format(theStringToStoreItIn, theSizeOfTheString, "[Re%d]%s", Count, theStringToStoreItIn);*/
+
 		Count = GetClientStatusEffect(client, Handle:EntityOnFire, "burn");
 		if (Count > 0) iNumStatusEffects++;
 		if (Count >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "[Bu++]%s", theStringToStoreItIn);

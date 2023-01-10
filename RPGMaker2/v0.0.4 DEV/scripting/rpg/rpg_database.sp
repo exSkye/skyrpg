@@ -596,6 +596,7 @@ stock ResetData(client) {
 	ClearArray(Handle:InfectedHealth[client]);
 	ClearArray(PlayerActiveAmmo[client]);
 	ClearArray(PlayActiveAbilities[client]);
+	ClearArray(ApplyDebuffCooldowns[client]);
 	StrugglePower[client] = 0;
 }
 
@@ -1175,11 +1176,32 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `disab` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, isDisab, key);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
 
-	GetArrayString(Handle:hWeaponList[client], 0, text, sizeof(text));
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `primarywep` = '%s'", TheDBPrefix, text);
+	if (GetArraySize(Handle:hWeaponList[client]) < 2) {
+		ResizeArray(hWeaponList[client], 2);
+		new wepid = GetPlayerWeaponSlot(client, 0);
+		if (IsValidEntity(wepid)) {
+			GetEntityClassname(wepid, text, sizeof(text));
+			SetArrayString(hWeaponList[client], 0, text);
+		}
+		else Format(text, sizeof(text), "%s", defaultLoadoutWeaponPrimary);
+		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `primarywep` = '%s'", TheDBPrefix, text);
 
-	GetArrayString(Handle:hWeaponList[client], 1, text, sizeof(text));
-	Format(tquery, sizeof(tquery), "%s, `secondwep` = '%s' WHERE (`steam_id` = '%s');", tquery, text, key);
+		GetMeleeWeapon(client, text, sizeof(text));
+		if (StrEqual(text, "null")) {	// if the secondary is not a melee weapon
+			wepid = GetPlayerWeaponSlot(client, 1);
+			if (IsValidEntity(wepid)) GetEntityClassname(wepid, text, sizeof(text));
+			else Format(text, sizeof(text), "%s", defaultLoadoutWeaponSecondary);
+		}
+		SetArrayString(hWeaponList[client], 1, text);
+		Format(tquery, sizeof(tquery), "%s, `secondwep` = '%s' WHERE (`steam_id` = '%s');", tquery, text, key);
+	}
+	else {
+		GetArrayString(Handle:hWeaponList[client], 0, text, sizeof(text));
+		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `primarywep` = '%s'", TheDBPrefix, text);
+
+		GetArrayString(Handle:hWeaponList[client], 1, text, sizeof(text));
+		Format(tquery, sizeof(tquery), "%s, `secondwep` = '%s' WHERE (`steam_id` = '%s');", tquery, text, key);
+	}
 	SQL_TQuery(hDatabase, QueryResults, tquery);
 
 	/*size				=	GetArraySize(a_Store);
@@ -2204,6 +2226,7 @@ stock OnClientLoaded(client, bool:IsHooked = false) {
 		b_IsHooked[client] = true;
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	}*/
+	ClearArray(ApplyDebuffCooldowns[client]);
 	FreeUpgrades[client] = 0;
 	bIsHideThreat[client] = true;
 	iThreatLevel[client] = 0;
