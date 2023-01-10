@@ -43,6 +43,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 #define PLUGIN_VERSION				"v0.0.5.2"
+
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -91,6 +92,9 @@
 #define EFFECTOVERTIME_ACTIVATETALENT	0
 #define EFFECTOVERTIME_GETACTIVETIME	1
 #define EFFECTOVERTIME_GETCOOLDOWN		2
+
+#define DMG_SPITTERACID1 263168
+#define DMG_SPITTERACID2 265216
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
@@ -3242,6 +3246,7 @@ public Action:CMD_DataEraseBot(client, args) {
 }
 
 stock DeleteAndCreateNewData(client, bool:IsBot = false) {
+
 	//decl String:thetext[64];
 	//GetConfigValue(thetext, sizeof(thetext), "database prefix?");
 	decl String:key[64];

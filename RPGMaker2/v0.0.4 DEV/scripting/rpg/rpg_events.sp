@@ -974,7 +974,7 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 	static String:result[7][512];
 	static String:t_pos[3][512];
 	static Float:EntityPos[3];
-	decl String:TalentInfo[4][512];
+	static String:TalentInfo[4][512];
 	static owner = 0;
 	static pos = -1;
 	//decl String:newvalue[10];

@@ -1269,10 +1269,13 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 		CreateTimer(1.0, Timer_ResetCrushImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && (!IsSurvivorBot(victim) || iCanSurvivorBotsBurn == 1)) {
+		/*if (IsLegitimateClient(attacker) && FindZombieClass(attacker) == ZOMBIECLASS_SPITTER) {
+			if (!IsFakeClient(victim)) PrintToChat(victim, "damagetype: %d", damagetype);
+		}*/
 
 		decl String:effectToCreate[10];
 		if ((damagetype & DMG_BURN) && !DebuffOnCooldown(victim, "burn")) Format(effectToCreate, sizeof(effectToCreate), "burn");
-		else if ((damagetype & DMG_ACID) && !DebuffOnCooldown(victim, "acid")) Format(effectToCreate, sizeof(effectToCreate), "acid");
+		else if ((damagetype & DMG_SPITTERACID1 || damagetype & DMG_SPITTERACID2) && !DebuffOnCooldown(victim, "acid")) Format(effectToCreate, sizeof(effectToCreate), "acid");
 		else Format(effectToCreate, sizeof(effectToCreate), "-1");
 
 		if (!StrEqual(effectToCreate, "-1")) {
@@ -5177,19 +5180,19 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 		}
 		return Plugin_Stop;
 	}
-	decl String:Value[64];
-	decl String:Evaluate[7][512];
-	new Client = 0;
-	new damage = 0;
-	new Owner = 0;
-	new Float:FlTime = 0.0;
-	new Float:TickInt = 0.0;
-	new Float:TickIntOriginal = 0.0;
-	new t_Damage = 0;
+	static String:Value[64];
+	static String:Evaluate[7][512];
+	static Client = 0;
+	static damage = 0;
+	static Owner = 0;
+	static Float:FlTime = 0.0;
+	static Float:TickInt = 0.0;
+	static Float:TickIntOriginal = 0.0;
+	static t_Damage = 0;
 	//decl String:t_Delim[2][64];
-	decl String:t_EntityOnFire[64];
-	decl String:ModelName[64];
-	new DamageShield = 0;
+	static String:t_EntityOnFire[64];
+	static String:ModelName[64];
+	static DamageShield = 0;
 
 	//decl String:EntityClassname[64];
 	//decl String:Remainder[64];
