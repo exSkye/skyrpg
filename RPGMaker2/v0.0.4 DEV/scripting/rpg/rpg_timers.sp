@@ -533,9 +533,7 @@ public Action:Timer_Blinder(Handle:timer, any:client) {
 }
 
 public Action:Timer_Freezer(Handle:timer, any:client) {
-
 	if (ISFROZEN[client] == INVALID_HANDLE) return Plugin_Stop;
-
 	if (!b_IsActiveRound || !IsLegitimateClient(client) || IsLegitimateClient(client) && !IsPlayerAlive(client) || !IsSpecialCommonInRange(client, 'r') || (ISEXPLODE[client] != INVALID_HANDLE)) {
 
 		/*

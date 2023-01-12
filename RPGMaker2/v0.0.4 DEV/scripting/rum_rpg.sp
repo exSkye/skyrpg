@@ -24,7 +24,6 @@
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  */
-
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -40,7 +39,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v0.0.5.3"
+#define PLUGIN_VERSION				"v0.0.5.4"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -61,9 +60,9 @@
 #define CONFIG_COMMONAFFIXES		"rpg/commonaffixes.cfg"
 #define LOGFILE						"rum_rpg.txt"
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
-//	================================
-#define DEBUG				false
-//	================================
+//	=================================
+#define DEBUG     			false
+//	=================================
 #define CVAR_SHOW			FCVAR_NOTIFY | FCVAR_PLUGIN
 #define DMG_HEADSHOT		2147483648
 #define ZOMBIECLASS_SMOKER											1
@@ -544,6 +543,7 @@ new Handle:g_Gamemode;
 new RoundTime;
 new g_iSprite = 0;
 new g_BeaconSprite = 0;
+
 //new bool:b_FirstClientLoaded;
 new bool:b_HasDeathLocation[MAXPLAYERS + 1];
 new bool:b_IsMissionFailed;
@@ -594,13 +594,9 @@ new bool:b_RescueIsHere;
 new Handle:SurvivorsIgnored[MAXPLAYERS + 1];
 new bool:HasSeenCombat[MAXPLAYERS + 1];
 new MyBirthday[MAXPLAYERS + 1];
-/*
-
-	Main config static variables.
-*/
-
-
-
+//======================================
+//Main config static variables.
+//======================================
 new Float:fSuperCommonLimit;
 new Float:fBurnPercentage;
 new iTankRush;
@@ -708,7 +704,6 @@ new iInfectedLimit;
 new Float:SurvivorExperienceMult;
 new Float:SurvivorExperienceMultTank;
 new Float:SurvivorExperienceMultHeal;
-new Float:fDamageContribution;
 new Float:TheScorchMult;
 new Float:TheInfernoMult;
 new Float:fAmmoHighlightTime;
@@ -841,7 +836,7 @@ new Handle:GAMValues[MAXPLAYERS + 1];
 new Handle:GAMSection[MAXPLAYERS + 1];
 new String:RPGMenuCommand[64];
 new RPGMenuCommandExplode;
-new PrestigeLevel[MAXPLAYERS + 1];
+//new PrestigeLevel[MAXPLAYERS + 1];
 new String:DefaultProfileName[64];
 new String:DefaultBotProfileName[64];
 new String:DefaultInfectedProfileName[64];
@@ -878,6 +873,7 @@ new Handle:ApplyDebuffCooldowns[MAXPLAYERS + 1];
 new iCanSurvivorBotsBurn;
 new String:defaultLoadoutWeaponPrimary[64];
 new String:defaultLoadoutWeaponSecondary[64];
+new iDeleteCommonsFromExistenceOnDeath;
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -2942,74 +2938,74 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 stock LoadMainConfig() {
 	GetConVarString(FindConVar("z_difficulty"), sServerDifficulty, sizeof(sServerDifficulty));
 	if (strlen(sServerDifficulty) < 4) GetConfigValue(sServerDifficulty, sizeof(sServerDifficulty), "server difficulty?");
-	fHealSizeDefault			= GetConfigValueFloat("default aura size for heal types?");
-	fProficiencyExperienceMultiplier = GetConfigValueFloat("proficiency requirement multiplier?");
-	fProficiencyExperienceEarned = GetConfigValueFloat("experience multiplier proficiency?");
-	fRatingPercentLostOnDeath	= GetConfigValueFloat("rating percentage lost on death?");
-	//iProficiencyMaxLevel = GetConfigValueInt("proficience level max?");
-	iProficiencyStart = GetConfigValueInt("proficiency level start?");
-	iTeamRatingRequired			= GetConfigValueInt("team count rating bonus?");
-	fTeamRatingBonus			= GetConfigValueFloat("team player rating bonus?");
-	iTanksPreset				= GetConfigValueInt("preset tank type on spawn?");
-	iSurvivorRespawnRestrict	= GetConfigValueInt("respawn queue players ignored?");
-	iIsRatingEnabled			= GetConfigValueInt("handicap enabled?");
-	iIsSpecialFire				= GetConfigValueInt("special infected fire?");
-	iSkyLevelMax				= GetConfigValueInt("max sky level?");
-	//iOnFireDebuffLimit			= GetConfigValueInt("standing in fire debuff limit?");
-	fOnFireDebuffDelay			= GetConfigValueFloat("standing in fire debuff delay?");
-	//fTankThreatBonus			= GetConfigValueFloat("tank threat bonus?");
-	forceProfileOnNewPlayers	= GetConfigValueInt("Force Profile On New Player?");
-	iShowLockedTalents			= GetConfigValueInt("show locked talents?");
-	iAwardBroadcast				= GetConfigValueInt("award broadcast?");
+	fHealSizeDefault					= GetConfigValueFloat("default aura size for heal types?");
+	fProficiencyExperienceMultiplier 	= GetConfigValueFloat("proficiency requirement multiplier?");
+	fProficiencyExperienceEarned 		= GetConfigValueFloat("experience multiplier proficiency?");
+	fRatingPercentLostOnDeath			= GetConfigValueFloat("rating percentage lost on death?");
+	//iProficiencyMaxLevel				= GetConfigValueInt("proficience level max?");
+	iProficiencyStart					= GetConfigValueInt("proficiency level start?");
+	iTeamRatingRequired					= GetConfigValueInt("team count rating bonus?");
+	fTeamRatingBonus					= GetConfigValueFloat("team player rating bonus?");
+	iTanksPreset						= GetConfigValueInt("preset tank type on spawn?");
+	iSurvivorRespawnRestrict			= GetConfigValueInt("respawn queue players ignored?");
+	iIsRatingEnabled					= GetConfigValueInt("handicap enabled?");
+	iIsSpecialFire						= GetConfigValueInt("special infected fire?");
+	iSkyLevelMax						= GetConfigValueInt("max sky level?");
+	//iOnFireDebuffLimit				= GetConfigValueInt("standing in fire debuff limit?");
+	fOnFireDebuffDelay					= GetConfigValueFloat("standing in fire debuff delay?");
+	//fTankThreatBonus					= GetConfigValueFloat("tank threat bonus?");
+	forceProfileOnNewPlayers			= GetConfigValueInt("Force Profile On New Player?");
+	iShowLockedTalents					= GetConfigValueInt("show locked talents?");
+	iAwardBroadcast						= GetConfigValueInt("award broadcast?");
 	GetConfigValue(sSpecialsAllowed, sizeof(sSpecialsAllowed), "special infected classes?");
-	iSpecialsAllowed			= GetConfigValueInt("special infected allowed?");
-	fEnrageMultiplier			= GetConfigValueFloat("enrage multiplier?");
-	iRestedDonator				= GetConfigValueInt("rested experience earned donator?");
-	iRestedRegular				= GetConfigValueInt("rested experience earned non-donator?");
-	iRestedSecondsRequired		= GetConfigValueInt("rested experience required seconds?");
-	iRestedMaximum				= GetConfigValueInt("rested experience maximum?");
-	iFriendlyFire				= GetConfigValueInt("friendly fire enabled?");
+	iSpecialsAllowed					= GetConfigValueInt("special infected allowed?");
+	fEnrageMultiplier					= GetConfigValueFloat("enrage multiplier?");
+	iRestedDonator						= GetConfigValueInt("rested experience earned donator?");
+	iRestedRegular						= GetConfigValueInt("rested experience earned non-donator?");
+	iRestedSecondsRequired				= GetConfigValueInt("rested experience required seconds?");
+	iRestedMaximum						= GetConfigValueInt("rested experience maximum?");
+	iFriendlyFire						= GetConfigValueInt("friendly fire enabled?");
 	GetConfigValue(sDonatorFlags, sizeof(sDonatorFlags), "donator package flag?");
 	GetConfigValue(sProfileLoadoutConfig, sizeof(sProfileLoadoutConfig), "profile loadout config?");
-	iHardcoreMode				= GetConfigValueInt("hardcore mode?");
-	fDeathPenalty				= GetConfigValueFloat("death penalty?");
-	iDeathPenaltyPlayers		= GetConfigValueInt("death penalty players required?");
-	iTankRush					= GetConfigValueInt("tank rush?");
-	iRushingModuleEnabled		= GetConfigValueInt("anti-rushing enabled?");
-	iTanksAlways				= GetConfigValueInt("tanks always active?");
-	iTanksAlwaysEnforceCooldown = GetConfigValueInt("tanks always enforce cooldown?");
-	fSprintSpeed				= GetConfigValueFloat("sprint speed?");
-	iRPGMode					= GetConfigValueInt("rpg mode?");
-	//fTankMultiplier				= GetConfigValueFloat("director tanks player multiplier?");
-	iTankPlayerCount			= GetConfigValueInt("director tanks per _ players?");
-	DirectorWitchLimit			= GetConfigValueInt("director witch limit?");
-	fCommonQueueLimit			= GetConfigValueFloat("common queue limit?");
-	fDirectorThoughtDelay		= GetConfigValueFloat("director thought process delay?");
-	fDirectorThoughtHandicap	= GetConfigValueFloat("director thought process handicap?");
-	iSurvivalRoundTime			= GetConfigValueInt("survival round time?");
-	fDazedDebuffEffect			= GetConfigValueFloat("dazed debuff effect?");
-	ConsumptionInt				= GetConfigValueInt("stamina consumption interval?");
-	fStamSprintInterval			= GetConfigValueFloat("stamina sprint interval?");
-	fStamRegenTime				= GetConfigValueFloat("stamina regeneration time?");
-	fStamRegenTimeAdren			= GetConfigValueFloat("stamina regeneration time adren?");
-	fBaseMovementSpeed			= GetConfigValueFloat("base movement speed?");
-	fFatigueMovementSpeed		= GetConfigValueFloat("fatigue movement speed?");
-	iPlayerStartingLevel		= GetConfigValueInt("new player starting level?");
-	iBotPlayerStartingLevel		= GetConfigValueInt("new bot player starting level?");
-	fOutOfCombatTime			= GetConfigValueFloat("out of combat time?");
-	iWitchDamageInitial			= GetConfigValueInt("witch damage initial?");
-	fWitchDamageScaleLevel		= GetConfigValueFloat("witch damage scale level?");
-	fSurvivorDamageBonus		= GetConfigValueFloat("survivor damage bonus?");
-	fSurvivorHealthBonus		= GetConfigValueFloat("survivor health bonus?");
-	iSurvivorModifierRequired	= GetConfigValueInt("survivor modifier requirement?");
-	iEnrageTime					= GetConfigValueInt("enrage time?");
-	fWitchDirectorPoints		= GetConfigValueFloat("witch director points?");
-	fEnrageDirectorPoints		= GetConfigValueFloat("enrage director points?");
-	fCommonDamageLevel			= GetConfigValueFloat("common damage scale level?");
-	iBotLevelType				= GetConfigValueInt("infected bot level type?");
-	fCommonDirectorPoints		= GetConfigValueFloat("common infected director points?");
-	iDisplayHealthBars			= GetConfigValueInt("display health bars?");
-	iMaxDifficultyLevel			= GetConfigValueInt("max difficulty level?");
+	iHardcoreMode						= GetConfigValueInt("hardcore mode?");
+	fDeathPenalty						= GetConfigValueFloat("death penalty?");
+	iDeathPenaltyPlayers				= GetConfigValueInt("death penalty players required?");
+	iTankRush							= GetConfigValueInt("tank rush?");
+	iRushingModuleEnabled				= GetConfigValueInt("anti-rushing enabled?");
+	iTanksAlways						= GetConfigValueInt("tanks always active?");
+	iTanksAlwaysEnforceCooldown 		= GetConfigValueInt("tanks always enforce cooldown?");
+	fSprintSpeed						= GetConfigValueFloat("sprint speed?");
+	iRPGMode							= GetConfigValueInt("rpg mode?");
+	//fTankMultiplier					= GetConfigValueFloat("director tanks player multiplier?");
+	iTankPlayerCount					= GetConfigValueInt("director tanks per _ players?");
+	DirectorWitchLimit					= GetConfigValueInt("director witch limit?");
+	fCommonQueueLimit					= GetConfigValueFloat("common queue limit?");
+	fDirectorThoughtDelay				= GetConfigValueFloat("director thought process delay?");
+	fDirectorThoughtHandicap			= GetConfigValueFloat("director thought process handicap?");
+	iSurvivalRoundTime					= GetConfigValueInt("survival round time?");
+	fDazedDebuffEffect					= GetConfigValueFloat("dazed debuff effect?");
+	ConsumptionInt						= GetConfigValueInt("stamina consumption interval?");
+	fStamSprintInterval					= GetConfigValueFloat("stamina sprint interval?");
+	fStamRegenTime						= GetConfigValueFloat("stamina regeneration time?");
+	fStamRegenTimeAdren					= GetConfigValueFloat("stamina regeneration time adren?");
+	fBaseMovementSpeed					= GetConfigValueFloat("base movement speed?");
+	fFatigueMovementSpeed				= GetConfigValueFloat("fatigue movement speed?");
+	iPlayerStartingLevel				= GetConfigValueInt("new player starting level?");
+	iBotPlayerStartingLevel				= GetConfigValueInt("new bot player starting level?");
+	fOutOfCombatTime					= GetConfigValueFloat("out of combat time?");
+	iWitchDamageInitial					= GetConfigValueInt("witch damage initial?");
+	fWitchDamageScaleLevel				= GetConfigValueFloat("witch damage scale level?");
+	fSurvivorDamageBonus				= GetConfigValueFloat("survivor damage bonus?");
+	fSurvivorHealthBonus				= GetConfigValueFloat("survivor health bonus?");
+	iSurvivorModifierRequired			= GetConfigValueInt("survivor modifier requirement?");
+	iEnrageTime							= GetConfigValueInt("enrage time?");
+	fWitchDirectorPoints				= GetConfigValueFloat("witch director points?");
+	fEnrageDirectorPoints				= GetConfigValueFloat("enrage director points?");
+	fCommonDamageLevel					= GetConfigValueFloat("common damage scale level?");
+	iBotLevelType						= GetConfigValueInt("infected bot level type?");
+	fCommonDirectorPoints				= GetConfigValueFloat("common infected director points?");
+	iDisplayHealthBars					= GetConfigValueInt("display health bars?");
+	iMaxDifficultyLevel					= GetConfigValueInt("max difficulty level?");
 	//fScoutBonus					= GetConfigValueFloat("scout jetpack bonus?");
 	//fTotemRating				= GetConfigValueFloat("totem spirit rating?");
 	//fSpellBulletStrength		= GetConfigValueFloat("base spell bullet strength?");
@@ -3018,11 +3014,9 @@ stock LoadMainConfig() {
 	//fNoobAssistanceResistance	= GetConfigValueFloat("new player assistance resistance?");
 	//fNoobAssistanceHealing		= GetConfigValueFloat("new player assistance healing?");
 	//fNoobAssistanceRecovery		= GetConfigValueFloat("new player assistance recovery?");
-
 	decl String:text[64], String:text2[64], String:text3[64], String:text4[64];
 	for (new i = 0; i < 7; i++) {
 		if (i == 6) {
-
 			Format(text, sizeof(text), "(%d) damage player level?", i + 2);
 			Format(text2, sizeof(text2), "(%d) infected health bonus", i + 2);
 			Format(text3, sizeof(text3), "(%d) base damage?", i + 2);
@@ -3034,132 +3028,132 @@ stock LoadMainConfig() {
 			Format(text3, sizeof(text3), "(%d) base damage?", i + 1);
 			Format(text4, sizeof(text4), "(%d) base infected health?", i + 1);
 		}
-		fDamagePlayerLevel[i]	= GetConfigValueFloat(text);
-		fHealthPlayerLevel[i]	= GetConfigValueFloat(text2);
-		iBaseSpecialDamage[i]	= GetConfigValueInt(text3);
-		iBaseSpecialInfectedHealth[i] = GetConfigValueInt(text4);
+		fDamagePlayerLevel[i]			= GetConfigValueFloat(text);
+		fHealthPlayerLevel[i]			= GetConfigValueFloat(text2);
+		iBaseSpecialDamage[i]			= GetConfigValueInt(text3);
+		iBaseSpecialInfectedHealth[i]	= GetConfigValueInt(text4);
 	}
-	fPointsMultiplierInfected	= GetConfigValueFloat("points multiplier infected?");
-	fPointsMultiplier			= GetConfigValueFloat("points multiplier survivor?");
-	fHealingMultiplier			= GetConfigValueFloat("experience multiplier healing?");
-	fBuffingMultiplier			= GetConfigValueFloat("experience multiplier buffing?");
-	fHexingMultiplier			= GetConfigValueFloat("experience multiplier hexing?");
-	TanksNearbyRange			= GetConfigValueFloat("tank nearby ability deactivate?");
-	iCommonAffixes				= GetConfigValueInt("common affixes?");
-	BroadcastType				= GetConfigValueInt("hint text type?");
-	iDoomTimer					= GetConfigValueInt("doom kill timer?");
-	iSurvivorStaminaMax			= GetConfigValueInt("survivor stamina?");
-	fRatingMultSpecials			= GetConfigValueFloat("rating multiplier specials?");
-	fRatingMultSupers			= GetConfigValueFloat("rating multiplier supers?");
-	fRatingMultCommons			= GetConfigValueFloat("rating multiplier commons?");
-	fRatingMultTank				= GetConfigValueFloat("rating multiplier tank?");
-	fTeamworkExperience			= GetConfigValueInt("maximum teamwork experience?") * 1.0;
-	fItemMultiplierLuck			= GetConfigValueFloat("buy item luck multiplier?");
-	fItemMultiplierTeam			= GetConfigValueInt("buy teammate item multiplier?") * 1.0;
+	fPointsMultiplierInfected			= GetConfigValueFloat("points multiplier infected?");
+	fPointsMultiplier					= GetConfigValueFloat("points multiplier survivor?");
+	fHealingMultiplier					= GetConfigValueFloat("experience multiplier healing?");
+	fBuffingMultiplier					= GetConfigValueFloat("experience multiplier buffing?");
+	fHexingMultiplier					= GetConfigValueFloat("experience multiplier hexing?");
+	TanksNearbyRange					= GetConfigValueFloat("tank nearby ability deactivate?");
+	iCommonAffixes						= GetConfigValueInt("common affixes?");
+	BroadcastType						= GetConfigValueInt("hint text type?");
+	iDoomTimer							= GetConfigValueInt("doom kill timer?");
+	iSurvivorStaminaMax					= GetConfigValueInt("survivor stamina?");
+	fRatingMultSpecials					= GetConfigValueFloat("rating multiplier specials?");
+	fRatingMultSupers					= GetConfigValueFloat("rating multiplier supers?");
+	fRatingMultCommons					= GetConfigValueFloat("rating multiplier commons?");
+	fRatingMultTank						= GetConfigValueFloat("rating multiplier tank?");
+	fTeamworkExperience					= GetConfigValueInt("maximum teamwork experience?") * 1.0;
+	fItemMultiplierLuck					= GetConfigValueFloat("buy item luck multiplier?");
+	fItemMultiplierTeam					= GetConfigValueInt("buy teammate item multiplier?") * 1.0;
 	GetConfigValue(sQuickBindHelp, sizeof(sQuickBindHelp), "quick bind help?");
-	fPointsCostLevel			= GetConfigValueFloat("points cost increase per level?");
-	PointPurchaseType			= GetConfigValueInt("points purchase type?");
-	iTankLimitVersus			= GetConfigValueInt("versus tank limit?");
-	fHealRequirementTeam		= GetConfigValueFloat("teammate heal health requirement?");
-	iSurvivorBaseHealth			= GetConfigValueInt("survivor health?");
-	iSurvivorBotBaseHealth		= GetConfigValueInt("survivor bot health?");
+	fPointsCostLevel					= GetConfigValueFloat("points cost increase per level?");
+	PointPurchaseType					= GetConfigValueInt("points purchase type?");
+	iTankLimitVersus					= GetConfigValueInt("versus tank limit?");
+	fHealRequirementTeam				= GetConfigValueFloat("teammate heal health requirement?");
+	iSurvivorBaseHealth					= GetConfigValueInt("survivor health?");
+	iSurvivorBotBaseHealth				= GetConfigValueInt("survivor bot health?");
 	GetConfigValue(spmn, sizeof(spmn), "sky points menu name?");
-	fHealthSurvivorRevive		= GetConfigValueFloat("survivor revive health?");
+	fHealthSurvivorRevive				= GetConfigValueFloat("survivor revive health?");
 	GetConfigValue(RestrictedWeapons, sizeof(RestrictedWeapons), "restricted weapons?");
-	iMaxLevel					= GetConfigValueInt("max level?");
-	iExperienceStart			= GetConfigValueInt("experience start?");
-	fExperienceMultiplier		= GetConfigValueFloat("requirement multiplier?");
+	iMaxLevel							= GetConfigValueInt("max level?");
+	iExperienceStart					= GetConfigValueInt("experience start?");
+	fExperienceMultiplier				= GetConfigValueFloat("requirement multiplier?");
 	GetConfigValue(sBotTeam, sizeof(sBotTeam), "survivor team?");
-	iActionBarSlots				= GetConfigValueInt("action bar slots?");
+	iActionBarSlots						= GetConfigValueInt("action bar slots?");
 	GetConfigValue(MenuCommand, sizeof(MenuCommand), "rpg menu command?");
 	ReplaceString(MenuCommand, sizeof(MenuCommand), ",", " or ", true);
-	HostNameTime				= GetConfigValueInt("display server name time?");
-	DoomSUrvivorsRequired		= GetConfigValueInt("doom survivors ignored?");
-	DoomKillTimer				= GetConfigValueInt("doom kill timer?");
-	fVersusTankNotice			= GetConfigValueFloat("versus tank notice?");
-	AllowedCommons				= GetConfigValueInt("common limit base?");
-	AllowedMegaMob				= GetConfigValueInt("mega mob limit base?");
-	AllowedMobSpawn				= GetConfigValueInt("mob limit base?");
-	AllowedMobSpawnFinale		= GetConfigValueInt("mob finale limit base?");
-	AllowedPanicInterval		= GetConfigValueInt("mega mob max interval base?");
-	RespawnQueue				= GetConfigValueInt("survivor respawn queue?");
-	MaximumPriority				= GetConfigValueInt("director priority maximum?");
-	ConsMult					= GetConfigValueFloat("constitution ab multiplier?");
-	AgilMult					= GetConfigValueFloat("agility ab multiplier?");
-	ResiMult					= GetConfigValueFloat("resilience ab multiplier?");
-	TechMult					= GetConfigValueFloat("technique ab multiplier?");
-	EnduMult					= GetConfigValueFloat("endurance ab multiplier?");
-	fUpgradeExpCost				= GetConfigValueFloat("upgrade experience cost?");
-	iHandicapLevelDifference	= GetConfigValueInt("handicap level difference required?");
-	iWitchHealthBase			= GetConfigValueInt("base witch health?");
-	fWitchHealthMult			= GetConfigValueFloat("level witch multiplier?");
-	//RatingPerLevel				= GetConfigValueInt("rating level multiplier?");
-	iCommonBaseHealth			= GetConfigValueInt("common base health?");
-	fCommonRaidHealthMult		= GetConfigValueFloat("common raid health multiplier?");
-	fCommonLevelHealthMult		= GetConfigValueFloat("common level health?");
-	//iServerLevelRequirement		= GetConfigValueInt("server level requirement?");
-	iRoundStartWeakness			= GetConfigValueInt("weakness on round start?");
-	GroupMemberBonus			= GetConfigValueFloat("steamgroup bonus?");
-	RaidLevMult					= GetConfigValueInt("raid level multiplier?");
-	iIgnoredRating				= GetConfigValueInt("rating to ignore?");
-	iIgnoredRatingMax			= GetConfigValueInt("max rating to ignore?");
-	//iTrailsEnabled				= GetConfigValueInt("trails enabled?");
-	iInfectedLimit				= GetConfigValueInt("ensnare infected limit?");
-	SurvivorExperienceMult		= GetConfigValueFloat("experience multiplier survivor?");
-	SurvivorExperienceMultTank	= GetConfigValueFloat("experience multiplier tanking?");
-	SurvivorExperienceMultHeal	= GetConfigValueFloat("experience multiplier healing?");
-	fDamageContribution			= GetConfigValueFloat("damage contribution?");
-	TheScorchMult				= GetConfigValueFloat("scorch multiplier?");
-	TheInfernoMult				= GetConfigValueFloat("inferno multiplier?");
-	fAmmoHighlightTime			= GetConfigValueFloat("special ammo highlight time?");
-	fAdrenProgressMult			= GetConfigValueFloat("adrenaline progress multiplier?");
-	DirectorTankCooldown		= GetConfigValueFloat("director tank cooldown?");
-	DisplayType					= GetConfigValueInt("survivor reward display?");
+	HostNameTime						= GetConfigValueInt("display server name time?");
+	DoomSUrvivorsRequired				= GetConfigValueInt("doom survivors ignored?");
+	DoomKillTimer						= GetConfigValueInt("doom kill timer?");
+	fVersusTankNotice					= GetConfigValueFloat("versus tank notice?");
+	AllowedCommons						= GetConfigValueInt("common limit base?");
+	AllowedMegaMob						= GetConfigValueInt("mega mob limit base?");
+	AllowedMobSpawn						= GetConfigValueInt("mob limit base?");
+	AllowedMobSpawnFinale				= GetConfigValueInt("mob finale limit base?");
+	AllowedPanicInterval				= GetConfigValueInt("mega mob max interval base?");
+	RespawnQueue						= GetConfigValueInt("survivor respawn queue?");
+	MaximumPriority						= GetConfigValueInt("director priority maximum?");
+	ConsMult							= GetConfigValueFloat("constitution ab multiplier?");
+	AgilMult							= GetConfigValueFloat("agility ab multiplier?");
+	ResiMult							= GetConfigValueFloat("resilience ab multiplier?");
+	TechMult							= GetConfigValueFloat("technique ab multiplier?");
+	EnduMult							= GetConfigValueFloat("endurance ab multiplier?");
+	fUpgradeExpCost						= GetConfigValueFloat("upgrade experience cost?");
+	iHandicapLevelDifference			= GetConfigValueInt("handicap level difference required?");
+	iWitchHealthBase					= GetConfigValueInt("base witch health?");
+	fWitchHealthMult					= GetConfigValueFloat("level witch multiplier?");
+	//RatingPerLevel					= GetConfigValueInt("rating level multiplier?");
+	iCommonBaseHealth					= GetConfigValueInt("common base health?");
+	fCommonRaidHealthMult				= GetConfigValueFloat("common raid health multiplier?");
+	fCommonLevelHealthMult				= GetConfigValueFloat("common level health?");
+	//iServerLevelRequirement			= GetConfigValueInt("server level requirement?");
+	iRoundStartWeakness					= GetConfigValueInt("weakness on round start?");
+	GroupMemberBonus					= GetConfigValueFloat("steamgroup bonus?");
+	RaidLevMult							= GetConfigValueInt("raid level multiplier?");
+	iIgnoredRating						= GetConfigValueInt("rating to ignore?");
+	iIgnoredRatingMax					= GetConfigValueInt("max rating to ignore?");
+	//iTrailsEnabled					= GetConfigValueInt("trails enabled?");
+	iInfectedLimit						= GetConfigValueInt("ensnare infected limit?");
+	SurvivorExperienceMult				= GetConfigValueFloat("experience multiplier survivor?");
+	SurvivorExperienceMultTank			= GetConfigValueFloat("experience multiplier tanking?");
+	SurvivorExperienceMultHeal			= GetConfigValueFloat("experience multiplier healing?");
+	TheScorchMult						= GetConfigValueFloat("scorch multiplier?");
+	TheInfernoMult						= GetConfigValueFloat("inferno multiplier?");
+	fAmmoHighlightTime					= GetConfigValueFloat("special ammo highlight time?");
+	fAdrenProgressMult					= GetConfigValueFloat("adrenaline progress multiplier?");
+	DirectorTankCooldown				= GetConfigValueFloat("director tank cooldown?");
+	DisplayType							= GetConfigValueInt("survivor reward display?");
 	GetConfigValue(sDirectorTeam, sizeof(sDirectorTeam), "director team name?");
-	fRestedExpMult				= GetConfigValueFloat("rested experience multiplier?");
-	fSurvivorExpMult			= GetConfigValueFloat("survivor experience bonus?");
-	iIsPvpServer				= GetConfigValueInt("pvp server?");
-	iDebuffLimit				= GetConfigValueInt("debuff limit?");
-	iRatingSpecialsRequired		= GetConfigValueInt("specials rating required?");
-	iRatingTanksRequired		= GetConfigValueInt("tank rating required?");
+	fRestedExpMult						= GetConfigValueFloat("rested experience multiplier?");
+	fSurvivorExpMult					= GetConfigValueFloat("survivor experience bonus?");
+	iIsPvpServer						= GetConfigValueInt("pvp server?");
+	iDebuffLimit						= GetConfigValueInt("debuff limit?");
+	iRatingSpecialsRequired				= GetConfigValueInt("specials rating required?");
+	iRatingTanksRequired				= GetConfigValueInt("tank rating required?");
 	GetConfigValue(sDbLeaderboards, sizeof(sDbLeaderboards), "db record?");
-	iIsLifelink					= GetConfigValueInt("lifelink enabled?");
-	RatingPerHandicap			= GetConfigValueInt("rating level handicap?");
+	iIsLifelink							= GetConfigValueInt("lifelink enabled?");
+	RatingPerHandicap					= GetConfigValueInt("rating level handicap?");
 	GetConfigValue(sItemModel, sizeof(sItemModel), "item drop model?");
-	fDropChanceSpecial			= GetConfigValueFloat("item chance supers?");
-	fDropChanceCommon			= GetConfigValueFloat("item chance commons?");
-	fDropChanceWitch			= GetConfigValueFloat("item chance witch?");
-	fDropChanceTank				= GetConfigValueFloat("item chance tank?");
-	fDropChanceInfected			= GetConfigValueFloat("item chance infected?");
-	iDropsEnabled				= GetConfigValueInt("item drop enabled?");
-	iItemExpireDate				= GetConfigValueInt("item expire date?");
-	iRarityMax					= GetConfigValueInt("item rarity max?");
-	iEnrageAdvertisement		= GetConfigValueInt("enrage advertise time?");
-	iNotifyEnrage				= GetConfigValueInt("enrage notification?");
-	iJoinGroupAdvertisement		= GetConfigValueInt("join group advertise time?");
+	fDropChanceSpecial					= GetConfigValueFloat("item chance supers?");
+	fDropChanceCommon					= GetConfigValueFloat("item chance commons?");
+	fDropChanceWitch					= GetConfigValueFloat("item chance witch?");
+	fDropChanceTank						= GetConfigValueFloat("item chance tank?");
+	fDropChanceInfected					= GetConfigValueFloat("item chance infected?");
+	iDropsEnabled						= GetConfigValueInt("item drop enabled?");
+	iItemExpireDate						= GetConfigValueInt("item expire date?");
+	iRarityMax							= GetConfigValueInt("item rarity max?");
+	iEnrageAdvertisement				= GetConfigValueInt("enrage advertise time?");
+	iNotifyEnrage						= GetConfigValueInt("enrage notification?");
+	iJoinGroupAdvertisement				= GetConfigValueInt("join group advertise time?");
 	GetConfigValue(sBackpackModel, sizeof(sBackpackModel), "backpack model?");
-	iSurvivorGroupMinimum		= GetConfigValueInt("group member minimum?");
-	fBurnPercentage				= GetConfigValueFloat("burn debuff percentage?");
-	fSuperCommonLimit			= GetConfigValueFloat("super common limit?");
-	iCommonsLimitUpper			= GetConfigValueInt("commons limit max?");
-	FinSurvBon					= GetConfigValueFloat("finale survival bonus?");
-	fCoopSurvBon 				= GetConfigValueFloat("coop round survival bonus?");
-	iMaxIncap					= GetConfigValueInt("survivor max incap?");
-	iMaxLayers					= GetConfigValueInt("max talent layers?");
-	iCommonInfectedBaseDamage	= GetConfigValueInt("common infected base damage?");
-	iShowTotalNodesOnTalentTree = GetConfigValueInt("show upgrade maximum by nodes?");
-	fSpecialAmmoInterval		= GetConfigValueFloat("special ammo tick rate?");
-	fEffectOverTimeInterval		= GetConfigValueFloat("effect over time tick rate?");
-	//fStaggerTime				= GetConfigValueFloat("stagger debuff time?");
-	fStaggerTickrate			= GetConfigValueFloat("stagger tickrate?");
-	fRatingFloor				= GetConfigValueFloat("rating floor?");
-	iExperienceDebtLevel		= GetConfigValueInt("experience debt level?");
-	iExperienceDebtEnabled		= GetConfigValueInt("experience debt enabled?");
-	fExperienceDebtPenalty		= GetConfigValueFloat("experience debt penalty?");
-	iShowDamageOnActionBar		= GetConfigValueInt("show damage on action bar?");
-	iDefaultIncapHealth			= GetConfigValueInt("default incap health?");
-	iSkyLevelNodeUnlocks		= GetConfigValueInt("sky level default node unlocks?");
-	iCanSurvivorBotsBurn		= GetConfigValueInt("survivor bots debuffs allowed?");
+	iSurvivorGroupMinimum				= GetConfigValueInt("group member minimum?");
+	fBurnPercentage						= GetConfigValueFloat("burn debuff percentage?");
+	fSuperCommonLimit					= GetConfigValueFloat("super common limit?");
+	iCommonsLimitUpper					= GetConfigValueInt("commons limit max?");
+	FinSurvBon							= GetConfigValueFloat("finale survival bonus?");
+	fCoopSurvBon 						= GetConfigValueFloat("coop round survival bonus?");
+	iMaxIncap							= GetConfigValueInt("survivor max incap?");
+	iMaxLayers							= GetConfigValueInt("max talent layers?");
+	iCommonInfectedBaseDamage			= GetConfigValueInt("common infected base damage?");
+	iShowTotalNodesOnTalentTree			= GetConfigValueInt("show upgrade maximum by nodes?");
+	fSpecialAmmoInterval				= GetConfigValueFloat("special ammo tick rate?");
+	fEffectOverTimeInterval				= GetConfigValueFloat("effect over time tick rate?");
+	//fStaggerTime						= GetConfigValueFloat("stagger debuff time?");
+	fStaggerTickrate					= GetConfigValueFloat("stagger tickrate?");
+	fRatingFloor						= GetConfigValueFloat("rating floor?");
+	iExperienceDebtLevel				= GetConfigValueInt("experience debt level?");
+	iExperienceDebtEnabled				= GetConfigValueInt("experience debt enabled?");
+	fExperienceDebtPenalty				= GetConfigValueFloat("experience debt penalty?");
+	iShowDamageOnActionBar				= GetConfigValueInt("show damage on action bar?");
+	iDefaultIncapHealth					= GetConfigValueInt("default incap health?");
+	iSkyLevelNodeUnlocks				= GetConfigValueInt("sky level default node unlocks?");
+	iCanSurvivorBotsBurn				= GetConfigValueInt("survivor bots debuffs allowed?");
+	iDeleteCommonsFromExistenceOnDeath	= GetConfigValueInt("delete commons from existence on death?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
 	GetConfigValue(DefaultBotProfileName, sizeof(DefaultBotProfileName), "new bot player profile?");
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
@@ -3231,13 +3225,11 @@ public Action:CMD_DataErase(client, args) {
 }
 
 public Action:CMD_DataEraseBot(client, args) {
-
 	DeleteAndCreateNewData(client, true);
 	return Plugin_Handled;
 }
 
 stock DeleteAndCreateNewData(client, bool:IsBot = false) {
-
 	//decl String:thetext[64];
 	//GetConfigValue(thetext, sizeof(thetext), "database prefix?");
 	decl String:key[64];
@@ -3251,11 +3243,9 @@ stock DeleteAndCreateNewData(client, bool:IsBot = false) {
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
 		ResetData(client);
 		CreateNewPlayerEx(client);
-
 		PrintToChat(client, "data erased, new data created.");	// not bothering with a translation here, since it's a debugging command.
 	}
 	else {
-
 		GetConfigValue(text, sizeof(text), "delete bot flags?");
 		if (HasCommandAccess(client, text)) {
 
@@ -3265,9 +3255,9 @@ stock DeleteAndCreateNewData(client, bool:IsBot = false) {
 			}
 
 			Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%s%s%s';", TheDBPrefix, pct, sBotTeam, pct);
-			LogMessage(tquery);
 			//Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE 'STEAM';", TheDBPrefix);
 			SQL_TQuery(hDatabase, QueryResults, tquery, client);
+			LogMessage("%s", tquery);
 			PrintToChatAll("%t", "bot data deleted", orange, blue);
 		}
 	}

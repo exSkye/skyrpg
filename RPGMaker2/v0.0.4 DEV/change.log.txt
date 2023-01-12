@@ -12,6 +12,17 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.5.4
+	-	More optimizations!
+		Also, fixed damage values breaking in the last patch.
+		- Added a new variable to the config.cfg which should help alleviate lag issues on servers that are throwing HIGH common numbers at players.
+			- "delete commons from existence on death?" - If set to 1, when a common infected dies, it's zapped out of existence. This means no ragdoll/death animation.
+										  - If set to > 1, it zaps commons out of existence if there are more than x commons alive. Great if you don't want thousands of dead commons in HIGH common servers.
+	-	Quality of Life changes!
+		- If a combat state is required for a node, it will now tell you which state is required on the talent info screen;
+			- [Ic] for In-Combat state required ("combat state required?" == 1)
+			- [Oc] for Out-of-Combat state required ("combat state required?" == 0)
+			If you don't want a combat state to be required, set "combat state required?" to "-1" or omit it altogether (omitted keys default to -1)
 	0.0.5.3
 	-	Changed damage calculation for [Bu]rn and [Ac]id Burn:
 		Previously: damage + (burnTypeDebuffCount + 1) + playerLevel

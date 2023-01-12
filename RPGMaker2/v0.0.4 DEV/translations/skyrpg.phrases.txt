@@ -20,6 +20,18 @@
 	{
 		"en"				"This node is an Effect-over-Time."
 	}
+	"in combat state required"
+	{
+		"en"				"[Ic] In-Combat state required."
+	}
+	"no combat state required"
+	{
+		"en"				"[Oc] Out-of-Combat state required."
+	}
+	"combat state formatted improperly"
+	{
+		"en"				"bad combat state check your config file."
+	}
 	"You cannot aim at anything"
 	{
 		"en"				"No aim target"

@@ -1,6 +1,6 @@
 stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = false, bool:ShowLayerEligibility = false) {	// 0 is legacy type that appeared on all menus. 0 - Main Menu | 1 - Upgrades | 2 - Points
 
-	decl String:text[512], String:stext[512];
+	decl String:text[512];
 	new CurRPGMode = iRPGMode;
 
 	decl String:currExperience[64];
@@ -558,7 +558,6 @@ stock GetTeamComposition(client) {
 
 	decl String:text[512];
 	decl String:ratingText[64];
-	decl String:levelText[64];
 
 	new myteam = GetClientTeam(client);
 	for (new i = 1; i <= MaxClients; i++) {
@@ -3062,6 +3061,8 @@ public Handle:TalentInfoScreen (client) {
 		Format(text, sizeof(text), "%T", "multiply aoe range", client, AoEEffectRange);
 		DrawPanelText(menu, text);
 	}
+	new bool:IsEffectOverTime = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is effect over time?") == 1) ? true : false;
+	new combatStatesAllowed = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "combat state required?");
 
 	decl String:TalentInfo[128];
 	new AbilityType = 0;
@@ -3075,9 +3076,6 @@ public Handle:TalentInfoScreen (client) {
 
 			new Float:i_AbilityTime = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], 2);
 			new Float:i_AbilityTimeNext = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], 2, true);
-
-			new bool:IsEffectOverTime = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is effect over time?") == 1) ? true : false;
-
 			/*
 				ability type ONLY EXISTS for displaying different information to the players via menus.
 				the EXCEPTION to this is type 3, where rpg_functions.sp line 2428 makes a check using it.
@@ -3246,9 +3244,14 @@ public Handle:TalentInfoScreen (client) {
 		else Format(text, sizeof(text), "%T", "not compounding talent info", client);
 		DrawPanelText(menu, text);
 	}
-	if (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is effect over time?") == 1) {
+	if (IsEffectOverTime) {
 		Format(text, sizeof(text), "%T", "effect over time talent info", client);
 		DrawPanelText(menu, text);
+	}
+	if (combatStatesAllowed != -1) {
+		if (combatStatesAllowed == 1) Format(text, sizeof(text), "%T", "in combat state required", client);
+		else if (combatStatesAllowed == 0) Format(text, sizeof(text), "%T", "no combat state required", client);
+		else Format(text, sizeof(text), "%T", "combat state formatted improperly", client);
 	}
 	return menu;
 }

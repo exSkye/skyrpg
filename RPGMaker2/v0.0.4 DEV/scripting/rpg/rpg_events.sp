@@ -121,39 +121,6 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			}
 		}
 	}
-
-	//decl String:EventName[PLATFORM_MAX_PATH];
-	//FormatKeyValue(EventName, sizeof(EventName), CallKeys, CallValues, "event name?");
-	//if (!IsWitch(victim) && !IsCommonInfected(victim)) victim = GetClientOfUserId(victim);
-
-	//if (StrEqual(event_name, "player_hurt", false) && !IsLegitimateClient(attacker)) attacker = GetEventInt(event, "attackerentid");
-
-	// in old versions, we unhooked players when the round ended.
-	// now, we only do it when a client spawns for the first time - or is removed from the server.
-	/*if (StrEqual(event_name, "round_end")) {
-
-		//LogToFile(LogPathDirectory, "[ROUND OVER] Removing SDK Hooks from players.");
-
-		for (new i = 1; i <= MaxClients; i++) {
-
-			if (IsLegitimateClient(i)) {
-
-				b_IsHooked[i] = false;
-				SDKUnhook(i, SDKHook_OnTakeDamage, OnTakeDamage);
-			}
-		}
-	}*/
-
-	/*if (StrEqual(event_name, "player_spawn")) {
-
-		if (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && !b_IsHooked[attacker]) {
-
-			//if (IsPlayerAlive(attacker)) SDKUnhook(attacker, SDKHook_OnTakeDamage, OnTakeDamage);
-
-			b_IsHooked[attacker] = true;
-			SDKHook(attacker, SDKHook_OnTakeDamage, OnTakeDamage);
-		}
-	}*/
 	decl String:weapon[64];
 	//decl String:key[64];
 	if (StrEqual(event_name, "player_left_start_area") && IsLegitimateClient(attacker)) {
@@ -179,117 +146,44 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		if (StrEqual(event_name, "player_entered_checkpoint")) bIsInCheckpoint[attacker] = true;
 		if (StrEqual(event_name, "player_left_checkpoint")) bIsInCheckpoint[attacker] = false;
 	}
-	/*if (StrEqual(event_name, "player_hurt")) {
-
-		if (IsLegitimateClientAlive(attacker) && (GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker)) && !b_IsHooked[attacker]) {
-
-			b_IsHooked[attacker] = true;
-			SDKHook(attacker, SDKHook_OnTakeDamage, OnTakeDamage);
-		}
-		if (IsLegitimateClientAlive(victim) && (GetClientTeam(victim) == TEAM_SURVIVOR || IsSurvivorBot(victim)) && !b_IsHooked[victim]) {
-
-			b_IsHooked[victim] = true;
-			SDKHook(victim, SDKHook_OnTakeDamage, OnTakeDamage);
-		}
-
-		if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_INFECTED && !IsSurvivorBot(attacker) && !b_IsHooked[attacker]) {
-
-			PrimeInfected(attacker);
-		}
-		if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_INFECTED && !IsSurvivorBot(victim) && !b_IsHooked[victim]) {
-
-			PrimeInfected(victim);
-		}
-
-		//GetEventString(event, "weapon", weapon, sizeof(weapon));
-		return -1;
-		//if (StrEqual(weapon, "inferno") || damagetype == 8 || damagetype == 2056 || damagetype == 268435464) return -1;
-	}*/
-	//new minimumlevel = iPlayerStartingLevel;
-	//decl String:key[64];
-	/*if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && PlayerLevel[attacker] < minimumlevel) {
-
-		GetClientAuthString(attacker, key, sizeof(key));
-		b_IsLoading[attacker] = true;
-		ResetData(attacker);
-		ClearAndLoad(key);
-		return;
-		if (!b_IsLoading[attacker] && !LoadDelay[attacker]) {
-
-			CreateNewPlayer(attacker);
-			return 0;
-		}
-	}
-	if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && PlayerLevel[victim] < minimumlevel) {
-
-		GetClientAuthString(victim, key, sizeof(key));
-		b_IsLoading[victim] = true;
-		ResetData(victim);
-		ClearAndLoad(victim);
-		return;
-		if (!b_IsLoading[victim] && !LoadDelay[victim]) {
-
-			CreateNewPlayer(victim);
-			return 0;
-		}
-	}*/
 	if (StrEqual(event_name, "player_spawn")) {
 
-		if (IsLegitimateClient(attacker)) ClearArray(Handle:ActiveStatuses[attacker]);
-
-		if (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker)) {
-
-			ChangeHook(attacker, true);
-			RefreshSurvivor(attacker);
-			RaidInfectedBotLimit();
-			//EquipBackpack(attacker);
-		}
-		if (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_INFECTED) {
-			SetInfectedHealth(attacker, 99999);
-		}
-		if (IsLegitimateClient(attacker) && !IsFakeClient(attacker) && GetClientTeam(attacker) == TEAM_INFECTED && (b_IsActiveRound || !IsFakeClient(attacker))) {
-
-			PlayerSpawnAbilityTrigger(attacker);
-		}
-		if (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_INFECTED && !IsSurvivorBot(attacker) && (b_IsActiveRound || !IsFakeClient(attacker))) {
-
-			ClearArray(Handle:PlayerAbilitiesCooldown[attacker]);
-			//ClearArray(Handle:PlayerAbilitiesImmune[attacker]);
-			ClearArray(Handle:InfectedHealth[attacker]);
-
-			new aDbSize = GetArraySize(a_Database_Talents);
-
-			//ResizeArray(Handle:a_Database_PlayerTalents_Bots, size);
-			//ResizeArray(Handle:PlayerAbilitiesCooldown_Bots, size);
-			//ResizeArray(Handle:PlayerAbilitiesImmune_Bots, size);
-
-			ResizeArray(a_Database_PlayerTalents[attacker], aDbSize);
-			ResizeArray(PlayerAbilitiesCooldown[attacker], aDbSize);
-			ResizeArray(a_Database_PlayerTalents_Experience[attacker], aDbSize);
-			//ResizeArray(Handle:PlayerAbilitiesImmune[client], aDbSize);
-
-
-			ResizeArray(Handle:InfectedHealth[attacker], 1);	// infected player stores their actual health (from talents, abilities, etc.) locally...
-			bHealthIsSet[attacker] = false;
-			//IsCoveredInVomit(attacker, _, true);
-			if (!b_IsHooked[attacker]) {
-
+		if (IsLegitimateClient(attacker)) {
+			ClearArray(Handle:ActiveStatuses[attacker]);
+			if (GetClientTeam(attacker) == TEAM_SURVIVOR || IsSurvivorBot(attacker)) {
 				ChangeHook(attacker, true);
-				CreateMyHealthPool(attacker, true);
-			}
-			if (FindZombieClass(attacker) == ZOMBIECLASS_TANK) {
-
-				ClearArray(TankState_Array[attacker]);
-				bHasTeleported[attacker] = false;
-				//PrintToChatAll("Tank has spawned!");
-				if (iTanksPreset == 1) {
-
-					new iRand = GetRandomInt(1, 3);
-					if (iRand == 1) ChangeTankState(attacker, "hulk");
-					else if (iRand == 2) ChangeTankState(attacker, "death");
-					else if (iRand == 3) ChangeTankState(attacker, "burn");
-					//else if (iRand == 4) ChangeTankState(attacker, "teleporter");
-					//else if (iRand == 5) ChangeTankState(attacker, "reflect");
+				RefreshSurvivor(attacker);
+				RaidInfectedBotLimit();
+			}//EquipBackpack(attacker);
+			if (GetClientTeam(attacker) == TEAM_INFECTED) {
+				SetInfectedHealth(attacker, 99999);
+				//if (b_IsActiveRound || !IsFakeClient(attacker)) {
+				if (!IsFakeClient(attacker)) PlayerSpawnAbilityTrigger(attacker);
+				if (!IsSurvivorBot(attacker)) {
+					ClearArray(Handle:PlayerAbilitiesCooldown[attacker]);
+					ClearArray(Handle:InfectedHealth[attacker]);
+					new aDbSize = GetArraySize(a_Database_Talents);
+					ResizeArray(a_Database_PlayerTalents[attacker], aDbSize);
+					ResizeArray(PlayerAbilitiesCooldown[attacker], aDbSize);
+					ResizeArray(a_Database_PlayerTalents_Experience[attacker], aDbSize);
+					ResizeArray(Handle:InfectedHealth[attacker], 1);	// infected player stores their actual health (from talents, abilities, etc.) locally...
+					bHealthIsSet[attacker] = false;
+					if (!b_IsHooked[attacker]) {
+						ChangeHook(attacker, true);
+						CreateMyHealthPool(attacker, true);
+					}
+					if (FindZombieClass(attacker) == ZOMBIECLASS_TANK) {
+						ClearArray(TankState_Array[attacker]);
+						bHasTeleported[attacker] = false;
+						if (iTanksPreset == 1) {
+							new iRand = GetRandomInt(1, 3);
+							if (iRand == 1) ChangeTankState(attacker, "hulk");
+							else if (iRand == 2) ChangeTankState(attacker, "death");
+							else if (iRand == 3) ChangeTankState(attacker, "burn");
+							//else if (iRand == 4) ChangeTankState(attacker, "teleporter");
+							//else if (iRand == 5) ChangeTankState(attacker, "reflect");
+						}
+					}
 				}
 			}
 		}
@@ -1960,8 +1854,8 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 				if (b_IsFloating[client]) {
 
 					GetClientAbsOrigin(client, JumpPosition[client][1]);
-					new Float:Z1 = JumpPosition[client][0][2];
-					new Float:Z2 = JumpPosition[client][1][2];
+					//new Float:Z1 = JumpPosition[client][0][2];
+					//new Float:Z2 = JumpPosition[client][1][2];
 
 					//if (Z1 > Z2 && Z1 - Z2 >= StringToFloat(GetConfigValue("fall damage critical?"))) IncapacitateOrKill(client, _, _, true);
 					//if (Z1 > Z2) {
@@ -2636,12 +2530,6 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 	//if (IsLegitimateClientAlive(commonkiller) && GetClientTeam(commonkiller) == TEAM_SURVIVOR) owner = commonkiller;
 	if (ClientType == 0) SpecialsKilled++;
 	new Float:i_DamageContribution = 0.0000;
-	new Float:DamageContributionRequirement = (1.0 / LivingSurvivorCount());
-	//LogMessage("Damage comtribution requirement: %3.3f", DamageContributionRequirement);
-	if (DamageContributionRequirement > fDamageContribution) {
-
-		DamageContributionRequirement = fDamageContribution;
-	}
 
 	// If it's a special common, we activate its death abilities.
 	if (ClientType == 2) {
@@ -2949,61 +2837,43 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 // Optional RPG System. Maybe call it "buy rpg mode?"
 
 stock bool:SameTeam_OnTakeDamage(healer, target, iHealerAmount, bool:IsDamageTalent = false, damagetype = -1) {
-
-	if (iIsPvpServer == 1) return false;
-	if (IsLegitimateClientAlive(target) && IsLegitimateClientAlive(healer) && GetClientTeam(target) == GetClientTeam(healer) && AllowShotgunToTriggerNodes(healer)) {
-
-		if (!HealImmunity[target]) { // && !IsBeingRevived(target)) {
-
-	 		new bool:TheBool = IsMeleeAttacker(healer);
-	 		if (!TheBool || !bIsMeleeCooldown[healer]) {
-
-		 		//https://pastebin.com/tLLK9kZM
-		 		if (!TheBool) {
-					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "d", 2, true));
-					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "healshot", 2, true));
-				}
-		 		else {
-					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "d", 2, true));
-					iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "healmelee", 2, true));
-				}
-		 		if ((GetClientTeam(healer) == TEAM_SURVIVOR || IsSurvivorBot(healer)) && iHealerAmount > 0) {
-		 			if (bIsInCombat[target]) {
-		 				CombatTime[healer] = GetEngineTime() + fOutOfCombatTime;
-		 				bIsInCombat[healer] = true;
-		 			}
-		 			if (TheBool) {
-		 				bIsMeleeCooldown[healer] = true;				
-						CreateTimer(0.5, Timer_IsMeleeCooldown, healer, TIMER_FLAG_NO_MAPCHANGE);
-		 			}
-		 			HealImmunity[target] = true;
-			 		CreateTimer(0.05, Timer_HealImmunity, target, TIMER_FLAG_NO_MAPCHANGE);
-			 		HealPlayer(target, healer, iHealerAmount * 1.0, 'h', true);
-					GetAbilityStrengthByTrigger(healer, target, "didHeals", _, iHealerAmount);
-					GetAbilityStrengthByTrigger(target, healer, "wasHealed", _, iHealerAmount);
-
-			 		// To prevent endless loops, we only call damage talents when the function is called directly from OnTakeDamage()
-			 		if (IsDamageTalent) {
-
-			 			GetAbilityStrengthByTrigger(healer, target, "d", FindZombieClass(healer), iHealerAmount);
-				 		if (damagetype & DMG_CLUB) GetAbilityStrengthByTrigger(healer, target, "U", FindZombieClass(healer), iHealerAmount);
-				 		if (damagetype & DMG_SLASH) GetAbilityStrengthByTrigger(healer, target, "u", FindZombieClass(healer), iHealerAmount);
-				 	}
-
-			 		//GetAbilityStrengthByTrigger(attacker, victim, 'd', FindZombieClass(attacker), baseWeaponDamage);
-					//GetAbilityStrengthByTrigger(victim, attacker, 'l', FindZombieClass(victim), baseWeaponDamage);
-
-					if (LastAttackedUser[healer] == target) ConsecutiveHits[healer]++;
-					else {
-
-						LastAttackedUser[healer] = target;
-						ConsecutiveHits[healer] = 0;
-					}
-					//if (!TheBool) RestoreHealBullet(healer);	// deprecated, we have talent nodes that can regen ammo if necessary.
-		 		}
-		 	}
-		}
-	 	return true;
+	if (iIsPvpServer == 1 || !AllowShotgunToTriggerNodes(healer)) return false;
+	if (HealImmunity[target]) return true;
+	new bool:TheBool = IsMeleeAttacker(healer);
+	if (TheBool && bIsMeleeCooldown[healer]) return true;
+	//https://pastebin.com/tLLK9kZM
+	if (!TheBool) {
+		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "d", 2, true));
+		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "healshot", 2, true));
 	}
-	return false;
+	else {
+		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "d", 2, true));
+		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "healmelee", 2, true));
+	}
+	if (iHealerAmount < 1) return true;
+	if (bIsInCombat[target]) {
+		CombatTime[healer] = GetEngineTime() + fOutOfCombatTime;
+		bIsInCombat[healer] = true;
+	}
+	if (TheBool) {
+		bIsMeleeCooldown[healer] = true;				
+		CreateTimer(0.5, Timer_IsMeleeCooldown, healer, TIMER_FLAG_NO_MAPCHANGE);
+	}
+	HealImmunity[target] = true;
+	CreateTimer(0.05, Timer_HealImmunity, target, TIMER_FLAG_NO_MAPCHANGE);
+	HealPlayer(target, healer, iHealerAmount * 1.0, 'h', true);
+	GetAbilityStrengthByTrigger(healer, target, "didHeals", _, iHealerAmount);
+	GetAbilityStrengthByTrigger(target, healer, "wasHealed", _, iHealerAmount);
+	// To prevent endless loops, we only call damage talents when the function is called directly from OnTakeDamage()
+	if (IsDamageTalent) {
+		GetAbilityStrengthByTrigger(healer, target, "d", FindZombieClass(healer), iHealerAmount);
+		if (damagetype & DMG_CLUB) GetAbilityStrengthByTrigger(healer, target, "U", FindZombieClass(healer), iHealerAmount);
+		if (damagetype & DMG_SLASH) GetAbilityStrengthByTrigger(healer, target, "u", FindZombieClass(healer), iHealerAmount);
+	}
+	if (LastAttackedUser[healer] == target) ConsecutiveHits[healer]++;
+	else {
+		LastAttackedUser[healer] = target;
+		ConsecutiveHits[healer] = 0;
+	}
+	return true;
 }

@@ -181,7 +181,6 @@ public BuildStoreHandle(Handle:menu, MenuAction:action, client, slot) {
 
 		new StoreCost				=	0;
 		new Duration				=	0;
-		new Amount					=	0;
 		new Float:AmountMin			=	0.0;
 		new Float:AmountMax			=	0.0;
 		decl String:ItemEffect[64];
@@ -192,7 +191,6 @@ public BuildStoreHandle(Handle:menu, MenuAction:action, client, slot) {
 		StoreCost		= GetKeyValueInt(MenuKeys[client], MenuValues[client], "store cost?");
 		Duration		= GetKeyValueInt(MenuKeys[client], MenuValues[client], "duration?");
 		FormatKeyValue(ItemEffect, sizeof(ItemEffect), MenuKeys[client], MenuValues[client], "item effect?");
-		Amount			= GetKeyValueInt(MenuKeys[client], MenuValues[client], "amount?");
 		AmountMin		= GetKeyValueFloat(MenuKeys[client], MenuValues[client], "amount min?");
 		AmountMax		= GetKeyValueFloat(MenuKeys[client], MenuValues[client], "amount max?");
 

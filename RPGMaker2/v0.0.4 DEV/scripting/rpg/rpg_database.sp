@@ -597,6 +597,8 @@ stock ResetData(client) {
 	ClearArray(PlayerActiveAmmo[client]);
 	ClearArray(PlayActiveAbilities[client]);
 	ClearArray(ApplyDebuffCooldowns[client]);
+	if (ISFROZEN[client] != INVALID_HANDLE) KillTimer(ISFROZEN[client]);
+	ISFROZEN[client] = INVALID_HANDLE;
 	StrugglePower[client] = 0;
 }
 
@@ -2227,6 +2229,8 @@ stock OnClientLoaded(client, bool:IsHooked = false) {
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	}*/
 	ClearArray(ApplyDebuffCooldowns[client]);
+	if (ISFROZEN[client] != INVALID_HANDLE) KillTimer(ISFROZEN[client]);
+	ISFROZEN[client] = INVALID_HANDLE;
 	FreeUpgrades[client] = 0;
 	bIsHideThreat[client] = true;
 	iThreatLevel[client] = 0;
@@ -2404,7 +2408,6 @@ public Action:CMD_RespawnYumYum(client, args) {
 
 			if (IsSurvivorBot(i) && IsPlayerAlive(i)) {
 
-				IncapacitateOrKill(i, _, _, true);
 				FindARespawnTarget(client, i);
 				break;
 			}
@@ -2437,6 +2440,7 @@ stock FindARespawnTarget(client, sacrifice = -1) {
 			decl String:MyName[64];
 			GetClientName(client, MyName, sizeof(MyName));
 			PrintToChatAll("%t", "sacrificed a bot to respawn", white, blue, MyName, orange);
+			IncapacitateOrKill(sacrifice, _, _, true);
 		}
 	}
 }
