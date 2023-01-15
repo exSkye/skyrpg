@@ -197,6 +197,7 @@ stock LoadProfileEx(client, String:key[]) {
 }
 
 stock LoadProfileEx_Confirm(client, String:key[]) {
+	if (!IsLegitimateClient(client)) return;
 
 	decl String:tquery[512];
 	if (hDatabase == INVALID_HANDLE) {
@@ -392,7 +393,7 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 					ClearArray(Handle:hWeaponList[client]);
 					ResizeArray(Handle:hWeaponList[client], 2);
 				}
-				if (GetArraySize(hWeaponList[client]) > 0) {
+				else if (GetArraySize(hWeaponList[client]) > 0) {
 
 					SQL_FetchString(hndl, 1, text, sizeof(text));
 					SetArrayString(Handle:hWeaponList[client], 0, text);
@@ -2990,7 +2991,7 @@ stock Float:GetTalentInfo(client, Handle:Keys, Handle:Values, infotype = 0, bool
 	return f_StrengthPoint;
 }
 
-public Handle:TalentInfoScreen (client) {
+public Handle:TalentInfoScreen(client) {
 	new AbilityTalent			= GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is ability?");
 	new IsSpecialAmmo = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "special ammo?");
 
@@ -3030,7 +3031,7 @@ public Handle:TalentInfoScreen (client) {
 	decl String:TalentNameTranslation[64];
 	GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation), true);
 	Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", TalentNameTranslation, client);
-	decl String:text[512];
+	decl String:text[512];	
 	if (AbilityTalent != 1) {
 
 		if (FreeUpgrades[client] < 0) FreeUpgrades[client] = 0;
@@ -3062,7 +3063,6 @@ public Handle:TalentInfoScreen (client) {
 		DrawPanelText(menu, text);
 	}
 	new bool:IsEffectOverTime = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is effect over time?") == 1) ? true : false;
-	new combatStatesAllowed = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "combat state required?");
 
 	decl String:TalentInfo[128];
 	new AbilityType = 0;
@@ -3203,6 +3203,12 @@ public Handle:TalentInfoScreen (client) {
 		Format(text, sizeof(text), "%T", "cartel experience screen", client, talentlevel, talentexperience, talentrequirement, TalentName_Temp, theExperienceBar);
 		DrawPanelText(menu, text);
 	}
+	new talentCombatStatesAllowed = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "combat state required?");
+	if (talentCombatStatesAllowed >= 0) {
+		if (talentCombatStatesAllowed == 1) Format(text, sizeof(text), "%T", "in combat state required", client);
+		else Format(text, sizeof(text), "%T", "no combat state required", client);
+		DrawPanelText(menu, text);
+	}
 	Format(text, sizeof(text), "%T", "return to talent menu", client);
 	DrawPanelItem(menu, text);
 
@@ -3239,19 +3245,13 @@ public Handle:TalentInfoScreen (client) {
 		}
 	}
 	new isCompoundingTalent = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "compounding talent?");	// -1 if no value is provided.
-	if (isCompoundingTalent >= 0) {
-		if (isCompoundingTalent == 1) Format(text, sizeof(text), "%T", "compounding talent info", client);
-		else Format(text, sizeof(text), "%T", "not compounding talent info", client);
+	if (isCompoundingTalent == 1) {
+		Format(text, sizeof(text), "%T", "compounding talent info", client);
 		DrawPanelText(menu, text);
 	}
 	if (IsEffectOverTime) {
 		Format(text, sizeof(text), "%T", "effect over time talent info", client);
 		DrawPanelText(menu, text);
-	}
-	if (combatStatesAllowed != -1) {
-		if (combatStatesAllowed == 1) Format(text, sizeof(text), "%T", "in combat state required", client);
-		else if (combatStatesAllowed == 0) Format(text, sizeof(text), "%T", "no combat state required", client);
-		else Format(text, sizeof(text), "%T", "combat state formatted improperly", client);
 	}
 	return menu;
 }

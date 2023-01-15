@@ -12,6 +12,22 @@
 	Soul
 
 	RPGMakerv2 changelog:
+	0.0.5.5
+	-	new config.cfg variables:
+		"delay after zoom for quick scope kill?"	"0.2"		how much time (in seconds) a player has to kill a special infected for quickscope triggers.
+		"can players jetpack when in combat?"	"0"		is the jetpack disabled completely when the player is in combat?
+	-	New talent configs:
+		"requires zoom?"	if set to 1, talents don't fire if you aren't zoomed with a scope.
+		"strength increase while zoomed?" - disabled unless the value is > 0.0. multiplies against the time the player is zoomed to determine the strength of the talent.
+		"strength increase time cap?"	    - disabled unless the value is > 0.0. the strength of the talent is only calculated up to this much time of being zoomed. (caps the efficacy)
+		"strength increase time required?"- disabled unless the value is > 0.0. If > 0.0, the zoom strength increase only occurs if the player is zoomed for at least this much time.
+		"no effect if zoom time is not met?"	- If set to 1, and time required above is not met (and is not 0.0) the talent will not be calculated or fire.
+	-	New ability triggers:
+		"quickscope" and "jetpack"
+		- "jetpack"
+		There is a hard-coded effect type for the jetpack:
+			- "flightcost" - this effect reduces the stamina cost of flying by slowing down how often a player loses stamina for flying.
+			for example: if you have 10% jetpack efficiency, it would take 10% longer to lose stamina for using the jetpack, letting you fly longer, for less.
 	0.0.5.4
 	-	More optimizations!
 		Also, fixed damage values breaking in the last patch.

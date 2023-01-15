@@ -1258,6 +1258,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 				damage_ignore = 0.0;
 				return Plugin_Handled;
 			}
+			ReadyUp_NtvStatistics(attacker, 0, baseWeaponDamage);
+			ReadyUp_NtvStatistics(victim, 8, baseWeaponDamage);
 			if (survivorResult == -2) {
 				damage_ignore = (baseWeaponDamage * 1.0);
 				return Plugin_Changed;
@@ -1308,6 +1310,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 				ToggleJetpack(victim, true);
 				if (attackerType == 3) {
 					survivorIncomingDamage = IfInfectedIsAttackerDoStuff(attacker, victim);
+					ReadyUp_NtvStatistics(attacker, 1, survivorIncomingDamage);
+					ReadyUp_NtvStatistics(victim, 8, survivorIncomingDamage);
 					if (survivorIncomingDamage == -1) {
 						damage_ignore = 0.0;
 						return Plugin_Handled;
@@ -2101,6 +2105,9 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 
 	new Float:fMultiplyRange = 0.0;
 	new iMultiplyCount = 0;
+	new bool:isScoped = IsPlayerZoomed(activator);
+	new Float:playerZoomTime = GetActiveZoomTime(activator);
+	new Float:fPlayerMaxZoomTime = 0.0;
 
 	new ASize = GetArraySize(a_Menu_Talents);
 	for (new i = 0; i < ASize; i++) {
@@ -2134,6 +2141,7 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 			else TheTalentStrength = 1;
 			iStrengthOverride = TheTalentStrength;
 		}
+		if (!isScoped && GetKeyValueInt(TriggerKeys[activator], TriggerValues[activator], "requires zoom?") == 1) continue;
 
 		isRawType = (GetKeyValueInt(TriggerKeys[activator], TriggerValues[activator], "ability type?") == 3) ? 1 : 0;
 		if (typeOfValuesToRetrieve == 1 && isRawType == 1 || typeOfValuesToRetrieve == 2 && isRawType == 0) continue;
@@ -2282,6 +2290,21 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 				iMultiplyCount += LivingEntitiesInRangeByType(activator, fMultiplyRange, 4);
 			}
 			if (iMultiplyCount > 0) p_Strength *= iMultiplyCount;
+		}
+		fMultiplyRange = GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "strength increase while zoomed?");
+		if (fMultiplyRange > 0.0) {
+			// If we want a cap on when staying zoomed in stops increasing the strength...
+			fPlayerMaxZoomTime = GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "strength increase time cap?");
+			if (fPlayerMaxZoomTime > 0.0 && playerZoomTime > fPlayerMaxZoomTime) playerZoomTime = fPlayerMaxZoomTime;
+
+			// If we only want the bonus to be applied when a minimum amount of time has passed...
+			fPlayerMaxZoomTime = GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "strength increase time required?");
+			// no minimum time is required	or	player meets or exceeds time requirement.
+			if (fPlayerMaxZoomTime <= 0.0 || playerZoomTime >= fPlayerMaxZoomTime) p_Strength *= (playerZoomTime / fMultiplyRange);
+			else {
+				// If the player doesn't meet the time requirement for this perk to give a bonus, we need to check if this is an x-increase over time perk, and don't fire if it is.
+				if (GetKeyValueInt(TriggerKeys[activator], TriggerValues[activator], "no effect if zoom time is not met?") == 1) continue;
+			}
 		}
 		
 		if (bIsCompounding || ResultType >= 1) {
@@ -5156,6 +5179,15 @@ stock WipeDebuffs(bool:IsEndOfCampaign = false, client = -1, bool:IsDisconnect =
 	}
 }
 
+/*public Action:Timer_QuickscopeCheck(Handle:timer) {
+	if (!b_IsActiveRound) {
+		ClearArray(quickscopeCheck);
+		return Plugin_Stop;
+	}
+	// format is %d:time for client id, time activated.
+
+}*/
+
 public Action:Timer_EntityOnFire(Handle:timer) {
 	if (!b_IsActiveRound) {
 		for (new i = 1; i <= MAXPLAYERS; i++) {
@@ -6846,12 +6878,26 @@ stock Float:GetAbilityMultiplier(client, String:abilityT[], override = 0, String
 	decl String:passiveEffect[10];
 	decl String:cooldownEffect[10];
 	new bool:IsCurrentlyActive;
+	new combatStateRequired;
+	decl String:allowedWeapons[64];
+	decl String:clientWeapon[64];
+
 	for (new i = 0; i < size; i++) {
 		Keys				= GetArrayCell(a_Menu_Talents, i, 0);
 		Values				= GetArrayCell(a_Menu_Talents, i, 1);
 		Section				= GetArrayCell(a_Menu_Talents, i, 2);
 
 		if (GetKeyValueInt(Keys, Values, "is ability?") != 1) continue;
+		combatStateRequired = GetKeyValueInt(Keys, Values, "combat state required?");
+		// if no combat state is set, it will return -1, and then work regardless of their combat status.
+		if (combatStateRequired == 0 && bIsInCombat[client] ||
+			combatStateRequired == 1 && !bIsInCombat[client]) continue;
+		FormatKeyValue(allowedWeapons, sizeof(allowedWeapons), Keys, Values, "weapons permitted?");
+		if (!StrEqual(allowedWeapons, "-1")) {
+			GetClientWeapon(client, clientWeapon, sizeof(clientWeapon));
+			if (!IsWeaponPermittedFound(client, allowedWeapons, clientWeapon)) continue;
+		}
+
 
 		GetArrayString(Section, 0, TalentName, sizeof(TalentName));
 
@@ -8428,6 +8474,10 @@ stock bool:IsVectorsCrossed(client, Float:torigin[3], Float:aorigin[3], Float:f_
 	}
 }*/
 
+bool:IsPlayerZoomed(client) {
+	return (GetEntPropEnt(client, Prop_Send, "m_hZoomOwner") == -1) ? false : true;
+}
+
 public Action:Timer_DestroyRock(Handle:timer, any:ent) {
 
 	if (IsValidEntity(ent) && IsValidEdict(ent)) {
@@ -9065,7 +9115,7 @@ stock DisplayHUD(client, statusType) {
 
 			Format(text, sizeof(text), "Jetpack Fuel: %3.2f %s\n%s", PlayerCurrStamina, pct, clientStatusEffectDisplay[client]);
 		}
-		else if (enemycombatant != -1) {
+		else if (iShowDetailedDisplayAlways == 1 && enemycombatant != -1) {
 			if (IsSpecialCommon(enemycombatant) || IsWitch(enemycombatant) || IsLegitimateClientAlive(enemycombatant) && GetClientTeam(enemycombatant) != TEAM_SURVIVOR) {
 				AddCommasToString(GetTargetHealth(client, enemycombatant), targetHealthText, sizeof(targetHealthText));
 				Format(text, sizeof(text), "%s: %sHP\n%s\n%d HITS!", EnemyName, targetHealthText, clientStatusEffectDisplay[client], ConsecutiveHits[client]);
@@ -10407,6 +10457,8 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool:bIsFalling 
 			SaveAndClear(client);
 		}
 		else if (!IsIncapacitated(client)) {
+			ReadyUp_NtvStatistics(client, 3, 1);
+			ReadyUp_NtvStatistics(attacker, 4, 1);
 
 			SetEntProp(client, Prop_Send, "m_isIncapacitated", 1);
 			iThreatLevel[client] /= 2;
@@ -10909,6 +10961,7 @@ stock SetClientTotalHealth(client, damage, bool:IsSetHealthInstead = false, bool
 	}
 
 	if (GetClientTeam(client) == TEAM_SURVIVOR || IsSurvivorBot(client)) {
+		ReadyUp_NtvStatistics(client, 7, damage);
 
 		fHealthBuffer = GetEntPropFloat(client, Prop_Send, "m_healthBuffer");
 		if (fHealthBuffer > 0.0) {
@@ -10943,7 +10996,7 @@ stock SetClientTotalHealth(client, damage, bool:IsSetHealthInstead = false, bool
 		}
 	}
 	else {
-
+		ReadyUp_NtvStatistics(client, 8, damage);
 		if (damage >= GetClientHealth(client)) CalculateInfectedDamageAward(client);
 		else SetEntityHealth(client, GetClientHealth(client) - damage);
 	}

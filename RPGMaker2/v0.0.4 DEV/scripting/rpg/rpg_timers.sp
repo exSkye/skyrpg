@@ -60,12 +60,19 @@ stock CheckDifficulty() {
 
 stock GiveProfileItems(client) {
 
-	decl String:text[64];
-	GetArrayString(Handle:hWeaponList[client], 0, text, sizeof(text));
-	QuickCommandAccessEx(client, text, _, true);
+	if (GetArraySize(hWeaponList[client]) == 2) {
+		decl String:text[64];
+		GetArrayString(Handle:hWeaponList[client], 0, text, sizeof(text));
+		QuickCommandAccessEx(client, text, _, true);
 
-	GetArrayString(Handle:hWeaponList[client], 1, text, sizeof(text));
-	QuickCommandAccessEx(client, text, _, true);
+		GetArrayString(Handle:hWeaponList[client], 1, text, sizeof(text));
+		QuickCommandAccessEx(client, text, _, true);
+	}
+	else {
+		ResizeArray(hWeaponList[client], 2);
+		QuickCommandAccessEx(client, defaultLoadoutWeaponPrimary, _, true);
+		QuickCommandAccessEx(client, defaultLoadoutWeaponSecondary, _, true);
+	}
 }
 
 public Action:Timer_GiveLaserBeam(Handle:timer, any:client) {
@@ -517,6 +524,63 @@ public Action:Timer_FrozenPlayer(Handle:timer, any:client) {
 	return Plugin_Stop;
 }
 
+stock Float:GetActiveZoomTime(client) {
+	decl String:text[2][64];
+	new Float:activeZoomTime = GetEngineTime();
+	for (new i = 0; i < GetArraySize(zoomCheckList); i++) {
+		GetArrayString(Handle:zoomCheckList, i, text[0], sizeof(text[]));
+		ExplodeString(text[0], ":", text, 2, 64);
+		if (client != StringToInt(text[0])) continue;
+		activeZoomTime -= StringToFloat(text[1]);
+		return activeZoomTime;
+	}
+	return 0.0;
+}
+
+stock bool:isQuickscopeKill(client) {
+	decl String:text[2][64];
+	new Float:killDelayAfterScope = GetEngineTime();
+	for (new i = 0; i < GetArraySize(zoomCheckList); i++) {
+		GetArrayString(Handle:zoomCheckList, i, text[0], sizeof(text[]));
+		ExplodeString(text[0], ":", text, 2, 64);
+		if (client != StringToInt(text[0])) continue;
+		killDelayAfterScope -= StringToFloat(text[1]);
+		if (killDelayAfterScope <= fquickScopeTime) return true;
+		return false;
+	}
+	return false;
+}
+
+stock zoomCheckToggle(client, bool:insert = false) {
+	decl String:text[2][64];
+	for (new i = 0; i < GetArraySize(zoomCheckList); i++) {
+		GetArrayString(Handle:zoomCheckList, i, text[0], sizeof(text[]));
+		ExplodeString(text[0], ":", text, 2, 64);
+		if (client != StringToInt(text[0])) continue;
+		if (insert) return;
+		// The user is unscoping so we remove them from the array.
+		RemoveFromArray(zoomCheckList, i);
+	}
+	if (insert) {
+		// we don't even get here if the user is already in the list.
+		Format(text[0], sizeof(text[]), "%d:%3.3f", client, GetEngineTime());
+		PushArrayString(zoomCheckList, text[0]);
+	}
+	return;
+}
+
+public Action:Timer_ZoomcheckDelayer(Handle:timer, any:client) {
+	if (!IsLegitimateClient(client)) return Plugin_Stop;
+
+	if (IsPlayerZoomed(client)) {
+		// trigger nodes that fire when a player zooms in (like effects over time)
+		zoomCheckToggle(client, true);
+	}
+	else zoomCheckToggle(client);
+	ZoomcheckDelayer[client] = INVALID_HANDLE;
+	KillTimer(ZoomcheckDelayer[client]);
+	return Plugin_Stop;
+}
 public Action:Timer_Blinder(Handle:timer, any:client) {
 
 	if (ISBLIND[client] == INVALID_HANDLE) return Plugin_Stop;

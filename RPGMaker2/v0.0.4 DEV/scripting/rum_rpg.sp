@@ -39,7 +39,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v0.0.5.4"
+#define PLUGIN_VERSION				"v0.0.5.5"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -83,7 +83,6 @@
 #define EFFECTOVERTIME_ACTIVATETALENT	0
 #define EFFECTOVERTIME_GETACTIVETIME	1
 #define EFFECTOVERTIME_GETCOOLDOWN		2
-
 #define DMG_SPITTERACID1 263168
 #define DMG_SPITTERACID2 265216
 #include <sourcemod>
@@ -874,6 +873,11 @@ new iCanSurvivorBotsBurn;
 new String:defaultLoadoutWeaponPrimary[64];
 new String:defaultLoadoutWeaponSecondary[64];
 new iDeleteCommonsFromExistenceOnDeath;
+new iShowDetailedDisplayAlways;
+new iCanJetpackWhenInCombat;
+new Handle:ZoomcheckDelayer[MAXPLAYERS + 1];
+new Handle:zoomCheckList;
+new Float:fquickScopeTime;
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1171,6 +1175,7 @@ stock OnMapStartFunc() {
 		LogMessage("=====\t\tLOADING RPG\t\t=====");
 		//new String:fubar[64];
 
+		if (zoomCheckList == INVALID_HANDLE || !b_FirstLoad) zoomCheckList = CreateArray(32);
 		if (hThreatSort == INVALID_HANDLE || !b_FirstLoad) hThreatSort = CreateArray(32);
 		if (hThreatMeter == INVALID_HANDLE || !b_FirstLoad) hThreatMeter = CreateArray(32);
 		if (LoggedUsers == INVALID_HANDLE || !b_FirstLoad) LoggedUsers = CreateArray(32);
@@ -1941,7 +1946,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		if (!bIsSoloHandicap && RespawnQueue > 0) CreateTimer(1.0, Timer_RespawnQueue, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		RaidInfectedBotLimit();
 		CreateTimer(1.0, Timer_ShowHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		CreateTimer(0.5, Timer_DisplayHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(1.0, Timer_DisplayHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//CreateTimer(1.0, Timer_AwardSkyPoints, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(1.0, Timer_CheckIfHooked, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(GetConfigValueFloat("settings check interval?"), Timer_SettingsCheck, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -1952,7 +1957,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		CreateTimer(1.0, Timer_PlayTime, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(0.5, Timer_EntityOnFire, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// Fire status effect
 		CreateTimer(1.0, Timer_ThreatSystem, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// threat system modulator
-		CreateTimer(0.05, Timer_IsSpecialCommonInRange, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);	// some special commons react based on range, not damage.
+		CreateTimer(0.1, Timer_IsSpecialCommonInRange, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);	// some special commons react based on range, not damage.
 		CreateTimer(fStaggerTickrate, Timer_StaggerTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		if (GetConfigValueInt("common affixes?") == 1) {
 			ClearArray(Handle:CommonAffixes);
@@ -1972,7 +1977,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		RefreshSurvivorBots();
 		if (iEnrageTime > 0) {
 			TimeUntilEnrage(text, sizeof(text));
-			PrintToChatAll("%t", "enrage in...", orange, green, text, orange);
+			PrintToChatAll("%t", "time until things get bad", orange, green, text, orange);
 		}
 	}
 }
@@ -2504,7 +2509,6 @@ public ReadyUp_RoundIsOver(gamemode) {
 }
 
 public Action:Timer_SaveAndClear(Handle:timer) {
-
 	new LivingSurvs = TotalHumanSurvivors();
 	for (new i = 1; i <= MaxClients; i++) {
 
@@ -3006,14 +3010,6 @@ stock LoadMainConfig() {
 	fCommonDirectorPoints				= GetConfigValueFloat("common infected director points?");
 	iDisplayHealthBars					= GetConfigValueInt("display health bars?");
 	iMaxDifficultyLevel					= GetConfigValueInt("max difficulty level?");
-	//fScoutBonus					= GetConfigValueFloat("scout jetpack bonus?");
-	//fTotemRating				= GetConfigValueFloat("totem spirit rating?");
-	//fSpellBulletStrength		= GetConfigValueFloat("base spell bullet strength?");
-	//fSpellEnduranceMultiplier	= GetConfigValueFloat("base spell endurance multiplier?");
-	//iNoobAssistanceLevel		= GetConfigValueInt("new player assistance level?");
-	//fNoobAssistanceResistance	= GetConfigValueFloat("new player assistance resistance?");
-	//fNoobAssistanceHealing		= GetConfigValueFloat("new player assistance healing?");
-	//fNoobAssistanceRecovery		= GetConfigValueFloat("new player assistance recovery?");
 	decl String:text[64], String:text2[64], String:text3[64], String:text4[64];
 	for (new i = 0; i < 7; i++) {
 		if (i == 6) {
@@ -3154,6 +3150,10 @@ stock LoadMainConfig() {
 	iSkyLevelNodeUnlocks				= GetConfigValueInt("sky level default node unlocks?");
 	iCanSurvivorBotsBurn				= GetConfigValueInt("survivor bots debuffs allowed?");
 	iDeleteCommonsFromExistenceOnDeath	= GetConfigValueInt("delete commons from existence on death?");
+	iShowDetailedDisplayAlways			= GetConfigValueInt("show detailed display to survivors always?");
+	iCanJetpackWhenInCombat				= GetConfigValueInt("can players jetpack when in combat?");
+	fquickScopeTime						= GetConfigValueFloat("delay after zoom for quick scope kill?");
+	
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
 	GetConfigValue(DefaultBotProfileName, sizeof(DefaultBotProfileName), "new bot player profile?");
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
@@ -3161,6 +3161,7 @@ stock LoadMainConfig() {
 	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
 	LogMessage("Main Config Loaded.");
 }
+
 //public Action:CMD_Backpack(client, args) { EquipBackpack(client); return Plugin_Handled; }
 
 public Action:CMD_BuyMenu(client, args) {
@@ -3264,10 +3265,8 @@ stock DeleteAndCreateNewData(client, bool:IsBot = false) {
 }
 
 public Action:CMD_DirectorTalentToggle(client, args) {
-
 	decl String:thetext[64];
 	GetConfigValue(thetext, sizeof(thetext), "director talent flags?");
-
 	if (HasCommandAccess(client, thetext)) {
 
 		if (b_IsDirectorTalents[client]) {
@@ -3281,7 +3280,6 @@ public Action:CMD_DirectorTalentToggle(client, args) {
 			PrintToChat(client, "%T", "Director Talents Enabled", client, white, green);
 		}
 	}
-
 	return Plugin_Handled;
 }
 

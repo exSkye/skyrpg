@@ -1075,9 +1075,12 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 
 		if (!IsPlayerAlive(client) && b_HasDeathLocation[client]) {
 
+			RespawnImmunity[client] = true;
 			MyRespawnTarget[client] = -1;
-			CreateTimer(3.0, Timer_TeleportRespawn, client, TIMER_FLAG_NO_MAPCHANGE);
-			CreateTimer(3.0, Timer_GiveMaximumHealth, client, TIMER_FLAG_NO_MAPCHANGE);
+			SDKCall(hRoundRespawn, client);
+			CreateTimer(0.1, Timer_TeleportRespawn, client, TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(0.1, Timer_GiveMaximumHealth, client, TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(3.0, Timer_ImmunityExpiration, client, TIMER_FLAG_NO_MAPCHANGE);
 		}
 		else return false;
 	}
@@ -1701,6 +1704,11 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 	}
 
 	new Float:TheTime = GetEngineTime();
+	if ((buttons & IN_ZOOM)) {
+		if (ZoomcheckDelayer[client] == INVALID_HANDLE) {
+			ZoomcheckDelayer[client] = CreateTimer(0.1, Timer_ZoomcheckDelayer, client, TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
 
 	if ((buttons & IN_SPEED)) {
 
@@ -2059,7 +2067,11 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 					new bool:IsJetpackBroken = IsCoveredInBile(client);
 					if (!IsJetpackBroken) IsJetpackBroken = AnyTanksNearby(client);
 
-					if (bJetpack[client] && (!(buttons & IN_JUMP) || IsJetpackBroken || L4D2_GetInfectedAttacker(client) != -1)) ToggleJetpack(client, true);
+					/*
+						Add or remove conditions from the following line to determine when the jetpack automatically disables.
+						When adding new conditions, consider a switch so server operators can choose which of them they want to use.
+					*/
+					if (bJetpack[client] && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && (!(buttons & IN_JUMP) || IsJetpackBroken || L4D2_GetInfectedAttacker(client) != -1)) ToggleJetpack(client, true);
 					//else if (!(GetEntityFlags(client) & FL_ONGROUND) && !bIsSurvivorFatigue[client] && !bJetpack[client] && (buttons & IN_JUMP)) ToggleJetpack(client);
 
 					if ((bJetpack[client] || !bJetpack[client] && !(GetEntityFlags(client) & FL_ONGROUND)) ||
@@ -2069,8 +2081,13 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 						if (L4D2_GetInfectedAttacker(client) == -1 && ISSLOW[client] == INVALID_HANDLE && ISFROZEN[client] == INVALID_HANDLE) {
 
 							if (SurvivorConsumptionTime[client] <= TheTime && (buttons & IN_JUMP || buttons & IN_SPEED)) {
-
-								SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
+								if (bJetpack[client]) {
+									new Float:nextSprintInterval = GetAbilityStrengthByTrigger(client, client, "jetpack", FindZombieClass(client), 0, _, _, "flightcost", _, _, 2);
+									if (nextSprintInterval > 0.0) {
+										SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval + (fStamSprintInterval * nextSprintInterval);
+									}
+								}
+								else SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 								SurvivorStamina[client] -= ConsumptionInt;
 								//AddTalentExperience(client, "endurance", ConsumptionInt);
 								if (SurvivorStamina[client] <= 0) {
@@ -2081,7 +2098,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 									if (bJetpack[client]) ToggleJetpack(client, true);
 								}
 							}
-							if (!bIsSurvivorFatigue[client] && !bJetpack[client] && ((buttons & IN_JUMP) && (JumpTime[client] >= 0.2)) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && L4D2_GetInfectedAttacker(client) == -1) ToggleJetpack(client);
+							if (!bIsSurvivorFatigue[client] && !bJetpack[client] && ((buttons & IN_JUMP) && (JumpTime[client] >= 0.2)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && L4D2_GetInfectedAttacker(client) == -1) ToggleJetpack(client);
 							if (!bJetpack[client]) MovementSpeed[client] = fSprintSpeed;
 						}
 						buttons &= ~IN_SPEED;
@@ -2473,10 +2490,18 @@ stock CheckMinimumRate(client) {
 
 stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 
+	if (!IsCommonInfected(client) && IsLegitimateClient(killerblow) && GetClientTeam(killerblow) == TEAM_SURVIVOR) {
+		if (isQuickscopeKill(killerblow)) {
+			// If the user met the server operators standards for a quickscope kill, we do something.
+			GetAbilityStrengthByTrigger(killerblow, client, "quickscope");
+		}
+	}
+
 	new ClientType = -1;
 	if (IsLegitimateClient(client) && GetClientTeam(client) == TEAM_INFECTED && !IsSurvivorBot(client)) {
 
 		ClientType = 0;
+		ReadyUp_NtvStatistics(killerblow, 6, 1);
 		if (FindZombieClass(client) != ZOMBIECLASS_TANK) SetArrayCell(Handle:RoundStatistics, 3, GetArrayCell(RoundStatistics, 3) + 1);
 		else SetArrayCell(Handle:RoundStatistics, 4, GetArrayCell(RoundStatistics, 4) + 1);
 	}
@@ -2486,12 +2511,12 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		SetArrayCell(Handle:RoundStatistics, 2, GetArrayCell(RoundStatistics, 2) + 1);
 	}
 	else if (IsSpecialCommon(client)) {
-
+		ReadyUp_NtvStatistics(killerblow, 2, 1);
 		ClientType = 2;
 		SetArrayCell(Handle:RoundStatistics, 1, GetArrayCell(RoundStatistics, 1) + 1);
 	}
 	else if (IsCommonInfected(client)) {
-
+		ReadyUp_NtvStatistics(killerblow, 2, 1);
 		ClientType = 3;
 		SetArrayCell(Handle:RoundStatistics, 0, GetArrayCell(RoundStatistics, 0) + 1);
 	}

@@ -18,15 +18,15 @@
 	}
 	"effect over time talent info"
 	{
-		"en"				"This node is an Effect-over-Time."
+		"en"				"Effect-Over-Time"
 	}
 	"in combat state required"
 	{
-		"en"				"[Ic] In-Combat state required."
+		"en"				"Combat State: In-Combat [Ic]"
 	}
 	"no combat state required"
 	{
-		"en"				"[Oc] Out-of-Combat state required."
+		"en"				"Combat State: Out-of-Combat [Oc]"
 	}
 	"combat state formatted improperly"
 	{
@@ -190,6 +190,10 @@
 	"support talents"
 	{
 		"en"				"Support nodes\t\t"
+	}
+	"ambush talents"
+	{
+		"en"				"Ambush nodes\t\t"
 	}
 	"proficiency level up"
 	{
@@ -1088,7 +1092,7 @@
 	"Player Level Text"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"\t\tLv.{1} of {2}\n\t\t{4}\n{3} XP of {5} XP\nScore: {6}"
+		"en"				"\t\tLv.{1}/{2}\n\t\t{4}\n\t{3}/{5}XP\nYour score: {6}"
 	}
 	"Sky Level Text"
 	{
@@ -1103,12 +1107,12 @@
 	"RPG Layer Eligible"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:i},{6:i}"
-		"en"				"{1}\n \nLayer {2} info:\nNodes unlocked: {5} of {6}\nRequired Nodes: {3} of {4}."
+		"en"				"{1}\n \nLayer {2} info:\nRequired node unlocks: {3}/{4}({5}/{6})
 	}
 	"RPG Layer Not Eligible"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"{1}\n \nLayer {2} info:\nLocked to preview mode only."
+		"en"				"{1}\n \nLayer {2} is locked to preview mode only."
 	}
 	"attribute no layer progress"
 	{
@@ -2714,6 +2718,30 @@
 	"smg path i info"
 	{
 		"en"				"Consecutive limb or head shot hits with SMGs\nheal nearby teammates over a short period."
+	}
+	"assassin path i"
+	{
+		"en"				"Assassin Path I"
+	}
+	"assassin path i info"
+	{
+		"en"				"Greatly-increases your melee damage."
+	}
+	"assassin path ii"
+	{
+		"en"				"Assassin Path II"
+	}
+	"assassin path ii info"
+	{
+		"en"				"Greatly-increases all damage against Witches and Tanks."
+	}
+	"assassin path iii"
+	{
+		"en"				"Assassin Path III"
+	}
+	"assassin path iii info"
+	{
+		"en"				"Greatly-increases all damage with SNIPERs, DMRs, and Melee weapons."
 	}
 	"healer path i"
 	{
@@ -5763,6 +5791,30 @@
 	{
 		"en"				"This talent must be equipped to the action bar once unlocked."
 	}
+	"presstheattack ab"
+	{
+		"en"				"Press-The-Attack"
+	}
+	"presstheattack ability"
+	{
+		"en"				"(Equippable)Press-The-Attack"
+	}
+	"presstheattack info"
+	{
+		"en"				"This ability works with ALL weapons."
+	}
+	"rocketeer ab"
+	{
+		"en"				"Rocketeer"
+	}
+	"rocketeer ability"
+	{
+		"en"				"(Equippable)Rocketeer"
+	}
+	"rocketeer info"
+	{
+		"en"				"This ability works with ALL weapons."
+	}
 	"sharp eye ab"
 	{
 		"en"				"Sharp Eye"
@@ -5773,7 +5825,7 @@
 	}
 	"sharp eye info"
 	{
-		"en"				"This talent must be equipped to the action bar once unlocked."
+		"en"				"This ability works with Snipers and DMRs only."
 	}
 	"bloodlust ab"
 	{
@@ -6030,7 +6082,12 @@
 	"enrage in..."
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}!!! ENRAGE IN {2}{3} {4}!!!"
+		"en"				"{1}Things are going to get really bad in {2}{3}{4}!"
+	}
+	"time until things get bad"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}You have {2}{3} {4}until things get really bad..."
 	}
 	"Creating New Class"
 	{

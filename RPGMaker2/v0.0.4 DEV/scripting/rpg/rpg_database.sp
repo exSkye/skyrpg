@@ -84,7 +84,6 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 		//SQL_TQuery(hDatabase, QueryResults, tquery);
 
 		Format(tquery, sizeof(tquery), "CREATE TABLE IF NOT EXISTS `%s` (`steam_id` varchar(64) NOT NULL, PRIMARY KEY (`steam_id`)) ENGINE=InnoDB;", TheDBPrefix);
-		LogMessage(tquery);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci;", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
@@ -202,7 +201,6 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 
 
 		Format(tquery, sizeof(tquery), "CREATE TABLE IF NOT EXISTS `%s_loot` (`owner_id` varchar(64) NOT NULL, PRIMARY KEY (`owner_id`)) ENGINE=InnoDB;", TheDBPrefix);
-		LogMessage(tquery);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_loot` CHARACTER SET utf8 COLLATE utf8_general_ci;", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
@@ -1118,7 +1116,6 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	Format(bonusMult, sizeof(bonusMult), "%3.3f", RoundExperienceMultiplier[client]);
 
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `myseason` = '%s', `rem` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, RatingType, bonusMult, key);
-	LogMessage(tquery);
 	SQL_TQuery(hDatabase, QueryResults1, tquery, client);
 
 	SQL_EscapeString(hDatabase, Hostname, text, sizeof(text));
@@ -1158,7 +1155,6 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 		}
 		else {
 			Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, key);
-			LogMessage(tquery);
 			SQL_TQuery(hDatabase, QueryResults6, tquery, client);
 		}
 	}
@@ -2102,7 +2098,10 @@ public OnClientDisconnect(client)
 		}
 		fOnFireDebuff[client] = 0.0;
 		IsGroupMemberTime[client] = 0;
-
+		if (ZoomcheckDelayer[client] != INVALID_HANDLE) {
+			KillTimer(ZoomcheckDelayer[client]);
+			ZoomcheckDelayer[client] = INVALID_HANDLE;
+		}
 		ChangeHook(client);
 
 		/*if (IsValidEntity(iChaseEnt[client])) {
