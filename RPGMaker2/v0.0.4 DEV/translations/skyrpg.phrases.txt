@@ -5791,6 +5791,18 @@
 	{
 		"en"				"This talent must be equipped to the action bar once unlocked."
 	}
+	"phoenix ab"
+	{
+		"en"				"Rebirth"
+	}
+	"phoenix ability"
+	{
+		"en"				"(Equippable)Rebirth"
+	}
+	"phoenix info"
+	{
+		"en"				"Reborn like a Phoenix in the flames..."
+	}
 	"presstheattack ab"
 	{
 		"en"				"Press-The-Attack"
