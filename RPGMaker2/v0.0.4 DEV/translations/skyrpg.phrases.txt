@@ -2743,6 +2743,26 @@
 	{
 		"en"				"Greatly-increases all damage with SNIPERs, DMRs, and Melee weapons."
 	}
+	"precision path i"
+	{
+		"en"				"Precision Path I"
+	}
+	"precision path ii"
+	{
+		"en"				"Precision Path II"
+	}
+	"precision path info"
+	{
+		"en"				"Increases your outgoing damage when using\nthe zoom scope on your weapon."
+	}
+	"flight proficiency i"
+	{
+		"en"				"Jetpack Proficiency I"
+	}
+	"flight proficiency info"
+	{
+		"en"				"Reduces the stamina cost of using your jetpack."
+	}
 	"healer path i"
 	{
 		"en"				"Healer Path I"
@@ -5988,6 +6008,11 @@
 	{
 		"#format"			"{1:s},{2:3.1f},{3:s},{4:s},{5:s}"
 		"en"				"{1}+{2}{3}{4}XP {5}STEAMGROUP MEMBER Bonus"
+	}
+	"group no survivor bots bonus"
+	{
+		"#format"			"{1:s},{2:3.1f},{3:s},{4:s},{5:s}"
+		"en"				"{1}+{2}{3}{4}XP {5}Bonus for having NO Survivor bots."
 	}
 	"group member benefit"
 	{

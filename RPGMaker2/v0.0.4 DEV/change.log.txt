@@ -22,6 +22,9 @@
 		"strength increase time cap?"	    - disabled unless the value is > 0.0. the strength of the talent is only calculated up to this much time of being zoomed. (caps the efficacy)
 		"strength increase time required?"- disabled unless the value is > 0.0. If > 0.0, the zoom strength increase only occurs if the player is zoomed for at least this much time.
 		"no effect if zoom time is not met?"	- If set to 1, and time required above is not met (and is not 0.0) the talent will not be calculated or fire.
+		"strength increase while holding fire?"
+		"no effect if damage time is not met?"
+		
 	-	New ability triggers:
 		"quickscope" and "jetpack"
 		- "jetpack"

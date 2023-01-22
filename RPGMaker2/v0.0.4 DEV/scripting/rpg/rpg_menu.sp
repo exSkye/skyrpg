@@ -1008,7 +1008,8 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 	// we try to match up the eventtype with any ACTIVE talents on the action bar.
 	// it is REALLY super simple, we have functions for everything. everythingggggg
 	// get the size of the action bars first.
-	if (IsSurvivorBot(client) && !IsDrawEffect) return 0.0;
+	//LAMEO
+	//if (IsSurvivorBot(client) && !IsDrawEffect) return 0.0;
 	new ActionBarSize = iActionBarSlots;	// having your own extensive api really helps.
 	if (GetArraySize(ActionBar[client]) != ActionBarSize) ResizeArray(ActionBar[client], ActionBarSize);
 	decl String:text[64], String:Effects[64], String:none[64], String:sDrawEffect[PLATFORM_MAX_PATH];	// free guesses on what this one is for.
@@ -2319,8 +2320,7 @@ public Handle:ProfileEditorMenu(client) {
 	decl String:TheName[64];
 	new thetarget = LoadProfileRequestName[client];
 	if (thetarget == -1 || thetarget == client || !IsLegitimateClient(thetarget) || GetClientTeam(thetarget) != TEAM_SURVIVOR) thetarget = LoadTarget[client];
-	if (IsSurvivorBot(thetarget) ||
-		IsLegitimateClient(thetarget) && GetClientTeam(thetarget) != TEAM_INFECTED && thetarget != client) {
+	if (IsLegitimateClient(thetarget) && GetClientTeam(thetarget) != TEAM_INFECTED && thetarget != client) {
 
 		//decl String:theclassname[64];
 		GetClientName(thetarget, TheName, sizeof(TheName));
@@ -3146,7 +3146,7 @@ public Handle:TalentInfoScreen(client) {
 				Format(text, sizeof(text), "%T", "Special Ammo Range Max", client, GetSpecialAmmoStrength(client, TalentName, 3));
 				DrawPanelText(menu, text);
 			}
-			Format(text, sizeof(text), "%T", "Special Ammo Effect Strength", client, GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "effect strength?"), pct);
+			Format(text, sizeof(text), "%T", "Special Ammo Effect Strength", client, GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "effect strength?") * 100.0, pct);
 			DrawPanelText(menu, text);
 			//DrawPanelText(menu, TalentIdCode);
 		}

@@ -811,7 +811,7 @@ stock CreateNewPlayerEx(client) {
 	SetArrayString(Handle:ChatSettings[client], 1, tquery);
 	SetArrayString(Handle:ChatSettings[client], 2, tquery);
 
-	if (IsSurvivorBot(client) || IsFakeClient(client)) PlayerLevel[client] = iBotPlayerStartingLevel;
+	if (IsFakeClient(client)) PlayerLevel[client] = iBotPlayerStartingLevel;
 	else PlayerLevel[client]				=	iPlayerStartingLevel;
 	SetTotalExperienceByLevel(client, PlayerLevel[client]);
 	ChallengeEverything(client);

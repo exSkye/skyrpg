@@ -39,7 +39,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v0.0.5.5"
+#define PLUGIN_VERSION				"Dev build v0.0.5.6"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -61,7 +61,7 @@
 #define LOGFILE						"rum_rpg.txt"
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
 //	=================================
-#define DEBUG     			false
+#define DEBUG     		false
 //	=================================
 #define CVAR_SHOW			FCVAR_NOTIFY | FCVAR_PLUGIN
 #define DMG_HEADSHOT		2147483648
@@ -96,7 +96,6 @@
 #undef REQUIRE_PLUGIN
 #include <readyup>
 #define REQUIRE_PLUGIN
-
 public Plugin:myinfo = {
 	name = PLUGIN_NAME,
 	author = PLUGIN_CONTACT,
@@ -104,7 +103,6 @@ public Plugin:myinfo = {
 	version = PLUGIN_VERSION,
 	url = PLUGIN_URL,
 };
-
 new Handle:TimeOfEffectOverTime;
 new Handle:EffectOverTime;
 new Handle:currentEquippedWeapon[MAXPLAYERS + 1];	// bullets fired from current weapon; variable needs to be renamed.
@@ -300,7 +298,6 @@ new Handle:ISEXPLODE[MAXPLAYERS + 1];
 new Handle:ISBLIND[MAXPLAYERS + 1];
 new Handle:EntityOnFire;
 new Handle:CommonInfected;
-new Handle:CommonInfectedDamage[MAXPLAYERS + 1];
 new Handle:RCAffixes[MAXPLAYERS + 1];
 new Handle:h_CommonKeys;
 new Handle:h_CommonValues;
@@ -542,7 +539,7 @@ new Handle:g_Gamemode;
 new RoundTime;
 new g_iSprite = 0;
 new g_BeaconSprite = 0;
-
+new iNoSpecials;
 //new bool:b_FirstClientLoaded;
 new bool:b_HasDeathLocation[MAXPLAYERS + 1];
 new bool:b_IsMissionFailed;
@@ -878,28 +875,35 @@ new iCanJetpackWhenInCombat;
 new Handle:ZoomcheckDelayer[MAXPLAYERS + 1];
 new Handle:zoomCheckList;
 new Float:fquickScopeTime;
+new Handle:holdingFireDelayer[MAXPLAYERS + 1];
+new Handle:holdingFireList;
+new LastBulletCheck[MAXPLAYERS + 1];
+new iEnsnareLevelMultiplier;
+new Handle:CommonInfectedHealth;
+new lastBaseDamage[MAXPLAYERS + 1];
+new lastTarget[MAXPLAYERS + 1];
+new String:lastWeapon[MAXPLAYERS + 1][64];
+new iSurvivorBotsBonusLimit;
+new Float:fSurvivorBotsNoneBonus;
+new bool:bTimersRunning[MAXPLAYERS + 1];
+new iShowAdvertToNonSteamgroupMembers;
+new displayBuffOrDebuff[MAXPLAYERS + 1];
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 	if (!IsValidEntity(CurrentEntity) || CurrentEntity < 1) return Plugin_Handled;
 	decl String:EntityName[64];
-
 	GetEdictClassname(CurrentEntity, EntityName, sizeof(EntityName));
 	if (StrContains(EntityName, "melee", false) != -1) return Plugin_Handled;
-
 	new Entity					=	CreateEntityByName(EntityName);
 	DispatchSpawn(Entity);
-
 	new Float:Origin[3];
 	GetClientAbsOrigin(client, Origin);
 	Origin[2] += 64.0;
-
 	TeleportEntity(Entity, Origin, NULL_VECTOR, NULL_VECTOR);
 	SetEntityMoveType(Entity, MOVETYPE_VPHYSICS);
-
 	if (GetWeaponSlot(Entity) < 2) SetEntProp(Entity, Prop_Send, "m_iClip1", GetEntProp(CurrentEntity, Prop_Send, "m_iClip1"));
 	AcceptEntityInput(CurrentEntity, "Kill");
-
 	return Plugin_Handled;
 }
 
@@ -912,8 +916,10 @@ public Action:CMD_IAmStuck(client, args) {
 			SetEntityMoveType(client, MOVETYPE_WALK);
 		}
 	}
+
 	return Plugin_Handled;
 }
+
 
 stock DoGunStuff(client) {
 	new targetgun = GetPlayerWeaponSlot(client, 0); //get the players primary weapon
@@ -921,7 +927,6 @@ stock DoGunStuff(client) {
 	new iAmmoOffset = FindDataMapOffs(client, "m_iAmmo"); //get the iAmmo Offset
 	iAmmoOffset = GetEntData(client, (iAmmoOffset + GetWeaponResult(client, 1)));
 	PrintToChat(client, "reserve remaining: %d | reserve cap: %d", iAmmoOffset, GetWeaponResult(client, 2));
-	
 	return;
 }
 
@@ -930,7 +935,6 @@ stock CMD_OpenRPGMenu(client) {
 	ClearArray(Handle:MenuStructure[client]);	// keeps track of the open menus.
 	VerifyAllActionBars(client);	// Because.
 	if (LoadProfileRequestName[client] != -1) {
-
 		if (!IsLegitimateClient(LoadProfileRequestName[client])) LoadProfileRequestName[client] = -1;
 	}
 	iIsWeaponLoadout[client] = 0;
@@ -938,10 +942,20 @@ stock CMD_OpenRPGMenu(client) {
 	PlayerCurrentMenuLayer[client] = 1;
 	ShowPlayerLayerInformation[client] = false;
 	BuildMenu(client, "main");
+	/*new count = GetEntProp(client, Prop_Send, "m_iShovePenalty", 4);
+	PrintToChat(client, "shove penalty: %d", count);
+	if (count < 1) {
+		SetEntProp(client, Prop_Send, "m_iShovePenalty", 10);
+		SetEntPropFloat(client, Prop_Send, "m_flNextShoveTime", 900.0);
+	}
+	else {
+		SetEntProp(client, Prop_Send, "m_iShovePenalty", 0);
+		SetEntPropFloat(client, Prop_Send, "m_flNextShoveTime", 1.0);
+	}*/
+	//PrintToChat(client, "penalty soon: %d", count);
 }
 
 public OnPluginStart() {
-
 	CreateConVar("skyrpg_version", PLUGIN_VERSION, "version header", CVAR_SHOW);
 	SetConVarString(FindConVar("skyrpg_version"), PLUGIN_VERSION);
 	CreateConVar("skyrpg_profile", PROFILE_VERSION, "RPG Profile Editor Module", CVAR_SHOW);
@@ -950,7 +964,6 @@ public OnPluginStart() {
 	SetConVarString(FindConVar("skyrpg_contact"), PLUGIN_CONTACT);
 	CreateConVar("skyrpg_url", PLUGIN_URL, "SkyRPG url", CVAR_SHOW);
 	SetConVarString(FindConVar("skyrpg_url"), PLUGIN_URL);
-
 	g_Steamgroup = FindConVar("sv_steamgroup");
 	SetConVarFlags(g_Steamgroup, GetConVarFlags(g_Steamgroup) & ~FCVAR_NOTIFY);
 	//g_Tags = FindConVar("sv_tags");
@@ -986,7 +999,6 @@ public OnPluginStart() {
 	Format(orange, sizeof(orange), "\x04");
 	Format(green, sizeof(green), "\x05");
 	Format(blue, sizeof(blue), "\x03");
-
 	gd = LoadGameConfigFile("rum_rpg");
 	if (gd != INVALID_HANDLE)
 	{		
@@ -994,47 +1006,39 @@ public OnPluginStart() {
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "SetClass");
 		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 		g_hSetClass = EndPrepSDKCall();
-
 		StartPrepSDKCall(SDKCall_Static);
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "CreateAbility");
 		PrepSDKCall_AddParameter(SDKType_CBasePlayer, SDKPass_Pointer);
 		PrepSDKCall_SetReturnInfo(SDKType_CBaseEntity, SDKPass_Pointer);
 		g_hCreateAbility = EndPrepSDKCall();
-
 		g_oAbility = GameConfGetOffset(gd, "oAbility");
-
 		StartPrepSDKCall(SDKCall_Entity);
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "CSpitterProjectile_Detonate");
 		g_hCreateAcid = EndPrepSDKCall();
-
 		StartPrepSDKCall(SDKCall_Player);
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "CTerrorPlayer_OnAdrenalineUsed");
 		PrepSDKCall_AddParameter(SDKType_Float, SDKPass_Plain);
 		g_hEffectAdrenaline = EndPrepSDKCall();
-
 		StartPrepSDKCall(SDKCall_Player);
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "CTerrorPlayer_OnVomitedUpon");
 		PrepSDKCall_AddParameter(SDKType_CBasePlayer, SDKPass_Pointer);
 		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
 		g_hCallVomitOnPlayer = EndPrepSDKCall();
-
 		StartPrepSDKCall(SDKCall_Player);
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "RoundRespawn");
 		hRoundRespawn = EndPrepSDKCall();
-
 		StartPrepSDKCall(SDKCall_Player);
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "IsStaggering");
 		PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
 		g_hIsStaggering = EndPrepSDKCall();
 	}
 	else {
-
 		SetFailState("Error: Unable to load Gamedata rum_rpg.txt");
 	}
-
 	CheckDifficulty();
 	staggerBuffer = CreateConVar("sm_vscript_res", "", "returns results from vscript check on stagger");
 }
+
 
 public Action:CMD_STAGGERTEST(client, args) {
 	/*new target = GetClientAimTarget(client, false);
@@ -1096,9 +1100,7 @@ public ReadyUp_GetMaxSurvivorCount(count) {
 
 stock UnhookAll() {
 	for (new i = 1; i <= MaxClients; i++) {
-
 		if (IsLegitimateClient(i)) {
-
 			SDKUnhook(i, SDKHook_OnTakeDamage, OnTakeDamage);
 			b_IsHooked[i] = false;
 		}
@@ -1106,6 +1108,7 @@ stock UnhookAll() {
 }
 
 public ReadyUp_TrueDisconnect(client) {
+
 	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
 	//ChangeHook(client);
 	staggerCooldownOnTriggers[client] = false;
@@ -1128,9 +1131,7 @@ public ReadyUp_TrueDisconnect(client) {
 	Format(LoadoutName[client], sizeof(LoadoutName[]), "none");
 	//CreateTimer(1.0, Timer_RemoveSaveSafety, client, TIMER_FLAG_NO_MAPCHANGE);
 	bIsSettingsCheck = true;
-
 	if (b_IsActiveRound && TotalHumanSurvivors() < 1) {	// If the disconnecting player was the last human survivor, if the round is live, we end the round.
-
 		ForceServerCommand("scenario_end");
 		CallRoundIsOver();
 	}
@@ -1174,7 +1175,7 @@ stock OnMapStartFunc() {
 		//LoadConfigValues();
 		LogMessage("=====\t\tLOADING RPG\t\t=====");
 		//new String:fubar[64];
-
+		if (holdingFireList == INVALID_HANDLE || !b_FirstLoad) holdingFireList = CreateArray(32);
 		if (zoomCheckList == INVALID_HANDLE || !b_FirstLoad) zoomCheckList = CreateArray(32);
 		if (hThreatSort == INVALID_HANDLE || !b_FirstLoad) hThreatSort = CreateArray(32);
 		if (hThreatMeter == INVALID_HANDLE || !b_FirstLoad) hThreatMeter = CreateArray(32);
@@ -1259,6 +1260,7 @@ stock OnMapStartFunc() {
 		if (EffectOverTime == INVALID_HANDLE || !b_FirstLoad) EffectOverTime = CreateTrie();
 		if (TimeOfEffectOverTime == INVALID_HANDLE || !b_FirstLoad) TimeOfEffectOverTime = CreateTrie();
 		if (StaggeredTargets == INVALID_HANDLE || !b_FirstLoad) StaggeredTargets = CreateArray(32);
+		if (CommonInfectedHealth == INVALID_HANDLE || !b_FirstLoad) CommonInfectedHealth = CreateArray(32);
 		for (new i = 1; i <= MAXPLAYERS; i++) {
 
 			LastDeathTime[i] = 0.0;
@@ -1347,7 +1349,6 @@ stock OnMapStartFunc() {
 			if (MenuPosition[i] == INVALID_HANDLE || !b_FirstLoad) MenuPosition[i] = CreateArray(32);
 			if (IsClientInRangeSAKeys[i] == INVALID_HANDLE || !b_FirstLoad) IsClientInRangeSAKeys[i] = CreateArray(32);
 			if (IsClientInRangeSAValues[i] == INVALID_HANDLE || !b_FirstLoad) IsClientInRangeSAValues[i] = CreateArray(32);
-			if (CommonInfectedDamage[i] == INVALID_HANDLE || !b_FirstLoad) CommonInfectedDamage[i] = CreateArray(32);
 			if (InfectedAuraKeys[i] == INVALID_HANDLE || !b_FirstLoad) InfectedAuraKeys[i] = CreateArray(32);
 			if (InfectedAuraValues[i] == INVALID_HANDLE || !b_FirstLoad) InfectedAuraValues[i] = CreateArray(32);
 			if (InfectedAuraSection[i] == INVALID_HANDLE || !b_FirstLoad) InfectedAuraSection[i] = CreateArray(32);
@@ -1381,7 +1382,6 @@ stock OnMapStartFunc() {
 			if (GetLayerStrengthValues[i] == INVALID_HANDLE || !b_FirstLoad) GetLayerStrengthValues[i] = CreateArray(32);
 			if (GetLayerStrengthSection[i] == INVALID_HANDLE || !b_FirstLoad) GetLayerStrengthSection[i] = CreateArray(32);
 			/*if (PlayerAbilitiesImmune[i][i] == INVALID_HANDLE || !b_FirstLoad) {	//[i][i] will NEVER be occupied.
-
 				for (new y = 0; y <= MAXPLAYERS; y++) PlayerAbilitiesImmune[i][y]				= CreateArray(32);
 			}*/
 			if (a_Store_Player[i] == INVALID_HANDLE || !b_FirstLoad) a_Store_Player[i]						= CreateArray(32);
@@ -1591,11 +1591,10 @@ public Action:Timer_ExecuteConfig(Handle:timer) {
 }
 
 public Action:Timer_AutoRes(Handle:timer) {
-
 	if (b_IsCheckpointDoorStartOpened) return Plugin_Stop;
 	for (new i = 1; i <= MaxClients; i++) {
 
-		if (IsLegitimateClient(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
+		if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
 
 			if (!IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
 			else if (IsIncapacitated(i)) ExecCheatCommand(i, "give", "health");
@@ -1695,20 +1694,22 @@ public ReadyUpEnd_Complete() {
 		b_IsMissionFailed = false;
 		//if (ReadyUp_GetGameMode() == 3) {
 		b_IsRoundIsOver = false;
+		ClearArray(CommonInfected);
+		ClearArray(CommonInfectedHealth);
 			//b_IsSurvivalIntermission = true;
 			//CreateTimer(5.0, Timer_AutoRes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//}
 		//RoundTime					=	GetTime();
 		b_IsCheckpointDoorStartOpened = false;
 		for (new i = 1; i <= MaxClients; i++) {
-			if (IsSurvivorBot(i) && !b_IsLoaded[i]) IsClientLoadedEx(i);
+			if (IsLegitimateClient(i) && IsFakeClient(i) && !b_IsLoaded[i]) IsClientLoadedEx(i);
 		}
 
 		if (iRoundStartWeakness == 1) {
 
 			for (new i = 1; i <= MaxClients; i++) {
 
-				if (IsLegitimateClient(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
+				if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
 					staggerCooldownOnTriggers[i] = false;
 					ISBILED[i] = false;
 					bHasWeakness[i] = true;
@@ -1797,6 +1798,9 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		bIsSettingsCheck = true;
 		IsEnrageNotified = false;
 		b_IsFinaleTanks = false;
+		for (new i = 1; i <= MaxClients; i++) {
+			if (IsLegitimateClient(i) && IsFakeClient(i) && GetClientTeam(i) == TEAM_INFECTED) ForcePlayerSuicide(i);
+		}
 		ClearArray(Handle:persistentCirculation);
 		ClearArray(Handle:CoveredInVomit);
 		ClearArray(RoundStatistics);
@@ -1813,6 +1817,8 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		new iMaxHandicap = 0;
 		new iMinHandicap = RatingPerLevel;
 		decl String:text[64];
+		new survivorCounter = TotalHumanSurvivors();
+		new bool:AnyBotsOnSurvivorTeam = BotsOnSurvivorTeam();
 
 		for (new i = 1; i <= MaxClients; i++) {
 
@@ -1830,9 +1836,11 @@ public ReadyUp_CheckpointDoorStartOpened() {
 					}
 
 					if (GroupMemberBonus > 0.0) {
-
 						if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
 						else PrintToChat(i, "%T", "group member benefit", i, orange, blue, GroupMemberBonus * 100.0, pct, green, blue);
+					}
+					if (!AnyBotsOnSurvivorTeam && fSurvivorBotsNoneBonus > 0.0 && survivorCounter <= iSurvivorBotsBonusLimit) {
+						PrintToChat(i, "%T", "group no survivor bots bonus", i, blue, fSurvivorBotsNoneBonus * 100.0, pct, green, orange);
 					}
 				}
 				else SetBotHandicap(i);
@@ -1858,7 +1866,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 
 			for (new i = 1; i <= MaxClients; i++) {
 
-				if (IsLegitimateClientAlive(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
+				if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
 
 					VerifyMinimumRating(i, true);
 					RespawnImmunity[i] = false;
@@ -1920,8 +1928,8 @@ public ReadyUp_CheckpointDoorStartOpened() {
 
 		//new RatingLevelMultiplier = GetConfigValueInt("rating level multiplier?");
 		for (new i = 1; i <= MaxClients; i++) {
-			if (IsLegitimateClient(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
-				if (!IsSurvivorBot(i) && !IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
+			if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+				if (!IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
 				VerifyMinimumRating(i);
 				HealImmunity[i] = false;
 				//DefaultHealth[i] = StringToInt(GetConfigValue("survivor health?"));
@@ -1945,24 +1953,27 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		}
 		if (!bIsSoloHandicap && RespawnQueue > 0) CreateTimer(1.0, Timer_RespawnQueue, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		RaidInfectedBotLimit();
-		CreateTimer(1.0, Timer_ShowHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		CreateTimer(1.0, Timer_DisplayHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(1.0, Timer_StartPlayerTimers, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+
+		//CreateTimer(1.0, Timer_ShowHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		//CreateTimer(1.0, Timer_DisplayHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//CreateTimer(1.0, Timer_AwardSkyPoints, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(1.0, Timer_CheckIfHooked, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(GetConfigValueFloat("settings check interval?"), Timer_SettingsCheck, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		CreateTimer(fSpecialAmmoInterval, Timer_AmmoActiveTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		CreateTimer(fEffectOverTimeInterval, Timer_EffectOverTime, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		//CreateTimer(fSpecialAmmoInterval, Timer_AmmoActiveTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		//CreateTimer(fEffectOverTimeInterval, Timer_EffectOverTime, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		if (DoomSUrvivorsRequired != 0) CreateTimer(1.0, Timer_Doom, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		CreateTimer(fSpecialAmmoInterval, Timer_SpecialAmmoData, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		CreateTimer(1.0, Timer_PlayTime, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		//CreateTimer(fSpecialAmmoInterval, Timer_SpecialAmmoData, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		//CreateTimer(1.0, Timer_PlayTime, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(0.5, Timer_EntityOnFire, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// Fire status effect
 		CreateTimer(1.0, Timer_ThreatSystem, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// threat system modulator
-		CreateTimer(0.1, Timer_IsSpecialCommonInRange, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);	// some special commons react based on range, not damage.
+		//CreateTimer(0.1, Timer_IsSpecialCommonInRange, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);	// some special commons react based on range, not damage.
 		CreateTimer(fStaggerTickrate, Timer_StaggerTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		if (GetConfigValueInt("common affixes?") == 1) {
+		if (GetConfigValueInt("common affixes?") > 0) {
 			ClearArray(Handle:CommonAffixes);
 			CreateTimer(0.5, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
+
 		ClearRelevantData();
 		LastLivingSurvivor = 1;
 		new size = GetArraySize(a_DirectorActions);
@@ -2031,7 +2042,6 @@ stock FindTargetClient(client, String:arg[]) {
 }
 
 stock CMD_CastAction(client, args) {
-
 	decl String:actionpos[64];
 	GetCmdArg(1, actionpos, sizeof(actionpos));
 	if (StrContains(actionpos, "action", false) != -1) {
@@ -2044,6 +2054,7 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 
 	new ActionSlots = iActionBarSlots;
 	decl String:actionpos[64];
+
 
 	if (pos == -1) pos = StringToInt(t_actionpos[strlen(t_actionpos) - 1]) - 1;//StringToInt(actionpos[strlen(actionpos) - 1]);
 	if (pos >= 0 && pos < ActionSlots) {
@@ -2080,14 +2091,11 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 				else {
 					RequiresTarget = GetKeyValueInt(CastKeys[client], CastValues[client], "is single target?");
 					if (RequiresTarget > 0) {
-
 						GetClientAimTargetEx(client, actionpos, TheSize, true);
 						RequiresTarget = StringToInt(actionpos);
 						if (IsLegitimateClientAlive(RequiresTarget)) {
-
 							if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos);
 							else {
-
 								UseAbility(client, RequiresTarget, TalentName, CastKeys[client], CastValues[client], TargetPos);
 							}
 						}
@@ -2147,7 +2155,7 @@ stock MySurvivorCompanion(client) {
 
 	for (new i = 1; i <= MaxClients; i++) {
 
-		if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR && IsSurvivorBot(i)) {
+		if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR && IsFakeClient(i)) {
 
 			GetEntPropString(i, Prop_Data, "m_iName", CompanionSteamId, sizeof(CompanionSteamId));
 			if (StrEqual(CompanionSteamId, SteamId, false)) return i;
@@ -2411,13 +2419,11 @@ public Action:CMD_Handicap(client, args) {
 }
 
 stock SetBotHandicap(client) {
-
 	if (IsSurvivorBot(client)) {
-
 		new iLowHandicap = RatingPerLevel;
 		for (new i = 1; i <= MaxClients; i++) {
 
-			if (!IsLegitimateClient(i) || IsSurvivorBot(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+			if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
 			if (RatingHandicap[i] > iLowHandicap) iLowHandicap = RatingHandicap[i];
 		}
 		RatingHandicap[client] = iLowHandicap;
@@ -2512,7 +2518,7 @@ public Action:Timer_SaveAndClear(Handle:timer) {
 	new LivingSurvs = TotalHumanSurvivors();
 	for (new i = 1; i <= MaxClients; i++) {
 
-		if (IsLegitimateClient(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
+		if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
 
 			//ToggleTank(i, true);
 			if (b_IsMissionFailed && LivingSurvs > 0) {
@@ -2537,17 +2543,13 @@ stock CallRoundIsOver() {
 	if (!b_IsRoundIsOver) {
 
 		for (new i = 0; i < 5; i++) {
-
 			SetArrayCell(Handle:RoundStatistics, i, GetArrayCell(RoundStatistics, i) + GetArrayCell(RoundStatistics, i, 1), 1);
 		}
-
 		new pEnt = -1;
 		decl String:pText[2][64];
 		decl String:text[64];
-		
 		new pSize = GetArraySize(persistentCirculation);
 		for (new i = 0; i < pSize; i++) {
-
 			GetArrayString(persistentCirculation, i, text, sizeof(text));
 			ExplodeString(text, ":", pText, 2, 64);
 			pEnt = StringToInt(pText[0]);
@@ -2558,20 +2560,24 @@ stock CallRoundIsOver() {
 		ClearArray(persistentCirculation);
 
 		b_IsRoundIsOver					= true;
+		for (new i = 1; i <= MaxClients; i++) {
+			if (IsLegitimateClient(i)) bTimersRunning[i] = false;
+		}
 		b_RescueIsHere = false;
 		if (b_IsActiveRound) b_IsActiveRound = false;
-
+		ClearArray(CommonInfected);
+		ClearArray(CommonInfectedHealth);
+		ClearArray(Handle:SpecialAmmoData);
 		ClearArray(CommonAffixes);
 		//SetSurvivorsAliveHostname();
 		if (!b_IsMissionFailed) {
-
 			//InfectedLevel = HumanSurvivorLevels();
 
 			if (!IsSurvivalMode) {
 
 				for (new i = 1; i <= MaxClients; i++) {
 
-					if (IsLegitimateClient(i) && (GetClientTeam(i) == TEAM_SURVIVOR || IsSurvivorBot(i))) {
+					if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
 
 						iThreatLevel[i] = 0;
 						bIsInCombat[i] = false;
@@ -2714,20 +2720,15 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		!StrEqual(configname, CONFIG_WEAPONS) &&
 		!StrEqual(configname, CONFIG_PETS) &&
 		!StrEqual(configname, CONFIG_COMMONAFFIXES)) return;
-
 	decl String:s_key[512];
 	decl String:s_value[512];
 	decl String:s_section[512];
-
 	new Handle:TalentKeys		=					CreateArray(32);
 	new Handle:TalentValues		=					CreateArray(32);
 	new Handle:TalentSection	=					CreateArray(32);
-
 	new lastPosition = 0;
 	new counter = 0;
-
 	if (keyCount > 0) {
-
 		if (StrEqual(configname, CONFIG_MENUTALENTS)) ResizeArray(a_Menu_Talents, keyCount);
 		else if (StrEqual(configname, CONFIG_MAINMENU)) ResizeArray(a_Menu_Main, keyCount);
 		else if (StrEqual(configname, CONFIG_EVENTS)) ResizeArray(a_Events, keyCount);
@@ -2739,14 +2740,7 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		else if (StrEqual(configname, CONFIG_WEAPONS)) ResizeArray(a_WeaponDamages, keyCount);
 		else if (StrEqual(configname, CONFIG_COMMONAFFIXES)) ResizeArray(a_CommonAffixes, keyCount);
 	}
-
-
-
-
-
 	new a_Size						= GetArraySize(key);
-
-
 	for (new i = 0; i < a_Size; i++) {
 
 		GetArrayString(Handle:key, i, s_key, sizeof(s_key));
@@ -3036,6 +3030,7 @@ stock LoadMainConfig() {
 	fHexingMultiplier					= GetConfigValueFloat("experience multiplier hexing?");
 	TanksNearbyRange					= GetConfigValueFloat("tank nearby ability deactivate?");
 	iCommonAffixes						= GetConfigValueInt("common affixes?");
+
 	BroadcastType						= GetConfigValueInt("hint text type?");
 	iDoomTimer							= GetConfigValueInt("doom kill timer?");
 	iSurvivorStaminaMax					= GetConfigValueInt("survivor stamina?");
@@ -3153,7 +3148,11 @@ stock LoadMainConfig() {
 	iShowDetailedDisplayAlways			= GetConfigValueInt("show detailed display to survivors always?");
 	iCanJetpackWhenInCombat				= GetConfigValueInt("can players jetpack when in combat?");
 	fquickScopeTime						= GetConfigValueFloat("delay after zoom for quick scope kill?");
-	
+	iEnsnareLevelMultiplier				= GetConfigValueInt("ensnare level multiplier?");
+	iNoSpecials							= GetConfigValueInt("disable non boss special infected?");
+	fSurvivorBotsNoneBonus				= GetConfigValueFloat("group bonus if no survivor bots?");
+	iSurvivorBotsBonusLimit				= GetConfigValueInt("no survivor bots group bonus requirement?");
+	iShowAdvertToNonSteamgroupMembers	= GetConfigValueInt("show advertisement to non-steamgroup members?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
 	GetConfigValue(DefaultBotProfileName, sizeof(DefaultBotProfileName), "new bot player profile?");
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
@@ -3175,11 +3174,8 @@ public Action:CMD_BuyMenu(client, args) {
 }
 
 public Action:CMD_ToggleAmmo(client, args) {
-
 	if (HasSpecialAmmo(client) && !bIsSurvivorFatigue[client]) {
-
 		if (IsSpecialAmmoEnabled[client][0] == 1.0) {
-
 			IsSpecialAmmoEnabled[client][0] = 0.0;
 			//LastTarget[client] = -1;
 			PrintToChat(client, "%T", "Special Ammo Disabled", client, white, orange);
@@ -3343,10 +3339,10 @@ stock bool:IsCommonRegistered(entity) {
 
 stock bool:IsSpecialCommon(entity) {
 	if (FindListPositionByEntity(entity, Handle:CommonList) >= 0) {
-
 		if (IsCommonInfected(entity)) return true;
 		else ClearSpecialCommon(entity, false);
 	}
+
 	return false;
 }
 
