@@ -923,41 +923,18 @@ stock bool:IsAbilityTalent(client, String:TalentName[], String:SearchKey[] = "no
 	}
 	return false;
 }
+// Delay can be set to a default value because it is only used for overloading.
+stock DrawAbilityEffect(client, String:sDrawEffect[], Float:fDrawHeight, Float:fDrawDelay = 0.0, Float:fDrawSize, String:sTalentName[], iEffectType = 0) {
 
-stock DrawAbilityEffect(client, String:sDrawEffect[], String:sTalentName[], iEffectType = 0) {
-
-	if (StrEqual(sDrawEffect, "-1")) return;
-
-	/*new Float:fCooldownTime = GetAmmoCooldownTime(client, sTalentName, true);
-	new Float:fActive = GetAbilityValue(client, sTalentName, "active time?");
-	new Float:fCooldown = GetSpellCooldown(client, sTalentName);
-
-	if (fActive == -1.0) fCooldownTime = 0.2;
+	// no longer needed because we check for it before we get here.if (StrEqual(sDrawEffect, "-1")) return;							//size					color		pos		   pulse?  lifetime
+	if (iEffectType == 1 || iEffectType == 2) CreateRingEx(client, fDrawSize, sDrawEffect, fDrawHeight, false, 0.2);
 	else {
-
-		if (fCooldownTime != -1.0) fCooldownTime = fActive - (fCooldown - fCooldownTime);
-		if (fCooldownTime > 0.2) fCooldownTime = 0.2;
-	}*/
-
-
-	new ExplodeCount = GetDelimiterCount(sDrawEffect, "+") + 1;
-	decl String:sEffects[ExplodeCount][64];
-	ExplodeString(sDrawEffect, "+", sEffects, ExplodeCount, 64);
-	//																size						color		pos			pulse?	lifetime
-	if (iEffectType == 1 || iEffectType == 2) CreateRing(client, StringToFloat(sEffects[0]), sEffects[1], sEffects[2], false, 0.2);
-	else {
-
-		decl String:sInsEffects[3][64];
-		new Handle:drawpack[ExplodeCount];
-		for (new i = 0; i < ExplodeCount; i++) {
-
-			ExplodeString(sEffects[i], ":", sInsEffects, 3, 64);
-			CreateDataTimer(StringToFloat(sInsEffects[0]), Timer_DrawInstantEffect, drawpack[i], TIMER_FLAG_NO_MAPCHANGE);
-			WritePackCell(drawpack[i], client);
-			WritePackString(drawpack[i], sInsEffects[1]);
-			WritePackString(drawpack[i], sInsEffects[2]);
-			WritePackFloat(drawpack[i], StringToFloat(sInsEffects[0]));
-		}
+		new Handle:drawpack;
+		CreateDataTimer(fDrawDelay, Timer_DrawInstantEffect, drawpack, TIMER_FLAG_NO_MAPCHANGE);
+		WritePackCell(drawpack, client);
+		WritePackString(drawpack, sDrawEffect);
+		WritePackFloat(drawpack, fDrawHeight);
+		WritePackFloat(drawpack, fDrawSize);
 	}
 }
 
@@ -967,12 +944,12 @@ public Action:Timer_DrawInstantEffect(Handle:timer, Handle:drawpack) {
 	new client				=	ReadPackCell(drawpack);
 	if (IsLegitimateClient(client) && IsPlayerAlive(client)) {
 
-		decl String:DrawColour[64], String:DrawPos[64];
+		decl String:DrawColour[64];
 		ReadPackString(drawpack, DrawColour, sizeof(DrawColour));
-		ReadPackString(drawpack, DrawPos, sizeof(DrawPos));
-		new Float:fDisplayTime = ReadPackFloat(drawpack);
+		new Float:fHeight = ReadPackFloat(drawpack);
+		new Float:fSize = ReadPackFloat(drawpack);
 
-		CreateRing(client, 128.0, DrawColour, DrawPos, false, fDisplayTime);
+		CreateRingEx(client, fSize, DrawColour, fHeight, false, 0.2);
 	}
 
 	return Plugin_Stop;
@@ -1012,7 +989,7 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 	//if (IsSurvivorBot(client) && !IsDrawEffect) return 0.0;
 	new ActionBarSize = iActionBarSlots;	// having your own extensive api really helps.
 	if (GetArraySize(ActionBar[client]) != ActionBarSize) ResizeArray(ActionBar[client], ActionBarSize);
-	decl String:text[64], String:Effects[64], String:none[64], String:sDrawEffect[PLATFORM_MAX_PATH];	// free guesses on what this one is for.
+	decl String:text[64], String:Effects[64], String:none[64], String:sDrawEffect[PLATFORM_MAX_PATH], String:sDrawPos[PLATFORM_MAX_PATH], String:sDrawDelay[PLATFORM_MAX_PATH], String:sDrawSize[PLATFORM_MAX_PATH];	// free guesses on what this one is for.
 	Format(none, sizeof(none), "none");	// you guessed it.
 	new pos = -1;
 	new bool:IsMultiplier = false;
@@ -1020,6 +997,10 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 	//new MyAttacker = L4D2_GetInfectedAttacker(client);
 	new size = GetArraySize(Handle:ActionBar[client]);
 	//new Float:fAbilityTime = 0.0;
+	new drawpos = 0;
+	new drawheight = 0;
+	new drawdelay = 0;
+	new drawsize = 0;
 
 	new IsPassiveAbility = 0;
 	PassiveEffectDisplay[client]++;
@@ -1027,47 +1008,42 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 		PassiveEffectDisplay[client] < 0) PassiveEffectDisplay[client] = 0;
 
 	for (new i = 0; i < size; i++) {
-
 		if (IsInstantDraw && thevalue != i) continue;
-
 		GetArrayString(Handle:ActionBar[client], i, text, sizeof(text));
 		if (!VerifyActionBar(client, text, i)) continue;	// not a real talent or has no points in it.
 		if (!IsAbilityActive(client, text) && !IsDrawEffect) continue;	// inactive / passive / toggle abilities go through to the draw section.
-
 		pos = GetMenuPosition(client, text);
 		if (pos < 0) continue;
-
 		CheckAbilityKeys[client]		= GetArrayCell(a_Menu_Talents, pos, 0);
 		CheckAbilityValues[client]		= GetArrayCell(a_Menu_Talents, pos, 1);
-
-
 		if (IsDrawEffect) {
-
 			if (GetKeyValueInt(CheckAbilityKeys[client], CheckAbilityValues[client], "is ability?") == 1) {
-
 				IsPassiveAbility = GetKeyValueInt(CheckAbilityKeys[client], CheckAbilityValues[client], "passive only?");
-
-				//CheckAbilitySection[client]		= GetArrayCell(a_Menu_Talents, pos, 2);
-				//GetArrayString(CheckAbilitySection[client], 0, sTalentName, sizeof(sTalentName));
-
-				//fAbilityTime = GetKeyValueFloat(CheckAbilityKeys[client], CheckAbilityValues[client], "active time?");
-
 				if (IsInstantDraw) {
-
-					FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw?");
-					if (!StrEqual(sDrawEffect, "-1")) DrawAbilityEffect(client, sDrawEffect, text);
+					while (drawpos >= 0 && drawheight >= 0 && drawdelay >= 0 && drawsize >= 0) {
+						drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw?", _, _, drawpos);
+						drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw pos?", _, _, drawheight);
+						drawdelay = FormatKeyValue(sDrawDelay, sizeof(sDrawDelay), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw delay?", _, _, drawdelay);
+						drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw size?", _, _, drawsize);
+						if (drawpos >= 0 && drawheight >= 0 && drawdelay >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), StringToFloat(sDrawDelay), StringToFloat(sDrawSize), text);
+					}
 				}
 				else {
-
 					if (IsActionAbilityCooldown(client, text, true)) {// || !StrEqual(sPassiveEffects, "-1.0") && !IsActionAbilityCooldown(client, text)) {
-
-						FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect?");
-						if (!StrEqual(sDrawEffect, "-1")) DrawAbilityEffect(client, sDrawEffect, text, 1);
+						while (drawpos >= 0 && drawheight >= 0 && drawsize >= 0) {
+							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect?", _, _, drawpos);
+							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect pos?", _, _, drawheight);
+							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect size?", _, _, drawsize);
+							if (drawpos >= 0 && drawheight >= 0 && drawdelay >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 1);
+						}
 					}
 					else if (PassiveEffectDisplay[client] == i && IsPassiveAbility == 1) {
-
-						FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw?");
-						if (!StrEqual(sDrawEffect, "-1")) DrawAbilityEffect(client, sDrawEffect, text, 2);
+						while (drawpos >= 0 && drawheight >= 0 && drawsize >= 0) {
+							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw?", _, _, drawpos);
+							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw pos?", _, _, drawheight);
+							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw size?", _, _, drawsize);
+							if (drawpos >= 0 && drawheight >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 2);
+						}
 					}
 				}
 			}
@@ -1566,6 +1542,27 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 
 		CloseHandle(menu);
 	}
+}
+
+stock GetNodesInExistence() {
+	if (nodesInExistence > 0) return nodesInExistence;
+	new size			=	GetArraySize(a_Menu_Talents);
+	nodesInExistence	=	0;
+	new nodeLayer		=	0;	// this will hide nodes not currently available from players total node count.
+	for (new i = 0; i < size; i++) {
+		SetNodesKeys			=	GetArrayCell(a_Menu_Talents, i, 0);
+		SetNodesValues			=	GetArrayCell(a_Menu_Talents, i, 1);
+		if (GetKeyValueInt(SetNodesKeys, SetNodesValues, "is sub menu?") == 1) continue;
+		nodeLayer = GetKeyValueInt(SetNodesKeys, SetNodesValues, "layer?");
+		if (nodeLayer >= 1 && nodeLayer <= iMaxLayers) nodesInExistence++;
+	}
+	if (StrContains(Hostname, "{N}", true) != -1) {
+		decl String:nodetext[10];
+		Format(nodetext, sizeof(nodetext), "%d", nodesInExistence);
+		ReplaceString(Hostname, sizeof(Hostname), "{N}", nodetext);
+		ServerCommand("hostname %s", Hostname);
+	}
+	return nodesInExistence;
 }
 
 stock PlayerTalentLevel(client) {

@@ -24,6 +24,7 @@
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  */
+
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -39,7 +40,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"Dev build v0.0.5.6"
+#define PLUGIN_VERSION				"Dev build v0.0.5.7"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -96,6 +97,7 @@
 #undef REQUIRE_PLUGIN
 #include <readyup>
 #define REQUIRE_PLUGIN
+
 public Plugin:myinfo = {
 	name = PLUGIN_NAME,
 	author = PLUGIN_CONTACT,
@@ -103,6 +105,7 @@ public Plugin:myinfo = {
 	version = PLUGIN_VERSION,
 	url = PLUGIN_URL,
 };
+
 new Handle:TimeOfEffectOverTime;
 new Handle:EffectOverTime;
 new Handle:currentEquippedWeapon[MAXPLAYERS + 1];	// bullets fired from current weapon; variable needs to be renamed.
@@ -307,7 +310,6 @@ new Handle:h_CAValues;
 new Handle:CommonList;
 new Handle:CommonAffixes;			// the array holding the common entity id and the affix associated with the common infected. If multiple affixes, multiple keyvalues for the entity id will be created instead of multiple entries.
 new Handle:a_CommonAffixes;			// the array holding the config data
-new Handle:CommonAffixesCooldown[MAXPLAYERS + 1];		// the array holding cooldown information for common affix damages.
 new UpgradesAwarded[MAXPLAYERS + 1];
 new UpgradesAvailable[MAXPLAYERS + 1];
 new Handle:InfectedAuraKeys[MAXPLAYERS + 1];
@@ -888,6 +890,10 @@ new Float:fSurvivorBotsNoneBonus;
 new bool:bTimersRunning[MAXPLAYERS + 1];
 new iShowAdvertToNonSteamgroupMembers;
 new displayBuffOrDebuff[MAXPLAYERS + 1];
+new Handle:TalentAtMenuPositionSection[MAXPLAYERS + 1];
+new iStrengthOnSpawnIsStrength;
+new Handle:SetNodesKeys;
+new Handle:SetNodesValues;
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1248,7 +1254,6 @@ stock OnMapStartFunc() {
 		if (CommonDrawKeys == INVALID_HANDLE || !b_FirstLoad) CommonDrawKeys = CreateArray(32);
 		if (CommonDrawValues == INVALID_HANDLE || !b_FirstLoad) CommonDrawValues = CreateArray(32);
 		if (ItemDropArray == INVALID_HANDLE || !b_FirstLoad) ItemDropArray = CreateArray(32);
-		
 		if (PreloadKeys == INVALID_HANDLE || !b_FirstLoad) PreloadKeys = CreateArray(32);
 		if (PreloadValues == INVALID_HANDLE || !b_FirstLoad) PreloadValues = CreateArray(32);
 		if (ItemDropKeys == INVALID_HANDLE || !b_FirstLoad) ItemDropKeys = CreateArray(32);
@@ -1257,18 +1262,18 @@ stock OnMapStartFunc() {
 		if (persistentCirculation == INVALID_HANDLE || !b_FirstLoad) persistentCirculation = CreateArray(32);
 		if (RandomSurvivorClient == INVALID_HANDLE || !b_FirstLoad) RandomSurvivorClient = CreateArray(32);
 		if (RoundStatistics == INVALID_HANDLE || !b_FirstLoad) RoundStatistics = CreateArray(16);
-		if (EffectOverTime == INVALID_HANDLE || !b_FirstLoad) EffectOverTime = CreateTrie();
-		if (TimeOfEffectOverTime == INVALID_HANDLE || !b_FirstLoad) TimeOfEffectOverTime = CreateTrie();
+		if (EffectOverTime == INVALID_HANDLE || !b_FirstLoad) EffectOverTime = CreateArray(32);
+		if (TimeOfEffectOverTime == INVALID_HANDLE || !b_FirstLoad) TimeOfEffectOverTime = CreateArray(32);
 		if (StaggeredTargets == INVALID_HANDLE || !b_FirstLoad) StaggeredTargets = CreateArray(32);
 		if (CommonInfectedHealth == INVALID_HANDLE || !b_FirstLoad) CommonInfectedHealth = CreateArray(32);
+		if (SetNodesKeys == INVALID_HANDLE || !b_FirstLoad) SetNodesKeys = CreateArray(32);
+		if (SetNodesValues == INVALID_HANDLE || !b_FirstLoad) SetNodesValues = CreateArray(32);
 		for (new i = 1; i <= MAXPLAYERS; i++) {
-
 			LastDeathTime[i] = 0.0;
 			MyVomitChase[i] = -1;
 			b_IsFloating[i] = false;
 			DisplayActionBar[i] = false;
 			ActionBarSlot[i] = -1;
-
 			if (currentEquippedWeapon[i] == INVALID_HANDLE || !b_FirstLoad) currentEquippedWeapon[i] = CreateTrie();
 			if (GetCategoryStrengthKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetCategoryStrengthKeys[i] = CreateArray(32);
 			if (GetCategoryStrengthValues[i] == INVALID_HANDLE || !b_FirstLoad) GetCategoryStrengthValues[i] = CreateArray(32);
@@ -1415,7 +1420,6 @@ stock OnMapStartFunc() {
 			if (MeleeKeys[i] == INVALID_HANDLE || !b_FirstLoad) MeleeKeys[i]						= CreateArray(32);
 			if (MeleeValues[i] == INVALID_HANDLE || !b_FirstLoad) MeleeValues[i]					= CreateArray(32);
 			if (MeleeSection[i] == INVALID_HANDLE || !b_FirstLoad) MeleeSection[i]					= CreateArray(32);
-			if (CommonAffixesCooldown[i] == INVALID_HANDLE || !b_FirstLoad) CommonAffixesCooldown[i] = CreateArray(32);
 			if (RCAffixes[i] == INVALID_HANDLE || !b_FirstLoad) RCAffixes[i] = CreateArray(32);
 			if (AKKeys[i] == INVALID_HANDLE || !b_FirstLoad) AKKeys[i]						= CreateArray(32);
 			if (AKValues[i] == INVALID_HANDLE || !b_FirstLoad) AKValues[i]					= CreateArray(32);
@@ -1457,6 +1461,7 @@ stock OnMapStartFunc() {
 			if (GetTalentKeyValueValues[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentKeyValueValues[i] = CreateArray(32);
 			if (GetTalentKeyValueSection[i] == INVALID_HANDLE || !b_FirstLoad) GetTalentKeyValueSection[i] = CreateArray(32);
 			if (ApplyDebuffCooldowns[i] == INVALID_HANDLE || !b_FirstLoad) ApplyDebuffCooldowns[i] = CreateArray(32);
+			if (TalentAtMenuPositionSection[i] == INVALID_HANDLE || !b_FirstLoad) TalentAtMenuPositionSection[i] = CreateArray(32);
 		}
 
 		if (!b_FirstLoad) b_FirstLoad = true;
@@ -1973,6 +1978,12 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			ClearArray(Handle:CommonAffixes);
 			CreateTimer(0.5, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
+
+
+
+
+
+
 
 		ClearRelevantData();
 		LastLivingSurvivor = 1;
@@ -2539,9 +2550,7 @@ public Action:Timer_SaveAndClear(Handle:timer) {
 }
 
 stock CallRoundIsOver() {
-
 	if (!b_IsRoundIsOver) {
-
 		for (new i = 0; i < 5; i++) {
 			SetArrayCell(Handle:RoundStatistics, i, GetArrayCell(RoundStatistics, i) + GetArrayCell(RoundStatistics, i, 1), 1);
 		}
@@ -2556,9 +2565,7 @@ stock CallRoundIsOver() {
 
 			if (IsValidEntity(pEnt)) AcceptEntityInput(pEnt, "Kill");
 		}
-
 		ClearArray(persistentCirculation);
-
 		b_IsRoundIsOver					= true;
 		for (new i = 1; i <= MaxClients; i++) {
 			if (IsLegitimateClient(i)) bTimersRunning[i] = false;
@@ -3153,6 +3160,7 @@ stock LoadMainConfig() {
 	fSurvivorBotsNoneBonus				= GetConfigValueFloat("group bonus if no survivor bots?");
 	iSurvivorBotsBonusLimit				= GetConfigValueInt("no survivor bots group bonus requirement?");
 	iShowAdvertToNonSteamgroupMembers	= GetConfigValueInt("show advertisement to non-steamgroup members?");
+	iStrengthOnSpawnIsStrength			= GetConfigValueInt("spells,auras,ammos strength set on spawn?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
 	GetConfigValue(DefaultBotProfileName, sizeof(DefaultBotProfileName), "new bot player profile?");
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");

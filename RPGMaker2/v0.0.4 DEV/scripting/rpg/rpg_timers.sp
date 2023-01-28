@@ -1469,7 +1469,7 @@ stock GetAlwaysTanks(survivors) {
 
 	if (iTanksAlways > 0) return iTanksAlways;
 	if (iTanksAlways < 0) {
-		return survivors/(iTanksAlways * -1);
+		return RoundToFloor((survivors * 1.0)/(iTanksAlways * -1));
 	}
 	return 0;
 }

@@ -258,9 +258,12 @@ stock bool:IsMeleeWeapon(client) {
 // we format the string for the name of the target, but we also send back an int result to let the code know
 // how to interpret the results (and what information to show on the weapons page of the character sheet)
 stock DataScreenTargetName(client, String:stringRef[], size) {
-	decl String:text[64];
-	GetClientAimTargetEx(client, text, sizeof(text), true);
-	new target = StringToInt(text);
+	//decl String:text[64];
+	new Float:TargetPos[3];
+	new target = GetAimTargetPosition(client, TargetPos);
+
+	//GetClientAimTargetEx(client, text, sizeof(text), true);
+	//new target = StringToInt(text);
 	if (target == -1) {
 		Format(stringRef, size, "%T", "You cannot aim at anything", client);
 		return -1;
@@ -287,16 +290,19 @@ stock DataScreenTargetName(client, String:stringRef[], size) {
 }
 
 stock DataScreenWeaponDamage(client) {
+	new Float:TargetPos[3];
+	new target = GetAimTargetPosition(client, TargetPos);
+	//decl String:text[64];
+	//GetClientAimTargetEx(client, text, sizeof(text), true);
+	//new target = StringToInt(text);
+	//new Float:
+	//if (target == -1) GetAimTargetPosition(client, TargetPos);
+	//if (target == -1) GetClientAimTargetEx(client, text, sizeof(text));
 
-	decl String:text[64];
-	GetClientAimTargetEx(client, text, sizeof(text), true);
-	new target = StringToInt(text);
-	if (target == -1) GetClientAimTargetEx(client, text, sizeof(text));
-
-	decl String:aimtarget[3][64];
-	ExplodeString(text, " ", aimtarget, 3, 64);
-
-	return GetBaseWeaponDamage(client, target, StringToFloat(aimtarget[0]), StringToFloat(aimtarget[1]), StringToFloat(aimtarget[2]), DMG_BULLET, _, true);
+	//decl String:aimtarget[3][64];
+	//ExplodeString(text, " ", aimtarget, 3, 64);
+	return GetBaseWeaponDamage(client, target, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET, _, true);
+	//return GetBaseWeaponDamage(client, target, StringToFloat(aimtarget[0]), StringToFloat(aimtarget[1]), StringToFloat(aimtarget[2]), DMG_BULLET, _, true);
 	//if (!bIsBaseDamageOnly) return GetBaseWeaponDamage(client, target, StringToFloat(aimtarget[0]), StringToFloat(aimtarget[1]), StringToFloat(aimtarget[2]), DMG_BULLET);
 	//else return GetBaseWeaponDamage(client, target, StringToFloat(aimtarget[0]), StringToFloat(aimtarget[1]), StringToFloat(aimtarget[2]), DMG_BULLET, true);
 }
@@ -370,7 +376,9 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
 	new g_iActiveWeaponOffset = 0;
 	new iWeapon = 0;
 	new bool:IsMelee = false;
-	new bool:IsCommonInfectedTarget = IsCommonInfected(target);
+	new bool:IsLegitimate = IsLegitimateClient(target);
+	//new bool:IsTank = (IsLegitimateClient(target) && FindZombieClass(target) == ZOMBIECLASS_TANK) ? true : false;
+	//new bool:IsCommonInfectedTarget = IsCommonInfected(target);
 	GetClientWeapon(client, Weapon, sizeof(Weapon));
 	if (StrEqual(Weapon, "weapon_melee", false)) {
 
@@ -393,7 +401,7 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
 	}
 	// To help cut down on the cost of calculating damage on EVERY event...
 	// if we know the damage is going to be the same, why calculate it again?
-	if (IsCommonInfectedTarget && target == lastTarget[client] && StrEqual(Weapon, lastWeapon[client])) {
+	if (target == lastTarget[client] && StrEqual(Weapon, lastWeapon[client])) {
 		return lastBaseDamage[client];
 	}
 
@@ -532,10 +540,10 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
 			WeaponDamage = RoundToCeil(WeaponDamage * WeaponDamageRangePenalty);
 			if (WeaponDamage < 1) WeaponDamage = 1;
 		}
-		if (IsCommonInfectedTarget) {
-			lastBaseDamage[client] = WeaponDamage;
-			Format(lastWeapon[client], sizeof(lastWeapon[]), "%s", Weapon);
-		}
+		//if (!IsLegitimate) {
+		lastBaseDamage[client] = WeaponDamage;
+		Format(lastWeapon[client], sizeof(lastWeapon[]), "%s", Weapon);
+		//}
 		lastTarget[client] = target;
 		return WeaponDamage;
 	}
@@ -972,10 +980,10 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 		damage_ignore = 0.0;
 		return Plugin_Handled;
 	}
-	if (IsCommonInfected(victim) && !IsSpecialCommon(victim)) {
+	/*if (IsCommonInfected(victim) && !IsSpecialCommon(victim)) {
 		damage_ignore = 9999.0;
 		return Plugin_Changed;
-	}
+	}*/
 	new survivorIncomingDamage = RoundToCeil(damage_ignore);
 	new Float:damage = damage_ignore;
 	if (damage <= 0.0) {
@@ -2830,30 +2838,32 @@ stock bool:FoundCooldownReduction(String:TalentName[], String:CooldownList[]) {
 	return false;
 }
 
-stock FormatKeyValue(String:TheValue[], TheSize, Handle:Keys, Handle:Values, String:SearchKey[], String:DefaultValue[] = "none", bool:bDebug = false) {
+stock FormatKeyValue(String:TheValue[], TheSize, Handle:Keys, Handle:Values, String:SearchKey[], String:DefaultValue[] = "none", bool:bDebug = false, pos = 0) {
 
 	static String:key[512];
 
 	new size = GetArraySize(Keys);
-	for (new i = 0; i < size; i++) {
+	if (pos > 0) pos++;
+	for (new i = pos; i < size; i++) {
 
 		GetArrayString(Handle:Keys, i, key, sizeof(key));
 		if (StrEqual(key, SearchKey)) {
 
 			GetArrayString(Handle:Values, i, TheValue, TheSize);
-			return;
+			return i;
 		}
 	}
 	if (StrEqual(DefaultValue, "none", false)) Format(TheValue, TheSize, "-1");
 	else Format(TheValue, TheSize, "%s", DefaultValue);
+	return -1;
 }
 
-stock Float:GetKeyValueFloat(Handle:Keys, Handle:Values, String:SearchKey[], String:DefaultValue[] = "none", bool:bDebug = false) {
+stock Float:GetKeyValueFloat(Handle:Keys, Handle:Values, String:SearchKey[], String:DefaultValue[] = "none", bool:bDebug = false, pos = 0) {
 
 	static String:key[64];
-
+	if (pos > 0) pos++;
 	new size = GetArraySize(Keys);
-	for (new i = 0; i < size; i++) {
+	for (new i = pos; i < size; i++) {
 
 		GetArrayString(Handle:Keys, i, key, sizeof(key));
 		if (StrEqual(key, SearchKey)) {
@@ -3341,6 +3351,113 @@ stock DamageBonus(attacker, victim, damagevalue, Float:amount) {
 		}
 	}
 }
+
+stock CreateLineSoloEx(client, target, String:DrawColour[], String:DrawPos[], Float:lifetime = 0.5, targetClient = 0) {
+
+	new Float:ClientPos[3];
+	new Float:TargetPos[3];
+	if (IsLegitimateClient(client)) GetClientAbsOrigin(client, ClientPos);
+	else GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+	if (IsLegitimateClient(target)) GetClientAbsOrigin(target, TargetPos);
+	else GetEntPropVector(target, Prop_Send, "m_vecOrigin", TargetPos);
+
+	ClientPos[2] += StringToFloat(DrawPos);
+	TargetPos[2] += StringToFloat(DrawPos);
+
+	if (StrEqual(DrawColour, "green", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 255, 0, 200}, 50);
+	else if (StrEqual(DrawColour, "red", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 0, 200}, 50);
+	else if (StrEqual(DrawColour, "blue", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 255, 200}, 50);
+	else if (StrEqual(DrawColour, "purple", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 255, 200}, 50);
+	else if (StrEqual(DrawColour, "yellow", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 0, 200}, 50);
+	else if (StrEqual(DrawColour, "orange", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 69, 0, 200}, 50);
+	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
+	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
+	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
+	else return 0;
+	TE_SendToClient(targetClient);
+	return 1;
+}
+stock CreateRingSoloEx(client, Float:RingAreaSize, String:DrawColour[], String:DrawPos[], bool:IsPulsing = true, Float:lifetime = 1.0, targetClient, Float:PosX=0.0, Float:PosY=0.0, Float:PosZ=0.0) {
+	new Float:ClientPos[3];
+	if (client != -1) {
+		if (IsLegitimateClient(client)) GetClientAbsOrigin(client, ClientPos);
+		else GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+	}
+	else {
+		ClientPos[0] = PosX;
+		ClientPos[1] = PosY;
+		ClientPos[2] = PosZ;
+	}
+	new Float:pulserange = 0.0;
+	if (IsPulsing) pulserange = 32.0;
+	else pulserange = RingAreaSize - 32.0;
+
+	ClientPos[2] += 20.0;
+	ClientPos[2] += StringToFloat(DrawPos);
+
+	new Float:t_ClientPos[3];
+	t_ClientPos = ClientPos;
+
+	if (StrEqual(DrawColour, "green", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "red", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "blue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "purple", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "yellow", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "orange", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+	else return 0;
+	TE_SendToClient(targetClient);
+	return 1;
+}
+
+stock CreateRingEx(client, Float:RingAreaSize, String:DrawColour[], Float:DrawPos, bool:IsPulsing = true, Float:lifetime = 1.0, targetClient = 0) {
+
+	new Float:ClientPos[3];
+	if (IsLegitimateClient(client)) GetClientAbsOrigin(client, ClientPos);
+	else GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+
+	new Float:pulserange = 0.0;
+	if (IsPulsing) pulserange = 32.0;
+	else pulserange = RingAreaSize - 32.0;
+
+	ClientPos[2] += DrawPos;
+	if (StrEqual(DrawColour, "green", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "red", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "blue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "purple", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "yellow", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "orange", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+	else return 0;
+	TE_SendToAll();
+	return 1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 stock CreateLineSolo(client, target, String:DrawColour[], String:DrawPos[], Float:lifetime = 0.5, targetClient = 0) {
 
@@ -4037,7 +4154,7 @@ stock CreateAcid(client, victim, Float:radius = 128.0) {
 			new Float:pos[3];
 			if (IsLegitimateClient(victim)) GetClientAbsOrigin(victim, pos);
 			else GetEntPropVector(victim, Prop_Send, "m_vecOrigin", pos);
-			pos[2] += 12.0;
+			pos[2] += 96.0;
 			new acidball = CreateEntityByName("spitter_projectile");
 			if (IsValidEntity(acidball)) {
 
@@ -4852,11 +4969,13 @@ stock SuperCommonsInPlay(String:Name[]) {
 	new size = GetArraySize(Handle:CommonAffixes);
 	decl String:text[64];
 	new count = 0;
-
+	new ent = -1;
 	for (new i = 0; i < size; i++) {
-
-		GetArrayString(Handle:CommonAffixes, i, text, sizeof(text));
-		if (StrContains(text, Name) != -1) count++;
+		ent = GetArrayCell(Handle:CommonAffixes, i); //GetArrayString(Handle:CommonAffixes, i, text, sizeof(text));
+		if (IsValidEntity(ent)) {
+			GetEntPropString(ent, Prop_Data, "m_iName", text, sizeof(text));
+			if (StrEqual(text, Name)) count++;
+		}
 	}
 	return count;
 }
@@ -4915,9 +5034,11 @@ stock CreateCommonAffix(entity) {
 		GetArrayString(Handle:CCASection, 0, Section_Name, sizeof(Section_Name));
 		if (!StrEqual(ForceName, "none", false) && !StrEqual(Section_Name, ForceName, false)) continue;
 		
-		Format(Section_Name, sizeof(Section_Name), "%s:%d", Section_Name, entity);
+		//Format(Section_Name, sizeof(Section_Name), "%s:%d", Section_Name, entity);
+		SetEntPropString(entity, Prop_Data, "m_iName", Section_Name);
 
-		PushArrayString(Handle:CommonAffixes, Section_Name);
+		PushArrayCell(Handle:CommonAffixes, entity);
+		//PushArrayString(Handle:CommonAffixes, Section_Name);
 		OnCommonCreated(entity);
 
 		//	Now that we've confirmed this common is special, let's go ahead and activate pertinent functions...
@@ -5326,13 +5447,13 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 		if (FlTime - 0.5 <= 0.0 || damage <= 0) {
 
 			RemoveFromArray(Handle:EntityOnFire, i);
-			if (StrEqual(Evaluate[6], "acid", false) && GetClientStatusEffect(Client, Handle:EntityOnFire, "acid") < 1) {
-				if (!DebuffOnCooldown(Client, "acid")) {
+			/*if (StrEqual(Evaluate[6], "acid", false) && GetClientStatusEffect(Client, Handle:EntityOnFire, "acid") < 1) {
+				if (iDropAcidOnLastDebuffDrop == 1 && !DebuffOnCooldown(Client, "acid")) {
 					PushArrayString(ApplyDebuffCooldowns[Client], "acid");	// prevents the user who drops the acid from automatically-receiving more acid burn stacks (likely in perpetuity)
 					CreateTimer(3.0, Timer_AcidCooldown, Client, TIMER_FLAG_NO_MAPCHANGE);
 				}
-				CreateAcid(FindInfectedClient(true), Client, 48.0);
-			}
+				//CreateAcid(FindInfectedClient(true), Client, 48.0);
+			}*/
 			//if (i > 0) i--;
 			//size = GetArraySize(Handle:EntityOnFire);
 			continue;
@@ -5578,7 +5699,7 @@ public Action:Timer_CommonAffixes(Handle:timer) {
 
 		for (new i = 1; i <= MaxClients; i++) {
 
-			ClearArray(CommonAffixesCooldown[i]);
+			//ClearArray(CommonAffixesCooldown[i]);
 			ClearArray(SpecialCommon[i]);
 		}
 		ResetArray(Handle:CommonInfected);
@@ -5610,8 +5731,41 @@ public Action:Timer_CommonAffixes(Handle:timer) {
 			DrawSpecialInfectedAffixes(i);
 		}
 	}
-	
 	return Plugin_Continue;
+}
+
+stock GetCommonVisuals(String:TheString[], TheSize, entity, key = 0, pos = 0) {
+	decl String:SectionName[64];
+	decl String:AffixName[2][64];
+	new ent = -1;
+	new size = GetArraySize(CommonAffixes);
+	for (new i = 0; i < size; i++) {
+
+		//GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
+		//ent = FindEntityInString(SectionName);
+		ent = GetArrayCell(Handle:CommonAffixes, i);
+		if (!IsValidEntity(ent)) {
+			RemoveFromArray(Handle:CommonAffixes, i);
+			size--;
+			continue;
+		}
+		if (entity != ent) continue;	// searching for a specific entity.
+		GetEntPropString(entity, Prop_Data, "m_iName", AffixName[0], sizeof(AffixName[]));
+		//Format(AffixName[0], sizeof(AffixName[]), "%s", SectionName);
+		//ExplodeString(AffixName[0], ":", AffixName, 2, 64);
+
+		ent = FindListPositionBySearchKey(AffixName[0], a_CommonAffixes, 2, DEBUG);
+		if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
+		else {
+
+			h_CommonKeys		= GetArrayCell(a_CommonAffixes, ent, 0);
+			h_CommonValues		= GetArrayCell(a_CommonAffixes, ent, 1);
+			if (key == 0) return FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, "draw colour?", _, _, pos);
+			else return FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, "draw pos?", _, _, pos);
+		}
+	}
+	Format(TheString, TheSize, "-1");
+	return -1;
 }
 
 stock GetCommonValue(String:TheString[], TheSize, entity, String:Key[]) {
@@ -5623,18 +5777,19 @@ stock GetCommonValue(String:TheString[], TheSize, entity, String:Key[]) {
 	new size = GetArraySize(CommonAffixes);
 	for (new i = 0; i < size; i++) {
 
-		GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
-		ent = FindEntityInString(SectionName);
+		//GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
+		//ent = FindEntityInString(SectionName);
+		ent = GetArrayCell(Handle:CommonAffixes, i);
 		if (!IsValidEntity(ent)) {
-
 			RemoveFromArray(Handle:CommonAffixes, i);
 			size--;
 			continue;
 		}
 		if (entity != ent) continue;	// searching for a specific entity.
 
-		Format(AffixName[0], sizeof(AffixName[]), "%s", SectionName);
-		ExplodeString(AffixName[0], ":", AffixName, 2, 64);
+		//Format(AffixName[0], sizeof(AffixName[]), "%s", SectionName);
+		//ExplodeString(AffixName[0], ":", AffixName, 2, 64);
+		GetEntPropString(entity, Prop_Data, "m_iName", AffixName[0], sizeof(AffixName[]));
 
 		ent = FindListPositionBySearchKey(AffixName[0], a_CommonAffixes, 2, DEBUG);
 		if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
@@ -5660,8 +5815,9 @@ stock GetCommonValueInt(entity, String:Key[]) {
 	new size = GetArraySize(CommonAffixes);
 	for (new i = 0; i < size; i++) {
 
-		GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
-		ent = FindEntityInString(SectionName);
+		//GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
+		//ent = FindEntityInString(SectionName);
+		ent = GetArrayCell(Handle:CommonAffixes, i);
 		if (!IsValidEntity(ent)) {
 
 			RemoveFromArray(Handle:CommonAffixes, i);
@@ -5669,9 +5825,9 @@ stock GetCommonValueInt(entity, String:Key[]) {
 			continue;
 		}
 		if (entity != ent) continue;	// searching for a specific entity.
-
-		Format(AffixName[0], sizeof(AffixName[]), "%s", SectionName);
-		ExplodeString(AffixName[0], ":", AffixName, 2, 64);
+		GetEntPropString(entity, Prop_Data, "m_iName", AffixName[0], sizeof(AffixName[]));
+		//Format(AffixName[0], sizeof(AffixName[]), "%s", SectionName);
+		//ExplodeString(AffixName[0], ":", AffixName, 2, 64);
 
 		ent = FindListPositionBySearchKey(AffixName[0], a_CommonAffixes, 2, DEBUG);
 		if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
@@ -5697,8 +5853,7 @@ stock Float:GetCommonValueFloat(entity, String:Key[], String:Section_Name[] = "n
 	new size = GetArraySize(CommonAffixes);
 	for (new i = 0; i < size; i++) {
 
-		GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
-		ent = FindEntityInString(SectionName);
+		ent = GetArrayCell(Handle:CommonAffixes, i);
 		if (!IsValidEntity(ent)) {
 
 			RemoveFromArray(Handle:CommonAffixes, i);
@@ -5706,9 +5861,7 @@ stock Float:GetCommonValueFloat(entity, String:Key[], String:Section_Name[] = "n
 			continue;
 		}
 		if (entity != ent) continue;	// searching for a specific entity.
-
-		Format(AffixName[0], sizeof(AffixName[]), "%s", SectionName);
-		ExplodeString(AffixName[0], ":", AffixName, 2, 64);
+		GetEntPropString(entity, Prop_Data, "m_iName", AffixName[0], sizeof(AffixName[]));
 
 		ent = FindListPositionBySearchKey(AffixName[0], a_CommonAffixes, 2, DEBUG);
 		if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
@@ -5760,7 +5913,6 @@ stock DrawSpecialInfectedAffixes(client, target = -1, Float:fRange = 256.0) {
 }
 
 stock DrawCommonAffixes(entity, String:sForceAuraEffect[] = "none") {
-
 	decl String:AfxEffect[64];
 	decl String:AfxDrawColour[64];
 	new Float:AfxRange = -1.0;
@@ -5788,37 +5940,33 @@ stock DrawCommonAffixes(entity, String:sForceAuraEffect[] = "none") {
 
 
 	//AfxRange += AfxRangeBase;
-
-	GetCommonValue(AfxDrawColour, sizeof(AfxDrawColour), entity, "draw colour?");
-	GetCommonValue(AfxDrawPos, sizeof(AfxDrawPos), entity, "draw pos?");
-	if (StrEqual(AfxDrawColour, "-1", false)) return;		// if there's no colour, we return otherwise you'll get errors like this: TE_Send Exception reported: No TempEntity call is in progress
-
+	new drawColourPos = 0;
+	new drawPosPos = 0;
 	new Float:t_Range = -1.0;
+	while (drawColourPos >= 0 && drawPosPos >= 0) {
+		drawColourPos	= GetCommonVisuals(AfxDrawColour, sizeof(AfxDrawColour), entity, 0, drawColourPos);
+		drawPosPos		= GetCommonVisuals(AfxDrawPos, sizeof(AfxDrawPos), entity, 1, drawPosPos);
+		if (drawColourPos < 0 || drawPosPos < 0) return;
+		for (new i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+			if (GetClientTeam(i) == TEAM_SURVIVOR && PlayerLevel[i] < AfxLevelReq) continue;
+			if (AfxRange > 0.0) t_Range = AfxRange * (PlayerLevel[i] - AfxLevelReq);
+			else t_Range = AfxRangeMax;
+			if (t_Range + AfxRangeBase > AfxRangeMax) t_Range = AfxRangeMax;
+			else t_Range += AfxRangeBase;
+			if (AfxDrawType == 0) CreateRingSoloEx(entity, t_Range, AfxDrawColour, AfxDrawPos, false, 0.25, i);
+			else if (AfxDrawType == 1) {
+				for (new y = 1; y <= MaxClients; y++) {
+					if (!IsLegitimateClient(y) || IsFakeClient(y) || GetClientTeam(y) != TEAM_SURVIVOR) continue;
+					GetClientAbsOrigin(y, TargetPos);
+					// Player is outside the applicable range.
+					if (!IsInRange(EntityPos, TargetPos, t_Range)) continue;
 
-	for (new i = 1; i <= MaxClients; i++) {
-
-		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
-		if (GetClientTeam(i) == TEAM_SURVIVOR && PlayerLevel[i] < AfxLevelReq) continue;
-
-		if (AfxRange > 0.0) t_Range = AfxRange * (PlayerLevel[i] - AfxLevelReq);
-		else t_Range = AfxRangeMax;
-		if (t_Range + AfxRangeBase > AfxRangeMax) t_Range = AfxRangeMax;
-		else t_Range += AfxRangeBase;
-
-		if (AfxDrawType == 0) CreateRingSolo(entity, t_Range, AfxDrawColour, AfxDrawPos, false, 0.25, i);
-		else if (AfxDrawType == 1) {
-
-			for (new y = 1; y <= MaxClients; y++) {
-
-				if (!IsLegitimateClient(y) || IsFakeClient(y) || GetClientTeam(y) != TEAM_SURVIVOR) continue;
-				GetClientAbsOrigin(y, TargetPos);
-				// Player is outside the applicable range.
-				if (!IsInRange(EntityPos, TargetPos, t_Range)) continue;
-
-				CreateLineSolo(entity, y, AfxDrawColour, AfxDrawPos, 0.25, i);	// the last arg makes sure the line is drawn only for the player, otherwise it is drawn for all players, and that is bad as we are looping all players here already.
+					CreateLineSoloEx(entity, y, AfxDrawColour, AfxDrawPos, 0.25, i);	// the last arg makes sure the line is drawn only for the player, otherwise it is drawn for all players, and that is bad as we are looping all players here already.
+				}
 			}
+			t_Range = 0.0;
 		}
-		t_Range = 0.0;
 	}
 
 	
@@ -6011,6 +6159,11 @@ stock bool:IsAbilityCooldown(client, String:TalentName[]) {
 	return false;
 }
 
+stock GetTalentNameAtMenuPosition(client, pos, String:TheString[], stringSize) {
+	TalentAtMenuPositionSection[client] = GetArrayCell(a_Menu_Talents, pos, 2);
+	GetArrayString(Handle:TalentAtMenuPositionSection[client], 0, TheString, stringSize);
+}
+
 stock GetMenuPosition(client, String:TalentName[]) {
 
 	if (IsClientActual(client)) {
@@ -6103,6 +6256,28 @@ stock RemoveImmunities(client) {
 	}
 }*/
 
+stock GetAimTargetPosition(client, Float:TargetPos[3]) {
+	new Float:ClientEyeAngles[3];
+	new Float:ClientEyePosition[3];
+	GetClientEyeAngles(client, ClientEyeAngles);
+	GetClientEyePosition(client, ClientEyePosition);
+	new aimTarget = 0;
+
+	new Handle:trace = TR_TraceRayFilterEx(ClientEyePosition, ClientEyeAngles, MASK_SHOT, RayType_Infinite, TraceRayIgnoreSelf, client);
+	if (TR_DidHit(trace)) {
+		aimTarget = TR_GetEntityIndex(trace);
+		if (IsCommonInfected(aimTarget) || IsWitch(aimTarget) || IsLegitimateClient(aimTarget)) {
+			GetEntPropVector(aimTarget, Prop_Send, "m_vecOrigin", TargetPos);
+		}
+		else {
+			aimTarget = -1;
+			TR_GetEndPosition(TargetPos, trace);
+		}
+	}
+	CloseHandle(trace);
+	return aimTarget;
+}
+
 // GetTargetOnly is set to true only when casting single-target spells, which require an actual target.
 stock GetClientAimTargetEx(client, String:TheText[], TheSize, bool:GetTargetOnly = false) {
 
@@ -6156,21 +6331,21 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 	static auraMenuPosition = 0;
 	static bool:IsPlayerSameTeam;
 	static dataAmmoType = 0;
+	static bulletStrength = 0;
 	CheckActiveAbility(client, -1, _, _, true);	// draws effects for any active ability this client has.
 	for (new i = 0; i < GetArraySize(Handle:SpecialAmmoData); i++) {
-		GetArrayString(Handle:SpecialAmmoData, i, text, sizeof(text));
-		ExplodeString(text, "}", result, 7, 512);
-		dataClient = FindClientWithAuthString(result[2]);
-		WorldEnt = StringToInt(result[4]);
+		dataClient = FindClientByIdNumber(GetArrayCell(SpecialAmmoData, i, 7));
+		WorldEnt = GetArrayCell(SpecialAmmoData, i, 9);
 		if (!IsLegitimateClientAlive(dataClient)) {
 			RemoveFromArray(Handle:SpecialAmmoData, i);
-			if (IsValidEntity(WorldEnt)) AcceptEntityInput(WorldEnt, "Kill");
+			if (WorldEnt > 0 && IsValidEntity(WorldEnt)) AcceptEntityInput(WorldEnt, "Kill");
 			continue;
 		}
 
 		AmmoStrength = 0.0;
 		dataAmmoType = 0;
-		drawtarget = StringToInt(result[6]);
+		bulletStrength = 0;
+		drawtarget = GetArrayCell(SpecialAmmoData, i, 11);
 		Format(DataAmmoEffect, sizeof(DataAmmoEffect), "0");	// reset it after each go.
 		
 		//TalentInfo[0] = TalentName of ammo.
@@ -6178,7 +6353,7 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 		//TalentInfo[2] = Talent Damage
 		//TalentInfo[3] = Talent Interval
 		
-		ExplodeString(result[1], "{", TalentInfo, 4, 512);
+		GetTalentNameAtMenuPosition(client, GetArrayCell(SpecialAmmoData, i, 3), TalentInfo[0], sizeof(TalentInfo[]));
 		GetSpecialAmmoEffect(DataAmmoEffect, sizeof(DataAmmoEffect), client, TalentInfo[0]);
 		if (StrEqual(DataAmmoEffect, "x", true)) dataAmmoType = 1;
 		else if (StrEqual(DataAmmoEffect, "h", true)) dataAmmoType = 2;
@@ -6188,9 +6363,15 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 		else if (StrEqual(DataAmmoEffect, "H", true)) dataAmmoType = 6;
 		else if (StrEqual(DataAmmoEffect, "B", true)) dataAmmoType = 7;
 		else if (StrEqual(DataAmmoEffect, "C", true)) dataAmmoType = 8;
+		
+		bulletStrength = GetArrayCell(SpecialAmmoData, i, 5);
 		if (dataClient == client) {	// if this player is the owner of this spell or talent...
 			if (IsSpellAnAura(client, TalentInfo[0])) {
 				GetClientAbsOrigin(client, EntityPos);
+				// update the location of the ammo/spell/whatever
+				SetArrayCell(SpecialAmmoData, i, EntityPos[0], 0);
+				SetArrayCell(SpecialAmmoData, i, EntityPos[1], 1);
+				SetArrayCell(SpecialAmmoData, i, EntityPos[2], 2);
 				auraMenuPosition = GetMenuPosition(client, TalentInfo[0]);
 				for (new ii = 1; ii <= MaxClients; ii++) {
 					if (!IsLegitimateClient(ii) || IsFakeClient(ii)) continue;
@@ -6198,26 +6379,27 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 				}
 			}
 			else {
-				ExplodeString(result[0], " ", t_pos, 3, 512);
-				EntityPos[0] = StringToFloat(t_pos[0]);
-				EntityPos[1] = StringToFloat(t_pos[1]);
-				EntityPos[2] = StringToFloat(t_pos[2]);
+				EntityPos[0] = GetArrayCell(SpecialAmmoData, i, 0);
+				EntityPos[1] = GetArrayCell(SpecialAmmoData, i, 1);
+				EntityPos[2] = GetArrayCell(SpecialAmmoData, i, 2);
 			}
-			f_TimeRemaining = StringToFloat(result[3]) - fSpecialAmmoInterval;
+			f_TimeRemaining = GetArrayCell(SpecialAmmoData, i, 8);
+			f_TimeRemaining -= fSpecialAmmoInterval;
 			if (f_TimeRemaining <= 0.0) {
 				RemoveFromArray(Handle:SpecialAmmoData, i);
 				if (IsValidEntity(WorldEnt)) AcceptEntityInput(WorldEnt, "Kill");
 				continue;
 			}
-			Format(text, sizeof(text), "%3.3f %3.3f %3.3f}%s{%d{%d{%3.2f}%s}%3.2f}%d}%3.2f}%d", EntityPos[0], EntityPos[1], EntityPos[2], TalentInfo[0], GetTalentStrength(client, TalentInfo[0]), StringToInt(TalentInfo[2]), f_TimeRemaining, result[2], f_TimeRemaining, WorldEnt, f_TimeRemaining, drawtarget);
-			SetArrayString(Handle:SpecialAmmoData, i, text);
+			// Anything that was changed needs to be reinserted.
+			SetArrayCell(SpecialAmmoData, i, f_TimeRemaining, 8);
+			if (iStrengthOnSpawnIsStrength != 1) SetArrayCell(SpecialAmmoData, i, GetSpecialAmmoStrength(client, TalentInfo[0], 1), 10);
 
 			if (dataAmmoType == 1) CreateAmmoExplosion(client, EntityPos[0], EntityPos[1], EntityPos[2]);
 			if (dataAmmoType >= 1 && dataAmmoType <= 3) {
 				for (new zombie = 0; zombie < GetArraySize(Handle:CommonInfected); zombie++) {
 					ent = GetArrayCell(Handle:CommonInfected, zombie);
 					if (IsClientInRangeSpecialAmmo(ent, DataAmmoEffect, _, i) == -2.0) {
-						AmmoStrength			= (IsClientInRangeSpecialAmmo(ent, DataAmmoEffect, false, _, StringToInt(TalentInfo[2]) * 1.0)) * StringToInt(TalentInfo[2]);
+						AmmoStrength			= (IsClientInRangeSpecialAmmo(ent, DataAmmoEffect, false, _, bulletStrength * 1.0)) * bulletStrength;
 						if (AmmoStrength <= 0.0) continue;
 
 						if (dataAmmoType == 1) ExplosiveAmmo(ent, RoundToCeil(AmmoStrength), client);
@@ -6230,7 +6412,7 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 		if (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, _, i) == -2.0) {
 			IsPlayerSameTeam = (client == dataClient || GetClientTeam(client) == GetClientTeam(dataClient)) ? true : false;
 
-			AmmoStrength			= (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, false, _, StringToInt(TalentInfo[2]) * 1.0)) * StringToInt(TalentInfo[2]);
+			AmmoStrength			= (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, false, _, bulletStrength * 1.0)) * bulletStrength;
 			if (AmmoStrength <= 0.0) continue;
 
 			if (!IsPlayerSameTeam) {	// the owner of the ammo and the player inside of it are NOT on the same team.
@@ -6523,30 +6705,26 @@ public Action:Timer_AmmoActiveTimer(Handle:timer, any:client) {
 		else if (IsPlayerAlive(client) && DisplayActionBar[client]) ShowActionBar(client);
 	}
 	// timer for the cooldowns of anything on the action bar (ammos, abilities)
-	//currSize = GetArraySize(PlayerActiveAmmo[i]);
 	if (GetArraySize(PlayerActiveAmmo[client]) > 0) {
 		for (new i = 0; i < GetArraySize(PlayerActiveAmmo[client]); i++) {
-			GetArrayString(PlayerActiveAmmo[client], i, result[0], sizeof(result[]));
-			ExplodeString(result[0], ":", result, 2, 64);
-			if (StringToFloat(result[1]) - fSpecialAmmoInterval <= 0.0) {
+			talentTimeRemaining = GetArrayCell(PlayerActiveAmmo[client], i, 1);
+			if (talentTimeRemaining - fSpecialAmmoInterval <= 0.0) {
 				RemoveFromArray(PlayerActiveAmmo[client], i);
 				continue;
 			}
-			Format(result[0], sizeof(result[]), "%s:%3.3f", result[0], StringToFloat(result[1]) - fSpecialAmmoInterval);
-			SetArrayString(Handle:PlayerActiveAmmo[client], i, result[0]);
+			SetArrayCell(PlayerActiveAmmo[client], i, talentTimeRemaining - fSpecialAmmoInterval, 1);
 		}
 	}
 	if (GetArraySize(PlayActiveAbilities[client]) > 0) {
 		for (new i = 0; i < GetArraySize(PlayActiveAbilities[client]); i++) {
-			GetArrayString(PlayActiveAbilities[client], i, result[0], sizeof(result[]));
-			ExplodeString(result[0], ":", result, 3, 64);
+			GetTalentNameAtMenuPosition(client, GetArrayCell(PlayActiveAbilities[client], i, 0), result[0], sizeof(result[]));
 			currTalentStrength = GetTalentStrength(client, result[0]);
 			if (currTalentStrength < 1) {
 				RemoveFromArray(PlayActiveAbilities[client], i);
 				continue;
 			}
-			talentTimeRemaining = StringToFloat(result[1]);
-			triggerRequirementsAreMet = StringToInt(result[2]);
+			talentTimeRemaining = GetArrayCell(PlayActiveAbilities[client], i, 1);
+			triggerRequirementsAreMet = GetArrayCell(PlayActiveAbilities[client], i, 2);
 			if (triggerRequirementsAreMet == 1 && !IsAbilityActive(client, result[0]) && IsAbilityActive(client, result[0], fSpecialAmmoInterval)) {
 				CallAbilityCooldownAbilityTrigger(client, result[0], true);
 			}
@@ -6555,8 +6733,7 @@ public Action:Timer_AmmoActiveTimer(Handle:timer, any:client) {
 				RemoveFromArray(PlayActiveAbilities[client], i);
 			}
 			else {
-				Format(result[0], sizeof(result[]), "%s:%3.3f:%s", result[0], talentTimeRemaining - fSpecialAmmoInterval, result[2]);
-				SetArrayString(Handle:PlayActiveAbilities[client], i, result[0]);
+				SetArrayCell(PlayActiveAbilities[client], i, talentTimeRemaining - fSpecialAmmoInterval, 1);
 			}
 		}
 	}
@@ -6574,20 +6751,19 @@ stock bool:BotsOnSurvivorTeam() {
 stock bool:SetActiveAbilityConditionsMet(client, String:TalentName[], bool:GetIfConditionIsAlreadyMet = false) {
 
 	new size = GetArraySize(PlayActiveAbilities[client]);
+	new areConditionsMet = 0;
 	//decl String:text[64];
 	decl String:result[3][64];
 	for (new i = 0; i < size; i++) {
-		GetArrayString(PlayActiveAbilities[client], i, result[0], sizeof(result[]));
-		ExplodeString(result[0], ":", result, 3, 64);
+		GetTalentNameAtMenuPosition(client, GetArrayCell(PlayActiveAbilities[client], i, 0), result[0], sizeof(result[]));
 		if (!StrEqual(result[0], TalentName)) continue;
+		areConditionsMet = GetArrayCell(PlayActiveAbilities[client], i, 2);
 		if (GetIfConditionIsAlreadyMet) {
-			if (StrEqual(result[2], "1")) return true;
+			if (areConditionsMet == 1) return true;
 			return false;
 		}
-		if (StrEqual(result[2], "1")) return true;
-
-		Format(result[0], sizeof(result[]), "%s:%s:1", result[0], result[1]);
-		SetArrayString(Handle:PlayActiveAbilities[client], i, result[0]);
+		if (areConditionsMet == 1) return true;
+		SetArrayCell(PlayActiveAbilities[client], i, 1, 2);	// sets conditions met to true.
 		return true;
 	}
 	return false;
@@ -6790,6 +6966,10 @@ stock Float:EffectOverTimeActiveStatus(client, String:TalentName[], bool:activat
 		new Float:effectOverTimeCooldown	= GetTalentInfo(client, CheckEffectOverTimeKeys[client], CheckEffectOverTimeValues[client], 3, _, TalentName);
 		new Float:effectActiveTime			= GetTalentInfo(client, CheckEffectOverTimeKeys[client], CheckEffectOverTimeValues[client], 2, _, TalentName); 
 
+		size = GetArraySize(PlayerEffectOverTime[client]);
+		ResizeArray(PlayerEffectOverTime[client], size + 1);
+
+		SetArrayCell(PlayerEffectOverTime[client], size, GetMenuPosition(client, TalentName), 0);
 		Format(result[0], sizeof(result[]), "%s:%3.2f:%3.2f:%d:%s:%d:%3.3f", TalentName, effectActiveTime, effectOverTimeCooldown, damage, effects, target, fTalentStrength);
 		PushArrayString(PlayerEffectOverTime[client], result[0]);
 		return 2.0;	// return 2 if talent is successfully activated.
@@ -6811,22 +6991,18 @@ stock CheckActiveAmmoCooldown(client, String:TalentName[], bool:bIsCreateCooldow
 }
 
 stock bool:IsAmmoActive(client, String:TalentName[], Float:f_Delay=0.0, bool:IsActiveAbility = false) {
-
-	//Push to an array.
 	decl String:result[2][64];
+	new pos = -1;
+	new size = -1;
 	if (f_Delay == 0.0) {
-
-		new size = GetArraySize(PlayerActiveAmmo[client]);
+		size = GetArraySize(PlayerActiveAmmo[client]);
 		if (IsActiveAbility) size = GetArraySize(PlayActiveAbilities[client]);
 		for (new i = 0; i < size; i++) {
-
 			if (!IsActiveAbility) {
-				GetArrayString(PlayerActiveAmmo[client], i, result[0], sizeof(result[]));
-				ExplodeString(result[0], ":", result, 2, 64);
+				GetTalentNameAtMenuPosition(client, GetArrayCell(PlayerActiveAmmo[client], i, 0), result[0], sizeof(result[]));
 			}
 			else {
-				GetArrayString(PlayActiveAbilities[client], i, result[0], sizeof(result[]));
-				ExplodeString(result[0], ":", result, 3, 64);
+				GetTalentNameAtMenuPosition(client, GetArrayCell(PlayActiveAbilities[client], i, 0), result[0], sizeof(result[]));
 			}
 			if (StrEqual(result[0], TalentName, false)) return true;
 
@@ -6834,16 +7010,19 @@ stock bool:IsAmmoActive(client, String:TalentName[], Float:f_Delay=0.0, bool:IsA
 		return false;
 	}
 	else {
-
-		Format(result[0], sizeof(result[]), "%s:%3.2f", TalentName, f_Delay);
+		pos = GetMenuPosition(client, TalentName);
 		if (!IsActiveAbility) {
-
-			PushArrayString(PlayerActiveAmmo[client], result[0]);
+			size = GetArraySize(PlayerActiveAmmo[client]);
+			ResizeArray(PlayerActiveAmmo[client], size + 1);
+			SetArrayCell(PlayerActiveAmmo[client], size, pos, 0);	// storing the position of the talent instead of the talent so we don't have to store a string.
+			SetArrayCell(PlayerActiveAmmo[client], size, f_Delay, 1);
 		}
 		else {
-			Format(result[0], sizeof(result[]), "%s:%d", result[0], GetIfTriggerRequirementsMetAlways(client, result[0]));
-
-			PushArrayString(PlayActiveAbilities[client], result[0]);
+			size = GetArraySize(PlayActiveAbilities[client]);
+			ResizeArray(PlayActiveAbilities[client], size + 1);
+			SetArrayCell(PlayActiveAbilities[client], size, pos, 0);
+			SetArrayCell(PlayActiveAbilities[client], size, f_Delay, 1);
+			SetArrayCell(PlayActiveAbilities[client], size, GetIfTriggerRequirementsMetAlways(client, TalentName), 2);
 		}
 	}
 	return false;
@@ -6854,18 +7033,19 @@ stock Float:GetAmmoCooldownTime(client, String:TalentName[], bool:IsActiveTimeIn
 	//Push to an array.
 	decl String:result[3][64];
 	new size = GetArraySize(PlayerActiveAmmo[client]);
+	new Float:timeRemaining = 0.0;
 	if (IsActiveTimeInstead) size = GetArraySize(PlayActiveAbilities[client]);
 	for (new i = 0; i < size; i++) {
 
 		if (!IsActiveTimeInstead) {
-			GetArrayString(PlayerActiveAmmo[client], i, result[0], sizeof(result[]));
-			ExplodeString(result[0], ":", result, 2, 64);
+			GetTalentNameAtMenuPosition(client, GetArrayCell(PlayerActiveAmmo[client], i, 0), result[0], sizeof(result[]));
+			timeRemaining = GetArrayCell(PlayerActiveAmmo[client], i, 1);
 		}
 		else {
-			GetArrayString(PlayActiveAbilities[client], i, result[0], sizeof(result[]));
-			ExplodeString(result[0], ":", result, 3, 64);
+			GetTalentNameAtMenuPosition(client, GetArrayCell(PlayActiveAbilities[client], i, 0), result[0], sizeof(result[]));
+			timeRemaining = GetArrayCell(PlayActiveAbilities[client], i, 1);
 		}
-		if (StrEqual(result[0], TalentName, false)) return StringToFloat(result[1]);
+		if (StrEqual(result[0], TalentName, false)) return timeRemaining;
 	}
 	return -1.0;
 }
@@ -7094,29 +7274,6 @@ stock bool:IsAbilityEquipped(client, String:TalentName[]) {
 	}
 	return false;
 }
-
-/*stock bool:IsAbilityActive(client, String:TalentName[], Float:thetime = 0.0) {
-
-	decl String:result[2][64];
-	if (thetime == 0.0) {
-
-		new size = GetArraySize(PlayActiveAbilities[client][0]);
-		for (new i = 0; i < size; i++) {
-
-			GetArrayString(PlayActiveAbilities[client][2], i, result[0], sizeof(result[]));
-			ExplodeString(result[0], ":", result, 2, 64);
-			if (StrEqual(result[0], TalentName, false)) return true;
-
-		}
-		return false;
-	}
-	else {
-
-		Format(result[0], sizeof(result[]), "%s:%3.2f", TalentName, thetime);
-		PushArrayString(PlayActiveAbilities[client][2], result[0]);
-	}
-	return false;
-}*/
 
 stock bool:IsAbilityActive(client, String:TalentName[], Float:timeToAdd = 0.0, String:checkEffect[] = "none") {
 	if (StrEqual(checkEffect, "L")) return false;
@@ -7927,21 +8084,21 @@ stock CheckIfEntityShouldDie(victim, attacker, damage = 0, bool:IsStatusDamage =
 stock RemoveCommonAffixes(entity) {
 
 	new size = GetArraySize(Handle:CommonAffixes);
-
-	decl String:EntityId[64];
+	new ent = -1;
 	decl String:SectionName[64];
-	Format(EntityId, sizeof(EntityId), "%d", entity);
 
 	for (new i = 0; i < size; i++) {
 
 		//CASection			= GetArrayCell(CommonAffixes, i, 2);
 		//if (GetArraySize(CASection) < 1) continue;
-		GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
-		if (StrContains(SectionName, EntityId, false) == -1) continue;
+		//GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
+		//if (StrContains(SectionName, EntityId, false) == -1) continue;
+		ent = GetArrayCell(Handle:CommonAffixes, i);
+		if (entity != ent) continue;
 		RemoveFromArray(Handle:CommonAffixes, i);
 		break;
 	}
-	for (new i = 1; i <= MaxClients; i++) {
+	/*for (new i = 1; i <= MaxClients; i++) {
 
 		size = GetArraySize(CommonAffixesCooldown[i]);
 		for (new y = 0; y < size; y++) {
@@ -7952,7 +8109,7 @@ stock RemoveCommonAffixes(entity) {
 			RemoveFromArray(Handle:CommonAffixesCooldown[i], y);
 			break;
 		}
-	}
+	}*/
 }
 
 stock OnCommonCreated(entity, bool:bIsDestroyed = false) {
@@ -8319,21 +8476,6 @@ stock FindListPositionBySearchKey(String:SearchKey[], Handle:h_SearchList, block
 		LogMessage("===================================");
 	}
 	//ClearArray(Handle:Section);
-	return -1;
-}
-
-stock GetCommonAffixesPosByEntId(String:SearchKey[], bool:bDebug = false) {
-
-	new size = GetArraySize(Handle:CommonAffixes);
-
-	decl String:text[64];
-	for (new i = 0; i < size; i++) {
-
-		GetArrayString(Handle:CommonAffixes, i, text, sizeof(text));
-		if (bDebug) LogMessage("CommonAffix text: %s (Searching for: %s)", text, SearchKey);
-		if (StrContains(text, SearchKey, false) == -1) continue;
-		return i;
-	}
 	return -1;
 }
 
@@ -9064,22 +9206,16 @@ stock bool:IsClientCleansing(client) {
 }
 
 stock bool:IsActiveAmmoCooldown(client, effect = '0', String:activeTalentSearchKey[] = "none") {
-
 	decl String:result[2][64];
 	decl String:EffectT[4];
 	Format(EffectT, sizeof(EffectT), "%c", effect);
-
 	new size = GetArraySize(PlayerActiveAmmo[client]);
 	new pos = -1;
 	decl String:text[64];
 	for (new i = 0; i < size; i++) {
-
-		GetArrayString(PlayerActiveAmmo[client], i, result[0], sizeof(result[]));
-		ExplodeString(result[0], ":", result, 2, 64);
-
-		pos			= GetMenuPosition(client, result[0]);
-		if (pos == -1) continue;	// wtf?
-
+		pos = GetArrayCell(PlayerActiveAmmo[client], i);
+		GetTalentNameAtMenuPosition(client, pos, result[0], sizeof(result[]));
+		if (pos < 0) continue;	// wtf?
 		ActiveAmmoCooldownKeys[client]				= GetArrayCell(a_Menu_Talents, pos, 0);
 		ActiveAmmoCooldownValues[client]			= GetArrayCell(a_Menu_Talents, pos, 1);
 		if (StrEqual(activeTalentSearchKey, "none")) {
@@ -9154,9 +9290,11 @@ stock DisplayHUD(client, statusType) {
 		//decl String:text2[64];
 		decl String:testelim[1];
 		decl String:EnemyName[64];
-		GetClientAimTargetEx(client, EnemyName, sizeof(EnemyName), true);
+		new Float:TargetPos[3];
+		new enemycombatant = GetAimTargetPosition(client, TargetPos);
+		//GetClientAimTargetEx(client, EnemyName, sizeof(EnemyName), true);
 		//new enemycombatant = LastAttackedUser[client];
-		new enemycombatant = StringToInt(EnemyName);
+		//new enemycombatant = StringToInt(EnemyName);
 		//if (!IsWitch(enemycombatant) && !IsLegitimateClientAlive(enemycombatant) || IsLegitimateClientAlive(enemycombatant) && !IsFakeClient(enemycombatant)) enemycombatant = -1;
 		if (IsCommonInfected(enemycombatant) && !IsSpecialCommon(enemycombatant)) enemycombatant = -1;
 		else if (!IsCommonInfected(enemycombatant) && !IsWitch(enemycombatant) && !IsLegitimateClientAlive(enemycombatant)) enemycombatant = -1;

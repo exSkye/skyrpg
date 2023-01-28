@@ -301,8 +301,10 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			Coords[0] = GetEventFloat(event, "x");
 			Coords[1] = GetEventFloat(event, "y");
 			Coords[2] = GetEventFloat(event, "z");
+			new Float:TargetPos[3];
+			new target = GetAimTargetPosition(attacker, TargetPos);
 
-			if (AllowShotgunToTriggerNodes(attacker)) LastWeaponDamage[attacker] = GetBaseWeaponDamage(attacker, -1, Coords[0], Coords[1], Coords[2], damagetype);
+			if (AllowShotgunToTriggerNodes(attacker)) LastWeaponDamage[attacker] = GetBaseWeaponDamage(attacker, target, Coords[0], Coords[1], Coords[2], damagetype);
 
 			if (iIsBulletTrails[attacker] == 1) {
 				new Float:EyeCoords[3];
@@ -643,9 +645,14 @@ stock bool:AddOTEffect(client, target, String:clientSteamID[], Float:fStrength, 
 		fIntervalTime	= GetAbilityStrengthByTrigger(client, client, "damagetickrate", _, 0, _, _, "d", 1, true);
 		fTargetStrength = GetAbilityStrengthByTrigger(target, target, "incdamagebonus", _, 0, _, _, "d", 1, true);
 	}
-	Format(SearchValue, sizeof(SearchValue), "%3.2f:%3.2f:%d", fIntervalTime, fIntervalTime, iNewEffectStrength);
+	new size = GetArraySize(Handle:EffectOverTime);
+	ResizeArray(Handle:EffectOverTime, size + 1);
+	SetArrayCell(Handle:EffectOverTime, size, fIntervalTime, 0);
+	SetArrayCell(Handle:EffectOverTime, size, fIntervalTime, 1);
+	SetArrayCell(Handle:EffectOverTime, size, iNewEffectStrength, 2);
+	//Format(SearchValue, sizeof(SearchValue), "%3.2f:%3.2f:%d", fIntervalTime, fIntervalTime, iNewEffectStrength);
 	// a player could have multiple minor buffs or effects over time active at a time on them.
-	SetTrieString(EffectOverTime, SearchKey, SearchValue);
+	//SetTrieString(EffectOverTime, SearchKey, SearchValue);
 	GetAbilityStrengthByTrigger(client, client, "damagebonus", _, 0, _, _, "d", 1, true);
 }
 
@@ -888,34 +895,30 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 
 	//Format(EffectT, sizeof(EffectT), "%c", effect);
 	for (new i = AmmoPosition; i < GetArraySize(SpecialAmmoData); i++) {
-
 		if (i < 0) i = 0;
 		if (AmmoPosition != -1 && i != AmmoPosition) continue;
+		EntityPos[0] = GetArrayCell(SpecialAmmoData, i, 0);
+		EntityPos[1] = GetArrayCell(SpecialAmmoData, i, 1);
+		EntityPos[2] = GetArrayCell(SpecialAmmoData, i, 2);
 
-		GetArrayString(Handle:SpecialAmmoData, i, text, sizeof(text));
-		ExplodeString(text, "}", result, 7, 512);
-
-		ExplodeString(result[0], " ", t_pos, 5, 512);
-		EntityPos[0] = StringToFloat(t_pos[0]);
-		EntityPos[1] = StringToFloat(t_pos[1]);
-		EntityPos[2] = StringToFloat(t_pos[2]);
-		ExplodeString(result[1], "{", TalentInfo, 4, 512);
 		// TalentInfo[0] = TalentName of ammo.
 		// TalentInfo[1] = Talent Strength (so use StringToInt)
 		// TalentInfo[2] = Talent Damage
 		// TalentInfo[3] = Talent Interval
-		owner = FindClientWithAuthString(result[2]);
-		if (!IsLegitimateClientAlive(owner) || GetClientTeam(owner) != TEAM_SURVIVOR || StringToFloat(TalentInfo[3]) <= 0.0) continue;
+		owner = FindClientByIdNumber(GetArrayCell(SpecialAmmoData, i, 7));
 
-		pos			= GetMenuPosition(owner, TalentInfo[0]);
+		if (!IsLegitimateClientAlive(owner) || GetArrayCell(SpecialAmmoData, i, 6) <= 0.0) continue;
+
+		pos			= GetArrayCell(SpecialAmmoData, i, 3);
 		IsClientInRangeSAKeys[owner]				= GetArrayCell(a_Menu_Talents, pos, 0);
 		IsClientInRangeSAValues[owner]				= GetArrayCell(a_Menu_Talents, pos, 1);
 		FormatKeyValue(value, sizeof(value), IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "ammo effect?");
 		if (!StrEqual(value, EffectT, true)) continue;
 		
+		GetTalentNameAtMenuPosition(client, GetArrayCell(SpecialAmmoData, i, 3), TalentInfo[0], sizeof(TalentInfo[]));
+
 		if (GetSpecialAmmoStrength(owner, TalentInfo[0], 3) == -1.0) continue;
 		if (IsPvP[owner] != 0 && client != owner) continue;
-		
 		t_Range		= GetSpecialAmmoStrength(owner, TalentInfo[0], 3);
 
 		if (GetVectorDistance(ClientPos, EntityPos) > (t_Range / 2)) continue;
@@ -1260,16 +1263,34 @@ stock bool:CastSpell(client, target = -1, String:TalentName[], Float:TargetPos[3
 		if (IsLegitimateClient(i) && !IsFakeClient(i)) DrawSpecialAmmoTarget(i, _, _, ClientMenuPosition, TargetPos[0], TargetPos[1], TargetPos[2], f_Interval, client, TalentName, target);
 	}
 
-	new bulletStrength = RoundToCeil(GetBaseWeaponDamage(client, -1, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET) * 0.1);
+	new bulletStrength = RoundToCeil(GetBaseWeaponDamage(client, target, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET) * 0.1);
 	bulletStrength = RoundToCeil(GetAbilityStrengthByTrigger(client, -2, "D", _, bulletStrength, _, _, "D", 1, true));
 	new Float:amSTR = GetSpecialAmmoStrength(client, TalentName, 5);
 	if (amSTR > 0.0) bulletStrength = RoundToCeil(bulletStrength * amSTR);
-	decl String:SpecialAmmoData_s[512];
+	//decl String:SpecialAmmoData_s[512];
 	//Format(SpecialAmmoData_s, sizeof(SpecialAmmoData_s), "%3.3f %3.3f %3.3f}%s{%d{%d{%3.2f}%s}%3.2f}%d}%3.2f}%d", TargetPos[0], TargetPos[1], TargetPos[2], TalentName, GetTalentStrength(client, TalentName), GetBaseWeaponDamage(client, -1, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET), f_Interval, key, SpellCooldown, -1, GetSpecialAmmoStrength(client, TalentName, 1), target);
-	Format(SpecialAmmoData_s, sizeof(SpecialAmmoData_s), "%3.3f %3.3f %3.3f}%s{%d{%d{%3.2f}%s}%3.2f}%d}%3.2f}%d", TargetPos[0], TargetPos[1], TargetPos[2], TalentName, GetTalentStrength(client, TalentName), bulletStrength, f_Interval, key, f_TotalTime, -1, GetSpecialAmmoStrength(client, TalentName, 1), target);
+	//Format(SpecialAmmoData_s, sizeof(SpecialAmmoData_s), "%3.3f %3.3f %3.3f}%s{%d{%d{%3.2f}%s}%3.2f}%d}%3.2f}%d", TargetPos[0], TargetPos[1], TargetPos[2], TalentName, GetTalentStrength(client, TalentName), bulletStrength, f_Interval, key, f_TotalTime, -1, GetSpecialAmmoStrength(client, TalentName, 1), target);
 												//13908.302 2585.922 32.133}adren ammo{1{20{15.00}STEAM_1:1:440606022}15.00}-1}30.00}-1
-	//PrintToChat(client, "%s", SpecialAmmoData_s);
-	PushArrayString(Handle:SpecialAmmoData, SpecialAmmoData_s);
+	//PrintToChatAll("%d", StringToInt(key[10]));
+	new sadsize = GetArraySize(SpecialAmmoData);
+
+	ResizeArray(SpecialAmmoData, sadsize + 1);
+	SetArrayCell(SpecialAmmoData, sadsize, TargetPos[0], 0);
+	SetArrayCell(SpecialAmmoData, sadsize, TargetPos[1], 1);
+	SetArrayCell(SpecialAmmoData, sadsize, TargetPos[2], 2);
+	SetArrayCell(SpecialAmmoData, sadsize, ClientMenuPosition, 3); //GetTalentNameAtMenuPosition(client, pos, String:TheString, stringSize) instead of storing TalentName
+	SetArrayCell(SpecialAmmoData, sadsize, GetTalentStrength(client, TalentName), 4);
+	SetArrayCell(SpecialAmmoData, sadsize, bulletStrength, 5);
+	SetArrayCell(SpecialAmmoData, sadsize, f_Interval, 6);
+	SetArrayCell(SpecialAmmoData, sadsize, StringToInt(key[10]), 7);	// only captures the #ID: 440606022 - is faster than parsing a string every time.
+	SetArrayCell(SpecialAmmoData, sadsize, f_TotalTime, 8);
+	SetArrayCell(SpecialAmmoData, sadsize, -1, 9);
+	SetArrayCell(SpecialAmmoData, sadsize, GetSpecialAmmoStrength(client, TalentName, 1), 10);	// float.
+	SetArrayCell(SpecialAmmoData, sadsize, target, 11);
+
+
+
+	//PushArrayString(Handle:SpecialAmmoData, SpecialAmmoData_s);
 	return true;
 }
 
@@ -1389,26 +1410,27 @@ stock DrawSpecialAmmoTarget(TargetClient, bool:IsDebugMode=false, bool:IsValidTa
 	}
 	new Float:AfxRange			= GetSpecialAmmoStrength(client, TalentName, 3);
 
-	decl String:AfxDrawPos[64];
-	decl String:AfxDrawColour[64];
-	FormatKeyValue(AfxDrawPos, sizeof(AfxDrawPos), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw pos?");
-	if (IsDebugMode) FormatKeyValue(AfxDrawColour, sizeof(AfxDrawColour), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "invalid target colour?");
-	else FormatKeyValue(AfxDrawColour, sizeof(AfxDrawColour), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "valid target colour?");
-	// If the above two fields return -1 (meaning they are omitted) we assume it is a single-target-only ability.
-
-	if (StrEqual(AfxDrawColour, "-1", false)) return -1;		// if there's no colour, we return otherwise you'll get errors like this: TE_Send Exception reported: No TempEntity call is in progress (return 0 here would cause endless loop set to -1 as it is ignored i broke the golden rule lul)
-	
 	new Float:AfxRangeBonus = GetAbilityStrengthByTrigger(client, TargetClient, "aamRNG", _, 0, _, _, "d", 1, true);
 	if (AfxRangeBonus > 0.0) AfxRangeBonus *= (1.0 + AfxRangeBonus);
 	new Float:HighlightTime = fAmmoHighlightTime;
 
-	if (CurrentPosEx != -1) {
-		CreateRingSolo(-1, AfxRange, AfxDrawColour, AfxDrawPos, false, f_ActiveTime, TargetClient, PosX, PosY, PosZ);
-	}
-	else {
+	decl String:AfxDrawPos[64];
+	decl String:AfxDrawColour[64];
+	new drawpos = 0;
+	new drawcolor = 0;
+	while (drawpos >= 0 && drawcolor >= 0) {
+		drawpos = FormatKeyValue(AfxDrawPos, sizeof(AfxDrawPos), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw pos?", _, _, drawpos);
+		drawcolor = FormatKeyValue(AfxDrawColour, sizeof(AfxDrawColour), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw colour?", _, _, drawcolor);
+		if (drawpos < 0 || drawcolor < 0) return -1;
+		//if (StrEqual(AfxDrawColour, "-1", false)) return -1;		// if there's no colour, we return otherwise you'll get errors like this: TE_Send Exception reported: No TempEntity call is in progress (return 0 here would cause endless loop set to -1 as it is ignored i broke the golden rule lul)
+		if (CurrentPosEx != -1) {
+			CreateRingSoloEx(-1, AfxRange, AfxDrawColour, AfxDrawPos, false, f_ActiveTime, TargetClient, PosX, PosY, PosZ);
+		}
+		else {
 
-		CreateRingSolo(Target, AfxRange, AfxDrawColour, AfxDrawPos, false, HighlightTime, TargetClient);
-		IsSpecialAmmoEnabled[client][3] = Target * 1.0;
+			CreateRingSoloEx(Target, AfxRange, AfxDrawColour, AfxDrawPos, false, HighlightTime, TargetClient);
+			IsSpecialAmmoEnabled[client][3] = Target * 1.0;
+		}
 	}
 	return 2;
 }

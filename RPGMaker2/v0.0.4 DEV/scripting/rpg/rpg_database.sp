@@ -257,9 +257,6 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 	decl String:NewValue[64];
 
 	new size			=	GetArraySize(a_Menu_Talents);
-	nodesInExistence	=	0;
-	//new TheValue		=	0;
-	new nodeLayer		=	0;	// this will hide nodes not currently available from players total node count.
 	for (new i = 0; i < size; i++) {
 
 		DatabaseKeys			=	GetArrayCell(a_Menu_Talents, i, 0);
@@ -270,17 +267,6 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 
 		GetArrayString(Handle:DatabaseSection, 0, text, sizeof(text));
 		PushArrayString(Handle:a_Database_Talents_Defaults_Name, text);
-		/*if (GetKeyValueInt(DatabaseKeys, DatabaseValues, "is survivor class role?") == 1) {
-
-			PushArrayString(a_ClassNames, text);
-			//continue;
-		}*/
-
-		//FormatKeyValue(NewValue, sizeof(NewValue), DatabaseKeys, DatabaseValues, "ability inherited?");
-		//TheValue	= StringToInt(NewValue);
-		nodeLayer = GetKeyValueInt(DatabaseKeys, DatabaseValues, "layer?");
-		if (nodeLayer >= 1 && nodeLayer <= iMaxLayers) nodesInExistence++;
-
 		if (GenerateDB == 1) {
 
 			Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
@@ -328,6 +314,8 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 	ResizeArray(Handle:a_Database_PlayerTalents_Bots, size);
 	ResizeArray(Handle:PlayerAbilitiesCooldown_Bots, size);
 	ResizeArray(Handle:PlayerAbilitiesImmune_Bots, size);
+
+	GetNodesInExistence();
 }
 
 public QuerySaveNewPlayer(Handle:owner, Handle:hndl, const String:error[], any:client) {
@@ -1384,6 +1372,16 @@ stock FirstUserDirectorPriority() {
 	}
 }
 
+stock FindClientByIdNumber(searchId) {
+	decl String:AuthId[64];
+	for (new i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i)) continue;
+		GetClientAuthString(i, AuthId, sizeof(AuthId));
+		if (searchId == StringToInt(AuthId[10])) return i;
+	}
+	return -1;
+}
+
 stock FindClientWithAuthString(String:key[], bool:MustBeExact = false) {
 
 	decl String:AuthId[512];
@@ -2096,6 +2094,7 @@ public OnClientDisconnect(client)
 			KillTimer(ISEXPLODE[client]);
 			ISEXPLODE[client] = INVALID_HANDLE;
 		}
+		bTimersRunning[client] = false;
 		fOnFireDebuff[client] = 0.0;
 		IsGroupMemberTime[client] = 0;
 		if (ZoomcheckDelayer[client] != INVALID_HANDLE) {
@@ -2219,6 +2218,7 @@ stock OnClientLoaded(client, bool:IsHooked = false) {
 
 	//if (!IsClientConnected(client)) return;
 	if (b_IsLoaded[client]) return;
+	bTimersRunning[client] = false;
 	b_IsLoaded[client] = true;
 	IsGroupMemberTime[client] = 0;
 	Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
