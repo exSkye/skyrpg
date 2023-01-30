@@ -1,6 +1,6 @@
  /**
  * =============================================================================
- * Ready Up - RPG (C)2017 Michael toth
+ * Ready Up - RPG By Michael toth
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -40,7 +40,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"Dev build v0.0.5.7"
+#define PLUGIN_VERSION				"Dev build v0.0.5.8"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -227,7 +227,6 @@ new bool:bIsCrushCooldown[MAXPLAYERS + 1];
 new bool:bIsBurnCooldown[MAXPLAYERS + 1];
 new bool:ISBILED[MAXPLAYERS + 1];
 new Rating[MAXPLAYERS + 1];
-new String:MyAmmoEffects[MAXPLAYERS + 1];
 new Float:RoundExperienceMultiplier[MAXPLAYERS + 1];
 new BonusContainer[MAXPLAYERS + 1];
 new CurrentMapPosition;
@@ -300,6 +299,7 @@ new Float:ISEXPLODETIME[MAXPLAYERS + 1];
 new Handle:ISEXPLODE[MAXPLAYERS + 1];
 new Handle:ISBLIND[MAXPLAYERS + 1];
 new Handle:EntityOnFire;
+new Handle:EntityOnFireName;
 new Handle:CommonInfected;
 new Handle:RCAffixes[MAXPLAYERS + 1];
 new Handle:h_CommonKeys;
@@ -677,11 +677,6 @@ new AllowedMobSpawnFinale;
 new AllowedPanicInterval;
 new RespawnQueue;
 new MaximumPriority;
-new Float:ConsMult;
-new Float:AgilMult;
-new Float:ResiMult;
-new Float:TechMult;
-new Float:EnduMult;
 new Float:fUpgradeExpCost;
 new iHandicapLevelDifference;
 new iWitchHealthBase;
@@ -767,7 +762,6 @@ new Handle:hWeaponList[MAXPLAYERS + 1];
 new Handle:GCVKeys[MAXPLAYERS + 1];
 new Handle:GCVValues[MAXPLAYERS + 1];
 new Handle:GCVSection[MAXPLAYERS + 1];
-
 new MyStatusEffects[MAXPLAYERS + 1];
 new iShowLockedTalents;
 new Handle:GCMKeys[MAXPLAYERS + 1];
@@ -789,7 +783,6 @@ new Float:fTeamRatingBonus;
 //new Float:fNoobAssistanceHealing;
 //new Float:fNoobAssistanceRecovery;
 new Float:fRatingPercentLostOnDeath;
-new Float:fHealSizeDefault;
 new PlayerCurrentMenuLayer[MAXPLAYERS + 1];
 new iMaxLayers;
 new Handle:TranslationOTNKeys[MAXPLAYERS + 1];
@@ -806,6 +799,7 @@ new playerPageOfCharacterSheet[MAXPLAYERS + 1];
 new nodesInExistence;
 new iShowTotalNodesOnTalentTree;
 new Handle:PlayerEffectOverTime[MAXPLAYERS + 1];
+new Handle:PlayerEffectOverTimeEffects[MAXPLAYERS + 1];
 new Handle:CheckEffectOverTimeKeys[MAXPLAYERS + 1];
 new Handle:CheckEffectOverTimeValues[MAXPLAYERS + 1];
 new Float:fSpecialAmmoInterval;
@@ -877,9 +871,7 @@ new iCanJetpackWhenInCombat;
 new Handle:ZoomcheckDelayer[MAXPLAYERS + 1];
 new Handle:zoomCheckList;
 new Float:fquickScopeTime;
-new Handle:holdingFireDelayer[MAXPLAYERS + 1];
 new Handle:holdingFireList;
-new LastBulletCheck[MAXPLAYERS + 1];
 new iEnsnareLevelMultiplier;
 new Handle:CommonInfectedHealth;
 new lastBaseDamage[MAXPLAYERS + 1];
@@ -894,6 +886,8 @@ new Handle:TalentAtMenuPositionSection[MAXPLAYERS + 1];
 new iStrengthOnSpawnIsStrength;
 new Handle:SetNodesKeys;
 new Handle:SetNodesValues;
+new Float:fDrawAbilityInterval;
+new Float:fDrawHudInterval;
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1045,7 +1039,6 @@ public OnPluginStart() {
 	staggerBuffer = CreateConVar("sm_vscript_res", "", "returns results from vscript check on stagger");
 }
 
-
 public Action:CMD_STAGGERTEST(client, args) {
 	/*new target = GetClientAimTarget(client, false);
 	decl String:targetName[64];
@@ -1088,14 +1081,10 @@ public Action:Cmd_GetOrigin(client, args) {
 }
 
 public Action:CMD_BlockVotes(client, args) {
-
-
-
 	return Plugin_Handled;
 }
 
 public ReadyUp_SetSurvivorMinimum(minSurvs) {
-
 	iMinSurvivors = minSurvs;
 }
 
@@ -1114,8 +1103,8 @@ stock UnhookAll() {
 }
 
 public ReadyUp_TrueDisconnect(client) {
-
 	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
+
 	//ChangeHook(client);
 	staggerCooldownOnTriggers[client] = false;
 	ISBILED[client] = false;
@@ -1167,15 +1156,12 @@ public ReadyUp_TrueDisconnect(client) {
 //}
 
 public OnAllPluginsLoaded() {
-
 	OnMapStartFunc();
 	CheckDifficulty();
 }
 
 stock OnMapStartFunc() {
-
 	if (!b_MapStart) {
-		
 		b_MapStart								= true;
 		CreateTimer(1.0, Timer_CheckDifficulty, _, TIMER_REPEAT);
 		//LoadConfigValues();
@@ -1251,6 +1237,7 @@ stock OnMapStartFunc() {
 		if (h_CommonValues == INVALID_HANDLE || !b_FirstLoad) h_CommonValues = CreateArray(32);
 		if (CommonInfected == INVALID_HANDLE || !b_FirstLoad) CommonInfected = CreateArray(32);
 		if (EntityOnFire == INVALID_HANDLE || !b_FirstLoad) EntityOnFire = CreateArray(32);
+		if (EntityOnFireName == INVALID_HANDLE || !b_FirstLoad) EntityOnFireName = CreateArray(32);
 		if (CommonDrawKeys == INVALID_HANDLE || !b_FirstLoad) CommonDrawKeys = CreateArray(32);
 		if (CommonDrawValues == INVALID_HANDLE || !b_FirstLoad) CommonDrawValues = CreateArray(32);
 		if (ItemDropArray == INVALID_HANDLE || !b_FirstLoad) ItemDropArray = CreateArray(32);
@@ -1427,6 +1414,7 @@ stock OnMapStartFunc() {
 			if (SurvivorsIgnored[i] == INVALID_HANDLE || !b_FirstLoad) SurvivorsIgnored[i] = CreateArray(32);
 			if (MyGroup[i] == INVALID_HANDLE || !b_FirstLoad) MyGroup[i] = CreateArray(32);
 			if (PlayerEffectOverTime[i] == INVALID_HANDLE || !b_FirstLoad) PlayerEffectOverTime[i] = CreateArray(32);
+			if (PlayerEffectOverTimeEffects[i] == INVALID_HANDLE || !b_FirstLoad) PlayerEffectOverTimeEffects[i] = CreateArray(32);
 			if (CheckEffectOverTimeKeys[i] == INVALID_HANDLE || !b_FirstLoad) CheckEffectOverTimeKeys[i] = CreateArray(32);
 			if (CheckEffectOverTimeValues[i] == INVALID_HANDLE || !b_FirstLoad) CheckEffectOverTimeValues[i] = CreateArray(32);
 			if (FormatEffectOverTimeKeys[i] == INVALID_HANDLE || !b_FirstLoad) FormatEffectOverTimeKeys[i] = CreateArray(32);
@@ -1506,6 +1494,14 @@ public OnMapStart() {
 	b_IsRoundIsOver					= true;
 	b_IsCheckpointDoorStartOpened	= false;
 	b_IsMissionFailed				= false;
+	ClearArray(CommonInfected);
+	ClearArray(CommonInfectedHealth);
+	ClearArray(Handle:SpecialAmmoData);
+	ClearArray(CommonAffixes);
+	ClearArray(WitchList);
+	ClearArray(EffectOverTime);
+	ClearArray(TimeOfEffectOverTime);
+	ClearArray(Handle:StaggeredTargets);
 
 	GetCurrentMap(TheCurrentMap, sizeof(TheCurrentMap));
 	Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "%srpg/%s.cfg", ConfigPathDirectory, TheCurrentMap);
@@ -1643,7 +1639,7 @@ public ReadyUp_ReadyUpStart() {
 	for (new i = 1; i <= MaxClients; i++) {
 
 		if (IsClientInGame(i)) {
-			if (GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
+			//if (GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
 			if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 
 			//if (GetClientTeam(i) == TEAM_SURVIVOR && !b_IsLoaded[i]) IsClientLoadedEx(i);
@@ -1959,7 +1955,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		if (!bIsSoloHandicap && RespawnQueue > 0) CreateTimer(1.0, Timer_RespawnQueue, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		RaidInfectedBotLimit();
 		CreateTimer(1.0, Timer_StartPlayerTimers, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-
 		//CreateTimer(1.0, Timer_ShowHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//CreateTimer(1.0, Timer_DisplayHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//CreateTimer(1.0, Timer_AwardSkyPoints, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -1979,12 +1974,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			CreateTimer(0.5, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 
-
-
-
-
-
-
 		ClearRelevantData();
 		LastLivingSurvivor = 1;
 		new size = GetArraySize(a_DirectorActions);
@@ -2003,6 +1992,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		}
 	}
 }
+
 
 stock RefreshSurvivorBots() {
 
@@ -2077,7 +2067,6 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 			new size =	GetArraySize(a_Menu_Talents);
 			new RequiresTarget = 0;
 			new AbilityTalent = 0;
-			decl String:tTargetPos[3][64];
 			new Float:TargetPos[3];
 			decl String:TalentName[64];
 
@@ -2102,8 +2091,8 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 				else {
 					RequiresTarget = GetKeyValueInt(CastKeys[client], CastValues[client], "is single target?");
 					if (RequiresTarget > 0) {
-						GetClientAimTargetEx(client, actionpos, TheSize, true);
-						RequiresTarget = StringToInt(actionpos);
+						//GetClientAimTargetEx(client, actionpos, TheSize, true);
+						RequiresTarget = GetAimTargetPosition(client, TargetPos);//StringToInt(actionpos);
 						if (IsLegitimateClientAlive(RequiresTarget)) {
 							if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos);
 							else {
@@ -2112,11 +2101,12 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 						}
 					}
 					else {
-						GetClientAimTargetEx(client, actionpos, TheSize);
+						GetAimTargetPosition(client, TargetPos);
+						/*GetClientAimTargetEx(client, actionpos, TheSize);
 						ExplodeString(actionpos, " ", tTargetPos, 3, 64);
 						TargetPos[0] = StringToFloat(tTargetPos[0]);
 						TargetPos[1] = StringToFloat(tTargetPos[1]);
-						TargetPos[2] = StringToFloat(tTargetPos[2]);
+						TargetPos[2] = StringToFloat(tTargetPos[2]);*/
 
 						if (AbilityTalent != 1) CastSpell(client, _, TalentName, TargetPos);
 						else {
@@ -2539,7 +2529,6 @@ public Action:Timer_SaveAndClear(Handle:timer) {
 				// So, the round ends due a failed mission, whether it's coop or survival, and we reset all players ratings.
 				VerifyMinimumRating(i, true);
 			}
-
 			if(iChaseEnt[i] && EntRefToEntIndex(iChaseEnt[i]) != INVALID_ENT_REFERENCE) AcceptEntityInput(iChaseEnt[i], "Kill");
 			iChaseEnt[i] = -1;
 
@@ -2562,7 +2551,6 @@ stock CallRoundIsOver() {
 			GetArrayString(persistentCirculation, i, text, sizeof(text));
 			ExplodeString(text, ":", pText, 2, 64);
 			pEnt = StringToInt(pText[0]);
-
 			if (IsValidEntity(pEnt)) AcceptEntityInput(pEnt, "Kill");
 		}
 		ClearArray(persistentCirculation);
@@ -2576,21 +2564,22 @@ stock CallRoundIsOver() {
 		ClearArray(CommonInfectedHealth);
 		ClearArray(Handle:SpecialAmmoData);
 		ClearArray(CommonAffixes);
+		ClearArray(WitchList);
+		ClearArray(EffectOverTime);
+		ClearArray(TimeOfEffectOverTime);
+		ClearArray(Handle:StaggeredTargets);
 		//SetSurvivorsAliveHostname();
 		if (!b_IsMissionFailed) {
 			//InfectedLevel = HumanSurvivorLevels();
-
 			if (!IsSurvivalMode) {
-
 				for (new i = 1; i <= MaxClients; i++) {
-
 					if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
-
+						ClearArray(WitchDamage[i]);
+						ClearArray(InfectedHealth[i]);
+						ClearArray(SpecialCommon[i]);
 						iThreatLevel[i] = 0;
 						bIsInCombat[i] = false;
-					
 						if (IsPlayerAlive(i)) {
-
 							if (Rating[i] < 0 && CurrentMapPosition != 1) VerifyMinimumRating(i);
 							if (RoundExperienceMultiplier[i] < 0.0) RoundExperienceMultiplier[i] = 0.0;
 							if (CurrentMapPosition != 1) {
@@ -2620,7 +2609,6 @@ stock CallRoundIsOver() {
 			Minutes++;
 			Seconds -= 60;
 		}
-
 		//common is 0
 		//super is 1
 		//witch is 2
@@ -2670,6 +2658,7 @@ stock CallRoundIsOver() {
 		ClearArray(Handle:WitchList);
 		ClearArray(Handle:CommonList);*/
 		ClearArray(Handle:EntityOnFire);
+		ClearArray(Handle:EntityOnFireName);
 		ClearArray(Handle:CommonInfectedQueue);
 		ClearArray(Handle:SuperCommonQueue);
 		ClearArray(Handle:StaggeredTargets);
@@ -2943,7 +2932,6 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 stock LoadMainConfig() {
 	GetConVarString(FindConVar("z_difficulty"), sServerDifficulty, sizeof(sServerDifficulty));
 	if (strlen(sServerDifficulty) < 4) GetConfigValue(sServerDifficulty, sizeof(sServerDifficulty), "server difficulty?");
-	fHealSizeDefault					= GetConfigValueFloat("default aura size for heal types?");
 	fProficiencyExperienceMultiplier 	= GetConfigValueFloat("proficiency requirement multiplier?");
 	fProficiencyExperienceEarned 		= GetConfigValueFloat("experience multiplier proficiency?");
 	fRatingPercentLostOnDeath			= GetConfigValueFloat("rating percentage lost on death?");
@@ -3076,11 +3064,6 @@ stock LoadMainConfig() {
 	AllowedPanicInterval				= GetConfigValueInt("mega mob max interval base?");
 	RespawnQueue						= GetConfigValueInt("survivor respawn queue?");
 	MaximumPriority						= GetConfigValueInt("director priority maximum?");
-	ConsMult							= GetConfigValueFloat("constitution ab multiplier?");
-	AgilMult							= GetConfigValueFloat("agility ab multiplier?");
-	ResiMult							= GetConfigValueFloat("resilience ab multiplier?");
-	TechMult							= GetConfigValueFloat("technique ab multiplier?");
-	EnduMult							= GetConfigValueFloat("endurance ab multiplier?");
 	fUpgradeExpCost						= GetConfigValueFloat("upgrade experience cost?");
 	iHandicapLevelDifference			= GetConfigValueInt("handicap level difference required?");
 	iWitchHealthBase					= GetConfigValueInt("base witch health?");
@@ -3139,7 +3122,9 @@ stock LoadMainConfig() {
 	iMaxLayers							= GetConfigValueInt("max talent layers?");
 	iCommonInfectedBaseDamage			= GetConfigValueInt("common infected base damage?");
 	iShowTotalNodesOnTalentTree			= GetConfigValueInt("show upgrade maximum by nodes?");
+	fDrawHudInterval					= GetConfigValueFloat("hud display tick rate?");
 	fSpecialAmmoInterval				= GetConfigValueFloat("special ammo tick rate?");
+	fDrawAbilityInterval				= GetConfigValueFloat("ability visual effect tick rate?");
 	fEffectOverTimeInterval				= GetConfigValueFloat("effect over time tick rate?");
 	//fStaggerTime						= GetConfigValueFloat("stagger debuff time?");
 	fStaggerTickrate					= GetConfigValueFloat("stagger tickrate?");

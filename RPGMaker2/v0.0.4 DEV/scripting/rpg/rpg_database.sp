@@ -560,16 +560,16 @@ stock ResetData(client) {
 
 	RefreshSurvivor(client);
 	bIsCrushCooldown[client]		= false;
-	Points[client]					= 0.0;
-	SlatePoints[client]				= 0;
-	FreeUpgrades[client]			= 0;
+	//Points[client]					= 0.0;
+	//SlatePoints[client]				= 0;
+	//FreeUpgrades[client]			= 0;
 	b_IsDirectorTalents[client]		= false;
 	b_IsJumping[client]				= false;
 	ModifyGravity(client);
 	ResetCoveredInBile(client);
 	SpeedMultiplierBase[client]		= 1.0;
 	if (IsLegitimateClientAlive(client) && !IsGhost(client)) SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", SpeedMultiplierBase[client]);
-	TimePlayed[client]				= 0;
+	//TimePlayed[client]				= 0;
 	t_Distance[client]				= 0;
 	t_Healing[client]				= 0;
 	b_IsBlind[client]				= false;
@@ -867,7 +867,7 @@ stock CreateNewPlayerEx(client) {
 	//SQL_EscapeString(hDatabase, tquery, tquery, sizeof(tquery));
 	SQL_TQuery(hDatabase, QuerySaveNewPlayer, tquery, client);
 
-	CreateTimer(5.0, Timer_LoggedUsers, client, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(1.0, Timer_LoggedUsers, client, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Query_CheckIfDataExists(Handle:owner, Handle:hndl, const String:error[], any:client) {
@@ -1229,7 +1229,7 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	SQL_TQuery(hDatabase, QueryResults8, tquery, client);
 	if (IsNewPlayer) {
 
-		CreateTimer(5.0, Timer_LoadNewPlayer, client, TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(1.0, Timer_LoadNewPlayer, client, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	//else if (StrContains(key, "BOT", false) != -1 && IsSurvivorBot(client) || StrContains(key, "BOT", false) == -1 && !IsFakeClient(client)) {
 
@@ -2094,7 +2094,6 @@ public OnClientDisconnect(client)
 			KillTimer(ISEXPLODE[client]);
 			ISEXPLODE[client] = INVALID_HANDLE;
 		}
-		bTimersRunning[client] = false;
 		fOnFireDebuff[client] = 0.0;
 		IsGroupMemberTime[client] = 0;
 		if (ZoomcheckDelayer[client] != INVALID_HANDLE) {
@@ -2109,34 +2108,35 @@ public OnClientDisconnect(client)
 		}*/
 		if(iChaseEnt[client] && EntRefToEntIndex(iChaseEnt[client]) != INVALID_ENT_REFERENCE) AcceptEntityInput(iChaseEnt[client], "Kill");
 		iChaseEnt[client] = -1;
-		bIsHideThreat[client] = true;
+		//bIsHideThreat[client] = true;
 		iThreatLevel[client] = 0;
 		//IsLoadingClassData[client] = false;
 		bRushingNotified[client] = false;
 		ClientActiveStance[client] = 0;
-		ExperienceLevel[client] = 0;
-		ExperienceOverall[client] = 0;
+		//ExperienceLevel[client] = 0;
+		//ExperienceOverall[client] = 0;
 		//bIsNewClass[client] = false;
 		b_IsLoadingTrees[client] = false;
 		b_IsLoadingStore[client] = false;
 		b_IsLoading[client] = false;
 		bIsTalentTwo[client] = false;
-		b_IsLoaded[client] = false;
+		bTimersRunning[client] = false;
+		//b_IsLoaded[client] = false;
 		bIsMeleeCooldown[client] = false;
 		shotgunCooldown[client] = false;
 		b_IsInSaferoom[client] = false;
-		b_IsArraysCreated[client] = false;
+		//b_IsArraysCreated[client] = false;
 		ResetData(client);
-		PlayerLevel[client] = 0;
-		Rating[client] = 0;
-		RatingHandicap[client] = 0;
-		bIsHandicapLocked[client] = false;
-		BestRating[client] = 0;
-		DisplayActionBar[client] = false;
-		MyBirthday[client] = 0;
+		//PlayerLevel[client] = 0;
+		//Rating[client] = 0;
+		//RatingHandicap[client] = 0;
+		//bIsHandicapLocked[client] = false;
+		//BestRating[client] = 0;
+		//DisplayActionBar[client] = false;
+		//MyBirthday[client] = 0;
 		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 		//Format(ClassLoadQueue[client], sizeof(ClassLoadQueue[]), "none");
-		IsGroupMember[client] = false;
+		//IsGroupMember[client] = false;
 		if (IsPlayerAlive(client) && eBackpack[client] > 0 && IsValidEntity(eBackpack[client])) {
 
 			AcceptEntityInput(eBackpack[client], "Kill");
@@ -2155,7 +2155,7 @@ public ReadyUp_IsClientLoaded(client) {
 
 stock RUP_IsClientLoaded(client) {
 
-	CreateTimer(5.0, Timer_InitializeClientLoad, client, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(1.0, Timer_InitializeClientLoad, client, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
@@ -2170,6 +2170,7 @@ public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
 	if (b_IsLoaded[client]) return Plugin_Stop;
 	//ToggleTank(client, true);
 	//ChangeHook(client);
+	bTimersRunning[client] = false;
 	b_IsLoaded[client] = false;
 	b_IsInSaferoom[client] = true;
 	bIsInCheckpoint[client] = false;
@@ -2178,7 +2179,6 @@ public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
 	//bIsNewClass[client] = false;
 	bIsNewPlayer[client] = false;
 	IsPvP[client] = 0;
-	b_IsLoaded[client] = false;
 	b_IsLoadingTrees[client] = false;
 	b_IsLoadingStore[client] = false;
 	b_IsLoading[client] = false;
@@ -2217,7 +2217,10 @@ stock IsClientLoadedEx(client) {
 stock OnClientLoaded(client, bool:IsHooked = false) {
 
 	//if (!IsClientConnected(client)) return;
-	if (b_IsLoaded[client]) return;
+	if (b_IsLoaded[client]) {
+		if (GetClientTeam(client) == TEAM_SURVIVOR) GiveProfileItems(client);
+		return;
+	}
 	bTimersRunning[client] = false;
 	b_IsLoaded[client] = true;
 	IsGroupMemberTime[client] = 0;

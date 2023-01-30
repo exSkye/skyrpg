@@ -397,9 +397,13 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		GetAbilityStrengthByTrigger(victim, attacker, "H", _, 0);
 	}
 	if (isshoved == 2 && IsLegitimateClientAlive(attacker) && IsCommonInfected(victim) && !IsCommonStaggered(victim)) {
-		decl String:staggerData[64];
-		Format(staggerData, sizeof(staggerData), "%d:2.0", victim);
-		PushArrayString(StaggeredTargets, staggerData);
+		//decl String:staggerData[64];
+		//Format(staggerData, sizeof(staggerData), "%d:2.0", victim);
+		//PushArrayString(StaggeredTargets, staggerData);
+		new staggeredSize = GetArraySize(StaggeredTargets);
+		ResizeArray(StaggeredTargets, staggeredSize + 1);
+		SetArrayCell(StaggeredTargets, staggeredSize, victim, 0);
+		SetArrayCell(StaggeredTargets, staggeredSize, 2.0, 1);
 	}
 	if (StrEqual(event_name, "weapon_reload")) {
 		if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR) {
@@ -656,70 +660,6 @@ stock bool:AddOTEffect(client, target, String:clientSteamID[], Float:fStrength, 
 	GetAbilityStrengthByTrigger(client, client, "damagebonus", _, 0, _, _, "d", 1, true);
 }
 
-stock bool:AnyBiledSurvivors() {
-
-	new size = GetArraySize(Handle:CoveredInVomit);
-	decl String:text[512];
-	decl String:result[2][64];
-	//new client = -1;
-
-	for (new i = 0; i < size; i++) {
-
-		GetArrayString(Handle:CoveredInVomit, i, text, sizeof(text));
-		ExplodeString(text, "}", result, 2, 64);
-		//client = FindClientWithAuthString(result[0]);
-		if (IsLegitimateClientAlive(i)) return true;
-	}
-	return false;
-}
-
-stock bool:IsCoveredInVomit(client, owner = -1, bool:IsDestroy = false) {
-
-	if (!IsLegitimateClient(client)) return false;
-
-	//new size = GetArraySize(Handle:CoveredInVomit);
-	decl String:text[512];
-	decl String:result[2][64];
-	decl String:key[512];
-	decl String:TheName[64];
-	if (IsFakeClient(client)) {
-
-		GetSurvivorBotName(client, TheName, sizeof(TheName));
-		Format(key, sizeof(key), "%s%s", sBotTeam, TheName);
-	}
-	else GetClientAuthString(client, key, sizeof(key));
-	for (new i = 0; i < GetArraySize(Handle:CoveredInVomit); i++) {
-
-		GetArrayString(Handle:CoveredInVomit, i, text, sizeof(text));
-		ExplodeString(text, "}", result, 2, 64);
-		if (StrEqual(result[0], key, false)) {
-
-			if (!IsDestroy && owner == -1) return true;
-			else if (IsDestroy) {
-
-				RemoveFromArray(Handle:CoveredInVomit, i);
-				if (i > 0) i--;
-			}
-			continue;
-		}
-	}
-	if (owner > 0 && !IsDestroy) {
-
-		/*
-
-			If we just want to find out whether the player is biled on, say for status effects
-			then we don't want to push if the owner IS the client.
-			This way, if the client exists, it'll return true, but if they don't, it'll return false
-			without adding them.
-		*/
-		Format(text, sizeof(text), "%s}%d", key, owner);
-		PushArrayString(Handle:CoveredInVomit, text);
-
-		return true;
-	}
-	return false;		// this ONLY occurs if no owner is specified, ie it clears the client everywhere in the array.
-}
-
 stock StoreItemName(client, pos, String:s[], size) {
 
 	StoreItemNameSection[client]					= GetArrayCell(a_Store, pos, 2);
@@ -855,10 +795,6 @@ stock bool:GetActiveSpecialAmmoType(client, effect) {
 */
 
 stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusOnly=true, AmmoPosition=-1, Float:baseeffectvalue=0.0, realowner=0) {
-
-	static String:text[512];
-	static String:result[7][512];
-	static String:t_pos[3][512];
 	static Float:EntityPos[3];
 	static String:TalentInfo[4][512];
 	static owner = 0;
@@ -1318,7 +1254,7 @@ stock DoBurn(attacker, victim, baseWeaponDamage) {
 			AddWitchDamage(attacker, victim, baseWeaponDamage, true);
 		}
 	}
- 	if (IsLegitimateClientAlive(victim) && GetClientStatusEffect(victim, Handle:EntityOnFire, "burn") < iDebuffLimit) {
+ 	if (IsLegitimateClientAlive(victim) && GetClientStatusEffect(victim, "burn") < iDebuffLimit) {
 
 		if (ISEXPLODE[victim] == INVALID_HANDLE) CreateAndAttachFlame(victim, RoundToCeil(baseWeaponDamage * TheInfernoMult), 10.0, 0.5, hAttacker, "burn");
 		else CreateAndAttachFlame(victim, RoundToCeil((baseWeaponDamage * TheInfernoMult) * TheScorchMult), 10.0, 0.5, hAttacker, "burn");
@@ -1650,34 +1586,37 @@ stock InventoryItem(client, String:EntityName[] = "none", bool:bIsPickup = false
 	}
 }
 stock bool:IsCommonStaggered(client) {
-	decl String:clientId[2][64];
-	decl String:text[64];
+	//decl String:clientId[2][64];
+	//decl String:text[64];
 	//static Float:timeRemaining = 0.0;
 	for (new i = 0; i < GetArraySize(StaggeredTargets); i++) {
-		GetArrayString(StaggeredTargets, i, text, sizeof(text));
-		ExplodeString(text, ":", clientId, 2, 64);
-		if (StringToInt(clientId[0]) == client) return true;
+		//GetArrayString(StaggeredTargets, i, text, sizeof(text));
+		//ExplodeString(text, ":", clientId, 2, 64);
+		if (GetArrayCell(StaggeredTargets, i, 0) == client) return true;
+		//if (StringToInt(clientId[0]) == client) return true;
 	}
 	return false;
 }
 
 public Action:Timer_StaggerTimer(Handle:timer) {
-	decl String:clientId[2][64];
-	decl String:text[64];
-	static Float:timeRemaining = 0.0;
-	for (new i = 0; i < GetArraySize(StaggeredTargets); i++) {
-		GetArrayString(StaggeredTargets, i, text, sizeof(text));
-		ExplodeString(text, ":", clientId, 2, 64);
-		timeRemaining = StringToFloat(clientId[1]);
-		if (timeRemaining <= fStaggerTickrate) RemoveFromArray(StaggeredTargets, i);
-		else {
-			Format(text, sizeof(text), "%s:%3.3f", clientId[0], timeRemaining - fStaggerTickrate);
-			SetArrayString(StaggeredTargets, i, text);
-		}
-	}
+	//decl String:clientId[2][64];
+	//decl String:text[64];
 	if (!b_IsActiveRound) {
 		ClearArray(Handle:StaggeredTargets);
 		return Plugin_Stop;
+	}
+	static Float:timeRemaining = 0.0;
+	for (new i = 0; i < GetArraySize(StaggeredTargets); i++) {
+		//GetArrayString(StaggeredTargets, i, text, sizeof(text));
+		//ExplodeString(text, ":", clientId, 2, 64);
+		//timeRemaining = StringToFloat(clientId[1]);
+		timeRemaining = GetArrayCell(StaggeredTargets, i, 1);
+		if (timeRemaining <= fStaggerTickrate) RemoveFromArray(StaggeredTargets, i);
+		else {
+			SetArrayCell(StaggeredTargets, i, timeRemaining - fStaggerTickrate, 1);
+			//Format(text, sizeof(text), "%s:%3.3f", clientId[0], timeRemaining - fStaggerTickrate);
+			//SetArrayString(StaggeredTargets, i, text);
+		}
 	}
 	return Plugin_Continue;
 }
@@ -2349,7 +2288,6 @@ stock Float:CreateBomberExplosion(client, target, String:Effects[], basedamage =
 	new Float:TargetPosition[3];
 	new t_Strength = 0;
 	new Float:t_Range = 0.0;
-	new ent = -1;
 
 	if (target > 0) {
 
@@ -2435,7 +2373,6 @@ stock Float:CreateBomberExplosion(client, target, String:Effects[], basedamage =
 			CreateDamageStatusEffect(client, 4, target, abilityStrength);
 		}
 
-		ent = -1;
 		if (client == target) CreateBomberExplosion(client, 0, Effects);
 		/*if (client == target) {
 

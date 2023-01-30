@@ -1003,6 +1003,8 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 	new drawsize = 0;
 
 	new IsPassiveAbility = 0;
+	new abPos = -1;
+	new Float:visualsCooldown = 0.0;
 	PassiveEffectDisplay[client]++;
 	if (PassiveEffectDisplay[client] >= size ||
 		PassiveEffectDisplay[client] < 0) PassiveEffectDisplay[client] = 0;
@@ -1029,20 +1031,30 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 					}
 				}
 				else {
+					abPos = GetAbilityDataPosition(client, pos);
+					if (abPos == -1) continue;
+					visualsCooldown = GetArrayCell(PlayActiveAbilities[client], abPos, 3);
+					visualsCooldown -= fSpecialAmmoInterval;
+					if (visualsCooldown > 0.0) {
+						SetArrayCell(PlayActiveAbilities[client], abPos, visualsCooldown, 3);
+						continue;	// do not draw if visuals are on cooldown
+					}
 					if (IsActionAbilityCooldown(client, text, true)) {// || !StrEqual(sPassiveEffects, "-1.0") && !IsActionAbilityCooldown(client, text)) {
-						while (drawpos >= 0 && drawheight >= 0 && drawsize >= 0) {
+						SetArrayCell(PlayActiveAbilities[client], abPos, GetKeyValueFloat(CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect delay?"), 3);
+						while (drawpos >= 0) {
 							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect?", _, _, drawpos);
 							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect pos?", _, _, drawheight);
 							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect size?", _, _, drawsize);
-							if (drawpos >= 0 && drawheight >= 0 && drawdelay >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 1);
+							if (drawpos >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 1);
 						}
 					}
 					else if (PassiveEffectDisplay[client] == i && IsPassiveAbility == 1) {
-						while (drawpos >= 0 && drawheight >= 0 && drawsize >= 0) {
+						SetArrayCell(PlayActiveAbilities[client], abPos, GetKeyValueFloat(CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw delay?"), 3);
+						while (drawpos >= 0) {
 							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw?", _, _, drawpos);
 							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw pos?", _, _, drawheight);
 							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw size?", _, _, drawsize);
-							if (drawpos >= 0 && drawheight >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 2);
+							if (drawpos >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 2);
 						}
 					}
 				}
@@ -1222,13 +1234,16 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 		if (GetArraySize(a_Store) < 1 && StrEqual(configname, CONFIG_STORE)) continue;
 
 		if (!StrEqual(sCvarRequired, "-1", false) && FindConVar(sCvarRequired) == INVALID_HANDLE) continue;
+		if (StrEqual(configname, "level up") && PlayerLevel[client] == iMaxLevel) continue;
 		//if (StrEqual(configname, "respec", false) && bIsInCombat[client] && b_IsActiveRound) continue;
 
 		// If director talent menu options is enabled by an admin, only specific options should show. We determine this here.
 		if (b_IsDirectorTalents[client]) {
-
-			if (StrEqual(configname, CONFIG_MENUTALENTS) || StrEqual(configname, CONFIG_POINTS) || b_IsDirectorTalents[client] && StrEqual(configname, "level up") || PlayerLevel[client] >= iMaxLevel && StrEqual(configname, "prestige") || StrEqual(MenuName, c_MenuName, false)) {
-
+			if (StrEqual(configname, CONFIG_MENUTALENTS) ||
+			StrEqual(configname, CONFIG_POINTS) ||
+			b_IsDirectorTalents[client] && StrEqual(configname, "level up") ||
+			PlayerLevel[client] >= iMaxLevel && StrEqual(configname, "prestige") ||
+			StrEqual(MenuName, c_MenuName, false)) {
 				Format(pos, sizeof(pos), "%d", i);
 				PushArrayString(Handle:RPGMenuPosition[client], pos);
 			}
@@ -1432,7 +1447,7 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 			else iIsBulletTrails[client] = 1;
 			BuildMenu(client);
 		}
-		else if (StrEqual(config, "level up", false)) {
+		else if (StrEqual(config, "level up", false) && PlayerLevel[client] < iMaxLevel) {
 
 			if (iIsLevelingPaused[client] == 1 && ExperienceLevel[client] >= XPRequired) ConfirmExperienceAction(client, _, true);
 			BuildMenu(client);
@@ -1918,7 +1933,6 @@ public Handle:ShowThreatMenu(client) {
 	new Handle:menu = CreatePanel();
 
 	decl String:text[512];
-	decl String:iThreatInfo[2][64];
 	//GetArrayString(Handle:hThreatMeter, 0, text, sizeof(text));
 	new iTotalThreat = GetTotalThreat();
 	new iThreatTarget = -1;
@@ -1966,13 +1980,15 @@ public Handle:ShowThreatMenu(client) {
 
 		for (new i = 0; i < size; i++) {
 		
-			GetArrayString(Handle:hThreatMeter, i, text, sizeof(text));
-			ExplodeString(text, "+", iThreatInfo, 2, 64);
+			//GetArrayString(Handle:hThreatMeter, i, text, sizeof(text));
+			//ExplodeString(text, "+", iThreatInfo, 2, 64);
 			//client+threat
-			iClient = StringToInt(iThreatInfo[0]);
+			iClient = GetArrayCell(hThreatMeter, i, 0);
+			//iClient = StringToInt(iThreatInfo[0]);
 			if (client == iClient) continue;			// the menu owner data is shown in the title so not here.
 			GetClientName(iClient, text, sizeof(text));
-			iThreatTarget = StringToInt(iThreatInfo[1]);
+			iThreatTarget = GetArrayCell(hThreatMeter, i, 1);
+			//iThreatTarget = StringToInt(iThreatInfo[1]);
 
 			if (!IsLegitimateClientAlive(iClient) || iThreatTarget < 1) continue;	// we don't show players who have no threat on the table.
 
@@ -2671,12 +2687,12 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 			//AbilityInherited = GetKeyValueInt(MenuKeys[client], MenuValues[client], "ability inherited?");
 			nodeUnlockCost = GetKeyValueInt(MenuKeys[client], MenuValues[client], "node unlock cost?", "1");	// we want to default the nodeUnlockCost to 1 if it's not set.
 			if (!b_IsDirectorTalents[client]) {
-				FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), MenuKeys[client], MenuValues[client], "talents required?");
+				//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), MenuKeys[client], MenuValues[client], "talents required?");
 				if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "show debug info?") == 1) PrintToChat(client, "%s", sTalentsRequired);
 				requiredTalentsRequiredToUnlock = GetKeyValueInt(MenuKeys[client], MenuValues[client], "required talents required?");
 				requiredCopy = requiredTalentsRequiredToUnlock;
-				optionsRemaining = TalentRequirementsMet(client, sTalentsRequired, _, -1);
-				if (requiredTalentsRequiredToUnlock > 0) requiredTalentsRequiredToUnlock = TalentRequirementsMet(client, sTalentsRequired, sTalentsRequired, sizeof(sTalentsRequired), requiredTalentsRequiredToUnlock);
+				optionsRemaining = TalentRequirementsMet(client, MenuKeys[client], MenuValues[client], _, -1);
+				if (requiredTalentsRequiredToUnlock > 0) requiredTalentsRequiredToUnlock = TalentRequirementsMet(client, MenuKeys[client], MenuValues[client], sTalentsRequired, sizeof(sTalentsRequired), requiredTalentsRequiredToUnlock);
 				if (requiredTalentsRequiredToUnlock > 0) {
 					bIsNotEligible = true;
 					if (PlayerTalentPoints > 0) {
@@ -3156,13 +3172,13 @@ public Handle:TalentInfoScreen(client) {
 			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
 			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 
-			decl String:sTalentsRequired[64];
+			//decl String:sTalentsRequired[64];
 			decl String:formattedTalentsRequired[64];
-			FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
+			//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
 			new requirementsRemaining = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "required talents required?");
 			new requiredCopy = requirementsRemaining;
-			requirementsRemaining = TalentRequirementsMet(client, sTalentsRequired, formattedTalentsRequired, sizeof(formattedTalentsRequired), requirementsRemaining);
-			new optionsRemaining = TalentRequirementsMet(client, sTalentsRequired, _, -1);	// -1 for size gets the count remaining
+			requirementsRemaining = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], formattedTalentsRequired, sizeof(formattedTalentsRequired), requirementsRemaining);
+			new optionsRemaining = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], _, -1);	// -1 for size gets the count remaining
 			if (bIsLayerEligible || requirementsRemaining >= 1) {
 				if (requirementsRemaining <= 0) Format(text, sizeof(text), "%T", "Insert Talent Upgrade", client, 1);
 				else if (requirementsRemaining >= 1) {
@@ -3485,10 +3501,10 @@ public TalentInfoScreen_Init (Handle:topmenu, MenuAction:action, client, param2)
 		new TalentType = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "talent type?");
 		new AbilityTalent = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is ability?");
 
-		decl String:sTalentsRequired[64];
-		FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
+		//decl String:sTalentsRequired[64];
+		//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
 		new requiredTalentsRequired = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "required talents required?");
-		if (requiredTalentsRequired > 0) requiredTalentsRequired = TalentRequirementsMet(client, sTalentsRequired, _, _, requiredTalentsRequired);
+		if (requiredTalentsRequired > 0) requiredTalentsRequired = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], _, _, requiredTalentsRequired);
 		
 		new nodeUnlockCost = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "node unlock cost?", "1");	// if the key is not found, return a default value of 1.
 		new bool:isNodeCostMet = (UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;

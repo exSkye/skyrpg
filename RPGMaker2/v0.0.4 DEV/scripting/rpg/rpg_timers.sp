@@ -122,24 +122,13 @@ public Action:Timer_ShowHUD(Handle:timer, any:client) {
 	}
 	TimePlayed[client]++;
 	//if (TotalHumanSurvivors() < 1) RoundTime++;	// we don't count time towards enrage if there are no human survivors.
-	static bool:IsDark = false;
-	static bool:IsWeak = false;
-
-	static String:text[64];
 	static String:pct[10];
 	Format(pct, sizeof(pct), "%");
 	static ThisRoundTime = 0;
 	ThisRoundTime = RPGRoundTime();
 	new mymaxhealth = -1;
 	new Float:healregenamount = 0.0;
-	new Float:healregenrange = 1.0;
-	new Float:healerpos[3];
-	new Float:targetpos[3];
-	static RoundSeconds = 0;
-	RoundSeconds = RPGRoundTime(true);
-	decl String:casterSteamID[64];
 	//decl String:targetSteamID[64];
-	new Float:fHealStrength = 0.0;
 	if (iShowAdvertToNonSteamgroupMembers == 1 && !IsGroupMember[client]) {
 		IsGroupMemberTime[client]++;
 		if (IsGroupMemberTime[client] % iJoinGroupAdvertisement == 0) {
@@ -1245,10 +1234,10 @@ stock SortThreatMeter() {
 
 	ClearArray(hThreatSort);
 	ClearArray(hThreatMeter);
-	decl String:text[64];
 	new cTopThreat = -1;
 	new cTopClient = -1;
 	new cTotalClients = 0;
+	new size = 0;
 	for (new i = 1; i <= MaxClients; i++) {
 
 		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
@@ -1267,9 +1256,12 @@ stock SortThreatMeter() {
 			}
 		}
 		if (cTopThreat > 0) {
-
-			Format(text, sizeof(text), "%d+%d", cTopClient, cTopThreat);
-			PushArrayString(Handle:hThreatMeter, text);
+			//Format(text, sizeof(text), "%d+%d", cTopClient, cTopThreat);
+			//PushArrayString(Handle:hThreatMeter, text);
+			size = GetArraySize(hThreatMeter);
+			ResizeArray(hThreatMeter, size + 1);
+			SetArrayCell(hThreatMeter, size, cTopClient, 0);
+			SetArrayCell(hThreatMeter, size, cTopThreat, 1);
 			PushArrayCell(hThreatSort, cTopClient);
 		}
 		else break;
@@ -1285,7 +1277,6 @@ public Action:Timer_ThreatSystem(Handle:timer) {
 	static count					= 0;
 	static String:temp[64];
 	static Float:vPos[3];
-	static String:iThreatInfo[2][64];
 
 	if (!b_IsActiveRound) {
 		iSurvivalCounter = -1;
@@ -1338,10 +1329,11 @@ public Action:Timer_ThreatSystem(Handle:timer) {
 	}
 	else {
 
-		GetArrayString(Handle:hThreatMeter, 0, temp, sizeof(temp));
-		ExplodeString(temp, "+", iThreatInfo, 2, 64);
+		//GetArrayString(Handle:hThreatMeter, 0, temp, sizeof(temp));
+		//ExplodeString(temp, "+", iThreatInfo, 2, 64);
 		//client+threat
-		cThreatTarget = StringToInt(iThreatInfo[0]);
+		cThreatTarget = GetArrayCell(hThreatMeter, 0, 0);
+		//cThreatTarget = StringToInt(iThreatInfo[0]);
 		
 		//GetClientName(iClient, text, sizeof(text));
 		//iThreatTarget = StringToInt(iThreatInfo[1]);
