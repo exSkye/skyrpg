@@ -732,7 +732,7 @@ public Action:Timer_IsIncapacitated(Handle:timer, any:client) {
 
 public Action:Timer_Slow(Handle:timer, any:client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
-	if (!b_IsActiveRound || !IsPlayerAlive(client)) {
+	if (!b_IsActiveRound || !IsPlayerAlive(client) || ISSLOW[client] == INVALID_HANDLE) {
 		SetSpeedMultiplierBase(client);
 		fSlowSpeed[client] = 1.0;
 		KillTimer(ISSLOW[client]);
@@ -853,6 +853,7 @@ public Action:Timer_Explode(Handle:timer, Handle:packagey) {
 	new bool:entityIsSpecialCommon;
 	for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
 		ent = GetArrayCell(Handle:CommonInfected, i);
+		if (!IsCommonInfected(ent)) continue;
 		entityIsSpecialCommon = IsSpecialCommon(ent);
 		if (ent == client || entityIsSpecialCommon) continue;
 		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
@@ -882,18 +883,13 @@ public Action:Timer_Explode(Handle:timer, Handle:packagey) {
 	for (new i = 0; i < GetArraySize(Handle:WitchList); i++) {
 
 		ent = GetArrayCell(Handle:WitchList, i);
-		if (ent != client && IsWitch(ent)) {
-
-			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
-			if (GetVectorDistance(ClientPosition, TargetPosition) <= (flRangeMax / 2)) {
-
-				if (!IsSpecialCommonInRange(ent, 'd')) AddWitchDamage(client, ent, DamageValue);
-				else {
-
-					SetClientTotalHealth(client, DamageValue);
-					ReceiveWitchDamage(client, ent, DamageValue);
-				}
-			}
+		if (ent == client || !IsWitch(ent)) continue;
+		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
+		if (GetVectorDistance(ClientPosition, TargetPosition) > (flRangeMax / 2)) continue;
+		if (!IsSpecialCommonInRange(ent, 'd')) AddWitchDamage(client, ent, DamageValue);
+		else {
+			SetClientTotalHealth(client, DamageValue);
+			ReceiveWitchDamage(client, ent, DamageValue);
 		}
 	}
 	ISEXPLODETIME[client] += flDeathInterval;
@@ -1376,13 +1372,10 @@ public Action:Timer_ThreatSystem(Handle:timer) {
 }
 
 public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
-
 	static Counter										=	-1;
 	static Float:DirectorHandicap						=	-1.0;
 	static Float:DirectorDelay							=	0.0;
-
 	if (!b_IsActiveRound) {
-
 		Counter											=	-1;
 		return Plugin_Stop;
 	}
@@ -1394,11 +1387,11 @@ public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
 	new iSurvivors = TotalHumanSurvivors();
 	new iSurvivorBots = TotalSurvivors() - iSurvivors;
 	new LivingSerfs = LivingSurvivorCount();
+	new requiredAlwaysTanks = GetAlwaysTanks(iSurvivors + iSurvivorBots);
 	if (iSurvivorBots >= 2) iSurvivorBots /= 2;
 	theClient = FindAnyRandomClient();
-	if (iTankRush == 1 && !b_IsFinaleActive && iTankCount < (iSurvivors + iSurvivorBots)) {
-
-		if (IsLegitimateClientAlive(theClient))	ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
+	if (requiredAlwaysTanks >= 1 && iTankCount < requiredAlwaysTanks && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) || iTankRush == 1 && !b_IsFinaleActive && iTankCount < (iSurvivors + iSurvivorBots)) {
+		ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
 	}
 	else if (iTankRush == 0) {
 

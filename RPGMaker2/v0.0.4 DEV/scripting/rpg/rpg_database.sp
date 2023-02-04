@@ -559,6 +559,12 @@ public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], an
 stock ResetData(client) {
 
 	RefreshSurvivor(client);
+	HealingContribution[client] = 0;
+	TankingContribution[client] = 0;
+	DamageContribution[client] = 0;
+	PointsContribution[client] = 0.0;
+	HexingContribution[client] = 0;
+	BuffingContribution[client] = 0;
 	bIsCrushCooldown[client]		= false;
 	//Points[client]					= 0.0;
 	//SlatePoints[client]				= 0;
@@ -1975,7 +1981,7 @@ public QueryResults_LoadActionBar(Handle:owner, Handle:hndl, const String:error[
 stock TotalPointsAssigned(client) {
 
 	new count = 0;
-	new MaxTalents = PlayerLevel[client];
+	new MaxTalents = MaximumPlayerUpgrades(client);
 	new currentValue = 0;
 	//decl String:TalentName[64];
 
@@ -2088,6 +2094,11 @@ stock LoadStoreData(client, String:key[]) {
 public OnClientDisconnect(client)
 {
 	if (IsClientInGame(client)) {
+		if (IsFakeClient(client)) {
+			//LogMessage("bot removed, setting to not loaded.");
+			b_IsLoaded[client] = false;
+			bTimersRunning[client] = false;
+		}
 
 		if (ISEXPLODE[client] != INVALID_HANDLE) {
 
@@ -2149,6 +2160,12 @@ public OnClientDisconnect(client)
 public ReadyUp_IsClientLoaded(client) {
 
 	//ChangeHook(client, true);	// we re-hook new players to the server.
+	HealingContribution[client] = 0;
+	TankingContribution[client] = 0;
+	DamageContribution[client] = 0;
+	PointsContribution[client] = 0.0;
+	HexingContribution[client] = 0;
+	BuffingContribution[client] = 0;
 	RUP_IsClientLoaded(client);
 	CheckDifficulty();
 }
@@ -2168,10 +2185,10 @@ public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
 		TeleportEntity(client, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 	}
 	if (b_IsLoaded[client]) return Plugin_Stop;
+	ImmuneToAllDamage[client] = false;
 	//ToggleTank(client, true);
 	//ChangeHook(client);
 	bTimersRunning[client] = false;
-	b_IsLoaded[client] = false;
 	b_IsInSaferoom[client] = true;
 	bIsInCheckpoint[client] = false;
 	eBackpack[client] = 0;

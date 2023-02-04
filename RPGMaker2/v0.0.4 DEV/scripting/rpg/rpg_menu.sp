@@ -299,9 +299,9 @@ public QueryResults_LoadEx(Handle:howner, Handle:hndl, const String:error[], any
 			if (FreeUpgrades[client] < 0) FreeUpgrades[client] = 0;
 			PurchaseTalentPoints[client] = PlayerUpgradesTotal[client];
 		}
-		if (!rowsFound) {
+		if (!rowsFound || !IsLegitimateClient(client)) {
 			b_IsLoading[client] = false;
-			LogMessage("Could not load the profile on target client forced by %N, exiting loading sequence.", client);
+			//LogMessage("Could not load the profile on target client forced by %N, exiting loading sequence.", client);
 			return;
 		}
 		decl String:tquery[512];
@@ -1235,6 +1235,8 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 
 		if (!StrEqual(sCvarRequired, "-1", false) && FindConVar(sCvarRequired) == INVALID_HANDLE) continue;
 		if (StrEqual(configname, "level up") && PlayerLevel[client] == iMaxLevel) continue;
+		if (StrEqual(configname, "autolevel toggle") && iAllowPauseLeveling != 1) continue;
+		if (StrEqual(configname, "prestige") && (SkyLevel[client] >= iSkyLevelMax || PlayerLevel[client] < iMaxLevel)) continue;
 		//if (StrEqual(configname, "respec", false) && bIsInCombat[client] && b_IsActiveRound) continue;
 
 		// If director talent menu options is enabled by an admin, only specific options should show. We determine this here.
@@ -1465,7 +1467,7 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 
 			if (ExperienceLevel[client] >= XPRequired && PlayerLevel[client] >= iMaxLevel && SkyLevel[client] < iSkyLevelMax) {
 
-				PlayerLevel[client] = iPlayerStartingLevel;
+				PlayerLevel[client] = 1;
 				SkyLevel[client]++;
 				ExperienceLevel[client] = 0;
 				GetClientName(client, Name, sizeof(Name));
@@ -1614,6 +1616,7 @@ stock MaximumPlayerUpgrades(client, bool:getNodeCountInstead = false) {
 stock VerifyMaxPlayerUpgrades(client) {
 
 	if (PlayerUpgradesTotal[client] + FreeUpgrades[client] > MaximumPlayerUpgrades(client)) {
+		//PrintToChat(client, "resetting talents: %d of %d (%d)", PlayerUpgradesTotal[client], FreeUpgrades[client], MaximumPlayerUpgrades(client));
 		FreeUpgrades[client]								=	MaximumPlayerUpgrades(client);
 		UpgradesAvailable[client]							=	0;
 		PlayerUpgradesTotal[client]							=	0;
@@ -2251,6 +2254,7 @@ stock GetCharacterSheetData(client, String:stringRef[], theSize, request, zombie
 	new iResult = (iBotLevelType == 1) ? SurvivorLevels() : GetDifficultyRating(client);
 	new Float:fMultiplier;
 	new Float:AbilityMultiplier = (request % 2 == 0) ? GetAbilityMultiplier(client, "X", 4) : 0.0;
+	new theCount = LivingSurvivorCount();
 	// common infected health
 	if (request == 1) {	// odd requests return integers
 						// equal requests return floats
@@ -2286,7 +2290,13 @@ stock GetCharacterSheetData(client, String:stringRef[], theSize, request, zombie
 	if (request == 6) {
 		fMultiplier = fDamagePlayerLevel[zombieclass];
 		iResult = iBaseSpecialDamage[zombieclass] + RoundToFloor(iBaseSpecialDamage[zombieclass] * (iResult * fMultiplier));
-	}// even requests are for damage. result 7 returns damage shield values. result 8(which is even so no check required) returns damage reduction ability strength.
+	}// even requests are for damage.
+	if (request != 7 && theCount >= iSurvivorModifierRequired) {
+		// health result or damage result
+		if (request % 2 != 0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
+		else iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+	}
+	//result 7 returns damage shield values. result 8(which is even so no check required) returns damage reduction ability strength.
 	if (zombieclass != 0 && (request % 2 == 0 || request == 7)) {
 		new DamageShield = 0;
 		new Float:DamageShieldMult = (IsClientInRangeSpecialAmmo(client, "D") == -2.0) ? IsClientInRangeSpecialAmmo(client, "D", false, _, iResult * 1.0) : 0.0;

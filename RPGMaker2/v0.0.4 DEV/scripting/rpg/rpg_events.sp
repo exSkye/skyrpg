@@ -94,6 +94,9 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 	new victim = GetClientOfUserId(GetEventInt(event, ThePerp));
 
 	if (IsLegitimateClient(attacker) && (IsLegitimateClient(victim) || IsCommonInfected(victim) || IsWitch(victim))) {
+		if (IsWitch(victim)) {
+			if (FindListPositionByEntity(victim, Handle:WitchList) < 0) OnWitchCreated(victim);
+		}
 		// These calls are specific to special infected and survivor events - does not handle common infected, super infected, or witches.
 
 		// Talents/Nodes can be triggered when specific events occur.
@@ -455,6 +458,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			new iSurvivorBots = TotalSurvivors() - iSurvivors;
 			new iLivSurvs = LivingSurvivorCount();
 			if (iSurvivorBots >= 2) iSurvivorBots /= 2;
+			new requiredTankCount = GetAlwaysTanks(iSurvivors + iSurvivorBots);
 
 			if (myzombieclass == ZOMBIECLASS_TANK) {
 
@@ -482,9 +486,8 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 
 					//if (!IsEnrageActive())
 					ForcePlayerSuicide(attacker);
-					if (!b_IsFinaleActive && iSurvivors >= 1 && iTankCount < iTankLimit) {
-
-						if (IsLegitimateClientAlive(theClient)) ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
+					if (iSurvivors >= 1 && (iTankCount < requiredTankCount || !b_IsFinaleActive && iTankCount < iTankLimit)) {
+						ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
 					}
 				}
 			}
@@ -1153,7 +1156,7 @@ stock GetPrestigeLevelNodeUnlocks(level) {
 	return level;
 }
 
-stock bool:CastSpell(client, target = -1, String:TalentName[], Float:TargetPos[3]) {
+stock bool:CastSpell(client, target = -1, String:TalentName[], Float:TargetPos[3], Float:visualDelayTime = 1.0) {
 
 	if (!b_IsActiveRound || !IsLegitimateClientAlive(client) || L4D2_GetInfectedAttacker(client) != -1 || GetAmmoCooldownTime(client, TalentName) != -1.0) return false;
 	if (IsSpellAnAura(client, TalentName)) {
@@ -1223,6 +1226,8 @@ stock bool:CastSpell(client, target = -1, String:TalentName[], Float:TargetPos[3
 	SetArrayCell(SpecialAmmoData, sadsize, -1, 9);
 	SetArrayCell(SpecialAmmoData, sadsize, GetSpecialAmmoStrength(client, TalentName, 1), 10);	// float.
 	SetArrayCell(SpecialAmmoData, sadsize, target, 11);
+	SetArrayCell(SpecialAmmoData, sadsize, visualDelayTime, 12);	// original value must be stored.
+	SetArrayCell(SpecialAmmoData, sadsize, visualDelayTime, 13);
 
 
 
@@ -1782,7 +1787,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 		if (!IsLegitimateClientAlive(MyAttacker)) StrugglePower[client] = 0;
 		new bool:EnrageActivity = IsEnrageActive();
 
-		if (CombatTime[client] <= TheTime && bIsInCombat[client] && !EnrageActivity && !b_IsFinaleActive) {
+		if (CombatTime[client] <= TheTime && bIsInCombat[client] && !EnrageActivity && (iPlayersLeaveCombatDuringFinales == 1 || !b_IsFinaleActive)) {
 
 			bIsInCombat[client] = false;
 			iThreatLevel[client] = 0;
@@ -2042,6 +2047,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 									if (nextSprintInterval > 0.0) {
 										SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval + (fStamSprintInterval * nextSprintInterval);
 									}
+									else SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 								}
 								else SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 								SurvivorStamina[client] -= ConsumptionInt;
@@ -2204,22 +2210,20 @@ stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner =
 			}
 		}
 	}
-	/*if (IsCommonInfected(target)) {
+	if (target == 0 || IsCommonInfected(target)) {
 
 		new ent = -1;
 		for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
 			ent = GetArrayCell(Handle:CommonInfected, i);
-			if (ent != client) {
-				if (ent == target) {
-					GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
-					if (GetVectorDistance(ClientPosition, TargetPosition) <= (AfxRangeMax / 2)) {
-						if (!IsSpecialCommon(ent)) OnCommonInfectedCreated(ent, true, _, true); // will calculate xp rewards, unhook, and set on fire.
-						else if (IsLegitimateClient(owner) && GetClientTeam(owner) == TEAM_SURVIVOR && IsSpecialCommon(ent)) AddSpecialCommonDamage(owner, ent, damage);
-					}
-				}
-			}
+			if (!IsCommonInfected(ent)) continue;
+			if (ent == client) continue;
+			if (target != 0 && ent != target) continue;
+			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
+			if (GetVectorDistance(ClientPosition, TargetPosition) > (AfxRangeMax / 2)) continue;
+			if (!IsSpecialCommon(ent)) OnCommonInfectedCreated(ent, true, _, true); // will calculate xp rewards, unhook, and set on fire.
+			else if (IsLegitimateClient(owner) && GetClientTeam(owner) == TEAM_SURVIVOR && IsSpecialCommon(ent)) AddSpecialCommonDamage(owner, ent, damage);
 		}
-	}*/
+	}
 	//ClearSpecialCommon(client);
 }
 
@@ -2806,21 +2810,21 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 // Optional RPG System. Maybe call it "buy rpg mode?"
 
 stock bool:SameTeam_OnTakeDamage(healer, target, iHealerAmount, bool:IsDamageTalent = false, damagetype = -1) {
-	if (iIsPvpServer == 1 || !AllowShotgunToTriggerNodes(healer)) return false;
+	if (!AllowShotgunToTriggerNodes(healer)) return false;
 	if (HealImmunity[target]) return true;
 	new bool:TheBool = IsMeleeAttacker(healer);
 	if (TheBool && bIsMeleeCooldown[healer]) return true;
 	//https://pastebin.com/tLLK9kZM
 	if (!TheBool) {
 		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "d", 2, true));
-		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "healshot", 2, true));
+		iHealerAmount += RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "healshot", 2, true));
 	}
 	else {
 		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "d", 2, true));
-		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "healmelee", 2, true));
+		iHealerAmount += RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "healmelee", 2, true));
 	}
 	if (iHealerAmount < 1) return true;
-	if (bIsInCombat[target]) {
+	if (iHealingPlayerInCombatPutInCombat == 1 && bIsInCombat[target]) {
 		CombatTime[healer] = GetEngineTime() + fOutOfCombatTime;
 		bIsInCombat[healer] = true;
 	}

@@ -24,7 +24,6 @@
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  */
-
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -40,7 +39,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"Dev build v0.0.5.8"
+#define PLUGIN_VERSION				"beta v1.0.1"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -97,7 +96,6 @@
 #undef REQUIRE_PLUGIN
 #include <readyup>
 #define REQUIRE_PLUGIN
-
 public Plugin:myinfo = {
 	name = PLUGIN_NAME,
 	author = PLUGIN_CONTACT,
@@ -106,6 +104,7 @@ public Plugin:myinfo = {
 	url = PLUGIN_URL,
 };
 
+new iHealingPlayerInCombatPutInCombat;
 new Handle:TimeOfEffectOverTime;
 new Handle:EffectOverTime;
 new Handle:currentEquippedWeapon[MAXPLAYERS + 1];	// bullets fired from current weapon; variable needs to be renamed.
@@ -888,7 +887,11 @@ new Handle:SetNodesKeys;
 new Handle:SetNodesValues;
 new Float:fDrawAbilityInterval;
 new Float:fDrawHudInterval;
-
+new bool:ImmuneToAllDamage[MAXPLAYERS + 1];
+new iPlayersLeaveCombatDuringFinales;
+new iAllowPauseLeveling;
+new iDropAcidOnLastDebuffDrop;
+new Float:fMaxDamageResistance;
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 	if (!IsValidEntity(CurrentEntity) || CurrentEntity < 1) return Plugin_Handled;
@@ -916,10 +919,8 @@ public Action:CMD_IAmStuck(client, args) {
 			SetEntityMoveType(client, MOVETYPE_WALK);
 		}
 	}
-
 	return Plugin_Handled;
 }
-
 
 stock DoGunStuff(client) {
 	new targetgun = GetPlayerWeaponSlot(client, 0); //get the players primary weapon
@@ -941,6 +942,7 @@ stock CMD_OpenRPGMenu(client) {
 	bEquipSpells[client] = false;
 	PlayerCurrentMenuLayer[client] = 1;
 	ShowPlayerLayerInformation[client] = false;
+	if (iAllowPauseLeveling != 1 && iIsLevelingPaused[client] == 1) iIsLevelingPaused[client] = 0;
 	BuildMenu(client, "main");
 	/*new count = GetEntProp(client, Prop_Send, "m_iShovePenalty", 4);
 	PrintToChat(client, "shove penalty: %d", count);
@@ -1000,8 +1002,7 @@ public OnPluginStart() {
 	Format(green, sizeof(green), "\x05");
 	Format(blue, sizeof(blue), "\x03");
 	gd = LoadGameConfigFile("rum_rpg");
-	if (gd != INVALID_HANDLE)
-	{		
+	if (gd != INVALID_HANDLE) {		
 		StartPrepSDKCall(SDKCall_Player);
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "SetClass");
 		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
@@ -1046,18 +1047,15 @@ public Action:CMD_STAGGERTEST(client, args) {
 	PrintToChat(client, "entity name: %s", targetName);
 	GetEntPropString(target, Prop_Data, "m_iName", targetName, sizeof(targetName));
 	PrintToChat(client, "entity targetname: %s", targetName);*/
-
 	for (new i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
 		if (i == client) continue;
-
 		StaggerPlayer(client, i);
 		StaggerPlayer(i, client);
 		break;
 	}
 	return Plugin_Handled;
 }
-
 
 public Action:CMD_WITCHESCOUNT(client, args) {
 
@@ -1066,12 +1064,10 @@ public Action:CMD_WITCHESCOUNT(client, args) {
 }
 
 public Action:CMD_FBEGIN(client, args) {
-
 	ReadyUpEnd_Complete();
 }
 
 public Action:Cmd_GetOrigin(client, args) {
-
 	new Float:OriginP[3];
 	decl String:sMelee[64];
 	GetMeleeWeapon(client, sMelee, sizeof(sMelee));
@@ -1104,7 +1100,6 @@ stock UnhookAll() {
 
 public ReadyUp_TrueDisconnect(client) {
 	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
-
 	//ChangeHook(client);
 	staggerCooldownOnTriggers[client] = false;
 	ISBILED[client] = false;
@@ -1120,6 +1115,7 @@ public ReadyUp_TrueDisconnect(client) {
 	CounterStack[client] = 0.0;
 	MultiplierStack[client] = 0;
 	LoadTarget[client] = -1;
+	ImmuneToAllDamage[client] = false;
 	b_IsLoaded[client] = false;		// only set to false if a REAL player leaves - this way bots don't repeatedly load their data.
 	Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 	Format(BuildingStack[client], sizeof(BuildingStack[]), "none");
@@ -1635,9 +1631,7 @@ public ReadyUp_ReadyUpStart() {
 		teleportIntoSaferoom[2] = -300.968750;
 		TeleportPlayers = true;
 	}
-
 	for (new i = 1; i <= MaxClients; i++) {
-
 		if (IsClientInGame(i)) {
 			//if (GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
 			if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
@@ -1661,7 +1655,6 @@ public ReadyUp_ReadyUpStart() {
 			ClearArray(h_KilledPosition_X[i]);		// We clear all positions from the array.
 			ClearArray(h_KilledPosition_Y[i]);
 			ClearArray(h_KilledPosition_Z[i]);
-
 			/*if (b_IsMissionFailed && GetClientTeam(i) == TEAM_SURVIVOR && IsFakeClient(i)) {
 
 				if (!b_IsLoading[i]) {
@@ -1971,9 +1964,8 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		CreateTimer(fStaggerTickrate, Timer_StaggerTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		if (GetConfigValueInt("common affixes?") > 0) {
 			ClearArray(Handle:CommonAffixes);
-			CreateTimer(0.5, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(2.0, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
-
 		ClearRelevantData();
 		LastLivingSurvivor = 1;
 		new size = GetArraySize(a_DirectorActions);
@@ -2069,35 +2061,32 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 			new AbilityTalent = 0;
 			new Float:TargetPos[3];
 			decl String:TalentName[64];
+			new Float:visualDelayTime = 0.0;
 
 			for (new i = 0; i < size; i++) {
-
 				CastKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 				CastValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
 				CastSection[client]			= GetArrayCell(a_Menu_Talents, i, 2);
-
 				GetArrayString(Handle:CastSection[client], 0, TalentName, sizeof(TalentName));
 				if (!StrEqual(TalentName, actionpos)) continue;
 				AbilityTalent = GetKeyValueInt(CastKeys[client], CastValues[client], "is ability?");
 				if (GetKeyValueInt(CastKeys[client], CastValues[client], "passive only?") == 1) continue;
 				if (AbilityTalent != 1 && GetTalentStrength(client, actionpos) < 1) {
-
 					// talent exists but user has no points in it from a respec or whatever so we remove it.
 					// we don't tell them either, next time they use it they'll find out.
-
 					Format(actionpos, TheSize, "none");
 					SetArrayString(Handle:ActionBar[client], pos, actionpos);
 				}
 				else {
 					RequiresTarget = GetKeyValueInt(CastKeys[client], CastValues[client], "is single target?");
+					visualDelayTime = GetKeyValueFloat(CastKeys[client], CastValues[client], "draw delay?");
+					if (visualDelayTime < 1.0) visualDelayTime = 1.0;
 					if (RequiresTarget > 0) {
 						//GetClientAimTargetEx(client, actionpos, TheSize, true);
 						RequiresTarget = GetAimTargetPosition(client, TargetPos);//StringToInt(actionpos);
 						if (IsLegitimateClientAlive(RequiresTarget)) {
-							if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos);
-							else {
-								UseAbility(client, RequiresTarget, TalentName, CastKeys[client], CastValues[client], TargetPos);
-							}
+							if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos, visualDelayTime);
+							else UseAbility(client, RequiresTarget, TalentName, CastKeys[client], CastValues[client], TargetPos);
 						}
 					}
 					else {
@@ -2108,7 +2097,7 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 						TargetPos[1] = StringToFloat(tTargetPos[1]);
 						TargetPos[2] = StringToFloat(tTargetPos[2]);*/
 
-						if (AbilityTalent != 1) CastSpell(client, _, TalentName, TargetPos);
+						if (AbilityTalent != 1) CastSpell(client, _, TalentName, TargetPos, visualDelayTime);
 						else {
 
 							CheckActiveAbility(client, pos, _, _, true, true);
@@ -2220,22 +2209,17 @@ public Action:CMD_CompanionOptions(client, args) {
 }
 
 public Action:CMD_TogglePvP(client, args) {
-
 	new TheTime = RoundToCeil(GetEngineTime());
 	if (IsPvP[client] != 0) {
-
 		if (IsPvP[client] + 30 <= TheTime) {
-
 			IsPvP[client] = 0;
 			PrintToChat(client, "%T", "PvP Disabled", client, white, orange);
 		}
 	}
 	else {
-
 		IsPvP[client] = TheTime + 30;
 		PrintToChat(client, "%T", "PvP Enabled", client, white, blue);
 	}
-
 	return Plugin_Handled;
 }
 
@@ -2271,14 +2255,11 @@ public Action:CMD_GiveLevel(client, args) {
 }
 
 stock GetPlayerLevel(client) {
-
 	new iExperienceOverall = ExperienceOverall[client];
 	new iLevel = 1;
 	new ExperienceRequirement = CheckExperienceRequirement(client, false, iLevel);
 	while (iExperienceOverall >= ExperienceRequirement && iLevel < iMaxLevel) {
-
 		if (iIsLevelingPaused[client] == 1 && iExperienceOverall == ExperienceRequirement) break;
-
 		iExperienceOverall -= ExperienceRequirement;
 		iLevel++;
 		ExperienceRequirement = CheckExperienceRequirement(client, false, iLevel);
@@ -2560,26 +2541,20 @@ stock CallRoundIsOver() {
 		}
 		b_RescueIsHere = false;
 		if (b_IsActiveRound) b_IsActiveRound = false;
-		ClearArray(CommonInfected);
-		ClearArray(CommonInfectedHealth);
-		ClearArray(Handle:SpecialAmmoData);
-		ClearArray(CommonAffixes);
-		ClearArray(WitchList);
-		ClearArray(EffectOverTime);
-		ClearArray(TimeOfEffectOverTime);
-		ClearArray(Handle:StaggeredTargets);
 		//SetSurvivorsAliveHostname();
 		if (!b_IsMissionFailed) {
 			//InfectedLevel = HumanSurvivorLevels();
 			if (!IsSurvivalMode) {
 				for (new i = 1; i <= MaxClients; i++) {
-					if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+					if (IsLegitimateClient(i)) {
 						ClearArray(WitchDamage[i]);
 						ClearArray(InfectedHealth[i]);
 						ClearArray(SpecialCommon[i]);
+						ImmuneToAllDamage[i] = false;
 						iThreatLevel[i] = 0;
 						bIsInCombat[i] = false;
-						if (IsPlayerAlive(i)) {
+						fSlowSpeed[i] = 1.0;
+						if (GetClientTeam(i) == TEAM_SURVIVOR && IsPlayerAlive(i)) {
 							if (Rating[i] < 0 && CurrentMapPosition != 1) VerifyMinimumRating(i);
 							if (RoundExperienceMultiplier[i] < 0.0) RoundExperienceMultiplier[i] = 0.0;
 							if (CurrentMapPosition != 1) {
@@ -2626,7 +2601,7 @@ stock CallRoundIsOver() {
 			AddCommasToString(GetArrayCell(RoundStatistics, 4), roundStatisticsText[4], sizeof(roundStatisticsText[]));
 			AddCommasToString(GetArrayCell(RoundStatistics, 0) + GetArrayCell(RoundStatistics, 1) + GetArrayCell(RoundStatistics, 2) + GetArrayCell(RoundStatistics, 3) + GetArrayCell(RoundStatistics, 4), roundStatisticsText[5], sizeof(roundStatisticsText[]));
 
-			PrintToChatAll("%t", "round statistics", green, orange, blue,
+			PrintToChatAll("%t", "round statistics", orange, orange, blue,
 							roundStatisticsText[0], orange, blue,
 							roundStatisticsText[1], orange, blue,
 							roundStatisticsText[2], orange, blue,
@@ -2642,7 +2617,7 @@ stock CallRoundIsOver() {
 			AddCommasToString(GetArrayCell(RoundStatistics, 4, 1), roundStatisticsText[4], sizeof(roundStatisticsText[]));
 			AddCommasToString(GetArrayCell(RoundStatistics, 0, 1) + GetArrayCell(RoundStatistics, 1, 1) + GetArrayCell(RoundStatistics, 2, 1) + GetArrayCell(RoundStatistics, 3, 1) + GetArrayCell(RoundStatistics, 4, 1), roundStatisticsText[5], sizeof(roundStatisticsText[]));
 
-			PrintToChatAll("%t", "campaign statistics", green, orange, blue,
+			PrintToChatAll("%t", "campaign statistics", orange, orange, blue,
 							roundStatisticsText[0], orange, blue,
 							roundStatisticsText[1], orange, blue,
 							roundStatisticsText[2], orange, blue,
@@ -2650,19 +2625,19 @@ stock CallRoundIsOver() {
 							roundStatisticsText[4], orange, green,
 							roundStatisticsText[5]);
 		}
-		
-		ResetArray(Handle:CommonInfected);
-		ResetArray(Handle:WitchList);
-		ResetArray(Handle:CommonList);
-		/*ClearArray(Handle:CommonInfected);
-		ClearArray(Handle:WitchList);
-		ClearArray(Handle:CommonList);*/
-		ClearArray(Handle:EntityOnFire);
-		ClearArray(Handle:EntityOnFireName);
-		ClearArray(Handle:CommonInfectedQueue);
-		ClearArray(Handle:SuperCommonQueue);
-		ClearArray(Handle:StaggeredTargets);
-
+		ClearArray(CommonInfected);
+		ClearArray(WitchList);
+		ClearArray(CommonList);
+		ClearArray(EntityOnFire);
+		ClearArray(EntityOnFireName);
+		ClearArray(CommonInfectedQueue);
+		ClearArray(SuperCommonQueue);
+		ClearArray(StaggeredTargets);
+		ClearArray(CommonInfectedHealth);
+		ClearArray(SpecialAmmoData);
+		ClearArray(CommonAffixes);
+		ClearArray(EffectOverTime);
+		ClearArray(TimeOfEffectOverTime);
 		if (b_IsMissionFailed && StrContains(TheCurrentMap, "zerowarn", false) != -1) {
 			PrintToChatAll("\x04Zero warning:\n\nThis campaign requires map restart on missionFail to prevent serverCrash.\nSorry for the inconvenience, Data will be preserved!!!");
 			LogMessage("restarting zero warning.");
@@ -2921,17 +2896,16 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		}
 	}
 }
-
 /*
 	These specific variables can be called the same way, every time, so we declare them globally.
 	These are all from the config.cfg (main config file)
 
 	We don't load other variables in this way because they are dynamically loaded and unloaded.
 */
-
 stock LoadMainConfig() {
 	GetConVarString(FindConVar("z_difficulty"), sServerDifficulty, sizeof(sServerDifficulty));
 	if (strlen(sServerDifficulty) < 4) GetConfigValue(sServerDifficulty, sizeof(sServerDifficulty), "server difficulty?");
+
 	fProficiencyExperienceMultiplier 	= GetConfigValueFloat("proficiency requirement multiplier?");
 	fProficiencyExperienceEarned 		= GetConfigValueFloat("experience multiplier proficiency?");
 	fRatingPercentLostOnDeath			= GetConfigValueFloat("rating percentage lost on death?");
@@ -3146,6 +3120,12 @@ stock LoadMainConfig() {
 	iSurvivorBotsBonusLimit				= GetConfigValueInt("no survivor bots group bonus requirement?");
 	iShowAdvertToNonSteamgroupMembers	= GetConfigValueInt("show advertisement to non-steamgroup members?");
 	iStrengthOnSpawnIsStrength			= GetConfigValueInt("spells,auras,ammos strength set on spawn?");
+	iHealingPlayerInCombatPutInCombat	= GetConfigValueInt("healing a player in combat places you in combat?");
+	iPlayersLeaveCombatDuringFinales	= GetConfigValueInt("do players leave combat during finales?");
+	iAllowPauseLeveling					= GetConfigValueInt("let players pause their leveling?");
+	fMaxDamageResistance				= GetConfigValueFloat("max damage resistance?");
+	//if (fMaxDamageResistance < 0.0) fMaxDamageResistance = 0.9;
+	//iDropAcidOnLastDebuffDrop			= GetConfigValueInt("do prestige players poo acid on last tick?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
 	GetConfigValue(DefaultBotProfileName, sizeof(DefaultBotProfileName), "new bot player profile?");
 	GetConfigValue(DefaultInfectedProfileName, sizeof(DefaultInfectedProfileName), "new infected player profile?");
@@ -3155,14 +3135,10 @@ stock LoadMainConfig() {
 }
 
 //public Action:CMD_Backpack(client, args) { EquipBackpack(client); return Plugin_Handled; }
-
 public Action:CMD_BuyMenu(client, args) {
-
 	if (iRPGMode < 0 || iRPGMode == 1 && b_IsActiveRound) return Plugin_Handled;
-
 	//if (StringToInt(GetConfigValue("rpg mode?")) != 1) 
 	BuildPointsMenu(client, "Buy Menu", "rpg/points.cfg");
-	
 	return Plugin_Handled;
 }
 

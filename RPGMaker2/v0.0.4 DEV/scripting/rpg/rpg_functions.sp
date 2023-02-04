@@ -1078,7 +1078,7 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 			new bool:isCommonInfectedAttacker = IsCommonInfected(attacker);
 			new attackerType = (isCommonInfectedAttacker) ? 1 :
 							   (IsWitch(attacker)) ? 2 :
-							   (IsLegitimateClient(attacker) && GetClientTeam(attacker) != TEAM_SURVIVOR) ? 3 :
+							   (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_INFECTED) ? 3 :
 							   (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR) ? 4 : 5;
 			if (attackerType <= 3) {
 				CombatTime[victim] = GetEngineTime() + fOutOfCombatTime;
@@ -1106,7 +1106,7 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 						i_WitchDamage -= DamageShield;
 						if (i_WitchDamage < 0) i_WitchDamage = 0;
 					}
-					TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
+					TheAbilityMultiplier = GetAbilityMultiplier(victim, "X");
 					if (TheAbilityMultiplier >= 1.0) {	// Damage taken reduced to 0.
 						damage_ignore = 0.0;
 						return Plugin_Handled;
@@ -1116,7 +1116,12 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 					}
 					if (IsSurvivalMode || RPGRoundTime() < iEnrageTime) Points_Director += (fWitchDirectorPoints * i_WitchDamage);
 					else Points_Director += (fEnrageDirectorPoints * i_WitchDamage);
-					i_WitchDamage -= RoundToCeil(GetAbilityStrengthByTrigger(victim, attacker, "L", _, i_WitchDamage, _, _, "o", _, true)); // true means we just get the result and don't execute the ability.
+					new damageReduction = RoundToCeil(GetAbilityStrengthByTrigger(victim, attacker, "L", _, i_WitchDamage, _, _, "o", _, true));
+					if (damageReduction > 0) {
+						new maxDamageReduction = RoundToFloor(i_WitchDamage * fMaxDamageResistance);
+						if (damageReduction > maxDamageReduction) damageReduction = maxDamageReduction;
+						i_WitchDamage -= damageReduction; // true means we just get the result and don't execute the ability.
+					}
 					SetClientTotalHealth(victim, i_WitchDamage);
 					ReceiveWitchDamage(victim, attacker, i_WitchDamage);
 					// Reflect damage.
@@ -1258,10 +1263,15 @@ stock IfCommonInfectedIsAttackerDoStuff(attacker, victim, damagetype, survivorCo
 			CommonsDamage -= DamageShield;
 			if (CommonsDamage < 0) CommonsDamage = 0;
 		}
-		new Float:TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
+		new Float:TheAbilityMultiplier = GetAbilityMultiplier(victim, "X");
 		if (TheAbilityMultiplier >= 1.0) return -1;
 		else if (TheAbilityMultiplier > 0.0) CommonsDamage -= RoundToCeil(CommonsDamage * TheAbilityMultiplier);
-		CommonsDamage -= RoundToCeil(GetAbilityStrengthByTrigger(victim, attacker, "L", _, CommonsDamage, _, _, "o", _, true));
+		new damageReduction = RoundToCeil(GetAbilityStrengthByTrigger(victim, attacker, "L", _, CommonsDamage, _, _, "o", _, true));
+		if (damageReduction > 0) {
+			new maxDamageReduction = RoundToFloor(CommonsDamage * fMaxDamageResistance);
+			if (damageReduction > maxDamageReduction) damageReduction = maxDamageReduction;
+			CommonsDamage -= damageReduction; // true means we just get the result and don't execute the ability.
+		}
 		if (IsSurvivalMode || RPGRoundTime() < iEnrageTime) Points_Director += (fCommonDirectorPoints * CommonsDamage);
 		else Points_Director += (fEnrageDirectorPoints * CommonsDamage);
 		GetAbilityStrengthByTrigger(victim, attacker, "Y", _, CommonsDamage);
@@ -1340,10 +1350,16 @@ stock IfInfectedIsAttackerDoStuff(attacker, victim) {
 		totalIncomingDamage -= DamageShield;
 		if (totalIncomingDamage < 0) return -1;
 	}
-	new Float:TheAbilityMultiplier = GetAbilityMultiplier(victim, "X", 4);
+	new Float:TheAbilityMultiplier = GetAbilityMultiplier(victim, "X");
 	if (TheAbilityMultiplier > 0.9) TheAbilityMultiplier = 0.9;
 	if (TheAbilityMultiplier > 0.0) totalIncomingDamage -= RoundToCeil(totalIncomingDamage * TheAbilityMultiplier); // Damage received is reduced by the amount.
-	totalIncomingDamage -= RoundToCeil(GetAbilityStrengthByTrigger(victim, attacker, "L", _, totalIncomingDamage, _, _, "o", _, true));
+	new damageReduction = RoundToCeil(GetAbilityStrengthByTrigger(victim, attacker, "L", _, totalIncomingDamage, _, _, "o", _, true));
+	if (damageReduction > 0) {
+		new maxDamageReduction = RoundToFloor(totalIncomingDamage * fMaxDamageResistance);
+		if (damageReduction > maxDamageReduction) damageReduction = maxDamageReduction;
+		totalIncomingDamage -= damageReduction; // true means we just get the result and don't execute the ability.
+	}
+	//totalIncomingDamage -= RoundToCeil(GetAbilityStrengthByTrigger(victim, attacker, "L", _, totalIncomingDamage, _, _, "o", _, true));
 	if (CheckActiveAbility(victim, totalIncomingDamage, 1) > 0.0) {
 		SetClientTotalHealth(victim, totalIncomingDamage);
 		AddSpecialInfectedDamage(victim, attacker, totalIncomingDamage, true);	// bool is tanking instead.
@@ -1359,7 +1375,7 @@ stock IfInfectedIsAttackerDoStuff(attacker, victim) {
 	if (StrEqual(weapon, "insect_swarm")) bIsInfectedSwarm = true;
 	if (L4D2_GetSurvivorVictim(attacker) != -1) GetAbilityStrengthByTrigger(attacker, victim, "v", _, totalIncomingDamage);
 	if (bIsInfectedSwarm) GetAbilityStrengthByTrigger(attacker, victim, "T", _, totalIncomingDamage);
-	else GetAbilityStrengthByTrigger(victim, attacker, "L", _, totalIncomingDamage);
+	GetAbilityStrengthByTrigger(victim, attacker, "L", _, totalIncomingDamage);
 	GetAbilityStrengthByTrigger(attacker, victim, "D", _, totalIncomingDamage);
 	if (L4D2_GetInfectedAttacker(victim) == attacker) GetAbilityStrengthByTrigger(victim, attacker, "s", _, totalIncomingDamage);
 	if (L4D2_GetInfectedAttacker(victim) != -1 && L4D2_GetInfectedAttacker(victim) != attacker) {
@@ -1604,7 +1620,7 @@ stock AddSpecialInfectedDamage(client, target, TotalDamage, bool:IsTankingInstea
 	}
 
 	new myzombieclass = FindZombieClass(target, true);
-	if (myzombieclass < 1) return 0;
+	if (myzombieclass < 1 || myzombieclass > 8) return 0;
 
 	if (isEntityPos < 0) {
 
@@ -1790,6 +1806,19 @@ stock AwardExperience(client, type = 0, AMOUNT = 0, bool:TheRoundHasEnded=false)
 
 	new InfectedBotLevelType = iBotLevelType;
 
+	if (!TheRoundHasEnded && AMOUNT > 0 && (bIsInCombat[client] || !bIsInCombat[client] || InfectedBotLevelType == 1 || b_IsFinaleActive || IsEnrageActive() || DoomTimer != 0)) {
+
+		new bAMOUNT = 0;
+		if (RoundExperienceMultiplier[client] > 0.0) {
+
+			bAMOUNT = AMOUNT + RoundToCeil(AMOUNT * RoundExperienceMultiplier[client]);
+		}
+		else bAMOUNT = AMOUNT;
+		if (type == 1) HealingContribution[client] += bAMOUNT;
+		else if (type == 2) BuffingContribution[client] += bAMOUNT;
+		else if (type == 3) HexingContribution[client] += bAMOUNT;
+		//AddTalentExperience(client, "endurance", bAMOUNT);
+	}
 	if (TheRoundHasEnded || !b_IsFinaleActive && !IsEnrageActive() && AMOUNT == 0 && !bIsInCombat[client]) {
 
 		new Float:PointsMultiplier = fPointsMultiplier;
@@ -1824,19 +1853,6 @@ stock AwardExperience(client, type = 0, AMOUNT = 0, bool:TheRoundHasEnded=false)
 		BuffingContribution[client] = 0;
 		HexingContribution[client] = 0;
 			//ReceiveInfectedDamageAward(i, client, SurvivorExperience, SurvivorPoints, t_Contribution, h_Contribution);
-	}
-	if (!TheRoundHasEnded && (InfectedBotLevelType == 1 || bIsInCombat[client] || b_IsFinaleActive || IsEnrageActive() || DoomTimer != 0)) {
-
-		new bAMOUNT = 0;
-		if (RoundExperienceMultiplier[client] > 0.0) {
-
-			bAMOUNT = AMOUNT + RoundToCeil(AMOUNT * RoundExperienceMultiplier[client]);
-		}
-		else bAMOUNT = AMOUNT;
-		if (type == 1) HealingContribution[client] += bAMOUNT;
-		else if (type == 2) BuffingContribution[client] += bAMOUNT;
-		else if (type == 3) HexingContribution[client] += bAMOUNT;
-		//AddTalentExperience(client, "endurance", bAMOUNT);
 	}
 }
 
@@ -1916,7 +1932,7 @@ stock TalentRequirementsMet(client, Handle:Keys, Handle:Values, String:sTalentLi
 	while (pos >= 0) {
 		pos = FormatKeyValue(TalentName, sizeof(TalentName), Keys, Values, "talents required?", _, _, pos);
 		if (!StrEqual(sTalentList, "none")) {
-			if (pos == -1) {
+			if (pos < 0) {
 				Format(sTalentList, TheSize, "%s", text);
 				break;
 			}
@@ -1924,7 +1940,7 @@ stock TalentRequirementsMet(client, Handle:Keys, Handle:Values, String:sTalentLi
 			if (GetTalentStrength(client, TalentName) < 1) {
 				count++;
 				GetTranslationOfTalentName(client, TalentName, talentTranslation, sizeof(talentTranslation), true);
-				Format(talentTranslation, sizeof(talentTranslation), "%T", talentTranslation, client);
+				//Format(talentTranslation, sizeof(talentTranslation), "%T", talentTranslation, client);
 				if (count > 1) Format(text, sizeof(text), "%s\n%s", text, talentTranslation);
 				else Format(text, sizeof(text), "%s", talentTranslation);
 			}
@@ -1946,14 +1962,23 @@ stock TalentRequirementsMet(client, Handle:Keys, Handle:Values, String:sTalentLi
 	return false;
 }*/
 
-stock bool:IsAbilityFound(String:tSearchString[], String:tSubstring[]) {
-	new iExplodeCount = GetDelimiterCount(tSearchString, ",") + 1;
+stock bool:IsAbilityFound(Handle:Keys, Handle:Values, String:tSubstring[]) {
+	decl String:searchString[64];
+	new pos = 0;
+	while (pos >= 0) {
+		pos = FormatKeyValue(searchString, sizeof(searchString), Keys, Values, "ability trigger?", _, _, pos);
+		if (pos == -1) break;
+		if (StrEqual(searchString, tSubstring)) return true;
+	}
+	return false;
+	
+	/*new iExplodeCount = GetDelimiterCount(tSearchString, ",") + 1;
 	decl String:tSubstrings[iExplodeCount][512];
 	ExplodeString(tSearchString, ",", tSubstrings, iExplodeCount, 64);
 	for (new i = 0; i < iExplodeCount; i++) {
 		if (StrEqual(tSubstrings[i], tSubstring, true)) return true;
 	}
-	return false;
+	return false;*/
 }
 
 stock GetGoverningAttribute(client, String:TalentName[], String:governingAttribute[], theSize) {
@@ -2012,7 +2037,7 @@ stock bool:RollChanceSuccess(Handle:Keys, Handle:Values) {
 stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[], zombieclass = 0, damagevalue = 0,
 										bool:IsOverdriveStacks = false, bool:IsCleanse = false, String:ResultEffects[] = "none",
 										ResultType = 0, bool:bDontActuallyActivate = false, typeOfValuesToRetrieve = 1,
-										hitgroup = -1) {// activator, target, trigger ability, survivor effects, infected effects, 
+										hitgroup = -1, String:abilityTrigger[] = "none") {// activator, target, trigger ability, survivor effects, infected effects, 
 														//common effects, zombieclass, damage typeofvalues: 0 (all) 1 (NO RAW) 2(raw values only)
 	if (iRPGMode <= 0) return 0.0;
 	if (IsCommonInfected(activator) || IsLegitimateClient(activator) && GetClientTeam(activator) == TEAM_INFECTED) return 0.0;
@@ -2137,8 +2162,8 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 		TriggerKeys[activator]		= GetArrayCell(a_Menu_Talents, i, 0);
 		TriggerValues[activator]	= GetArrayCell(a_Menu_Talents, i, 1);
 		if (AbilityTriggerKeySkips(TriggerKeys[activator], TriggerValues[activator])) continue;
-		FormatKeyValue(TheString, sizeof(TheString), TriggerKeys[activator], TriggerValues[activator], "ability trigger?");
-		if (!IsAbilityFound(TheString, AbilityT)) continue;
+		//FormatKeyValue(TheString, sizeof(TheString), TriggerKeys[activator], TriggerValues[activator], "ability trigger?");
+		if (!IsAbilityFound(TriggerKeys[activator], TriggerValues[activator], AbilityT)) continue;
 
 		TriggerSection[activator]	= GetArrayCell(a_Menu_Talents, i, 2);
 		GetArrayString(Handle:TriggerSection[activator], 0, TalentName, sizeof(TalentName));
@@ -2376,7 +2401,7 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 							//AddTalentExperience(activator, "technique", RoundToCeil(p_Strength * 100.0));							
 							ActivateAbilityEx(activator, target, damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
 												GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "primary aoe?"), secondaryEffects,
-												GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "secondary aoe?"), hitgroup, secondaryTrigger);
+												GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "secondary aoe?"), hitgroup, secondaryTrigger, abilityTrigger);
 						}
 					}
 					else {
@@ -2387,7 +2412,7 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 							if (eotStrength > 0.0) p_Strength *= eotStrength;
 							ActivateAbilityEx(activator, activator, damagevalue, activatoreffects, p_Strength, p_Time, target, _, isRawType,
 																		GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "primary aoe?"), secondaryEffects,
-																		GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "secondary aoe?"), hitgroup, secondaryTrigger);
+																		GetKeyValueFloat(TriggerKeys[activator], TriggerValues[activator], "secondary aoe?"), hitgroup, secondaryTrigger, abilityTrigger);
 						}
 					}
 				}
@@ -4067,16 +4092,16 @@ stock CheckTeammateDamagesEx(client, target, TotalDamage, bool:bSpellDeath = fal
 			CalculateInfectedDamageAward(target, client);
 		}
 		else {
-			if (!IsLegitimateClient(target)) {
+			if (IsSpecialCommon(target)) {
+				GetAbilityStrengthByTrigger(client, target, "superkill", _, TotalDamage);
+				ClearSpecialCommon(target, _, TotalDamage, client);
+			}
+			else if (IsCommonInfected(target)) {
 				GetAbilityStrengthByTrigger(client, target, "C", _, TotalDamage);
 			}
 			else if (IsWitch(target)) {
 				GetAbilityStrengthByTrigger(client, target, "witchkill", _, TotalDamage);
 				OnWitchCreated(target, true);
-			}
-			else if (IsSpecialCommon(target)) {
-				GetAbilityStrengthByTrigger(client, target, "superkill", _, TotalDamage);
-				ClearSpecialCommon(target, _, TotalDamage, client);
 			}
 			/*else if (IsCommonInfected(target)) { // shouldn't get here anymore, but just in case.
 				GetAbilityStrengthByTrigger(client, target, "commonkill", _, TotalDamage);
@@ -4158,7 +4183,7 @@ stock ForceClientJump(activator, Float:g_TalentStrength, victim = 0) {
 
 stock ActivateAbilityEx(activator, target, d_Damage, String:Effects[], Float:g_TalentStrength, Float:g_TalentTime, victim = 0,
 						String:Trigger[] = "0", isRaw = 0, Float:AoERange = 0.0, String:secondaryEffects[] = "-1",
-						Float:secondaryAoERange = 0.0, hitgroup = -1, String:secondaryTrigger[] = "-1") {
+						Float:secondaryAoERange = 0.0, hitgroup = -1, String:secondaryTrigger[] = "-1", String:AbilityTriggerIgnore[] = "none") {
 
 	//PrintToChat(activator, "damage %d Effects: %s Strength: %3.2f", d_Damage, Effects, g_TalentStrength);
 	// Activator is ALWAYS the person who holds the talent. The TARGET is who the ability ALWAYS activates on.
@@ -4194,14 +4219,14 @@ stock ActivateAbilityEx(activator, target, d_Damage, String:Effects[], Float:g_T
 			}
 			if (playersInAoERangeCount > 0) {
 				d_Damage /= playersInAoERangeCount;
-				GetAbilityStrengthByTrigger(activator, target, "aoegive", _, d_Damage, _, _, _, _, _, _, hitgroup);
+				if (!StrEqual(AbilityTriggerIgnore, "aoegive")) GetAbilityStrengthByTrigger(activator, target, "aoegive", _, d_Damage, _, _, _, _, _, _, hitgroup, "aoegive");
 				for (new i = 1; i <= MaxClients; i++) {
 					if (i == activator || !IsLegitimateClientAlive(i) || GetClientTeam(i) == activatorTeam) continue;
 					GetClientAbsOrigin(i, playersRangePos);
 					if (GetVectorDistance(activatorPos, playersRangePos) <= AoERange) {
 						// loop the effect through anyone within range of it. because AoERange in this call is 0.0, it won't loop indefinitely.
 						ActivateAbilityEx(activator, i, d_Damage, Effects, g_TalentStrength, g_TalentTime, victim, Trigger, isRaw);
-						GetAbilityStrengthByTrigger(i, target, "aoereceive", _, d_Damage, _, _, _, _, _, _, hitgroup);
+						if (!StrEqual(AbilityTriggerIgnore, "aoereceive")) GetAbilityStrengthByTrigger(i, target, "aoereceive", _, d_Damage, _, _, _, _, _, _, hitgroup, "aoereceive");
 					}
 				}
 				if (!StrEqual(secondaryEffects, "-1")) {
@@ -4298,17 +4323,13 @@ stock ActivateAbilityEx(activator, target, d_Damage, String:Effects[], Float:g_T
 				if (IsSpecialCommon(target)) {
 
 					decl String:TheValue[10];
-					GetCommonValue(TheValue, sizeof(TheValue), target, "damage effect?");
-
-					// The bomber explosion initially targets itself so that the chain-reaction (if enabled) doesn"t go indefinitely.
-					if (IsAbilityFound(TheValue, "f")) {
-
-						//CreateExplosion(activator);
-						CreateDamageStatusEffect(target, _, activator, iDamage);
-					}
-					if (IsAbilityFound(TheValue, "d")) {
-
-						CreateDamageStatusEffect(target, 3, activator, iDamage);		// attacker is not target but just used to pass for reference.
+					new pos = 0;
+					while (pos >= 0) {
+						pos = GetCommonValue(TheValue, sizeof(TheValue), target, "damage effect?", pos);
+						if (pos == -1) break;
+						// The bomber explosion initially targets itself so that the chain-reaction (if enabled) doesn"t go indefinitely.
+						if (StrEqual(TheValue, "f", true)) CreateDamageStatusEffect(target, _, activator, iDamage);
+						if (StrEqual(TheValue, "d", true)) CreateDamageStatusEffect(target, 3, activator, iDamage);		// attacker is not target but just used to pass for reference.
 					}
 				}
 			}
@@ -4974,43 +4995,33 @@ stock CreateCommonAffix(entity) {
 	new maxallowed = 1;
 	decl String:iglowColour[3][4];
 	decl String:glowColour[10];
-	new Float:ModelSize = 1.0;
+	//new Float:ModelSize = 1.0;
+	new bool:SurvivorsAreBiled = SurvivorsBiled();
 
 	for (new i = 0; i < size; i++) {
-
-		CCASection			= GetArrayCell(a_CommonAffixes, i, 2);
 		CCAKeys				= GetArrayCell(a_CommonAffixes, i, 0);
 		CCAValues			= GetArrayCell(a_CommonAffixes, i, 1);
 
 		//if (GetArraySize(AfxSection) < 1 || GetArraySize(AfxKeys) < 1) continue;
-		if (GetKeyValueInt(CCAKeys, CCAValues, "require bile?") == 1 && !SurvivorsBiled()) continue;
+		if (GetKeyValueInt(CCAKeys, CCAValues, "require bile?") == 1 && SurvivorsAreBiled) continue;
 		maxallowed = GetKeyValueInt(CCAKeys, CCAValues, "max allowed?");
 		if (maxallowed < 0) maxallowed = 1;
 		if (SuperCommonsInPlay(Section_Name) >= maxallowed) continue;
 
 		RollChance = GetKeyValueFloat(CCAKeys, CCAValues, "chance?");
-		//if (GetTankWithState(GetKeyValueInt(CCAKeys, CCAValues, "require boss state?")) == 0 && GetKeyValueInt(CCAKeys, CCAValues, "require boss state?") >= 0) continue;		// no tanks with the required state.
-		//LogMessage("Roll is 1 - %d (Roll Chance is %3.3f)", RoundToCeil(1.0 / RollChance), RollChance);
-
-		if (StrEqual(ForceName, "none", false) && GetRandomInt(1, RoundToCeil(1.0 / RollChance)) > 1) {
-
-			continue;		// == 1 for successful roll
-		}
-		//LogMessage("Common %d rolled successfully!", entity);
+		if (StrEqual(ForceName, "none", false) && GetRandomInt(1, RoundToCeil(1.0 / RollChance)) > 1) continue;		// == 1 for successful roll
+		CCASection			= GetArrayCell(a_CommonAffixes, i, 2);
 		GetArrayString(Handle:CCASection, 0, Section_Name, sizeof(Section_Name));
 		if (!StrEqual(ForceName, "none", false) && !StrEqual(Section_Name, ForceName, false)) continue;
-		
-		//Format(Section_Name, sizeof(Section_Name), "%s:%d", Section_Name, entity);
 		SetEntPropString(entity, Prop_Data, "m_iName", Section_Name);
 
 		PushArrayCell(Handle:CommonAffixes, entity);
-		//PushArrayString(Handle:CommonAffixes, Section_Name);
 		OnCommonCreated(entity);
 
 		//	Now that we've confirmed this common is special, let's go ahead and activate pertinent functions...
 		//	Doing some of these, repeatedly, in a timer is a) wasteful and b) crashy. I know, from experience.
 
-		if (GetKeyValueInt(CCAKeys, CCAValues, "glow?") == 1) {
+		/*if (GetKeyValueInt(CCAKeys, CCAValues, "glow?") == 1) {
 
 			SetEntProp(entity, Prop_Send, "m_iGlowType", 3);
 			SetEntProp(entity, Prop_Send, "m_nGlowRange", RoundToCeil(GetKeyValueFloat(CCAKeys, CCAValues, "glow range?")));
@@ -5018,21 +5029,12 @@ stock CreateCommonAffix(entity) {
 			ExplodeString(glowColour, " ", iglowColour, 3, 4);
 			SetEntProp(entity, Prop_Send, "m_glowColorOverride", StringToInt(iglowColour[0]) + (StringToInt(iglowColour[1]) * 256) + (StringToInt(iglowColour[2]) * 65536));
 			AcceptEntityInput(entity, "StartGlowing");
-		}
+		}*/
 		FormatKeyValue(AuraEffectCCA, sizeof(AuraEffectCCA), CCAKeys, CCAValues, "aura effect?");
 		if (StrContains(AuraEffectCCA, "f", true) != -1) CreateAndAttachFlame(entity, _, _, _, _, "burn");
-		//else if (StrContains(AuraEffectCCA, "a", true) != -1) CreateAndAttachFlame(entity, _, _, _, _, "acid");		// true for it to deal no damage.
-
-		ModelSize = GetKeyValueFloat(CCAKeys, CCAValues, "model size?");
-		if (ModelSize < 0.1) ModelSize = 1.0;
-		SetEntPropFloat(entity, Prop_Send, "m_flModelScale", ModelSize);
-
-		//if (flMovementSpeed < 0.5) flMovementSpeed = 1.0;
-		//SetEntPropFloat(entity, Prop_Data, "m_flSpeed", flMovementSpeed);
 		FormatKeyValue(Model, sizeof(Model), CCAKeys, CCAValues, "force model?");
-		if (!StrEqual(Model, "-1") && IsModelPrecached(Model)) SetEntityModel(entity, Model);
+		if (IsModelPrecached(Model)) SetEntityModel(entity, Model);
 		else if (GetArraySize(CommonInfectedQueue) > 0) {
-
 			GetArrayString(Handle:CommonInfectedQueue, 0, Model, sizeof(Model));
 			if (IsModelPrecached(Model)) SetEntityModel(entity, Model);
 			RemoveFromArray(Handle:CommonInfectedQueue, 0);
@@ -5261,6 +5263,7 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 	//decl String:t_Delim[2][64];
 	static String:ModelName[64];
 	static DamageShield = 0;
+	static String:TalentName[64];
 
 	for (new i = 0; i < GetArraySize(Handle:EntityOnFire); i++) {
 		Client = GetArrayCell(EntityOnFire, i, 0);
@@ -5275,6 +5278,7 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 			RemoveFromArray(EntityOnFireName, i);
 			continue;
 		}
+		GetArrayString(EntityOnFireName, i, TalentName, sizeof(TalentName));
 		damage = GetArrayCell(EntityOnFire, i, 1);
 		FlTime = GetArrayCell(EntityOnFire, i, 2);
 		TickInt = GetArrayCell(EntityOnFire, i, 3);
@@ -5312,6 +5316,14 @@ public Action:Timer_EntityOnFire(Handle:timer) {
 		if (FlTime - 0.5 <= 0.0 || damage <= 0) {
 			RemoveFromArray(Handle:EntityOnFire, i);
 			RemoveFromArray(Handle:EntityOnFireName, i);
+			/*if (SkyLevel[Client] > 0 && GetClientStatusEffect(Client, TalentName) < 1) {
+				if (StrEqual(TalentName, "acid", false) && iDropAcidOnLastDebuffDrop == 1 && !DebuffOnCooldown(Client, "acid")) {
+					PushArrayString(ApplyDebuffCooldowns[Client], "acid");	// prevents the user who drops the acid from automatically-receiving more acid burn stacks (likely in perpetuity)
+					CreateTimer(3.0, Timer_AcidCooldown, Client, TIMER_FLAG_NO_MAPCHANGE);
+					CreateAcid(FindInfectedClient(true), Client, 16.0);
+				}
+				//CreateAcid(FindInfectedClient(true), Client, 48.0);
+			}*/
 			continue;
 		}
 		SetArrayCell(EntityOnFire, i, damage - t_Damage, 1);
@@ -5390,7 +5402,6 @@ stock GetSpecialCommonDamage(damage, client, Effect, victim) {
 }
 
 stock GetEntitiesInRange(client, victim, EntityType) {
-
 	new Float:ClientPos[3];
 	GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
 
@@ -5399,29 +5410,24 @@ stock GetEntitiesInRange(client, victim, EntityType) {
 	new Float:AfxRangeBase	= GetCommonValueFloat(client, "range minimum?");
 	if (AfxRange + AfxRangeBase > AfxRangeMax) AfxRange = AfxRangeMax;
 	else AfxRange += AfxRangeBase;
-
 	new ent = -1;
 	new Float:EntPos[3];
-
 	new count = 0;
 	if (EntityType == 0) {
-
 		for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
-
 			ent = GetArrayCell(Handle:CommonInfected, i);
-			if (ent != client) {
-
-				GetEntPropVector(ent, Prop_Send, "m_vecOrigin", EntPos);
-				if (IsInRange(ClientPos, EntPos, AfxRange)) count++;
+			if (ent == client) continue;
+			if (!IsCommonInfected(ent)) {
+				RemoveFromArray(CommonInfected, i);
+				continue;
 			}
+			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", EntPos);
+			if (IsInRange(ClientPos, EntPos, AfxRange)) count++;
 		}
 	}
 	else {
-
 		for (new i = 1; i <= MaxClients; i++) {
-
 			if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_INFECTED) {
-
 				GetClientAbsOrigin(i, EntPos);
 				if (IsInRange(ClientPos, EntPos, AfxRange)) count++;
 			}
@@ -5439,14 +5445,12 @@ stock bool:IsSpecialCommonInRangeEx(client, String:vEntity[]="none", bool:IsAura
 
 	new ent = -1;
 	//new Effect = 't';
-	for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
-
-		ent = GetArrayCell(Handle:CommonInfected, i);
-		if (ent == client) continue;
+	for (new i = 0; i < GetArraySize(Handle:CommonAffixes); i++) {
+		ent = GetArrayCell(Handle:CommonAffixes, i);
+		if (ent == client || !IsCommonInfected(ent)) continue;
 		if (!StrEqual(vEntity, "none", false)) {
 			if(!CommonInfectedModel(ent, vEntity)) continue;
 		}
-		else if (!IsSpecialCommon(ent)) continue;
 
 		/*
 
@@ -5513,11 +5517,15 @@ stock bool:IsSpecialCommonInRange(client, Effect = -1, vEntity = -1, bool:IsAura
 	else {
 
 		new ent = -1;
-		for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
+		for (new i = 0; i < GetArraySize(Handle:CommonAffixes); i++) {
 
-			ent = GetArrayCell(Handle:CommonInfected, i);
+			ent = GetArrayCell(Handle:CommonAffixes, i);
 			
-			if (ent == client || !IsSpecialCommon(ent)) continue;
+			if (ent == client) continue;
+			if (!IsCommonInfected(ent)) {
+				RemoveFromArray(CommonAffixes, i);
+				continue;
+			}
 			if (vEntity >= 0 && ent != vEntity) continue;
 
 			GetCommonValue(TheAuras, sizeof(TheAuras), ent, "aura effect?");
@@ -5568,13 +5576,9 @@ public Action:Timer_CommonAffixes(Handle:timer) {
 	static IsCommonAffixesEnabled = -2;
 	if (IsCommonAffixesEnabled == -2) IsCommonAffixesEnabled = iCommonAffixes;
 	if (IsCommonAffixesEnabled == 2) {
-		for (new zombie = 0; zombie < GetArraySize(Handle:CommonInfected); zombie++) {
-
-			ent = GetArrayCell(Handle:CommonInfected, zombie);
-			if (IsSpecialCommon(ent)) {
-
-				DrawCommonAffixes(ent);
-			}
+		for (new zombie = 0; zombie < GetArraySize(Handle:CommonAffixes); zombie++) {
+			ent = GetArrayCell(Handle:CommonAffixes, zombie);
+			if (IsCommonInfected(ent)) DrawCommonAffixes(ent);
 		}
 	}
 	// tanks with cloned abilities
@@ -5610,25 +5614,22 @@ stock GetCommonVisuals(String:TheString[], TheSize, entity, key = 0, pos = 0) {
 		//ExplodeString(AffixName[0], ":", AffixName, 2, 64);
 
 		ent = FindListPositionBySearchKey(AffixName[0], a_CommonAffixes, 2, DEBUG);
-		if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
-		else {
-
-			h_CommonKeys		= GetArrayCell(a_CommonAffixes, ent, 0);
-			h_CommonValues		= GetArrayCell(a_CommonAffixes, ent, 1);
-			if (key == 0) return FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, "draw colour?", _, _, pos);
-			else return FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, "draw pos?", _, _, pos);
-		}
+		if (ent < 0) return -1;
+		h_CommonKeys		= GetArrayCell(a_CommonAffixes, ent, 0);
+		h_CommonValues		= GetArrayCell(a_CommonAffixes, ent, 1);
+		if (key == 0) return FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, "draw colour?", _, _, pos);
+		else return FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, "draw pos?", _, _, pos);
 	}
 	Format(TheString, TheSize, "-1");
 	return -1;
 }
 
-stock GetCommonValue(String:TheString[], TheSize, entity, String:Key[]) {
+stock GetCommonValue(String:TheString[], TheSize, entity, String:Key[], pos = 0) {
 	decl String:AffixName[2][64];
 	new ent = -1;
-
+	if (pos > 0) pos++;
 	new size = GetArraySize(CommonAffixes);
-	for (new i = 0; i < size; i++) {
+	for (new i = pos; i < size; i++) {
 
 		//GetArrayString(Handle:CommonAffixes, i, SectionName, sizeof(SectionName));
 		//ent = FindEntityInString(SectionName);
@@ -5645,16 +5646,17 @@ stock GetCommonValue(String:TheString[], TheSize, entity, String:Key[]) {
 		GetEntPropString(entity, Prop_Data, "m_iName", AffixName[0], sizeof(AffixName[]));
 
 		ent = FindListPositionBySearchKey(AffixName[0], a_CommonAffixes, 2, DEBUG);
-		if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
-		else {
+		//if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
+		if (ent >= 0) {
 
 			h_CommonKeys		= GetArrayCell(a_CommonAffixes, ent, 0);
 			h_CommonValues		= GetArrayCell(a_CommonAffixes, ent, 1);
 			FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, Key);
-			return;
+			return i;
 		}
 	}
 	Format(TheString, TheSize, "-1");
+	return -1;
 }
 
 stock GetCommonValueInt(entity, String:Key[]) {
@@ -5681,14 +5683,11 @@ stock GetCommonValueInt(entity, String:Key[]) {
 		//ExplodeString(AffixName[0], ":", AffixName, 2, 64);
 
 		ent = FindListPositionBySearchKey(AffixName[0], a_CommonAffixes, 2, DEBUG);
-		if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
-		else {
-
-			h_CommonKeys		= GetArrayCell(a_CommonAffixes, ent, 0);
-			h_CommonValues		= GetArrayCell(a_CommonAffixes, ent, 1);
-			FormatKeyValue(text, sizeof(text), h_CommonKeys, h_CommonValues, Key);
-			return StringToInt(text);
-		}
+		if (ent < 0) continue;//LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
+		h_CommonKeys		= GetArrayCell(a_CommonAffixes, ent, 0);
+		h_CommonValues		= GetArrayCell(a_CommonAffixes, ent, 1);
+		FormatKeyValue(text, sizeof(text), h_CommonKeys, h_CommonValues, Key);
+		return StringToInt(text);
 	}
 	return -1;
 }
@@ -5771,7 +5770,6 @@ stock DrawCommonAffixes(entity, String:sForceAuraEffect[] = "none") {
 
 	new Float:EntityPos[3];
 	new Float:TargetPos[3];
-	if (!IsValidEntity(entity) || !IsSpecialCommon(entity)) return;
 
 	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", EntityPos);
 
@@ -5872,39 +5870,32 @@ stock DrawCommonAffixes(entity, String:sForceAuraEffect[] = "none") {
 			if (ISFROZEN[i] == INVALID_HANDLE) FrozenPlayer(i, 0.0);
 		}
 	}
+	/*new bool:IsHealer = (StrContains(AfxEffect, "h", true) != -1) ? true : false;
+	if (!IsHealer) return;
+
 	new ent = -1;
 	new pos = -1;
-	for (new i = 1; i <= MaxClients; i++) {
 
+	for (new i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_INFECTED) continue;
 		GetClientAbsOrigin(i, TargetPos);
-
-		if (IsInRange(EntityPos, TargetPos, AfxRangeMax)) {
-
-			if (StrContains(AfxEffect, "h", true) != -1) {
-
-				for (new y = 1; y <= MaxClients; y++) {
-
-					if (!IsLegitimateClient(y) || GetClientTeam(y) != TEAM_SURVIVOR) continue;
-					pos = FindListPositionByEntity(entity, Handle:InfectedHealth[y]);
-					if (pos < 0) continue;
-					SetArrayCell(Handle:InfectedHealth[y], pos, GetArrayCell(Handle:InfectedHealth[y], pos, 1) + t_Strength, 1);
-				}
-			}
+		if (!IsInRange(EntityPos, TargetPos, AfxRangeMax)) continue;
+		for (new y = 1; y <= MaxClients; y++) {
+			if (!IsLegitimateClient(y) || GetClientTeam(y) != TEAM_SURVIVOR) continue;
+			pos = FindListPositionByEntity(i, Handle:InfectedHealth[y]);
+			if (pos < 0) continue;
+			SetArrayCell(Handle:InfectedHealth[y], pos, GetArrayCell(Handle:InfectedHealth[y], pos, 1) + t_Strength, 1);
 		}
 	}
 	new commonHealth = 0;
 	for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
 		ent = GetArrayCell(Handle:CommonInfected, i);
-		commonHealth = GetArrayCell(CommonInfectedHealth, i);
-		if (ent == entity) continue;
+		if (ent == entity || !IsCommonInfected(ent)) continue;
 		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPos);
-		if (IsInRange(EntityPos, TargetPos, AfxRangeMax)) {
-			if (StrContains(AfxEffect, "h", true) != -1) {
-				SetArrayCell(CommonInfectedHealth, i, commonHealth + t_Strength);
-			}
-		}
-	}
+		if (!IsInRange(EntityPos, TargetPos, AfxRangeMax)) continue;
+		commonHealth = GetArrayCell(CommonInfectedHealth, i);
+		SetArrayCell(CommonInfectedHealth, i, commonHealth + t_Strength);
+	}*/
 }
 
 stock LivingEntitiesInRangeByType(client, Float:effectRange, targetTeam = 0) {
@@ -5954,7 +5945,6 @@ stock LivingEntitiesInRange(entity, Float:SourceLoc[3], Float:EffectRange, targe
 	new Float:Pos[3];
 	if (targetType != 1) {
 		for (new i = 1; i <= MaxClients; i++) {
-
 			if (IsLegitimateClientAlive(i)) {
 				if (targetType != 4) {
 					if (targetType == 2 && GetClientTeam(i) != TEAM_SURVIVOR) continue;
@@ -5970,8 +5960,8 @@ stock LivingEntitiesInRange(entity, Float:SourceLoc[3], Float:EffectRange, targe
 	if (targetType <= 1) {
 		new ent = -1;
 		for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
-
 			ent = GetArrayCell(Handle:CommonInfected, i);
+			if (!IsCommonInfected(ent)) continue;
 			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", Pos);
 			if (!IsInRange(SourceLoc, Pos, EffectRange)) continue;
 			count++;
@@ -6193,6 +6183,7 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 	static bool:IsPlayerSameTeam;
 	static dataAmmoType = 0;
 	static bulletStrength = 0;
+	static Float:fVisualDelay = 0.0;
 	CheckActiveAbility(client, -1, _, _, true);	// draws effects for any active ability this client has.
 	for (new i = 0; i < GetArraySize(Handle:SpecialAmmoData); i++) {
 		dataClient = FindClientByIdNumber(GetArrayCell(SpecialAmmoData, i, 7));
@@ -6226,6 +6217,32 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 		else if (StrEqual(DataAmmoEffect, "C", true)) dataAmmoType = 8;
 		
 		bulletStrength = GetArrayCell(SpecialAmmoData, i, 5);
+		if (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, _, i) == -2.0) {
+			IsPlayerSameTeam = (client == dataClient || GetClientTeam(client) == GetClientTeam(dataClient)) ? true : false;
+
+			AmmoStrength			= (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, false, _, bulletStrength * 1.0)) * bulletStrength;
+			if (AmmoStrength <= 0.0) continue;
+
+			if (!IsPlayerSameTeam) {	// the owner of the ammo and the player inside of it are NOT on the same team.
+				if (dataAmmoType == 1) ExplosiveAmmo(client, RoundToCeil(AmmoStrength), dataClient);
+				else if (dataAmmoType == 2) LeechAmmo(client, RoundToCeil(AmmoStrength), dataClient);
+				else if (dataAmmoType == 3) {
+					if (ISEXPLODE[client] == INVALID_HANDLE) CreateAndAttachFlame(client, RoundToCeil(AmmoStrength), f_TimeRemaining, f_TimeRemaining, dataClient);
+					else CreateAndAttachFlame(client, RoundToCeil(AmmoStrength * TheScorchMult), f_TimeRemaining, f_TimeRemaining, dataClient);
+				}
+				else if (dataAmmoType == 4) BeanBagAmmo(client, AmmoStrength, dataClient);
+			}
+			else {
+				if (dataAmmoType == 5 && !HasAdrenaline(client)) SetAdrenalineState(client, f_TimeRemaining);
+				else if (dataAmmoType == 6) HealingAmmo(client, RoundToCeil(AmmoStrength), dataClient);
+				else if (dataAmmoType == 7 && !ISBILED[client]) {
+					SDKCall(g_hCallVomitOnPlayer, client, dataClient, true);
+					CreateTimer(15.0, Timer_RemoveBileStatus, client, TIMER_FLAG_NO_MAPCHANGE);
+					ISBILED[client] = true;
+				}
+				//else if (dataAmmoType == 8 && IsClientStatusEffect(client)) TransferStatusEffect(client, dataClient);
+			}
+		}
 		if (dataClient == client) {	// if this player is the owner of this spell or talent...
 			if (IsSpellAnAura(client, TalentInfo[0])) {
 				GetClientAbsOrigin(client, EntityPos);
@@ -6233,10 +6250,16 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 				SetArrayCell(SpecialAmmoData, i, EntityPos[0], 0);
 				SetArrayCell(SpecialAmmoData, i, EntityPos[1], 1);
 				SetArrayCell(SpecialAmmoData, i, EntityPos[2], 2);
-				auraMenuPosition = GetMenuPosition(client, TalentInfo[0]);
-				for (new ii = 1; ii <= MaxClients; ii++) {
-					if (!IsLegitimateClient(ii) || IsFakeClient(ii)) continue;
-					DrawSpecialAmmoTarget(ii, _, _, auraMenuPosition, EntityPos[0], EntityPos[1], EntityPos[2], fSpecialAmmoInterval, client, TalentInfo[0], drawtarget);
+				fVisualDelay = GetArrayCell(SpecialAmmoData, i, 13);
+				fVisualDelay -= fSpecialAmmoInterval;
+				if (fVisualDelay > 0.0) SetArrayCell(SpecialAmmoData, i, fVisualDelay, 13);
+				else {
+					SetArrayCell(SpecialAmmoData, i, GetArrayCell(SpecialAmmoData, i, 12), 13);	
+					auraMenuPosition = GetMenuPosition(client, TalentInfo[0]);
+					for (new ii = 1; ii <= MaxClients; ii++) {
+						if (!IsLegitimateClient(ii) || IsFakeClient(ii)) continue;
+						DrawSpecialAmmoTarget(ii, _, _, auraMenuPosition, EntityPos[0], EntityPos[1], EntityPos[2], fSpecialAmmoInterval, client, TalentInfo[0], drawtarget);
+					}
 				}
 			}
 			else {
@@ -6268,32 +6291,6 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 						else if (dataAmmoType == 3) DoBurn(client, ent, RoundToCeil(AmmoStrength));
 					}
 				}
-			}
-		}
-		if (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, _, i) == -2.0) {
-			IsPlayerSameTeam = (client == dataClient || GetClientTeam(client) == GetClientTeam(dataClient)) ? true : false;
-
-			AmmoStrength			= (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, false, _, bulletStrength * 1.0)) * bulletStrength;
-			if (AmmoStrength <= 0.0) continue;
-
-			if (!IsPlayerSameTeam) {	// the owner of the ammo and the player inside of it are NOT on the same team.
-				if (dataAmmoType == 1) ExplosiveAmmo(client, RoundToCeil(AmmoStrength), dataClient);
-				else if (dataAmmoType == 2) LeechAmmo(client, RoundToCeil(AmmoStrength), dataClient);
-				else if (dataAmmoType == 3) {
-					if (ISEXPLODE[client] == INVALID_HANDLE) CreateAndAttachFlame(client, RoundToCeil(AmmoStrength), f_TimeRemaining, f_TimeRemaining, dataClient);
-					else CreateAndAttachFlame(client, RoundToCeil(AmmoStrength * TheScorchMult), f_TimeRemaining, f_TimeRemaining, dataClient);
-				}
-				else if (dataAmmoType == 4) BeanBagAmmo(client, AmmoStrength, dataClient);
-			}
-			else {
-				if (dataAmmoType == 5 && !HasAdrenaline(client)) SetAdrenalineState(client, f_TimeRemaining);
-				else if (dataAmmoType == 6) HealingAmmo(client, RoundToCeil(AmmoStrength), dataClient);
-				else if (dataAmmoType == 7 && !ISBILED[client]) {
-					SDKCall(g_hCallVomitOnPlayer, client, dataClient, true);
-					CreateTimer(15.0, Timer_RemoveBileStatus, client, TIMER_FLAG_NO_MAPCHANGE);
-					ISBILED[client] = true;
-				}
-				//else if (dataAmmoType == 8 && IsClientStatusEffect(client)) TransferStatusEffect(client, dataClient);
 			}
 		}
 	}
@@ -6761,10 +6758,6 @@ stock bool:AllowEffectOverTimeToContinue(client, Handle:Keys, Handle:Values, Str
 		if it does, we activate it.
 		return false in either event, for consistency with EoT's that don't share effect and ability triggers.
 	*/
-	//decl String:searchString[64];
-	// i think this is redundant.
-	//FormatKeyValue(searchString, sizeof(searchString), Keys, Values, "effect trigger?");
-	//if (IsAbilityFound(searchString, trigger))
 	CheckEffectOverTimeCooldown(client, TalentName, EFFECTOVERTIME_ACTIVATETALENT, damage, effects, target, fTalentStrength);
 	return false;
 }
@@ -7044,6 +7037,7 @@ stock Float:GetAbilityMultiplier(client, String:abilityT[], override = 0, String
 	Format(MyTeam, sizeof(MyTeam), "%d", GetClientTeam(client));
 
 	new size = GetArraySize(a_Menu_Talents);
+	if (override == 0) size = GetArraySize(ActionBar[client]);
 	new Float:fCooldownRemaining = 0.0;
 	new isReactive = 0;
 
@@ -7054,12 +7048,18 @@ stock Float:GetAbilityMultiplier(client, String:abilityT[], override = 0, String
 	new combatStateRequired;
 	decl String:allowedWeapons[64];
 	decl String:clientWeapon[64];
+	new pos = -1;
 
 	for (new i = 0; i < size; i++) {
+		Section				= GetArrayCell(a_Menu_Talents, i, 2);
+		GetArrayString(Section, 0, TalentName, sizeof(TalentName));
+		if (StrEqual(TalentName_t, "none")) {
+			if (!IsAbilityEquipped(client, TalentName)) continue;
+		}
+		else if (!StrEqual(TalentName, TalentName_t)) continue;
+
 		Keys				= GetArrayCell(a_Menu_Talents, i, 0);
 		Values				= GetArrayCell(a_Menu_Talents, i, 1);
-		Section				= GetArrayCell(a_Menu_Talents, i, 2);
-
 		if (GetKeyValueInt(Keys, Values, "is ability?") != 1) continue;
 		combatStateRequired = GetKeyValueInt(Keys, Values, "combat state required?");
 		// if no combat state is set, it will return -1, and then work regardless of their combat status.
@@ -7070,9 +7070,6 @@ stock Float:GetAbilityMultiplier(client, String:abilityT[], override = 0, String
 			GetClientWeapon(client, clientWeapon, sizeof(clientWeapon));
 			if (!IsWeaponPermittedFound(client, allowedWeapons, clientWeapon)) continue;
 		}
-
-
-		GetArrayString(Section, 0, TalentName, sizeof(TalentName));
 
 
 		FormatKeyValue(activeEffect, sizeof(activeEffect), Keys, Values, "active effect?");
@@ -7087,9 +7084,6 @@ stock Float:GetAbilityMultiplier(client, String:abilityT[], override = 0, String
 		
 		FormatKeyValue(TheTeams, sizeof(TheTeams), Keys, Values, "teams allowed?");
 		if (StrContains(TheTeams, MyTeam) == -1) continue;
-
-		if (StrEqual(TalentName_t, "none") && !IsAbilityEquipped(client, TalentName) ||
-			!StrEqual(TalentName_t, "none") && !StrEqual(TalentName, TalentName_t)) continue;
 
 		fCooldownRemaining = GetAmmoCooldownTime(client, TalentName, true);
 		if (override != -1 && AbilityIsInactiveAndOnCooldown(client, TalentName, fCooldownRemaining)) {
@@ -7999,15 +7993,6 @@ stock RemoveCommonAffixes(entity) {
 	}*/
 }
 
-stock OnCommonCreated(entity, bool:bIsDestroyed = false) {
-
-	//decl String:EntityId[64];
-	//Format(EntityId, sizeof(EntityId), "%d", entity);
-
-	if (!bIsDestroyed) PushArrayCell(Handle:CommonList, entity);
-	else if (IsSpecialCommon(entity)) ClearSpecialCommon(entity);
-}
-
 stock FindInfectedClient(bool:GetClient=false) {
 
 	new count = 0;
@@ -8161,7 +8146,7 @@ stock GetTeamRatingAverage(teamToGatherRatingOf = 2) {	// 2 == survivors
 		rating += Rating[i];
 		count++;
 	}
-	rating /= count;
+	if (count > 1) rating /= count;
 	return rating;
 }
 
@@ -8169,6 +8154,15 @@ stock bool:IsCommonInfectedDead(entity) {
 
 	if (FindListPositionByEntity(entity, Handle:CommonInfected) < 0) return true;
 	return false;
+}
+
+stock OnCommonCreated(entity, bool:bIsDestroyed = false) {
+
+	//decl String:EntityId[64];
+	//Format(EntityId, sizeof(EntityId), "%d", entity);
+
+	if (!bIsDestroyed) PushArrayCell(Handle:CommonList, entity);
+	else if (IsSpecialCommon(entity)) ClearSpecialCommon(entity);
 }
 
 stock OnCommonInfectedCreated(entity, bool:bIsDestroyed = false, finalkillclient=0, bool:IsIgnite = false) {
@@ -8670,6 +8664,10 @@ stock OnEntityCreatedEx(entity, const String:classname[], bool:creationOverride 
 		}
 		return;
 	}
+	if (b_IsActiveRound && IsWitch(entity)) {
+		SetInfectedHealth(entity, 50000);
+		OnWitchCreated(entity);
+	}
 	if (creationOverride || StrEqual(classname, "infected", false)) {
 
 		if (!b_IsActiveRound) return;
@@ -8685,10 +8683,6 @@ stock OnEntityCreatedEx(entity, const String:classname[], bool:creationOverride 
 			if (IsModelPrecached(Model)) SetEntityModel(entity, Model);
 			RemoveFromArray(Handle:CommonInfectedQueue, 0);
 		}
-	}
-	else if (b_IsActiveRound && IsWitch(entity)) {
-		SetInfectedHealth(entity, 50000);
-		OnWitchCreated(entity);
 	}
 }
 
@@ -8917,10 +8911,15 @@ stock GetStatusEffects(client, EffectType = 0, String:theStringToStoreItIn[], th
 		}
 		
 		if (ISSLOW[client] != INVALID_HANDLE || IsClientInRangeSpecialAmmo(client, "s") == -2.0) {
-
-			if (fSlowSpeed[client] < 1.0) Format(theStringToStoreItIn, theSizeOfTheString, "[Sl]%s", theStringToStoreItIn);
-			else Format(theStringToStoreItIn, theSizeOfTheString, "[Sp]%s", theStringToStoreItIn);
-			iNumStatusEffects++;
+			if (fSlowSpeed[client] == 1.0) {
+				KillTimer(ISSLOW[client]);
+				ISSLOW[client] = INVALID_HANDLE;
+			}
+			else {
+				if (fSlowSpeed[client] < 1.0) Format(theStringToStoreItIn, theSizeOfTheString, "[Sl]%s", theStringToStoreItIn);
+				else Format(theStringToStoreItIn, theSizeOfTheString, "[Sp]%s", theStringToStoreItIn);
+				iNumStatusEffects++;
+			}
 		}
 		//if (ISSLOW[client] != INVALID_HANDLE) Format(theStringToStoreItIn, theSizeOfTheString, "[Sl]%s", theStringToStoreItIn);
 		
@@ -10398,7 +10397,12 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool:bIsFalling 
 		//new IncapCounter	= GetEntProp(client, Prop_Send, "m_currentReviveCount");
 		if (ForceKill || IsIncapacitated(client) || bIsFalling && !IsLedged(client) || PlayerHasWeakness(client) || GetIncapCount(client) >= iMaxIncap) {
 			//if (FindZombieClass(attacker) == ZOMBIECLASS_JOCKEY) PrintToChatAll("jockey did the incap.");
-
+			HealingContribution[client] = 0;
+			DamageContribution[client] = 0;
+			PointsContribution[client] = 0.0;
+			TankingContribution[client] = 0;
+			BuffingContribution[client] = 0;
+			HexingContribution[client] = 0;
 			decl String:PlayerName[64];
 			decl String:PlayerID[64];
 			if (!isPlayerASurvivorBot) {
@@ -10492,14 +10496,6 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool:bIsFalling 
 			iThreatLevel[client] = 0;
 			bIsGiveProfileItems[client] = true;		// so when the player returns to life, their weapon loadout for that profile will be given to them.
 			MyBirthday[client] = 0;
-			
-			HealingContribution[client] = 0;
-			DamageContribution[client] = 0;
-			PointsContribution[client] = 0.0;
-			TankingContribution[client] = 0;
-			BuffingContribution[client] = 0;
-			HexingContribution[client] = 0;
-
 			bIsInCombat[client] = false;
 			MyRespawnTarget[client] = client;
 			//CreateTimer(1.0, Timer_CheckForExperienceDebt, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -10530,6 +10526,12 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool:bIsFalling 
 			SaveAndClear(client);
 		}
 		else if (!IsIncapacitated(client)) {
+			
+			if (!ImmuneToAllDamage[client]) {
+				ImmuneToAllDamage[client] = true;
+				CreateTimer(1.0, Timer_RemoveDamageImmunity, client, TIMER_FLAG_NO_MAPCHANGE);
+			}
+
 			ReadyUp_NtvStatistics(client, 3, 1);
 			ReadyUp_NtvStatistics(attacker, 4, 1);
 
@@ -10569,6 +10571,11 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool:bIsFalling 
 			}
 		}
 	}
+}
+
+public Action:Timer_RemoveDamageImmunity(Handle:timer, any:client) {
+	if (IsLegitimateClient(client)) ImmuneToAllDamage[client] = false;
+	return Plugin_Stop;
 }
 	/*
 	// ---------------------------
@@ -11021,7 +11028,7 @@ stock GetClientTotalHealth(client) {
 }
  
 stock SetClientTotalHealth(client, damage, bool:IsSetHealthInstead = false, bool:bIgnoreMultiplier = false) {
-
+	if (ImmuneToAllDamage[client]) return;
 	new Float:fHealthBuffer = 0.0;
 
 	if (IsSetHealthInstead) {
@@ -11279,10 +11286,9 @@ stock HealPlayer(client, activator, Float:f_TalentStrength, ability, bool:IsStre
 			}
 		}
 	}
-	if (HealAmount > 0 && bIsInCombat[activator]) {	// you don't get XP for healing if you're not in combat! If you are healing someone who is, you'd be in combat, too!
+	if (HealAmount > 0) {
 
 		if (IsLegitimateClientAlive(activator) && activator != client) {
-
 			AwardExperience(activator, 1, HealAmount);
 			new Float:TheAbilityMultiplier = GetAbilityMultiplier(activator, "t");
 			if (TheAbilityMultiplier != -1.0) {
