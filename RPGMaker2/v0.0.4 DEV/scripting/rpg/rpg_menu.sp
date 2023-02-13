@@ -144,8 +144,8 @@ stock bool:HasTalentUpgrades(client, String:TalentName[]) {
 
 		for (new i = 0; i < a_Size; i++) {
 
-			ChanceKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
-			ChanceValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
+			//ChanceKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+			//ChanceValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 			ChanceSection[client]		= GetArrayCell(a_Menu_Talents, i, 2);
 
 			GetArrayString(Handle:ChanceSection[client], 0, TalentName_Compare, sizeof(TalentName_Compare));
@@ -364,7 +364,6 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 					if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1 ||
 						GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1 ||
 						GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is sub menu?") == 1 ||
-						GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is ability?") == 1 ||
 						GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is item?") == 1) {
 
 						LoadPos[client]++;
@@ -439,7 +438,6 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 			}
 		}
 		if (IsSurvivorBot(client) && PlayerLevel[client] < iPlayerStartingLevel) {
-
 			b_IsLoading[client] = false;
 			bIsTalentTwo[client] = false;
 			b_IsLoadingTrees[client] = false;
@@ -804,12 +802,7 @@ stock ShowActionBar(client) {
 	for (new i = 0; i < size; i++) {
 
 		GetArrayString(Handle:ActionBar[client], i, talentname, sizeof(talentname));
-		if (VerifyActionBar(client, talentname, i)) {
-
-			TalentStrength = GetTalentStrength(client, talentname);
-		}
-		else TalentStrength = 0;
-
+		TalentStrength = GetTalentStrength(client, talentname);
 		if (TalentStrength > 0) {
 
 			AmmoCooldownTime = GetAmmoCooldownTime(client, talentname);
@@ -884,10 +877,9 @@ stock bool:AbilityDoesDamage(client, String:TalentName[]) {
 }
 
 stock bool:VerifyActionBar(client, String:TalentName[], pos) {
-
+	//if (defaultTalentStrength == -1) defaultTalentStrength = GetTalentStrength(client, TalentName);
 	if (StrEqual(TalentName, "none", false)) return false;
 	if (!IsAbilityTalent(client, TalentName) && (!IsTalentExists(TalentName) || GetTalentStrength(client, TalentName) < 1)) {
-
 		decl String:none[64];
 		Format(none, sizeof(none), "none");
 		SetArrayString(Handle:ActionBar[client], pos, none);
@@ -902,14 +894,13 @@ stock bool:IsAbilityTalent(client, String:TalentName[], String:SearchKey[] = "no
 
 	new size = GetArraySize(a_Database_Talents);
 	for (new i = 0; i < size; i++) {
-
 		GetArrayString(a_Database_Talents, i, text, sizeof(text));
-		IsAbilityKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
-		IsAbilityValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
 		IsAbilitySection[client]		= GetArrayCell(a_Menu_Talents, i, 2);
-
 		GetArrayString(Handle:IsAbilitySection[client], 0, text, sizeof(text));
 		if (!StrEqual(TalentName, text)) continue;
+		IsAbilityKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+		IsAbilityValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
+
 		if (StrEqual(SearchKey, "none")) {
 
 			if (GetKeyValueInt(IsAbilityKeys[client], IsAbilityValues[client], "is ability?") == 1) return true;
@@ -1012,7 +1003,8 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 	for (new i = 0; i < size; i++) {
 		if (IsInstantDraw && thevalue != i) continue;
 		GetArrayString(Handle:ActionBar[client], i, text, sizeof(text));
-		if (!VerifyActionBar(client, text, i)) continue;	// not a real talent or has no points in it.
+		//if (!VerifyActionBar(client, text, i)) continue;	// not a real talent or has no points in it.
+		if (StrEqual(text, "none", false) || GetTalentStrength(client, text) < 1) continue;
 		if (!IsAbilityActive(client, text) && !IsDrawEffect) continue;	// inactive / passive / toggle abilities go through to the draw section.
 		pos = GetMenuPosition(client, text);
 		if (pos < 0) continue;
@@ -1745,14 +1737,12 @@ public Handle:DisplayTheLeaderboards(client) {
 
 	decl String:tquery[64];
 	decl String:text[512];
-	decl String:testelim[4];
-	Format(testelim, sizeof(testelim), " ");
 
 	decl String:textFormatted[64];
 
 	if (TheLeaderboardsPageSize[client] > 0) {
 
-		Format(text, sizeof(text), "Name\t(Level)\t(Rating)");
+		Format(text, sizeof(text), "Name\t\t\t\t\t\t\tScore");
 		DrawPanelText(menu, text);
 
 		for (new i = 0; i < TheLeaderboardsPageSize[client]; i++) {
@@ -1765,13 +1755,7 @@ public Handle:DisplayTheLeaderboards(client) {
 			GetArrayString(Handle:TheLeaderboardsData[client], i, tquery, sizeof(tquery));
 
 			AddCommasToString(StringToInt(tquery), textFormatted, sizeof(textFormatted));
-			Format(text, sizeof(text), "%s\t(%s)", text, textFormatted);
-
-			TheLeaderboardsData[client]		= GetArrayCell(TheLeaderboards[client], 0, 3);
-			GetArrayString(Handle:TheLeaderboardsData[client], i, tquery, sizeof(tquery));
-			
-			AddCommasToString(StringToInt(tquery), textFormatted, sizeof(textFormatted));
-			Format(text, sizeof(text), "%s\t(%s)", text, textFormatted);
+			Format(text, sizeof(text), "%s: \t%s", text, textFormatted);
 
 			DrawPanelText(menu, text);
 
@@ -2969,24 +2953,23 @@ stock Float:GetTalentInfo(client, Handle:Keys, Handle:Values, infotype = 0, bool
 	if (infotype == 0 || infotype == 1) FormatKeyValue(sTalentStrengthType, sizeof(sTalentStrengthType), Keys, Values, "talent upgrade strength value?", "1.0");
 	else if (infotype == 2) FormatKeyValue(sTalentStrengthType, sizeof(sTalentStrengthType), Keys, Values, "talent active time strength value?", "1.0");
 	else if (infotype == 3) FormatKeyValue(sTalentStrengthType, sizeof(sTalentStrengthType), Keys, Values, "talent cooldown strength value?", "1.0");
-	new iExplodeCount = GetDelimiterCount(sTalentStrengthType, ",") + 1;
+	//new iExplodeCount = GetDelimiterCount(sTalentStrengthType, ",") + 1;
 	//new bool:isInteger = (StrContains(sTalentStrengthType, ".") == -1)? false : true;
-	decl String:sTalentStrengthLevels[iExplodeCount][512];
-	if (iExplodeCount > 1) ExplodeString(sTalentStrengthType, ",", sTalentStrengthLevels, iExplodeCount, 512);
-	else Format(sTalentStrengthLevels[0], sizeof(sTalentStrengthLevels[]), "%s", sTalentStrengthType);
+	//decl String:sTalentStrengthLevels[iExplodeCount][512];
+	//if (iExplodeCount > 1) ExplodeString(sTalentStrengthType, ",", sTalentStrengthLevels, iExplodeCount, 512);
+	//else Format(sTalentStrengthLevels[0], sizeof(sTalentStrengthLevels[]), "%s", sTalentStrengthType);
 	
 	/* 1,2,3,3,4
 	"talent point value?"							"0.01,0.03,0.05,0.1,0.15"	// new talent point system
 	"talent last point scale?"						"1.25"						// new talent point system
 	"talent tree category?"							"survival"					// new talent point system*/
 	new istrength = RoundToCeil(f_Strength);
-	new Float:f_StrengthIncrement = 0.0;
-	for (new i = 0; i < istrength && i < iExplodeCount; i++) {
-		f_StrengthIncrement = StringToFloat(sTalentStrengthLevels[i]);
-		f_StrengthPoint += f_StrengthIncrement;
-	}
+	new Float:f_StrengthIncrement = StringToFloat(sTalentStrengthType);
+	if (istrength < 1) return 0.0;
+	f_StrengthPoint = f_StrengthIncrement;
+
 	if (governingAttributeMultiplier > 0.0) {
-		f_StrengthPoint += RoundToCeil(f_StrengthPoint * governingAttributeMultiplier);
+		f_StrengthPoint += (f_StrengthPoint * governingAttributeMultiplier);
 	}
 	if (infotype == 3) {
 		decl String:sCooldownGovernor[64];

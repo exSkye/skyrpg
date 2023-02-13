@@ -125,7 +125,7 @@ stock BuildPointsMenu(client, String:MenuName[], String:ConfigName[] = "none") {
 					else {
 
 						PointCost += (PointCost * fPointsCostLevel);
-						if (PointCost > 1.0) PointCost = 1.0;
+						//if (PointCost > 1.0) PointCost = 1.0;
 						PointCost *= Points[client];
 					}
 				}
@@ -298,7 +298,7 @@ public BuildPointsMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 					// which is then cast against a multiplier determined by the level of the player.
 					// Doing this allows us to set initially low point costs which rise as a player rises in level.
 					PointCost += (PointCost * fPointsCostLevel);
-					if (PointCost > 1.0) PointCost = 1.0;
+					//if (PointCost > 1.0) PointCost = 1.0;
 					PointCost *= Points[client];
 				}
 				//else PointCost *= Points[client];

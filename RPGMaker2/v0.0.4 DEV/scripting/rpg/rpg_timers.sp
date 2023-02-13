@@ -942,7 +942,8 @@ public Action:Timer_CheckIfHooked(Handle:timer) {
 		return Plugin_Stop;
 	}
 	static String:text[64];
-	if (!IsSurvivalMode && iEnrageTime > 0 && RoundSeconds > 0 && RPGRoundTime() < iEnrageTime && (RoundSeconds % iEnrageAdvertisement) == 0) {
+	new secondsUntilEnrage = GetSecondsUntilEnrage();
+	if (!IsSurvivalMode && iEnrageTime > 0 && RoundSeconds > 0 && RPGRoundTime() < iEnrageTime && (secondsUntilEnrage <= 300 && (secondsUntilEnrage % 60 == 0 || secondsUntilEnrage == 30 || secondsUntilEnrage <= 3) || (RoundSeconds % iEnrageAdvertisement) == 0)) {
 		TimeUntilEnrage(text, sizeof(text));
 		PrintToChatAll("%t", "enrage in...", orange, green, text, orange);
 	}

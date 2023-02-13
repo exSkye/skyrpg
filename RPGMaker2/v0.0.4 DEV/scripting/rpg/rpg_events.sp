@@ -85,30 +85,42 @@ stock FindPlayerWeapon(client, String:weapon[], size) {
 public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 	CallKeys							= GetArrayCell(a_Events, pos, 0);
 	CallValues							= GetArrayCell(a_Events, pos, 1);
-
 	decl String:ThePerp[64];
 	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "perpetrator?");
 	new attacker = GetClientOfUserId(GetEventInt(event, ThePerp));
-
 	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "victim?");
 	new victim = GetClientOfUserId(GetEventInt(event, ThePerp));
-
-	if (IsLegitimateClient(attacker) && (IsLegitimateClient(victim) || IsCommonInfected(victim) || IsWitch(victim))) {
-		if (IsWitch(victim)) {
-			if (FindListPositionByEntity(victim, Handle:WitchList) < 0) OnWitchCreated(victim);
-		}
+	new bool:IsLegitimateClientAttacker = IsLegitimateClient(attacker);
+	new attackerTeam = -1;
+	new attackerZombieClass = -1;
+	new bool:IsFakeClientAttacker = false;
+	if (IsLegitimateClientAttacker) {
+		attackerTeam = GetClientTeam(attacker);
+		IsFakeClientAttacker = IsFakeClient(attacker);
+		attackerZombieClass = FindZombieClass(attacker);
+	}
+	new victimType = -1;
+	new victimTeam = -1;
+	new bool:IsFakeClientVictim = false;
+	if (IsCommonInfected(victim)) victimType = 0;
+	else if (IsWitch(victim)) victimType = 1;
+	else if (IsLegitimateClient(victim)) {
+		victimType = 2;
+		victimTeam = GetClientTeam(victim);
+		IsFakeClientVictim = IsFakeClient(victim);
+	}
+	if (IsLegitimateClientAttacker && victimType != -1) {
+		if (victimType == 1 && FindListPositionByEntity(victim, Handle:WitchList) < 0) OnWitchCreated(victim);
 		// These calls are specific to special infected and survivor events - does not handle common infected, super infected, or witches.
-
 		// Talents/Nodes can be triggered when specific events occur.
 		// They can be special calls, so that it looks for specific case-sens strings instead of characters.
-		if (((IsCommonInfected(victim) || IsWitch(victim)) && GetClientTeam(attacker) == TEAM_SURVIVOR) ||
-			IsLegitimateClient(victim) && (!IsLegitimateClient(attacker) || GetClientTeam(attacker) != GetClientTeam(victim) || GetKeyValueInt(CallKeys, CallValues, "same team event trigger?") == 1)) {
+		if (((victimType == 0 || victimType == 1) && attackerTeam == TEAM_SURVIVOR) ||
+			victimType == 2 && (!IsLegitimateClientAttacker || attackerTeam != victimTeam || GetKeyValueInt(CallKeys, CallValues, "same team event trigger?") == 1)) {
 			decl String:abilityTriggerActivator[64];
 			decl String:abilityTriggerTarget[64];
-
 			FormatKeyValue(abilityTriggerActivator, sizeof(abilityTriggerActivator), CallKeys, CallValues, "perpetrator team required?");
 			if (!StrEqual(abilityTriggerActivator, "-1")) {
-				Format(ThePerp, sizeof(ThePerp), "%d", GetClientTeam(attacker));
+				Format(ThePerp, sizeof(ThePerp), "%d", attackerTeam);
 				if (StrContains(abilityTriggerActivator, ThePerp) != -1) {
 					FormatKeyValue(abilityTriggerActivator, sizeof(abilityTriggerActivator), CallKeys, CallValues, "perpetrator ability trigger?");
 					if (!StrEqual(abilityTriggerActivator, "-1")) GetAbilityStrengthByTrigger(attacker, victim, abilityTriggerActivator);
@@ -116,7 +128,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			}
 			FormatKeyValue(abilityTriggerTarget, sizeof(abilityTriggerTarget), CallKeys, CallValues, "victim team required?");
 			if (!StrEqual(abilityTriggerTarget, "-1")) {
-				Format(ThePerp, sizeof(ThePerp), "%d", GetClientTeam(victim));
+				Format(ThePerp, sizeof(ThePerp), "%d", victimTeam);
 				if (StrContains(abilityTriggerTarget, ThePerp) != -1) {
 					FormatKeyValue(abilityTriggerTarget, sizeof(abilityTriggerTarget), CallKeys, CallValues, "victim ability trigger?");
 					if (!StrEqual(abilityTriggerTarget, "-1")) GetAbilityStrengthByTrigger(victim, attacker, abilityTriggerTarget);
@@ -125,15 +137,10 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		}
 	}
 	decl String:weapon[64];
-	//decl String:key[64];
-	if (StrEqual(event_name, "player_left_start_area") && IsLegitimateClient(attacker)) {
-
-		if (GetClientTeam(attacker) == TEAM_SURVIVOR) {
-
-			if (IsFakeClient(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
-
+	if (StrEqual(event_name, "player_left_start_area") && IsLegitimateClientAttacker) {
+		if (attackerTeam == TEAM_SURVIVOR) {
+			if (IsFakeClientAttacker && attackerTeam == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
 			if (b_IsInSaferoom[attacker] && RoundExperienceMultiplier[attacker] > 0.0) {
-
 				b_IsInSaferoom[attacker] = false;
 				//PrintToChat(attacker, "%T", "bonus container locked", attacker, orange, blue);
 				decl String:saferoomName[64];
@@ -144,24 +151,21 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			}
 		}
 	}
-	if (IsLegitimateClientAlive(attacker)) {
-
+	if (IsLegitimateClientAttacker) {
 		if (StrEqual(event_name, "player_entered_checkpoint")) bIsInCheckpoint[attacker] = true;
 		if (StrEqual(event_name, "player_left_checkpoint")) bIsInCheckpoint[attacker] = false;
 	}
 	if (StrEqual(event_name, "player_spawn")) {
-
-		if (IsLegitimateClient(attacker)) {
+		if (IsLegitimateClientAttacker) {
 			ClearArray(Handle:ActiveStatuses[attacker]);
-			if (GetClientTeam(attacker) == TEAM_SURVIVOR) {
+			if (attackerTeam == TEAM_SURVIVOR) {
 				ChangeHook(attacker, true);
 				RefreshSurvivor(attacker);
 				RaidInfectedBotLimit();
-			}//EquipBackpack(attacker);
-			if (GetClientTeam(attacker) == TEAM_INFECTED) {
+			}
+			else {
 				SetInfectedHealth(attacker, 99999);
-				//if (b_IsActiveRound || !IsFakeClient(attacker)) {
-				if (!IsFakeClient(attacker)) PlayerSpawnAbilityTrigger(attacker);
+				if (!IsFakeClientAttacker) PlayerSpawnAbilityTrigger(attacker);
 				if (!IsSurvivorBot(attacker)) {
 					ClearArray(Handle:PlayerAbilitiesCooldown[attacker]);
 					ClearArray(Handle:InfectedHealth[attacker]);
@@ -175,7 +179,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 						ChangeHook(attacker, true);
 						CreateMyHealthPool(attacker, true);
 					}
-					if (FindZombieClass(attacker) == ZOMBIECLASS_TANK) {
+					if (attackerZombieClass == ZOMBIECLASS_TANK) {
 						ClearArray(TankState_Array[attacker]);
 						bHasTeleported[attacker] = false;
 						if (iTanksPreset == 1) {
@@ -183,23 +187,19 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 							if (iRand == 1) ChangeTankState(attacker, "hulk");
 							else if (iRand == 2) ChangeTankState(attacker, "death");
 							else if (iRand == 3) ChangeTankState(attacker, "burn");
-							//else if (iRand == 4) ChangeTankState(attacker, "teleporter");
-							//else if (iRand == 5) ChangeTankState(attacker, "reflect");
 						}
 					}
 				}
 			}
 		}
 	}
-	if (!b_IsActiveRound || IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && !b_IsLoaded[attacker]) {
-		return 0;		// don't track ANYTHING when it's not an active round.
-	}
+	if (!b_IsActiveRound || IsLegitimateClientAttacker && attackerTeam == TEAM_SURVIVOR && !b_IsLoaded[attacker]) return 0;		// don't track ANYTHING when it's not an active round.
 	decl String:curEquippedWeapon[64];
 	if (StrEqual(event_name, "weapon_reload") || StrEqual(event_name, "bullet_impact")) {
 		new WeaponId =	GetEntPropEnt(attacker, Prop_Data, "m_hActiveWeapon");
 		GetEntityClassname(WeaponId, curEquippedWeapon, sizeof(curEquippedWeapon));
 	}
-	if (IsLegitimateClient(victim) && GetClientTeam(victim) == TEAM_SURVIVOR) {
+	if (victimType == 2 && victimTeam == TEAM_SURVIVOR) {
 		if (StrEqual(event_name, "revive_success")) {
 			if (attacker != victim) {
 				GetAbilityStrengthByTrigger(victim, attacker, "R", _, 0);
@@ -208,53 +208,35 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			SetEntPropEnt(victim, Prop_Send, "m_reviveOwner", -1);
 			SetEntPropEnt(attacker, Prop_Send, "m_reviveTarget", -1);
 			new reviveOwner = GetEntPropEnt(victim, Prop_Send, "m_reviveOwner");
-			if (IsLegitimateClient(reviveOwner)) {
-
-				SetEntPropEnt(reviveOwner, Prop_Send, "m_reviveTarget", -1);
-			}
+			if (IsLegitimateClient(reviveOwner)) SetEntPropEnt(reviveOwner, Prop_Send, "m_reviveTarget", -1);
 			GiveMaximumHealth(victim);
 		}
 	}
 	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "damage type?");
 	new damagetype = GetEventInt(event, ThePerp);
-
 	if (StrEqual(event_name, "finale_radio_start") && !b_IsFinaleActive) {
-
 		// When the finale is active, players can earn experience whilst camping (not moving from a spot, re: farming)
 		b_IsFinaleActive = true;
 		if (GetInfectedCount(ZOMBIECLASS_TANK) < 1) b_IsFinaleTanks = true;
 		if (iTankRush == 1) {
-
 			PrintToChatAll("%t", "the zombies are coming", blue, orange, blue);
 			ExecCheatCommand(FindAnyRandomClient(), "director_force_panic_event");
 		}
-
-		//PrintToChatAll("%t", "Farming Prevention Disabled", white, orange, white, orange, white, blue);
 	}
 	if (StrEqual(event_name, "finale_vehicle_ready")) {
-
 		// When the vehicle arrives, the finale is no longer active, but no experience can be earned. This stops farming.
 		if (b_IsFinaleActive) {
-
 			b_RescueIsHere = true;
-
 			b_IsFinaleActive = false;
-
 			new TheInfectedLevel = HumanSurvivorLevels();
-
 			new TheHumans = HumanPlayersInGame();
 			new TheLiving = LivingSurvivorCount();
-
 			//new RatingMult = GetConfigValueInt("rating level multiplier?");
 			new InfectedLevelType = iBotLevelType;
-
 			for (new i = 1; i <= MaxClients; i++) {
-
 				if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
-				
 					if (InfectedLevelType == 0) Rating[i] += (RaidLevMult / TheLiving);
 					else {
-
 						if (!bIsSoloHandicap) Rating[i] += (TheInfectedLevel / TheHumans);
 						else Rating[i] += RaidLevMult;
 					}
@@ -262,23 +244,16 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 				}
 			}
 		}
-
 		//PrintToChatAll("%t", "Experience Gains Disabled", orange, white, orange, white, blue);
 	}
-
 	// Declare the values that can be defined by the event config, so we know whether to consider them.
-
 	//new RPGMode						= iRPGMode;	// 1 experience 2 experience & points
-
 	decl String:AbilityUsed[PLATFORM_MAX_PATH];
 	decl String:abilities[PLATFORM_MAX_PATH];
-
 	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "health?");
 	new healthvalue = GetEventInt(event, ThePerp);
-
 	new isdamageaward = GetKeyValueInt(CallKeys, CallValues, "damage award?");
 	//new healing = GetKeyValueInt(CallKeys, CallValues, "healing?");
-
 	//new deathaward = GetKeyValueInt(CallKeys, CallValues, "death award?");
 	FormatKeyValue(abilities, sizeof(abilities), CallKeys, CallValues, "abilities?");
 	new tagability = GetKeyValueInt(CallKeys, CallValues, "tag ability?");
@@ -291,58 +266,42 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 	new isshoved = GetKeyValueInt(CallKeys, CallValues, "shoved?");
 	new bulletimpact = GetKeyValueInt(CallKeys, CallValues, "bulletimpact?");
 	new isinsaferoom = GetKeyValueInt(CallKeys, CallValues, "entered saferoom?");
-
 	if (bulletimpact == 1) {
-
-		if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR) {
-
+		if (attackerTeam == TEAM_SURVIVOR) {
 			new bulletsFired = 0;
 			GetTrieValue(currentEquippedWeapon[attacker], curEquippedWeapon, bulletsFired);
 			SetTrieValue(currentEquippedWeapon[attacker], curEquippedWeapon, bulletsFired + 1);
-
 			new Float:Coords[3];
 			Coords[0] = GetEventFloat(event, "x");
 			Coords[1] = GetEventFloat(event, "y");
 			Coords[2] = GetEventFloat(event, "z");
 			new Float:TargetPos[3];
 			new target = GetAimTargetPosition(attacker, TargetPos);
-
 			if (AllowShotgunToTriggerNodes(attacker)) LastWeaponDamage[attacker] = GetBaseWeaponDamage(attacker, target, Coords[0], Coords[1], Coords[2], damagetype);
-
 			if (iIsBulletTrails[attacker] == 1) {
 				new Float:EyeCoords[3];
 				GetClientEyePosition(attacker, EyeCoords);
 				// Adjust the coords so they line up with the gun
 				EyeCoords[2] -= 10.0;
-
 				new TrailsColours[4];
 				TrailsColours[3] = 200;
-
 				decl String:ClientModel[64];
 				decl String:TargetModel[64];
 				GetClientModel(attacker, ClientModel, sizeof(ClientModel));
-
 				new bulletsize		= GetArraySize(a_Trails);
 				for (new i = 0; i < bulletsize; i++) {
-
 					TrailsKeys[attacker] = GetArrayCell(a_Trails, i, 0);
 					TrailsValues[attacker] = GetArrayCell(a_Trails, i, 1);
-
 					FormatKeyValue(TargetModel, sizeof(TargetModel), TrailsKeys[attacker], TrailsValues[attacker], "model affected?");
-
 					if (StrEqual(TargetModel, ClientModel)) {
-
 						TrailsColours[0]		= GetKeyValueInt(TrailsKeys[attacker], TrailsValues[attacker], "red?");
 						TrailsColours[1]		= GetKeyValueInt(TrailsKeys[attacker], TrailsValues[attacker], "green?");
 						TrailsColours[2]		= GetKeyValueInt(TrailsKeys[attacker], TrailsValues[attacker], "blue?");
 						break;
 					}
 				}
-
 				for (new i = 1; i <= MaxClients; i++) {
-
 					if (IsLegitimateClient(i) && !IsFakeClient(i)) {
-
 						TE_SetupBeamPoints(EyeCoords, Coords, g_iSprite, 0, 0, 0, 0.06, 0.09, 0.09, 1, 0.0, TrailsColours, 0);
 						TE_SendToClient(i);
 					}
@@ -350,107 +309,77 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			}
 		}
 	}
-
 	if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
-		if (IsCommonInfected(victim) || IsWitch(victim)) SetInfectedHealth(victim, 50000);	// we don't want NPC zombies to die prematurely.
-		if (IsLegitimateClient(attacker) && IsPlayerUsingShotgun(attacker)) {
+		if (victimType == 0 || victimType == 1) SetInfectedHealth(victim, 50000);	// we don't want NPC zombies to die prematurely.
+		if (IsLegitimateClientAttacker && IsPlayerUsingShotgun(attacker)) {
 			if (!shotgunCooldown[attacker]) CheckIfHeadshot(attacker, victim, event, healthvalue);
 			else return 0;
 			shotgunCooldown[attacker] = true;
 			CreateTimer(0.1, Timer_ResetShotgunCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
 		}
-
-		if (IsLegitimateClientAlive(victim) && !b_IsHooked[victim]) ChangeHook(victim, true);
+		if (victimType == 2 && !b_IsHooked[victim]) ChangeHook(victim, true);
 		//if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !b_IsHooked[victim]) ChangeHook(victim, true);
-		
-		if (IsLegitimateClient(attacker) && IsFakeClient(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
-		if (IsLegitimateClient(victim) && IsFakeClient(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !b_IsLoaded[victim]) IsClientLoadedEx(victim);
+		if (IsLegitimateClientAttacker && IsFakeClientAttacker && attackerTeam == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
+		if (victimType == 2 && IsFakeClientVictim && victimTeam == TEAM_SURVIVOR && !b_IsLoaded[victim]) IsClientLoadedEx(victim);
 	}
-	if (IsLegitimateClient(victim) && GetClientTeam(victim) == TEAM_INFECTED) {
+	if (victimType == 2 && victimTeam == TEAM_INFECTED) {
 		SetEntityHealth(victim, 400000);
 	}
-	if (tagability == 1 && IsLegitimateClient(victim)) {
+	if (tagability == 1 && victimType == 2) {
 		if (!ISBILED[victim]) CreateTimer(15.0, Timer_RemoveBileStatus, victim, TIMER_FLAG_NO_MAPCHANGE);
 		ISBILED[victim] = true;
 	}
-	if (tagability == 2 && IsLegitimateClient(attacker)) ISBILED[attacker] = false;
-	
+	if (tagability == 2 && IsLegitimateClientAttacker) ISBILED[attacker] = false;
 	if (isdamageaward == 1) {
-
-		if (IsLegitimateClient(attacker) && IsLegitimateClient(victim) && GetClientTeam(attacker) == GetClientTeam(victim)) {
-
+		if (IsLegitimateClientAttacker && victimType == 2 && attackerTeam == victimTeam) {
 			if (!(damagetype & DMG_BURN) && !StrEqual(weapon, "inferno")) {
-
 				// damage-based triggers now only occur under the circumstances in the code above. No longer do we have triggers for same-team damaging. Maybe at a later date, but it will not be the same ability trigger.
 				GetAbilityStrengthByTrigger(attacker, victim, "d", _, healthvalue);
 				GetAbilityStrengthByTrigger(victim, attacker, "l", _, healthvalue);
 			}
-			else {
-
-				ReadyUp_NtvFriendlyFire(attacker, victim, healthvalue, GetClientHealth(victim), 1, 0);
-			}
+			else ReadyUp_NtvFriendlyFire(attacker, victim, healthvalue, GetClientHealth(victim), 1, 0);
 		}
-		if (IsLegitimateClient(victim) && GetClientTeam(victim) == TEAM_INFECTED) SetEntityHealth(victim, 40000);
-		if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR && isinsaferoom == 1) b_IsInSaferoom[attacker] = true;
+		if (victimType == 2 && victimTeam == TEAM_INFECTED) SetEntityHealth(victim, 40000);
+		if (IsLegitimateClientAttacker && attackerTeam == TEAM_SURVIVOR && isinsaferoom == 1) b_IsInSaferoom[attacker] = true;
 	}
-	if (isshoved == 1 && IsLegitimateClientAlive(victim) && IsLegitimateClientAlive(attacker) && GetClientTeam(victim) != GetClientTeam(attacker)) {
-
-		if (GetClientTeam(victim) == TEAM_INFECTED) SetEntityHealth(victim, GetClientHealth(victim) + healthvalue);
-
+	if (isshoved == 1 && victimType == 2 && IsLegitimateClientAttacker && victimTeam != attackerTeam) {
+		if (victimTeam == TEAM_INFECTED) SetEntityHealth(victim, GetClientHealth(victim) + healthvalue);
 		GetAbilityStrengthByTrigger(victim, attacker, "H", _, 0);
 	}
-	if (isshoved == 2 && IsLegitimateClientAlive(attacker) && IsCommonInfected(victim) && !IsCommonStaggered(victim)) {
-		//decl String:staggerData[64];
-		//Format(staggerData, sizeof(staggerData), "%d:2.0", victim);
-		//PushArrayString(StaggeredTargets, staggerData);
+	if (isshoved == 2 && IsLegitimateClientAttacker && victimType == 0 && !IsCommonStaggered(victim)) {
 		new staggeredSize = GetArraySize(StaggeredTargets);
 		ResizeArray(StaggeredTargets, staggeredSize + 1);
 		SetArrayCell(StaggeredTargets, staggeredSize, victim, 0);
 		SetArrayCell(StaggeredTargets, staggeredSize, 2.0, 1);
 	}
 	if (StrEqual(event_name, "weapon_reload")) {
-		if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR) {
+		if (IsLegitimateClientAttacker && attackerTeam == TEAM_SURVIVOR) {
 			ConsecutiveHits[attacker] = 0;	// resets on reload.
 			RemoveFromTrie(currentEquippedWeapon[attacker], curEquippedWeapon);
 		}
 	}
-	/*if (StrEqual(EventName, "player_team")) {
-
-		if (IsLegitimateClient(attacker) && !IsFakeClient(attacker)) CreateTimer(1.0, Timer_SwitchTeams, attacker, TIMER_FLAG_NO_MAPCHANGE);
-	}*/
-	if (StrEqual(event_name, "player_spawn") && IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_INFECTED) {
-
-		if (IsFakeClient(attacker)) {
-
+	if (StrEqual(event_name, "player_spawn") && IsLegitimateClientAttacker && attackerTeam == TEAM_INFECTED) {
+		if (IsFakeClientAttacker) {
 			new changeClassId = 0;
-			new myzombieclass = FindZombieClass(attacker);
-
-			if (iSpecialsAllowed == 0 && myzombieclass != ZOMBIECLASS_TANK) {
-
+			if (iSpecialsAllowed == 0 && attackerZombieClass != ZOMBIECLASS_TANK) {
 				ForcePlayerSuicide(attacker);
 			}
 			if (iSpecialsAllowed == 1 && !StrEqual(sSpecialsAllowed, "-1")) {
-
 				decl String:myClass[5];
-				Format(myClass, sizeof(myClass), "%d", myzombieclass);
-
+				Format(myClass, sizeof(myClass), "%d", attackerZombieClass);
 				if (StrContains(sSpecialsAllowed, myClass) == -1) {
-
 					while (StrContains(sSpecialsAllowed, myClass) == -1) {
-
 						changeClassId = GetRandomInt(1,6);
 						Format(myClass, sizeof(myClass), "%d", changeClassId);
 					}
 					ChangeInfectedClass(attacker, changeClassId);
 				}
 			}
-
 			// In solo games, we restrict the number of ensnarement infected.
 			IsAirborne[attacker] = false;
 			b_GroundRequired[attacker] = false;
 			HasSeenCombat[attacker] = false;
 			MyBirthday[attacker] = GetTime();
-
 			new iTankCount = GetInfectedCount(ZOMBIECLASS_TANK);
 			new iTankLimit = DirectorTankLimit();
 			new theClient = FindAnyRandomClient();
@@ -459,31 +388,23 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			new iLivSurvs = LivingSurvivorCount();
 			if (iSurvivorBots >= 2) iSurvivorBots /= 2;
 			new requiredTankCount = GetAlwaysTanks(iSurvivors + iSurvivorBots);
-
-			if (myzombieclass == ZOMBIECLASS_TANK) {
-
+			if (attackerZombieClass == ZOMBIECLASS_TANK) {
 				if (b_IsFinaleActive && b_IsFinaleTanks) {
-
 					b_IsFinaleTanks = false;
 					for (new i = 0; i + iTankCount < iTankLimit; i++) {
-
 						ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
 					}
 				}
-				else {
-
+				/*else {
 					if (iTankCount > iTankLimit || f_TankCooldown != -1.0) {
 
 						//PrintToChatAll("killing tank.");
 						//ForcePlayerSuicide(attacker);
 					}
-				}
+				}*/
 			}
-
 			if (iNoSpecials == 1 || iTankRush == 1) {
-
-				if (myzombieclass != ZOMBIECLASS_TANK) {
-
+				if (attackerZombieClass != ZOMBIECLASS_TANK) {
 					//if (!IsEnrageActive())
 					ForcePlayerSuicide(attacker);
 					if (iSurvivors >= 1 && (iTankCount < requiredTankCount || !b_IsFinaleActive && iTankCount < iTankLimit)) {
@@ -491,16 +412,15 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 					}
 				}
 			}
-			else if (myzombieclass != ZOMBIECLASS_TANK) {
-
+			else if (attackerZombieClass != ZOMBIECLASS_TANK) {
 				new iEnsnaredCount = EnsnaredInfected();
 				new livingSurvivors = LivingHumanSurvivors();
 				if (IsEnsnarer(attacker)) {
-
-					if (iInfectedLimit == -1 || iInfectedLimit == 0 && iEnsnaredCount > livingSurvivors + RaidCommonBoost(_, true) || iInfectedLimit > 0 && iEnsnaredCount > iInfectedLimit || iIsLifelink > 1 && iLivSurvs < iIsLifelink && iLivSurvs < iMinSurvivors) {
-
+					if (iInfectedLimit == -1 ||
+					iInfectedLimit == 0 && iEnsnaredCount > livingSurvivors + RaidCommonBoost(_, true) ||
+					iInfectedLimit > 0 && iEnsnaredCount > iInfectedLimit ||
+					iIsLifelink > 1 && iLivSurvs < iIsLifelink && iLivSurvs < iMinSurvivors) {
 						while (IsEnsnarer(attacker, changeClassId)) {
-
 							changeClassId = GetRandomInt(1,6);
 						}
 						ChangeInfectedClass(attacker, changeClassId);
@@ -511,17 +431,12 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		else SetSpecialInfectedHealth(attacker);
 	}
 	if (StrEqual(event_name, "ability_use")) {
-
-		if (GetClientTeam(attacker) == TEAM_INFECTED) GetAbilityStrengthByTrigger(attacker, victim, "infected_abilityuse");
-
-		if (IsLegitimateClient(attacker) && GetClientTeam(attacker) == TEAM_INFECTED) {
-
+		if (attackerTeam == TEAM_INFECTED) {
+			GetAbilityStrengthByTrigger(attacker, victim, "infected_abilityuse");
 			GetEventString(event, "ability", AbilityUsed, sizeof(AbilityUsed));
 			if (StrContains(AbilityUsed, "ability_throw") != -1) {
-
 				if (!(GetEntityFlags(attacker) & FL_ONFIRE) && !SurvivorsInRange(attacker, 128.0)) ChangeTankState(attacker, "burn");
 				else {
-
 					ChangeTankState(attacker, "hulk");
 					if (!SurvivorsInRange(attacker, 128.0)) ForceClientJump(attacker, 1000.0);
 				}
@@ -537,94 +452,69 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			}*/
 		}
 	}
-
-	if (IsLegitimateClientAlive(attacker) && GetClientTeam(attacker) == TEAM_INFECTED) {
-
+	if (IsLegitimateClientAttacker && attackerTeam == TEAM_INFECTED) {
 		new Float:Distance = 0.0;
 		new Float:fTalentStrength = 0.0;
-
 		if (originvalue > 0 || distancevalue > 0) {
-
 			if (originvalue == 1 || distancevalue == 1) {
-
 				GetClientAbsOrigin(attacker, Float:f_OriginStart[attacker]);
-				if (FindZombieClass(attacker) != ZOMBIECLASS_HUNTER &&
-					FindZombieClass(attacker) != ZOMBIECLASS_SPITTER) {
-
+				if (attackerZombieClass != ZOMBIECLASS_HUNTER &&
+					attackerZombieClass != ZOMBIECLASS_SPITTER) {
 					fTalentStrength = GetAbilityStrengthByTrigger(attacker, _, "Q", _, 0);
 				}
-				if (FindZombieClass(attacker) == ZOMBIECLASS_HUNTER) {
-
+				if (attackerZombieClass == ZOMBIECLASS_HUNTER) {
 					// check for any abilities that are based on abilityused.
 					GetClientAbsOrigin(attacker, Float:f_OriginStart[attacker]);
 					//GetAbilityStrengthByTrigger(attacker, 0, 'A', FindZombieClass(attacker), healthvalue);
 					GetAbilityStrengthByTrigger(attacker, _, "A", _, healthvalue);
 				}
-				if (FindZombieClass(attacker) == ZOMBIECLASS_CHARGER) {
-
+				if (attackerZombieClass == ZOMBIECLASS_CHARGER) {
 					CreateTimer(0.1, Timer_ChargerJumpCheck, attacker, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 				}
 			}
 			if (originvalue == 2 || distancevalue == 2) {
-
 				fTalentStrength = GetAbilityStrengthByTrigger(attacker, _, "q", _, 0);
 				if (CheckActiveStatuses(attacker, "lunge", false, true) == 0) {
-
 					SetEntityRenderMode(attacker, RENDER_NORMAL);
 					SetEntityRenderColor(attacker, 255, 255, 255, 255);
-
 					fTalentStrength += GetAbilityStrengthByTrigger(attacker, _, "A", _, 0);
 				}
-
 				GetClientAbsOrigin(attacker, Float:f_OriginEnd[attacker]);
-
-				if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR) {
-
+				if (victimType == 2 && victimTeam == TEAM_SURVIVOR) {
 					Distance = GetVectorDistance(f_OriginStart[attacker], f_OriginEnd[attacker]);
 					if (fTalentStrength > 0.0) Distance += (Distance * fTalentStrength);
-
 					//SetClientTotalHealth(victim, RoundToCeil(Distance), _, true);
 				}
 			}
-
-			if (FindZombieClass(attacker) == ZOMBIECLASS_JOCKEY || (distancevalue == 2 && t_Distance[attacker] > 0)) {
-
+			if (attackerZombieClass == ZOMBIECLASS_JOCKEY || (distancevalue == 2 && t_Distance[attacker] > 0)) {
 				if (distancevalue == 1) t_Distance[attacker] = GetTime();
 				if (distancevalue == 2) {
-
 					t_Distance[attacker] = GetTime() - t_Distance[attacker];
 					multiplierexp *= t_Distance[attacker];
 					multiplierpts *= t_Distance[attacker];
 					t_Distance[attacker] = 0;
-
 				}
 			}
 			else {
-
-				if (distancevalue == 3 && IsLegitimateClientAlive(victim)) GetClientAbsOrigin(victim, Float:f_OriginStart[attacker]);
-				if (distancevalue == 2 || originvalue == 2 || distancevalue == 4 && IsLegitimateClientAlive(victim)) {
-
+				if (distancevalue == 3 && victimType == 2) GetClientAbsOrigin(victim, Float:f_OriginStart[attacker]);
+				if (distancevalue == 2 || originvalue == 2 || distancevalue == 4 && victimType == 2) {
 					if (distancevalue == 4) GetClientAbsOrigin(victim, Float:f_OriginEnd[attacker]);
-
 					//new Float:Distance = GetVectorDistance(f_OriginStart[attacker], f_OriginEnd[attacker]);
 					multiplierexp *= Distance;
 					multiplierpts *= Distance;
 				}
 			}
 			if (originvalue == 2 || distancevalue == 2 || distancevalue == 4) {
-
 				if (iRPGMode >= 1 && multiplierexp > 0.0) {
-
 					ExperienceLevel[attacker] += RoundToCeil(multiplierexp);
 					ExperienceOverall[attacker] += RoundToCeil(multiplierexp);
 					ConfirmExperienceAction(attacker);
-
-					if (iAwardBroadcast > 0 && !IsFakeClient(attacker)) PrintToChat(attacker, "%T", "distance experience", attacker, white, green, RoundToCeil(multiplierexp), white);
+					if (iAwardBroadcast > 0 && !IsFakeClientAttacker) PrintToChat(attacker, "%T", "distance experience", attacker, white, green, RoundToCeil(multiplierexp), white);
 				}
 				if (iRPGMode != 1 && multiplierpts > 0.0) {
 
 					Points[attacker] += multiplierpts;
-					if (iAwardBroadcast > 0 && !IsFakeClient(attacker)) PrintToChat(attacker, "%T", "distance points", attacker, white, green, multiplierpts, white);
+					if (iAwardBroadcast > 0 && !IsFakeClientAttacker) PrintToChat(attacker, "%T", "distance points", attacker, white, green, multiplierpts, white);
 				}
 			}
 		}
@@ -997,7 +887,13 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 
 	if (SkyLevel[client] < iSkyLevelRequirement) return false;
 	FormatKeyValue(Effects, sizeof(Effects), Keys, Values, "toggle effect?");
-	if (StrEqual(Effects, "r", true)) {
+	if (StrEqual(Effects, "stagger", true)) {
+		if (L4D2_GetInfectedAttacker(client) == -1) return false;	// knife cannot trigger if you are not a victim.
+		ReleasePlayer(client);
+		EmitSoundToClient(client, "player/heartbeatloop.wav");
+		StopSound(client, SNDCHAN_AUTO, "player/heartbeatloop.wav");
+	}
+	else if (StrEqual(Effects, "r", true)) {
 
 		if (!IsPlayerAlive(client) && b_HasDeathLocation[client]) {
 
@@ -1010,7 +906,7 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 		}
 		else return false;
 	}
-	if (StrEqual(Effects, "P", true)) {
+	else if (StrEqual(Effects, "P", true)) {
 
 		// Toggles between pistol / magnum
 		if (IsValidEntity(MySecondary)) {
@@ -1035,7 +931,7 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 			}
 		}
 	}
-	if (StrEqual(Effects, "T", true)) {
+	else if (StrEqual(Effects, "T", true)) {
 		GetClientStance(client, GetAmmoCooldownTime(client, TalentName, true));
 	}
 	/*if (StrContains(Effects, "S", true) != -1) {
@@ -1236,21 +1132,17 @@ stock bool:CastSpell(client, target = -1, String:TalentName[], Float:TargetPos[3
 }
 
 stock DoBurn(attacker, victim, baseWeaponDamage) {
-
 	//if (iTankRush == 1 && FindZombieClass(victim) == ZOMBIECLASS_TANK) return;
-
-	if (IsLegitimateClientAlive(victim)) {
-
+	new bool:IsLegitimateClientVictim = IsLegitimateClientAlive(victim);
+	if (IsLegitimateClientVictim) {
 		bIsBurnCooldown[victim] = true;
 		CreateTimer(1.0, Timer_ResetBurnImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
 	}
  	new hAttacker = attacker;
  	if (!IsLegitimateClient(hAttacker)) hAttacker = -1;
-
- 	if (IsCommonInfected(victim) || IsWitch(victim) && !(GetEntityFlags(victim) & FL_ONFIRE)) {
-
-		if (IsCommonInfected(victim)) {
-
+	new bool:IsCommonInfectedVictim = IsCommonInfected(victim);
+ 	if (IsCommonInfectedVictim || IsWitch(victim) && !(GetEntityFlags(victim) & FL_ONFIRE)) {
+		if (IsCommonInfectedVictim) {
 			if (!IsSpecialCommon(victim)) OnCommonInfectedCreated(victim, true);
 			else AddSpecialCommonDamage(attacker, victim, baseWeaponDamage, true);
 		}
@@ -1259,24 +1151,19 @@ stock DoBurn(attacker, victim, baseWeaponDamage) {
 			AddWitchDamage(attacker, victim, baseWeaponDamage, true);
 		}
 	}
- 	if (IsLegitimateClientAlive(victim) && GetClientStatusEffect(victim, "burn") < iDebuffLimit) {
-
+ 	if (IsLegitimateClientVictim && GetClientStatusEffect(victim, "burn") < iDebuffLimit) {
 		if (ISEXPLODE[victim] == INVALID_HANDLE) CreateAndAttachFlame(victim, RoundToCeil(baseWeaponDamage * TheInfernoMult), 10.0, 0.5, hAttacker, "burn");
 		else CreateAndAttachFlame(victim, RoundToCeil((baseWeaponDamage * TheInfernoMult) * TheScorchMult), 10.0, 0.5, hAttacker, "burn");
  	}
 }
 
 stock BeanBagAmmo(client, Float:force, TalentClient) {
-
 	if (!IsCommonInfected(client) && !IsLegitimateClientAlive(client)) return;
 	if (!IsLegitimateClientAlive(TalentClient)) return;
-
 	new Float:Velocity[3];
-	
 	Velocity[0]	=	GetEntPropFloat(TalentClient, Prop_Send, "m_vecVelocity[0]");
 	Velocity[1]	=	GetEntPropFloat(TalentClient, Prop_Send, "m_vecVelocity[1]");
 	Velocity[2]	=	GetEntPropFloat(TalentClient, Prop_Send, "m_vecVelocity[2]");
-
 	new Float:Vec_Pull;
 	new Float:Vec_Lunge;
 	/*if (client != TalentClient) {
@@ -1284,17 +1171,13 @@ stock BeanBagAmmo(client, Float:force, TalentClient) {
 		//new CartXP = RoundToCeil(GetClassMultiplier(TalentClient, force, "enX", true));
 		//AddTalentExperience(TalentClient, "endurance", RoundToCeil(force));
 	}*/
-
 	Vec_Pull	=	GetRandomFloat(force * -1.0, force);
 	Vec_Lunge	=	GetRandomFloat(force * -1.0, force);
 	Velocity[2]	+=	force;
-
 	if (Vec_Pull < 0.0 && Velocity[0] > 0.0) Velocity[0] *= -1.0;
 	Velocity[0] += Vec_Pull;
-
 	if (Vec_Lunge < 0.0 && Velocity[1] > 0.0) Velocity[1] *= -1.0;
 	Velocity[1] += Vec_Lunge;
-
 	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, Velocity);
 }
 
@@ -1310,51 +1193,41 @@ stock BeanBagAmmo(client, Float:force, TalentClient) {
 
 // no one sees my special ammo because it should be drawing it based on MY size not theirs but it's drawing it based on theirs and if they have zero points in the talent then they can't see it.
 stock DrawSpecialAmmoTarget(TargetClient, bool:IsDebugMode=false, bool:IsValidTarget=false, CurrentPosEx=-1, Float:PosX=0.0, Float:PosY=0.0, Float:PosZ=0.0, Float:f_ActiveTime=0.0, owner=0, String:TalentName[]="none", Target = -1) {		// If we aren't actually drawing..? Stoned idea lost in thought but expanded somewhat not on the original path
-
 	new client = TargetClient;
 	if (owner != 0) client = owner;
-
-	if (iRPGMode <= 0) {
-
-		return -1;
-	}
-
+	if (iRPGMode <= 0) return -1;
 	new CurrentPos	= GetMenuPosition(client, TalentName);
 	new bool:i_IsDebugMode = false;
-
 	DrawSpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, CurrentPos, 0);
 	DrawSpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, CurrentPos, 1);
-
 	if (CurrentPosEx == -1) {
 		new bool:IsTargetCommonInfected = IsCommonInfected(Target);
-
+		new bool:IsLegitimateClientTarget = IsLegitimateClientAlive(Target);
+		new targetTeam = -1;
+		if (IsLegitimateClientTarget) targetTeam = GetClientTeam(Target);
 		if (GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "humanoid only?") == 1) {
-
 			//Humanoid Only could apply to a wide-range so we break it down here.
-			if (!IsTargetCommonInfected && !IsLegitimateClientAlive(Target)) i_IsDebugMode = true;
+			if (!IsTargetCommonInfected && !IsLegitimateClientTarget) i_IsDebugMode = true;
 		}
 		if (GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "inanimate only?") == 1) {
-
 			//This is things like vehicles, dumpsters, and other objects that can one-shot your teammates.
-			if (IsTargetCommonInfected || IsLegitimateClientAlive(Target)) i_IsDebugMode = true;
+			if (IsTargetCommonInfected || IsLegitimateClientTarget) i_IsDebugMode = true;
 		}
 		if (GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "allow commons?") == 0 && IsTargetCommonInfected ||
-			GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "allow specials?") == 0 && IsLegitimateClientAlive(Target) && GetClientTeam(Target) == TEAM_INFECTED ||
-			GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "allow survivors?") == 0 && IsLegitimateClientAlive(Target) && GetClientTeam(Target) == TEAM_SURVIVOR) i_IsDebugMode = true;
-
+		GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "allow specials?") == 0 && IsLegitimateClientTarget && targetTeam == TEAM_INFECTED ||
+		GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "allow survivors?") == 0 && IsLegitimateClientTarget && targetTeam == TEAM_SURVIVOR) {
+			i_IsDebugMode = true;
+		}
 		if (i_IsDebugMode && !IsDebugMode) return 0;		// ie if an invalid target is highlighted and debug mode is disabled we don't draw and we don't tell the player anything.
 		if (IsValidTarget) {
-
 			if (i_IsDebugMode) return 0;
 			else return 1;
 		}
 	}
 	new Float:AfxRange			= GetSpecialAmmoStrength(client, TalentName, 3);
-
 	new Float:AfxRangeBonus = GetAbilityStrengthByTrigger(client, TargetClient, "aamRNG", _, 0, _, _, "d", 1, true);
 	if (AfxRangeBonus > 0.0) AfxRangeBonus *= (1.0 + AfxRangeBonus);
 	new Float:HighlightTime = fAmmoHighlightTime;
-
 	decl String:AfxDrawPos[64];
 	decl String:AfxDrawColour[64];
 	new drawpos = 0;
@@ -1391,13 +1264,15 @@ stock CycleSpecialAmmo(client, bool:IsMoveForward=true, bool:GetCurrentPos=false
 	decl String:TalentName[64];
 	new ArraySize = GetArraySize(a_Menu_Talents);
 	for (new i = 0; i < ArraySize; i++) {
+		SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
+		GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
+		if (GetTalentStrength(client, TalentName) < 1 || IsAbilityCooldown(client, TalentName)) continue;	
 
 		SpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
 		SpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
-		SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
 		if (GetKeyValueInt(SpecialAmmoKeys[client], SpecialAmmoValues[client], "special ammo?") != 1) continue;
-		GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
-		if (GetTalentStrength(client, TalentName) < 1 || IsAbilityCooldown(client, TalentName)) continue;					// necessary in case a player has the ammo equipped and then respecs into a different ammo. have to make sure any current ammo has talent points.
+		//GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
+		//if (GetTalentStrength(client, TalentName) < 1 || IsAbilityCooldown(client, TalentName)) continue;					// necessary in case a player has the ammo equipped and then respecs into a different ammo. have to make sure any current ammo has talent points.
 		if (firstPosition == -1) firstPosition = i;
 
 		if (GetActiveSpecialAmmo(client, TalentName)) {
@@ -1413,13 +1288,13 @@ stock CycleSpecialAmmo(client, bool:IsMoveForward=true, bool:GetCurrentPos=false
 	firstPosition = -1;
 	new lastPosition = -1;
 	for (new i = 0; i < ArraySize; i++) {
+		SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
+		GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
+		if (GetTalentStrength(client, TalentName) < 1 || IsAbilityCooldown(client, TalentName)) continue;
 
 		SpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
 		SpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
-		SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
 		if (GetKeyValueInt(SpecialAmmoKeys[client], SpecialAmmoValues[client], "special ammo?") != 1) continue;
-		GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
-		if (GetTalentStrength(client, TalentName) < 1 || IsAbilityCooldown(client, TalentName)) continue;
 
 		if (firstPosition == -1) {
 
@@ -1637,7 +1512,15 @@ public Action:Timer_ResetStaggerCooldownOnTriggers(Handle:timer, any:client) {
 }
 
 public Action:OnPlayerRunCmd(client, &buttons) {
+	new clientFlags = -1;
+	new clientTeam = -1;
+	new bool:IsClientIncapacitated = false;
+	new bool:IsClientAlive = false;
 	if (IsLegitimateClientAlive(client)) {
+		IsClientAlive = true;
+		clientFlags = GetEntityFlags(client);
+		clientTeam = GetClientTeam(client);
+		IsClientIncapacitated = IsIncapacitated(client);
 		// call the stagger ability triggers only when a fresh stagger occurs (and not if multiple staggers happen too-often within each other (2.0 seconds is slightly-longer than one stagger.))
 		if (!staggerCooldownOnTriggers[client] && SDKCall(g_hIsStaggering, client)) {
 			staggerCooldownOnTriggers[client] = true;
@@ -1708,9 +1591,9 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			return Plugin_Changed;
 		}
 	}
-	if (ReadyUpGameMode == 3 && !b_IsCheckpointDoorStartOpened && IsLegitimateClientAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
+	if (ReadyUpGameMode == 3 && !b_IsCheckpointDoorStartOpened && IsClientAlive && clientTeam == TEAM_SURVIVOR) {
 
-		if (buttons & IN_SPEED && (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT) && (GetEntityFlags(client) & FL_ONGROUND)) {
+		if (buttons & IN_SPEED && (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT) && (clientFlags & FL_ONGROUND)) {
 
 			MovementSpeed[client] = fSprintSpeed;
 			SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", MovementSpeed[client]);
@@ -1724,9 +1607,9 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 		}
 	}
 
-	if (IsLegitimateClientAlive(client) && b_IsActiveRound) {
+	if (IsClientAlive && b_IsActiveRound) {
 
-		if (!IsFakeClient(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
+		if (!IsFakeClient(client) && clientTeam == TEAM_SURVIVOR) {
 
 			if (MyBirthday[client] == 0) MyBirthday[client] = GetTime();
 			if (iRushingModuleEnabled == 1) {
@@ -1745,13 +1628,13 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			}
 		}
 
-		if (GetClientTeam(client) == TEAM_INFECTED && FindZombieClass(client) == ZOMBIECLASS_TANK) {
+		if (clientTeam == TEAM_INFECTED && FindZombieClass(client) == ZOMBIECLASS_TANK) {
 
-			if (!IsAirborne[client] && !(GetEntityFlags(client) & FL_ONGROUND)) {
+			if (!IsAirborne[client] && !(clientFlags & FL_ONGROUND)) {
 
 				IsAirborne[client] = true;	// when the tank lands, aoe explosion!
 			}
-			else if (IsAirborne[client] && (GetEntityFlags(client) & FL_ONGROUND)) {
+			else if (IsAirborne[client] && (clientFlags & FL_ONGROUND)) {
 
 				IsAirborne[client] = false;	// the tank has landed; explosion;
 				CreateExplosion(client, _, client, true);
@@ -1767,7 +1650,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			}
 		}
 
-		if (GetClientTeam(client) == TEAM_SURVIVOR) {
+		if (clientTeam == TEAM_SURVIVOR) {
 
 			CheckIfItemPickup(client);
 			//CheckBombs(client);
@@ -1800,7 +1683,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			if (!bIsHandicapLocked[client]) bIsHandicapLocked[client] = true;
 		}
 		//if (GetClientTeam(client) == TEAM_INFECTED) SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
-		if (GetClientTeam(client) == TEAM_SURVIVOR) {
+		if (clientTeam == TEAM_SURVIVOR) {
 			SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", MovementSpeed[client]);
 		}
 
@@ -1811,14 +1694,14 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			ISDAZED[client] = 0.0;
 		}
 
-		if (IsPlayerAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
+		if (IsPlayerAlive(client) && clientTeam == TEAM_SURVIVOR) {
 
-			if (!(GetEntityFlags(client) & FL_ONGROUND) && !b_IsFloating[client]) {
+			if (!(clientFlags & FL_ONGROUND) && !b_IsFloating[client]) {
 
 				b_IsFloating[client] = true;
 				GetClientAbsOrigin(client, JumpPosition[client][0]);
 			}
-			if (GetEntityFlags(client) & FL_ONGROUND) {
+			if (clientFlags & FL_ONGROUND) {
 
 				if (b_IsFloating[client]) {
 
@@ -1851,13 +1734,13 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 			if (ActiveProgressBar(client) &&
 				CurrentEntity != ProgressEntity[client] ||
-				(!(GetEntityFlags(client) & FL_ONGROUND) && !IsIncapacitated(client)) ||
-				L4D2_GetInfectedAttacker(client) != -1 ||
-				!IsValidEntity(CurrentEntity) && !IsIncapacitated(client) ||
+				(!(clientFlags & FL_ONGROUND) && !IsClientIncapacitated) ||
+				MyAttacker != -1 ||
+				!IsValidEntity(CurrentEntity) && !IsClientIncapacitated ||
 				((StrContains(EntityName, "pain_pills", false) == -1 &&
 				StrContains(EntityName, "adrenaline", false) == -1  &&
 				StrContains(EntityName, "first_aid", false) == -1 &&
-				StrContains(EntityName, "defib", false) == -1) && !IsIncapacitated(client))) {
+				StrContains(EntityName, "defib", false) == -1) && !IsClientIncapacitated)) {
 
 				CreateProgressBar(client, 0.0, true);
 				UseItemTime[client] = 0.0;
@@ -1868,7 +1751,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 				}
 			}
 
-			if (IsIncapacitated(client) && L4D2_GetInfectedAttacker(client) == -1 || (L4D2_GetInfectedAttacker(client) == -1 && IsValidEntity(CurrentEntity) &&
+			if (IsClientIncapacitated && MyAttacker == -1 || (MyAttacker == -1 && IsValidEntity(CurrentEntity) &&
 				(StrContains(EntityName, "pain_pills", false) != -1 ||
 				StrContains(EntityName, "adrenaline", false) != -1  ||
 				StrContains(EntityName, "first_aid", false) != -1 ||
@@ -1884,7 +1767,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 					}
 				}*/
 				new reviveOwner = -1;
-				if ((!(buttons & IN_ATTACK) && ActiveProgressBar(client) && !IsIncapacitated(client)) || (!(buttons & IN_USE) && ActiveProgressBar(client) && IsIncapacitated(client))) {
+				if ((!(buttons & IN_ATTACK) && ActiveProgressBar(client) && !IsClientIncapacitated) || (!(buttons & IN_USE) && ActiveProgressBar(client) && IsClientIncapacitated)) {
 
 					CreateProgressBar(client, 0.0, true);
 					UseItemTime[client] = 0.0;
@@ -1901,9 +1784,9 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 						SetEntPropEnt(client, Prop_Send, "m_reviveOwner", -1);
 					}*/
 				}
-				if (((buttons & IN_ATTACK) && !IsIncapacitated(client)) || ((buttons & IN_USE) && IsIncapacitated(client))) {
+				if (((buttons & IN_ATTACK) && !IsClientIncapacitated) || ((buttons & IN_USE) && IsClientIncapacitated)) {
 
-					if (!IsIncapacitated(client)) buttons &= ~IN_ATTACK;
+					if (!IsClientIncapacitated) buttons &= ~IN_ATTACK;
 					else buttons &= ~IN_USE;
 
 					if (UseItemTime[client] < TheTime) {
@@ -1912,7 +1795,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 							UseItemTime[client] = 0.0;
 							CreateProgressBar(client, 0.0, true);
-							if (!IsIncapacitated(client)) {
+							if (!IsClientIncapacitated) {
 
 								if (StrContains(EntityName, "pain_pills", false) != -1) {
 
@@ -1964,7 +1847,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 						}
 						else {
 
-							if (IsIncapacitated(client) && UseItemTime[client] < TheTime) {
+							if (IsClientIncapacitated && UseItemTime[client] < TheTime) {
 
 								//if (!IsLedged(client)) {
 
@@ -1977,13 +1860,13 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 								}
 								//}
 							}
-							if (StrContains(EntityName, "pain_pills", false) != -1 && UseItemTime[client] < TheTime && !IsIncapacitated(client)) {
+							if (StrContains(EntityName, "pain_pills", false) != -1 && UseItemTime[client] < TheTime && !IsClientIncapacitated) {
 
 								ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 								CreateProgressBar(client, 2.0);
 								//UseItemTime[client] = TheTime + 2;
 							}
-							else if (StrContains(EntityName, "adrenaline", false) != -1 && UseItemTime[client] < TheTime && !IsIncapacitated(client)) {
+							else if (StrContains(EntityName, "adrenaline", false) != -1 && UseItemTime[client] < TheTime && !IsClientIncapacitated) {
 
 								ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 								CreateProgressBar(client, 1.0);
@@ -1995,7 +1878,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 								CreateProgressBar(client, 5.0);
 								//UseItemTime[client] = TheTime + 5;
 							}
-							else if (!IsIncapacitated(client) && (StrContains(EntityName, "defib", false) != -1 || StrContains(EntityName, "first_aid", false) != -1) && UseItemTime[client] < TheTime) {
+							else if (!IsClientIncapacitated && (StrContains(EntityName, "defib", false) != -1 || StrContains(EntityName, "first_aid", false) != -1) && UseItemTime[client] < TheTime) {
 
 								ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 								CreateProgressBar(client, 5.0);
@@ -2032,14 +1915,14 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 						Add or remove conditions from the following line to determine when the jetpack automatically disables.
 						When adding new conditions, consider a switch so server operators can choose which of them they want to use.
 					*/
-					if (bJetpack[client] && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && (!(buttons & IN_JUMP) || IsJetpackBroken || L4D2_GetInfectedAttacker(client) != -1)) ToggleJetpack(client, true);
+					if (bJetpack[client] && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && (!(buttons & IN_JUMP) || IsJetpackBroken || MyAttacker != -1)) ToggleJetpack(client, true);
 					//else if (!(GetEntityFlags(client) & FL_ONGROUND) && !bIsSurvivorFatigue[client] && !bJetpack[client] && (buttons & IN_JUMP)) ToggleJetpack(client);
 
-					if ((bJetpack[client] || !bJetpack[client] && !(GetEntityFlags(client) & FL_ONGROUND)) ||
+					if ((bJetpack[client] || !bJetpack[client] && !(clientFlags & FL_ONGROUND)) ||
 						((buttons & IN_JUMP) || ((buttons & IN_SPEED) && (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT))) &&
 						SurvivorStamina[client] >= ConsumptionInt && !bIsSurvivorFatigue[client] && ISSLOW[client] == INVALID_HANDLE && ISFROZEN[client] == INVALID_HANDLE) {
 
-						if (L4D2_GetInfectedAttacker(client) == -1 && ISSLOW[client] == INVALID_HANDLE && ISFROZEN[client] == INVALID_HANDLE) {
+						if (MyAttacker == -1 && ISSLOW[client] == INVALID_HANDLE && ISFROZEN[client] == INVALID_HANDLE) {
 
 							if (SurvivorConsumptionTime[client] <= TheTime && (buttons & IN_JUMP || buttons & IN_SPEED)) {
 								if (bJetpack[client]) {
@@ -2060,7 +1943,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 									if (bJetpack[client]) ToggleJetpack(client, true);
 								}
 							}
-							if (!bIsSurvivorFatigue[client] && !bJetpack[client] && ((buttons & IN_JUMP) && (JumpTime[client] >= 0.2)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && L4D2_GetInfectedAttacker(client) == -1) ToggleJetpack(client);
+							if (!bIsSurvivorFatigue[client] && !bJetpack[client] && ((buttons & IN_JUMP) && (JumpTime[client] >= 0.2)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && MyAttacker == -1) ToggleJetpack(client);
 							if (!bJetpack[client]) MovementSpeed[client] = fSprintSpeed;
 						}
 						buttons &= ~IN_SPEED;
@@ -2138,7 +2021,6 @@ stock bool:IsEveryoneBoosterTime() {
 }
 
 stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner = 0, Float:RangeOverride = 0.0) {
-
 	if (!IsSpecialCommon(client)) return;
 	new Float:AfxRange = GetCommonValueFloat(client, "range player level?");
 	new Float:AfxStrengthLevel = GetCommonValueFloat(client, "level strength?");
@@ -2152,30 +2034,20 @@ stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner =
 	new Float:OnFireMax = GetCommonValueFloat(client, "onfire max time?");
 	new Float:OnFireInterval = GetCommonValueFloat(client, "onfire interval?");
 	new AfxLevelReq = GetCommonValueInt(client, "level required?");
-
 	new Float:ClientPosition[3];
 	new Float:TargetPosition[3];
-
 	new t_Strength = 0;
 	new Float:t_Range = 0.0;
-	//new ent = -1;
-
 	new Float:t_OnFireRange = 0.0;
-
 	if (damage > 0) AfxStrength = damage;	// if we want to base the damage on a specific value, we can override here.
-
 	GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPosition);
 	new NumLivingEntities = LivingEntitiesInRange(client, ClientPosition, AfxRangeMax);
 	if (NumLivingEntities > 1) damage = (damage / NumLivingEntities);
 	if (target == 0 || IsLegitimateClient(target)) {
-
 		for (new i = 1; i <= MaxClients; i++) {
-
 			if (!IsLegitimateClientAlive(i) || (target != 0 && i != target) || PlayerLevel[i] < AfxLevelReq) continue;		// if type is 1 and target is 0 acid is spread to all players nearby. but if target is not 0 it is spread to only the player the acid zombie hits. or whatever type uses it.
 			GetClientAbsOrigin(i, TargetPosition);
-
 			if (RangeOverride == 0.0) {
-
 				if (AfxRange > 0.0) t_Range = AfxRange * (PlayerLevel[i] - AfxLevelReq);
 				else t_Range = AfxRangeMax;
 				if (t_Range + AfxRangeBase > AfxRangeMax) t_Range = AfxRangeMax;
@@ -2183,35 +2055,24 @@ stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner =
 			}
 			else t_Range = RangeOverride;
 			if (GetVectorDistance(ClientPosition, TargetPosition) > (t_Range / 2)) continue;
-
 			if (AfxMultiplication == 1) {
-
 				if (AfxStrengthTarget < 0.0) t_Strength = AfxStrength * NumLivingEntities;
 				else t_Strength = RoundToCeil(AfxStrength * (NumLivingEntities * AfxStrengthTarget));
 			}
 			else t_Strength = AfxStrength;
 			if (AfxStrengthLevel > 0.0) t_Strength += RoundToCeil(t_Strength * ((PlayerLevel[i] - AfxLevelReq) * AfxStrengthLevel));
-
 			t_OnFireRange = OnFireLevel * (PlayerLevel[i] - AfxLevelReq);
 			t_OnFireRange += OnFireBase;
 			if (t_OnFireRange > OnFireMax) t_OnFireRange = OnFireMax;
-
-			if (IsSpecialCommonInRange(client, 'b')) {
-
-				t_Strength = GetSpecialCommonDamage(t_Strength, client, 'b', i);
-			}
-
-			//PrintToChatAll("Setting %N on fire for %d damage over %3.2f seconds", i, t_Strength, t_OnFireRange);
+			if (IsSpecialCommonInRange(client, 'b')) t_Strength = GetSpecialCommonDamage(t_Strength, client, 'b', i);
 			if (type == 0) CreateAndAttachFlame(i, t_Strength, t_OnFireRange, OnFireInterval, _, "burn");		// Static time for now.
 			else if (type == 4) {
-
 				CreateAndAttachFlame(i, t_Strength, t_OnFireRange, OnFireInterval, _, "acid");
 				break;	// to prevent buffer overflow only allow it on one client.
 			}
 		}
 	}
 	if (target == 0 || IsCommonInfected(target)) {
-
 		new ent = -1;
 		for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
 			ent = GetArrayCell(Handle:CommonInfected, i);
@@ -2221,43 +2082,34 @@ stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner =
 			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
 			if (GetVectorDistance(ClientPosition, TargetPosition) > (AfxRangeMax / 2)) continue;
 			if (!IsSpecialCommon(ent)) OnCommonInfectedCreated(ent, true, _, true); // will calculate xp rewards, unhook, and set on fire.
-			else if (IsLegitimateClient(owner) && GetClientTeam(owner) == TEAM_SURVIVOR && IsSpecialCommon(ent)) AddSpecialCommonDamage(owner, ent, damage);
+			else if (IsLegitimateClient(owner) && GetClientTeam(owner) == TEAM_SURVIVOR) AddSpecialCommonDamage(owner, ent, damage);
 		}
 	}
 	//ClearSpecialCommon(client);
 }
 
 stock ExplosiveAmmo(client, damage, TalentClient) {
-
 	if (IsWitch(client)) AddWitchDamage(TalentClient, client, damage);
 	else if (IsSpecialCommon(client)) AddSpecialCommonDamage(TalentClient, client, damage);
 	else if (IsLegitimateClientAlive(client)) {
-
 		if (GetClientTeam(client) == TEAM_INFECTED) AddSpecialInfectedDamage(TalentClient, client, damage);
 		else SetClientTotalHealth(client, damage);	// survivor teammates don't reward players with experience or damage bonus, but they'll take damage from it.
 	}
-	/*if (client != TalentClient && (!IsCommonInfected(client) || IsSpecialCommon(client)) && (IsLegitimateClientAlive(client) && GetClientTeam(client) != TEAM_SURVIVOR)) {
-		AddTalentExperience(TalentClient, "agility", damage);
-	} */
 }
 
 stock HealingAmmo(client, healing, TalentClient, bool:IsCritical=false) {
-
 	if (!IsLegitimateClientAlive(client) || !IsLegitimateClientAlive(TalentClient)) return;
 	HealPlayer(client, TalentClient, healing * 1.0, 'h', true);
 }
 
 stock LeechAmmo(client, damage, TalentClient) {
-
 	if (IsWitch(client)) AddWitchDamage(TalentClient, client, damage);
 	else if (IsSpecialCommon(client)) AddSpecialCommonDamage(TalentClient, client, damage);
 	else if (IsLegitimateClientAlive(client)) {
-
 		if (GetClientTeam(client) == TEAM_INFECTED) AddSpecialInfectedDamage(TalentClient, client, damage);
 		else SetClientTotalHealth(client, damage);
 	}
 	if (IsLegitimateClientAlive(TalentClient) && GetClientTeam(TalentClient) == TEAM_SURVIVOR) {
-
 		//if (IsCritical || !IsCriticalHit(client, healing, TalentClient))	// maybe add this to leech? that would be cool.!
 		HealPlayer(TalentClient, TalentClient, damage * 1.0, 'h', true);
 	}
@@ -2433,29 +2285,23 @@ stock Float:CreateBomberExplosion(client, target, String:Effects[], basedamage =
 }
 
 stock CheckMinimumRate(client) {
-
 	if (Rating[client] < 0) Rating[client] = 0;
 }
 
 stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
-
-	if (!IsCommonInfected(client) && IsLegitimateClient(killerblow) && GetClientTeam(killerblow) == TEAM_SURVIVOR) {
-		if (isQuickscopeKill(killerblow)) {
-			// If the user met the server operators standards for a quickscope kill, we do something.
-			GetAbilityStrengthByTrigger(killerblow, client, "quickscope");
-		}
-	}
-
+	new bool:IsLegitimateClientClient = IsLegitimateClient(client);
+	new clientTeam = -1;
+	if (IsLegitimateClientClient) clientTeam = GetClientTeam(client);
+	new clientZombieClass = -1;
+	if (clientTeam != -1) clientZombieClass = FindZombieClass(client);
 	new ClientType = -1;
-	if (IsLegitimateClient(client) && GetClientTeam(client) == TEAM_INFECTED) {
-
+	if (IsLegitimateClientClient && clientTeam == TEAM_INFECTED) {
 		ClientType = 0;
 		ReadyUp_NtvStatistics(killerblow, 6, 1);
-		if (FindZombieClass(client) != ZOMBIECLASS_TANK) SetArrayCell(Handle:RoundStatistics, 3, GetArrayCell(RoundStatistics, 3) + 1);
+		if (clientZombieClass != ZOMBIECLASS_TANK) SetArrayCell(Handle:RoundStatistics, 3, GetArrayCell(RoundStatistics, 3) + 1);
 		else SetArrayCell(Handle:RoundStatistics, 4, GetArrayCell(RoundStatistics, 4) + 1);
 	}
 	else if (IsWitch(client)) {
-
 		ClientType = 1;
 		SetArrayCell(Handle:RoundStatistics, 2, GetArrayCell(RoundStatistics, 2) + 1);
 	}
@@ -2464,9 +2310,16 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		ClientType = 2;
 		SetArrayCell(Handle:RoundStatistics, 1, GetArrayCell(RoundStatistics, 1) + 1);
 	}
-
-	CreateItemRoll(client, killerblow);	// all infected types can generate an item roll
-
+	new bool:IsLegitimateClientKiller = IsLegitimateClient(killerblow);
+	new killerClientTeam = -1;
+	if (IsLegitimateClientKiller) killerClientTeam = GetClientTeam(killerblow);
+	if (ClientType >= 0 && IsLegitimateClientKiller && killerClientTeam == TEAM_SURVIVOR) {
+		if (isQuickscopeKill(killerblow)) {
+			// If the user met the server operators standards for a quickscope kill, we do something.
+			GetAbilityStrengthByTrigger(killerblow, client, "quickscope");
+		}
+	}
+	//CreateItemRoll(client, killerblow);	// all infected types can generate an item roll
 	new Float:SurvivorPoints = 0.0;
 	new SurvivorExperience = 0;
 	new Float:PointsMultiplier = fPointsMultiplier;
@@ -2477,19 +2330,14 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 	new t_Contribution = 0;
 	new h_Contribution = 0;
 	new SurvivorDamage = 0;
-
 	new Float:TheAbilityMultiplier = 0.0;
-
-	if (IsLegitimateClientAlive(killerblow) && ClientType == 0 && GetClientTeam(killerblow) == TEAM_SURVIVOR) {
-
+	if (IsLegitimateClientKiller && ClientType == 0 && killerClientTeam == TEAM_SURVIVOR) {
 		TheAbilityMultiplier = GetAbilityMultiplier(killerblow, "I");
 		if (TheAbilityMultiplier > 0.0) { // heal because you dealt the killing blow
-
 			HealPlayer(killerblow, killerblow, TheAbilityMultiplier * GetMaximumHealth(killerblow), 'h', true);
 		}
 		TheAbilityMultiplier = GetAbilityMultiplier(killerblow, "l");
 		if (TheAbilityMultiplier > 0.0) {
-
 			// Creates fire on the target and deals AOE explosion.
 			CreateExplosion(client, RoundToCeil(DataScreenWeaponDamage(killerblow) * TheAbilityMultiplier), killerblow, true);
 			CreateFireEx(client);
@@ -2499,15 +2347,12 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 	//if (IsLegitimateClientAlive(commonkiller) && GetClientTeam(commonkiller) == TEAM_SURVIVOR) owner = commonkiller;
 	if (ClientType == 0) SpecialsKilled++;
 	new Float:i_DamageContribution = 0.0000;
-
 	// If it's a special common, we activate its death abilities.
 	if (ClientType == 2) {
-
 		decl String:TheEffect[10];
 		GetCommonValue(TheEffect, sizeof(TheEffect), client, "aura effect?");
 		CreateBomberExplosion(client, client, TheEffect);	// bomber aoe
 	}
-
 	new pos = -1;
 	new RatingBonus = 0;
 	new RatingTeamBonus = 0;
@@ -2515,16 +2360,16 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 	//decl String:MyName[64];
 	decl String:killerName[64];
 	decl String:killedName[64];
-	if (IsWitch(client) || IsSpecialCommon(client) || IsLegitimateClient(client)) {
-		if (IsLegitimateClient(client)) GetClientName(client, killedName, sizeof(killedName));
+	if (ClientType > 0 || IsLegitimateClientClient) {
+		if (IsLegitimateClientClient) GetClientName(client, killedName, sizeof(killedName));
 		else {
-			if (IsWitch(client)) Format(killedName, sizeof(killedName), "Witch");
+			if (ClientType == 1) Format(killedName, sizeof(killedName), "Witch");
 			else {
 				GetCommonValue(killedName, sizeof(killedName), client, "name?");
 				Format(killedName, sizeof(killedName), "Common %s", killedName);
 			}
 		}
-		if (IsLegitimateClient(killerblow)) {
+		if (IsLegitimateClientKiller) {
 			GetClientName(killerblow, killerName, sizeof(killerName));
 			PrintToChatAll("%t", "player killed special infected", blue, killerName, white, orange, killedName);
 		}
@@ -2534,34 +2379,26 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 	}
 	decl String:ratingBonusText[64];
 	decl String:ratingTeamBonusText[64];
+	new bool:survivorsAreLessThanRequired = (iLivingSurvivors <= iTeamRatingRequired) ? true : false;
 	for (new i = 1; i <= MaxClients; i++) {
-
 		RatingBonus = 0;
 		SurvivorExperience = 0;
 		SurvivorPoints = 0.0;
 		i_DamageContribution = 0.0000;
-
 		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-
 		if (ClientType == 0) pos = FindListPositionByEntity(client, Handle:InfectedHealth[i]);
 		else if (ClientType == 1) pos = FindListPositionByEntity(client, Handle:WitchDamage[i]);
 		else if (ClientType == 2) pos = FindListPositionByEntity(client, Handle:SpecialCommon[i]);
-
 		if (pos < 0) continue;
-
 		if (LastAttackedUser[i] == client) LastAttackedUser[i] = -1;
-
 		if (ClientType == 0) SurvivorDamage = GetArrayCell(Handle:InfectedHealth[i], pos, 2);
 		else if (ClientType == 1) SurvivorDamage = GetArrayCell(Handle:WitchDamage[i], pos, 2);
 		else if (ClientType == 2) SurvivorDamage = GetArrayCell(Handle:SpecialCommon[i], pos, 2);
-
 		RatingBonus = GetRatingReward(i, client);
-
 		if (RatingBonus > 0) {
-
-			if (!IsFakeClient(i) && (IsSpecialCommon(client) || !IsCommonInfected(client))) {
+			if (!IsFakeClient(i) && ClientType >= 0) {
 				AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
-				if (iLivingSurvivors <= iTeamRatingRequired) {
+				if (survivorsAreLessThanRequired) {
 					PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
 				}
 				else {
@@ -2573,31 +2410,22 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 			}
 			CheckMinimumRate(i);
 			Rating[i] += RatingBonus;
-
 			TheAbilityMultiplier = GetAbilityMultiplier(i, "R");
 			if (TheAbilityMultiplier > 0.0) { // heal because you dealt the killing blow
-
 				HealPlayer(i, i, TheAbilityMultiplier * RatingBonus, 'h', true);
 			}
 		}
-
 		if (SurvivorDamage > 0) {
-
 			SurvivorExperience = RoundToFloor(SurvivorDamage * ExperienceMultiplier);
 			SurvivorPoints = SurvivorDamage * PointsMultiplier;
 		}
-
 		i_DamageContribution = CheckTeammateDamages(client, i, true);
-
 		if (i_DamageContribution > 0.0) {
-
 			SurvivorExperience = RoundToFloor(SurvivorDamage * ExperienceMultiplier);
 			SurvivorPoints = SurvivorDamage * PointsMultiplier;
 		}
-
 		t_Contribution = CheckTankingDamage(client, i);
 		if (t_Contribution > 0) {
-
 			t_Contribution = RoundToCeil(t_Contribution * TankingMultiplier);
 			SurvivorPoints += (t_Contribution * (PointsMultiplier * TankingMultiplier));
 		}
@@ -2605,32 +2433,28 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		//HealingContribution[i] = 0;
 		//CreateLootItem(i, i_DamageContribution, CheckTankingDamage(client, i), RoundToCeil(h_Contribution * HealingMultiplier));
 		if (h_Contribution > 0) {
-
 			h_Contribution = RoundToCeil(h_Contribution * HealingMultiplier);
 			SurvivorPoints += (h_Contribution * (PointsMultiplier * HealingMultiplier));
 		}
 		//if (!bIsInCombat[i]) ReceiveInfectedDamageAward(i, client, SurvivorExperience, SurvivorPoints, t_Contribution, h_Contribution, Bu_Contribution, He_Contribution);
-		
-		
 		HealingContribution[i] += h_Contribution;
 		TankingContribution[i] += t_Contribution;
 		PointsContribution[i] += SurvivorPoints;
 		DamageContribution[i] += SurvivorExperience;
-		
 		if (ClientType == 0) RemoveFromArray(Handle:InfectedHealth[i], pos);
 		else if (ClientType == 1) RemoveFromArray(Handle:WitchDamage[i], pos);
 		else if (ClientType == 2) RemoveFromArray(Handle:SpecialCommon[i], pos);
 	}
-	if (IsWitch(client)) {
+	if (ClientType == 1) {
 		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 		AcceptEntityInput(client, "Kill");
 		if (entityPos >= 0) RemoveFromArray(Handle:WitchList, entityPos);		// Delete the witch. Forever.
 	}
-	if (IsLegitimateClientAlive(client) && GetClientTeam(client) == TEAM_INFECTED) {
+	if (IsLegitimateClientClient && clientTeam == TEAM_INFECTED) {
 
-		if (FindZombieClass(client) == ZOMBIECLASS_TANK) bIsDefenderTank[client] = false;
+		if (clientZombieClass == ZOMBIECLASS_TANK) bIsDefenderTank[client] = false;
 
-		if (iTankRush != 1 && FindZombieClass(client) == ZOMBIECLASS_TANK && DirectorTankCooldown > 0.0 && f_TankCooldown == -1.0) {
+		if (iTankRush != 1 && clientZombieClass == ZOMBIECLASS_TANK && DirectorTankCooldown > 0.0 && f_TankCooldown == -1.0) {
 
 			f_TankCooldown				=	DirectorTankCooldown;
 
@@ -2650,26 +2474,33 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 }
 
 stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_reward, h_reward , bu_reward, he_reward, bool:TheRoundHasEnded = false) {
-
 	new RPGMode									= iRPGMode;
-
 	if (RPGMode < 0) return;
 	//new RPGBroadcast							= StringToInt(GetConfigValue("award broadcast?"));
 	decl String:InfectedName[64];
 	//decl String:InfectedTeam[64];
-
+	new enemytype = -1;
 	if (infected > 0) {
-
-		if (IsLegitimateClient(infected)) GetClientName(infected, InfectedName, sizeof(InfectedName));
-		else if (IsWitch(infected)) Format(InfectedName, sizeof(InfectedName), "Witch");
-		else if (IsSpecialCommon(infected)) GetCommonValue(InfectedName, sizeof(InfectedName), infected, "name?");
-		else if (IsCommonInfected(infected)) Format(InfectedName, sizeof(InfectedName), "Common");
+		if (IsLegitimateClient(infected)) {
+			GetClientName(infected, InfectedName, sizeof(InfectedName));
+			enemytype = 3;
+		}
+		else if (IsWitch(infected)) {
+			Format(InfectedName, sizeof(InfectedName), "Witch");
+			enemytype = 2;
+		}
+		else if (IsSpecialCommon(infected)) {
+			GetCommonValue(InfectedName, sizeof(InfectedName), infected, "name?");
+			enemytype = 1;
+		}
+		else if (IsCommonInfected(infected)) {
+			Format(InfectedName, sizeof(InfectedName), "Common");
+			enemytype = 0;
+		}
 		Format(InfectedName, sizeof(InfectedName), "%s %s", sDirectorTeam, InfectedName);
 	}
-
 	new Float:fRoundMultiplier = 1.0;
 	if (RoundExperienceMultiplier[client] > 0.0) {
-
 		fRoundMultiplier += RoundExperienceMultiplier[client];
 		e_reward = RoundToCeil(e_reward * fRoundMultiplier);
 		h_reward += RoundToCeil(h_reward * fRoundMultiplier);
@@ -2677,35 +2508,27 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 		bu_reward += RoundToCeil(bu_reward * fRoundMultiplier);
 		he_reward += RoundToCeil(he_reward * fRoundMultiplier);
 	}
-
 	new RestedAwardBonus = RoundToFloor(e_reward * fRestedExpMult);
 	if (RestedAwardBonus >= RestedExperience[client]) {
-
 		RestedAwardBonus = RestedExperience[client];
 		RestedExperience[client] = 0;
 	}
 	else if (RestedAwardBonus < RestedExperience[client]) {
-
 		RestedExperience[client] -= RestedAwardBonus;
 	}
 	new ExperienceBooster = RoundToFloor(e_reward * CheckExperienceBooster(client, e_reward));
 	if (ExperienceBooster < 1) ExperienceBooster = 0;
-
 	//new Float:TeammateBonus = 0.0;//(LivingSurvivors() - 1) * fSurvivorExpMult;
 	new theCount = LivingSurvivorCount();
 	if (theCount >= iSurvivorModifierRequired) {
-
 		new Float:TeammateBonus = (theCount - (iSurvivorModifierRequired - 1)) * fSurvivorExpMult;
-	
 		e_reward += RoundToCeil(TeammateBonus * e_reward);
 		h_reward += RoundToCeil(TeammateBonus * h_reward);
 		t_reward += RoundToCeil(TeammateBonus * t_reward);
 		bu_reward += RoundToCeil(TeammateBonus * bu_reward);
 		he_reward += RoundToCeil(TeammateBonus * he_reward);
 	}
-
 	if (IsGroupMember[client]) {
-
 		e_reward += RoundToCeil(GroupMemberBonus * e_reward);
 		h_reward += RoundToCeil(GroupMemberBonus * h_reward);
 		t_reward += RoundToCeil(GroupMemberBonus * t_reward);
@@ -2719,22 +2542,17 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 		bu_reward += RoundToCeil(fSurvivorBotsNoneBonus * bu_reward);
 		he_reward += RoundToCeil(fSurvivorBotsNoneBonus * he_reward);
 	}
-
 	if (e_reward < 1) e_reward = 0;
 	if (h_reward < 1) h_reward = 0;
 	if (t_reward < 1) t_reward = 0;
 	if (bu_reward < 1) bu_reward = 0;
 	if (he_reward < 1) he_reward = 0;
-
 	//h_reward = RoundToCeil(GetClassMultiplier(client, h_reward * 1.0, "hXP"));
 	//t_reward = RoundToCeil(GetClassMultiplier(client, t_reward * 1.0, "tXP"));
-
 	//if (!TheRoundHasEnded) {
 	// Previously, if a player completed a round without ever leaving combat, they would receive no bonus container.
-
 	if (iIsLevelingPaused[client] == 0) {
 		// players who pause their levels don't earn bonus containers.
-
 		BonusContainer[client]	+= e_reward;
 		BonusContainer[client]	+= h_reward;
 		BonusContainer[client]	+= t_reward;
@@ -2742,17 +2560,11 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 		BonusContainer[client]	+= he_reward;
 	}
 	else BonusContainer[client] = 0;	// if the player enables it mid-match, this ensures the bonus container is always 0 for paused levelers.
-	//}
-
-	
 	//	0 = Points Only
 	//	1 = RPG Only
 	//	2 - RPG + Points
-	
 	if (RPGMode > 0) {
-
-		if (DisplayType > 0 && (infected == 0 || (IsSpecialCommon(infected) || IsWitch(infected) || IsLegitimateClient(infected)))) {								// \x04Jockey \x01killed: \x04 \x03experience
-
+		if (DisplayType > 0 && (infected == 0 || enemytype > 0)) {								// \x04Jockey \x01killed: \x04 \x03experience
 			decl String:rewardText[64];
 			if (e_reward > 0) {
 				AddCommasToString(e_reward, rewardText, sizeof(rewardText));
@@ -2760,7 +2572,6 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 				else if (infected == 0) PrintToChat(client, "%T", "damage experience reward", client, orange, green, white, green, rewardText, blue);
 			}
 			if (DisplayType == 2) {
-
 				if (RestedAwardBonus > 0) {
 					AddCommasToString(RestedAwardBonus, rewardText, sizeof(rewardText));
 					PrintToChat(client, "%T", "rested experience reward", client, green, white, green, rewardText, blue);
@@ -2788,18 +2599,14 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 			}
 		}
 		new TotalExperienceEarned = (e_reward + RestedAwardBonus + ExperienceBooster + t_reward + h_reward + bu_reward + he_reward);
-
  		ExperienceLevel[client] += TotalExperienceEarned;
 		ExperienceOverall[client] += TotalExperienceEarned;
 		//GetProficiencyData(client, GetWeaponProficiencyType(client), TotalExperienceEarned);
-
 		ConfirmExperienceAction(client, TheRoundHasEnded);
 	}
 	if (RPGMode >= 0 && RPGMode != 1 && p_reward > 0.0) {
-
 		Points[client] += p_reward;
-
-		if (DisplayType > 0 && (infected == 0 || (IsSpecialCommon(infected) || IsWitch(infected) || IsLegitimateClient(infected)))) PrintToChat(client, "%T", "points from damage reward", client, green, white, green, p_reward, blue);
+		if (DisplayType > 0 && (infected == 0 || enemytype > 0)) PrintToChat(client, "%T", "points from damage reward", client, green, white, green, p_reward, blue);
 	}
 	if (!TheRoundHasEnded) CheckKillPositions(client, true);
 }
@@ -2833,7 +2640,7 @@ stock bool:SameTeam_OnTakeDamage(healer, target, iHealerAmount, bool:IsDamageTal
 		CreateTimer(0.5, Timer_IsMeleeCooldown, healer, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	HealImmunity[target] = true;
-	CreateTimer(0.05, Timer_HealImmunity, target, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(0.1, Timer_HealImmunity, target, TIMER_FLAG_NO_MAPCHANGE);
 	HealPlayer(target, healer, iHealerAmount * 1.0, 'h', true);
 	GetAbilityStrengthByTrigger(healer, target, "didHeals", _, iHealerAmount);
 	GetAbilityStrengthByTrigger(target, healer, "wasHealed", _, iHealerAmount);

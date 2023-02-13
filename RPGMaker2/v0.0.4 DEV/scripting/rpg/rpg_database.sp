@@ -425,7 +425,7 @@ stock LoadLeaderboards(client, count) {
 	decl String:Mapname[64];
 	GetCurrentMap(Mapname, sizeof(Mapname));
 
-	Format(tquery, sizeof(tquery), "SELECT `tname`, `level`, `steam_id`, `%s` FROM `%s` ORDER BY `%s` DESC;", RatingType, TheDBPrefix, RatingType);
+	Format(tquery, sizeof(tquery), "SELECT `tname`, `steam_id`, `%s` FROM `%s` ORDER BY `%s` DESC;", RatingType, TheDBPrefix, RatingType);
 	SQL_TQuery(hDatabase, LoadLeaderboardsQuery, tquery, client);
 }
 
@@ -441,22 +441,16 @@ public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], an
 	new counter = 0;
 	new listpage = GetConfigValueInt("leaderboard players per page?");
 	new Handle:LeadName = CreateArray(16);
-	new Handle:LeadLevel = CreateArray(16);
-	new Handle:LeadSteam = CreateArray(16);
 	new Handle:LeadRating = CreateArray(16);
 
 	if (!bIsMyRanking[data]) {
 
 		ResizeArray(Handle:LeadName, listpage);
-		ResizeArray(Handle:LeadLevel, listpage);
-		ResizeArray(Handle:LeadSteam, listpage);
 		ResizeArray(Handle:LeadRating, listpage);
 	}
 	else {
 
 		ResizeArray(Handle:LeadName, 1);
-		ResizeArray(Handle:LeadLevel, 1);
-		ResizeArray(Handle:LeadSteam, 1);
 		ResizeArray(Handle:LeadRating, 1);
 	}
 	decl String:text[64];
@@ -469,7 +463,7 @@ public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], an
 
 	while (i < listpage && SQL_FetchRow(hndl))
 	{
-		SQL_FetchString(hndl, 2, text, sizeof(text));
+		SQL_FetchString(hndl, 1, text, sizeof(text));
 		if (bIsMyRanking[data] && !StrEqual(text, SteamID, false)) {
 
 			counter++;
@@ -481,7 +475,7 @@ public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], an
 		counter++;
 		if (count < TheLeaderboardsPage[data]) continue;
 
-		Pint = SQL_FetchInt(hndl, 3);
+		Pint = SQL_FetchInt(hndl, 2);
 		if (Pint <= IgnoreRating) {
 
 			count--;
@@ -503,25 +497,15 @@ public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], an
 		if (strlen(text) < 16) {
 
 			if (strlen(text) > 12) Format(text,sizeof(text), "%s\t", text);
-			else if (strlen(text) > 8) Format(text,sizeof(text), "%s\t\t", text);
-			else if (strlen(text) > 4) Format(text,sizeof(text), "%s\t\t\t", text);
-			else Format(text,sizeof(text), "%s\t\t\t\t", text);
+			else if (strlen(text) > 8) Format(text,sizeof(text), "%s\t\t\t", text);
+			else if (strlen(text) > 4) Format(text,sizeof(text), "%s\t\t\t\t\t\t", text);
+			else Format(text,sizeof(text), "%s\t\t\t\t\t\t\t", text);
 		}
 		Format(text, sizeof(text), "#%d %s", counter, text);
 
 		SetArrayString(Handle:LeadName, i, text);
 
-		Pint = SQL_FetchInt(hndl, 1);
-		Format(text, sizeof(text), "%d", Pint);
-		SetArrayString(Handle:LeadLevel, i, text);
-
-		//SQL_FetchString(hndl, 2, text, sizeof(text));
-		//if (bIsMyRanking[data] && !StrEqual(text, SteamID, false)) continue;
-		//if (StrContains(SteamID, "STEAM_", true) == -1) continue;	// will not display bots rating in the leaderboards.
-
-		SetArrayString(Handle:LeadSteam, i, text);
-
-		Pint = SQL_FetchInt(hndl, 3);
+		Pint = SQL_FetchInt(hndl, 2);
 		Format(text, sizeof(text), "%d", Pint);
 		SetArrayString(Handle:LeadRating, i, text);
 
@@ -535,24 +519,18 @@ public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], an
 	if (!bIsMyRanking[data]) {
 
 		ResizeArray(Handle:LeadName, i);
-		ResizeArray(Handle:LeadLevel, i);
-		ResizeArray(Handle:LeadSteam, i);
 		ResizeArray(Handle:LeadRating, i);
 	}
 	TheLeaderboardsPageSize[data] = i;
 
 	ResizeArray(TheLeaderboards[data], 1);
 	SetArrayCell(TheLeaderboards[data], 0, LeadName, 0);
-	SetArrayCell(TheLeaderboards[data], 0, LeadLevel, 1);
-	SetArrayCell(TheLeaderboards[data], 0, LeadSteam, 2);
-	SetArrayCell(TheLeaderboards[data], 0, LeadRating, 3);
+	SetArrayCell(TheLeaderboards[data], 0, LeadRating, 1);
 
 	if (GetArraySize(TheLeaderboards[data]) > 0) SendPanelToClientAndClose(DisplayTheLeaderboards(data), data, DisplayTheLeaderboards_Init, MENU_TIME_FOREVER);
 	else BuildMenu(data);
 
 	CloseHandle(LeadName);
-	CloseHandle(LeadLevel);
-	CloseHandle(LeadSteam);
 	CloseHandle(LeadRating);
 }
 
@@ -1664,7 +1642,7 @@ public QueryResults_Load(Handle:owner, Handle:hndl, const String:error[], any:cl
 					PrintToChat(client, "%T", "PvP Enabled", client, white, blue);
 				}
 				iLevel = GetPlayerLevel(client);
-				if (iLevel < iPlayerStartingLevel) iLevel = iPlayerStartingLevel;
+				if (SkyLevel[client] < 1 && iLevel < iPlayerStartingLevel) iLevel = iPlayerStartingLevel;
 				if (PlayerLevel[client] != iLevel) SetTotalExperienceByLevel(client, iLevel);
 			}
 			SetSpeedMultiplierBase(client);
@@ -1679,7 +1657,7 @@ public QueryResults_Load(Handle:owner, Handle:hndl, const String:error[], any:cl
 		if (iRPGMode < 1) {
 			b_IsLoading[client] = false;
 			bIsTalentTwo[client] = false;
-			VerifyAllActionBars(client);
+			//VerifyAllActionBars(client);
 		}
 		//if (b_IsLoading[client] && !IsFakeClient(client)) CheckServerLevelRequirements(client);
 		/*b_IsLoading[client] = false;
@@ -1967,7 +1945,7 @@ public QueryResults_LoadActionBar(Handle:owner, Handle:hndl, const String:error[
 			IsFound = true;
 		}
 
-		if (IsFound && !IsFakeClient(client)) PrintToChat(client, "\x04!~ Data Loaded ~!"); //PrintToChat(client, "%T", "Action Bar Loaded", client, orange, blue);
+		if (IsFound && !IsFakeClient(client)) PrintToChat(client, "\x04I have loaded your player data successfully."); //PrintToChat(client, "%T", "Action Bar Loaded", client, orange, blue);
 		b_IsLoading[client] = false;
 		bIsTalentTwo[client] = false;
 	}
@@ -2372,7 +2350,7 @@ public Action:Timer_LoggedUsers(Handle:timer, any:client) {
 	//CheckGroupStatus(client);
 	if (IsPlayerAlive(client) && (GetClientTeam(client) == TEAM_SURVIVOR || IsSurvivorBot(client))) {
 
-		VerifyAllActionBars(client);	// in case they don't have the gear anymore to support it?
+		//VerifyAllActionBars(client);	// in case they don't have the gear anymore to support it?
 		//IsLogged(client, true);		// Only log them if the player isn't alive.
 		return Plugin_Stop;
 	}

@@ -39,14 +39,13 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"beta v1.0.1"
+#define PLUGIN_VERSION				"beta v1.0.3"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
 #define PLUGIN_CONTACT				"skye"
 #define PLUGIN_NAME					"RPG Construction Set"
 #define PLUGIN_DESCRIPTION			"Fully-customizable and modular RPG, like the one for Atari."
-#define PLUGIN_URL					"https://discord.gg/tzgnQRbkWm"
 #define CONFIG_EVENTS				"rpg/events.cfg"
 #define CONFIG_MAINMENU				"rpg/mainmenu.cfg"
 #define CONFIG_MENUTALENTS			"rpg/talentmenu.cfg"
@@ -101,7 +100,7 @@ public Plugin:myinfo = {
 	author = PLUGIN_CONTACT,
 	description = PLUGIN_DESCRIPTION,
 	version = PLUGIN_VERSION,
-	url = PLUGIN_URL,
+	url = "",
 };
 
 new iHealingPlayerInCombatPutInCombat;
@@ -892,6 +891,9 @@ new iPlayersLeaveCombatDuringFinales;
 new iAllowPauseLeveling;
 new iDropAcidOnLastDebuffDrop;
 new Float:fMaxDamageResistance;
+new Float:fStaminaPerPlayerLevel;
+new Float:fStaminaPerSkyLevel;
+
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 	if (!IsValidEntity(CurrentEntity) || CurrentEntity < 1) return Plugin_Handled;
@@ -934,7 +936,7 @@ stock DoGunStuff(client) {
 stock CMD_OpenRPGMenu(client) {
 	//DoGunStuff(client);
 	ClearArray(Handle:MenuStructure[client]);	// keeps track of the open menus.
-	VerifyAllActionBars(client);	// Because.
+	//VerifyAllActionBars(client);	// Because.
 	if (LoadProfileRequestName[client] != -1) {
 		if (!IsLegitimateClient(LoadProfileRequestName[client])) LoadProfileRequestName[client] = -1;
 	}
@@ -960,12 +962,6 @@ stock CMD_OpenRPGMenu(client) {
 public OnPluginStart() {
 	CreateConVar("skyrpg_version", PLUGIN_VERSION, "version header", CVAR_SHOW);
 	SetConVarString(FindConVar("skyrpg_version"), PLUGIN_VERSION);
-	CreateConVar("skyrpg_profile", PROFILE_VERSION, "RPG Profile Editor Module", CVAR_SHOW);
-	SetConVarString(FindConVar("skyrpg_profile"), PROFILE_VERSION);
-	CreateConVar("skyrpg_contact", PLUGIN_CONTACT, "SkyRPG contact", CVAR_SHOW);
-	SetConVarString(FindConVar("skyrpg_contact"), PLUGIN_CONTACT);
-	CreateConVar("skyrpg_url", PLUGIN_URL, "SkyRPG url", CVAR_SHOW);
-	SetConVarString(FindConVar("skyrpg_url"), PLUGIN_URL);
 	g_Steamgroup = FindConVar("sv_steamgroup");
 	SetConVarFlags(g_Steamgroup, GetConVarFlags(g_Steamgroup) & ~FCVAR_NOTIFY);
 	//g_Tags = FindConVar("sv_tags");
@@ -996,13 +992,13 @@ public OnPluginStart() {
 	RegAdminCmd("firesword", CMD_FireSword, ADMFLAG_KICK);
 	RegAdminCmd("fbegin", CMD_FBEGIN, ADMFLAG_KICK);
 	RegAdminCmd("witches", CMD_WITCHESCOUNT, ADMFLAG_KICK);
-	RegAdminCmd("staggertest", CMD_STAGGERTEST, ADMFLAG_KICK);
+	//RegAdminCmd("staggertest", CMD_STAGGERTEST, ADMFLAG_KICK);
 	Format(white, sizeof(white), "\x01");
 	Format(orange, sizeof(orange), "\x04");
 	Format(green, sizeof(green), "\x05");
 	Format(blue, sizeof(blue), "\x03");
 	gd = LoadGameConfigFile("rum_rpg");
-	if (gd != INVALID_HANDLE) {		
+	if (gd != INVALID_HANDLE) {
 		StartPrepSDKCall(SDKCall_Player);
 		PrepSDKCall_SetFromConf(gd, SDKConf_Signature, "SetClass");
 		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
@@ -1040,25 +1036,7 @@ public OnPluginStart() {
 	staggerBuffer = CreateConVar("sm_vscript_res", "", "returns results from vscript check on stagger");
 }
 
-public Action:CMD_STAGGERTEST(client, args) {
-	/*new target = GetClientAimTarget(client, false);
-	decl String:targetName[64];
-	GetEntityClassname(target, targetName, sizeof(targetName));
-	PrintToChat(client, "entity name: %s", targetName);
-	GetEntPropString(target, Prop_Data, "m_iName", targetName, sizeof(targetName));
-	PrintToChat(client, "entity targetname: %s", targetName);*/
-	for (new i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-		if (i == client) continue;
-		StaggerPlayer(client, i);
-		StaggerPlayer(i, client);
-		break;
-	}
-	return Plugin_Handled;
-}
-
 public Action:CMD_WITCHESCOUNT(client, args) {
-
 	PrintToChat(client, "Witches: %d", GetArraySize(WitchList));
 	return Plugin_Handled;
 }
@@ -1251,6 +1229,7 @@ stock OnMapStartFunc() {
 		if (CommonInfectedHealth == INVALID_HANDLE || !b_FirstLoad) CommonInfectedHealth = CreateArray(32);
 		if (SetNodesKeys == INVALID_HANDLE || !b_FirstLoad) SetNodesKeys = CreateArray(32);
 		if (SetNodesValues == INVALID_HANDLE || !b_FirstLoad) SetNodesValues = CreateArray(32);
+		
 		for (new i = 1; i <= MAXPLAYERS; i++) {
 			LastDeathTime[i] = 0.0;
 			MyVomitChase[i] = -1;
@@ -1498,17 +1477,14 @@ public OnMapStart() {
 	ClearArray(EffectOverTime);
 	ClearArray(TimeOfEffectOverTime);
 	ClearArray(Handle:StaggeredTargets);
-
 	GetCurrentMap(TheCurrentMap, sizeof(TheCurrentMap));
 	Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "%srpg/%s.cfg", ConfigPathDirectory, TheCurrentMap);
 	//LogMessage("CONFIG_MAIN DEFAULT: %s", CONFIG_MAIN);
 	if (!FileExists(CONFIG_MAIN)) Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "rpg/config.cfg");
 	else Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "rpg/%s.cfg", TheCurrentMap);
-
 	SetConVarInt(FindConVar("director_no_death_check"), 1);
 	SetConVarInt(FindConVar("sv_rescue_disabled"), 0);
 	SetConVarInt(FindConVar("z_common_limit"), 0);	// there are no commons until the round starts in all game modes to give players a chance to move.
-
 	CheckDifficulty();
 	UnhookAll();
 }
@@ -1690,6 +1666,7 @@ public ReadyUpEnd_Complete() {
 		b_IsRoundIsOver = false;
 		ClearArray(CommonInfected);
 		ClearArray(CommonInfectedHealth);
+		ClearArray(CommonAffixes);
 			//b_IsSurvivalIntermission = true;
 			//CreateTimer(5.0, Timer_AutoRes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//}
@@ -1733,9 +1710,7 @@ public ReadyUpEnd_Complete() {
 }
 
 stock TimeUntilEnrage(String:TheText[], TheSize) {
-
 	if (!IsEnrageActive()) {
-
 		new Seconds = (iEnrageTime * 60) - (GetTime() - RoundTime);
 		new Minutes = 0;
 		while (Seconds >= 60) {
@@ -1743,18 +1718,29 @@ stock TimeUntilEnrage(String:TheText[], TheSize) {
 			Seconds -= 60;
 			Minutes++;
 		}
-		Format(TheText, TheSize, "%dm%ds", Minutes, Seconds);
+		if (Seconds == 0) {
+			Format(TheText, TheSize, "%d minute", Minutes);
+			if (Minutes > 1) Format(TheText, TheSize, "%ss", TheText);
+		}
+		else if (Minutes == 0) Format(TheText, TheSize, "%d seconds", Seconds);
+		else {
+			if (Minutes > 1) Format(TheText, TheSize, "%d minutes, %d seconds", Minutes, Seconds);
+			else Format(TheText, TheSize, "%d minute, %d seconds", Minutes, Seconds);
+		}
 	}
 	else Format(TheText, TheSize, "ACTIVE");
 }
 
-stock RPGRoundTime(bool:IsSeconds = false) {
+stock GetSecondsUntilEnrage() {
+	new secondsLeftUntilEnrage = (iEnrageTime * 60) - (GetTime() - RoundTime);
+	return secondsLeftUntilEnrage;
+}
 
+stock RPGRoundTime(bool:IsSeconds = false) {
 	new Seconds = GetTime() - RoundTime;
 	if (IsSeconds) return Seconds;
 	new Minutes = 0;
 	while (Seconds >= 60) {
-
 		Minutes++;
 		Seconds -= 60;
 	}
@@ -1804,8 +1790,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			SetArrayCell(Handle:RoundStatistics, i, 0);
 			if (CurrentMapPosition == 0) SetArrayCell(Handle:RoundStatistics, i, 0, 1);	// first map of campaign, reset the total.
 		}
-
-		//DestroyCommons();
 		decl String:pct[4];
 		Format(pct, sizeof(pct), "%");
 		new iMaxHandicap = 0;
@@ -2499,22 +2483,16 @@ public ReadyUp_RoundIsOver(gamemode) {
 public Action:Timer_SaveAndClear(Handle:timer) {
 	new LivingSurvs = TotalHumanSurvivors();
 	for (new i = 1; i <= MaxClients; i++) {
-
-		if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
-
-			//ToggleTank(i, true);
-			if (b_IsMissionFailed && LivingSurvs > 0) {
-
-				RoundExperienceMultiplier[i] = 0.0;
-
-				// So, the round ends due a failed mission, whether it's coop or survival, and we reset all players ratings.
-				VerifyMinimumRating(i, true);
-			}
-			if(iChaseEnt[i] && EntRefToEntIndex(iChaseEnt[i]) != INVALID_ENT_REFERENCE) AcceptEntityInput(iChaseEnt[i], "Kill");
-			iChaseEnt[i] = -1;
-
-			SaveAndClear(i);
+		if (!IsLegitimateClient(i)) continue;
+		//ToggleTank(i, true);
+		if (b_IsMissionFailed && LivingSurvs > 0 && GetClientTeam(i) == TEAM_SURVIVOR) {
+			RoundExperienceMultiplier[i] = 0.0;
+			// So, the round ends due a failed mission, whether it's coop or survival, and we reset all players ratings.
+			VerifyMinimumRating(i, true);
 		}
+		if(iChaseEnt[i] && EntRefToEntIndex(iChaseEnt[i]) != INVALID_ENT_REFERENCE) AcceptEntityInput(iChaseEnt[i], "Kill");
+		iChaseEnt[i] = -1;
+		SaveAndClear(i);
 	}
 	return Plugin_Stop;
 }
@@ -3124,6 +3102,8 @@ stock LoadMainConfig() {
 	iPlayersLeaveCombatDuringFinales	= GetConfigValueInt("do players leave combat during finales?");
 	iAllowPauseLeveling					= GetConfigValueInt("let players pause their leveling?");
 	fMaxDamageResistance				= GetConfigValueFloat("max damage resistance?");
+	fStaminaPerPlayerLevel				= GetConfigValueFloat("stamina increase per player level?");
+	fStaminaPerSkyLevel					= GetConfigValueFloat("stamina increase per prestige level?");
 	//if (fMaxDamageResistance < 0.0) fMaxDamageResistance = 0.9;
 	//iDropAcidOnLastDebuffDrop			= GetConfigValueInt("do prestige players poo acid on last tick?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
@@ -3282,19 +3262,15 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 }
 
 public ReadyUp_FwdGetHeader(const String:header[]) {
-
 	strcopy(s_rup, sizeof(s_rup), header);
 }
 
 public ReadyUp_FwdGetCampaignName(const String:mapname[]) {
-
 	strcopy(currentCampaignName, sizeof(currentCampaignName), mapname);
 }
 
 public ReadyUp_CoopMapFailed(iGamemode) {
-
 	if (!b_IsMissionFailed) {
-
 		b_IsMissionFailed	= true;
 		Points_Director = 0.0;
 	}
@@ -3311,7 +3287,6 @@ stock bool:IsSpecialCommon(entity) {
 		if (IsCommonInfected(entity)) return true;
 		else ClearSpecialCommon(entity, false);
 	}
-
 	return false;
 }
 
@@ -3332,7 +3307,6 @@ stock bool:IsSpecialCommon(entity) {
 	return -1;
 }*/
 //GetClientAuthId(client, AuthIdType:AuthId_Steam3, String:AuthString, maxlen, bool:validate=true);
-
 #include "rpg/rpg_menu.sp"
 #include "rpg/rpg_menu_points.sp"
 #include "rpg/rpg_menu_store.sp"
