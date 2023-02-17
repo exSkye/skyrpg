@@ -2114,6 +2114,7 @@ public OnClientDisconnect(client)
 		bIsMeleeCooldown[client] = false;
 		shotgunCooldown[client] = false;
 		b_IsInSaferoom[client] = false;
+		bIsInCheckpoint[client] = false;
 		//b_IsArraysCreated[client] = false;
 		ResetData(client);
 		//PlayerLevel[client] = 0;
@@ -2417,20 +2418,11 @@ stock FindARespawnTarget(client, sacrifice = -1) {
 	if (!IsPlayerAlive(client)) {
 
 		SDKCall(hRoundRespawn, client);
-		if (b_HasDeathLocation[client]) {
-
-			TeleportEntity(client, Float:DeathLocation[client], NULL_VECTOR, NULL_VECTOR);
-			b_HasDeathLocation[client] = false;
-		}
-		else {
-
-			for (new i = 1; i <= MaxClients; i++) {
-
-				if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || i == client) continue;
-				MyRespawnTarget[client] = i;
-				CreateTimer(1.0, TeleportToMyTarget, client, TIMER_FLAG_NO_MAPCHANGE);
-				break;
-			}
+		for (new i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || i == client) continue;
+			MyRespawnTarget[client] = i;
+			CreateTimer(1.0, TeleportToMyTarget, client, TIMER_FLAG_NO_MAPCHANGE);
+			break;
 		}
 		if (IsLegitimateClient(sacrifice)) {
 

@@ -30,8 +30,8 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 				Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
 				if (ShowLayerEligibility) {
 					if (bIsLayerEligible) {
-						new strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]);
-						new allUpgradesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, true);
+						new strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true);
+						new allUpgradesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, true);//true for skip attributes, too?
 						new totalPossibleNodesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true);
 						Format(text, sizeof(text), "%T", "RPG Layer Eligible", client, text, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, PlayerCurrentMenuLayer[client] + 1, allUpgradesThisLayer, totalPossibleNodesThisLayer);
 					}
@@ -566,7 +566,7 @@ stock GetTeamComposition(client) {
 		GetClientName(i, text, sizeof(text));
 
 		AddCommasToString(Rating[i], ratingText, sizeof(ratingText));
-		Format(text, sizeof(text), "[Rating: %s] (Lv.%d) %s", ratingText, PlayerLevel[i], text);
+		Format(text, sizeof(text), "%s Lv.%d\t\tScore: %s", text, PlayerLevel[i], ratingText);
 		AddMenuItem(menu, text, text);
 	}
 	SetMenuExitBackButton(menu, true);
@@ -600,6 +600,7 @@ stock LoadProfileTargetSurvivorBot(client) {
 
 	decl String:text[512];
 	decl String:pos[512];
+	decl String:ratingText[64];
 
 	Format(text, sizeof(text), "%T", "select survivor bot", client);
 	SetMenuTitle(menu, text);
@@ -610,7 +611,8 @@ stock LoadProfileTargetSurvivorBot(client) {
 			Format(pos, sizeof(pos), "%d", i);
 			PushArrayString(Handle:RPGMenuPosition[client], pos);
 			GetClientName(i, pos, sizeof(pos));
-			Format(pos, sizeof(pos), "[Rtg %d] Lv.%d %s", Rating[i], PlayerLevel[i], pos);
+			AddCommasToString(Rating[i], ratingText, sizeof(ratingText));
+			Format(pos, sizeof(pos), "%s Lv.%d\t\tScore: %s", pos, PlayerLevel[i], ratingText);
 			AddMenuItem(menu, pos, pos);
 		}
 	}
@@ -2331,7 +2333,9 @@ public Handle:ProfileEditorMenu(client) {
 
 		//decl String:theclassname[64];
 		GetClientName(thetarget, TheName, sizeof(TheName));
-		Format(TheName, sizeof(TheName), "[Rtg %d] Lv.%d %s", Rating[thetarget], PlayerLevel[thetarget], TheName);
+		decl String:ratingText[64];
+		AddCommasToString(Rating[thetarget], ratingText, sizeof(ratingText));
+		Format(text, sizeof(text), "%s Lv.%d\t\tScore: %s", TheName, PlayerLevel[thetarget], ratingText);
 	}
 	else {
 
@@ -2473,7 +2477,7 @@ stock SaveProfile(client, SaveType = 0) {	// 1 insert a new save, 2 overwrite an
 		if (SaveType == 1) PrintToChat(client, "%T", "new save", client, orange, green, LoadoutName[client]);
 		else PrintToChat(client, "%T", "update save", client, orange, green, LoadoutName[client]);
 
-		if (StrContains(LoadoutName[client], "Lv.", false) == -1) Format(key, sizeof(key), "%s%s Lv.%d+SavedProfile%s", key, LoadoutName[client], PlayerLevel[client] - UpgradesAvailable[client] - FreeUpgrades[client], PROFILE_VERSION);
+		if (StrContains(LoadoutName[client], "Lv.", false) == -1) Format(key, sizeof(key), "%s%s Lv.%d+SavedProfile%s", key, LoadoutName[client], TotalPointsAssigned(client), PROFILE_VERSION);
 		else Format(key, sizeof(key), "%s%s+SavedProfile%s", key, LoadoutName[client], PROFILE_VERSION);
 		SaveProfileEx(client, key, SaveType);
 	}
@@ -3161,9 +3165,10 @@ public Handle:TalentInfoScreen(client) {
 	if (TalentType <= 0 || AbilityTalent == 1) {
 
 		if (TalentPointAmount == 0) {
-			new ignoreLayerCount = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?");
+			new ignoreLayerCount = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?") == 1) ? 1 :
+								   (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is attribute?") == 1) ? 1 : 0;
 			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
-			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
+			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 
 			//decl String:sTalentsRequired[64];
 			decl String:formattedTalentsRequired[64];
@@ -3502,12 +3507,14 @@ public TalentInfoScreen_Init (Handle:topmenu, MenuAction:action, client, param2)
 		new nodeUnlockCost = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "node unlock cost?", "1");	// if the key is not found, return a default value of 1.
 		new bool:isNodeCostMet = (UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 		new currentLayer = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "layer?");
-		new ignoreLayerCount = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?");
+		//new ignoreLayerCount = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?");
+		new ignoreLayerCount = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?") == 1) ? 1 :
+								   (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is attribute?") == 1) ? 1 : 0;	// attributes both count towards the layer requirements and can be unlocked when the layer requirements are met.
 
 		new bool:bIsLayerEligible = (TalentStrength > 0) ? true : false;
 		if (!bIsLayerEligible) {
 			bIsLayerEligible = (requiredTalentsRequired < 1 && (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client])) ? true : false;
-			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
+			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 		}
 		/*if (AbilityTalent == 1 && bActionBarMenuRequest) {
 

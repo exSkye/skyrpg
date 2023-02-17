@@ -73,6 +73,7 @@ stock GiveProfileItems(client) {
 		QuickCommandAccessEx(client, defaultLoadoutWeaponPrimary, _, true);
 		QuickCommandAccessEx(client, defaultLoadoutWeaponSecondary, _, true);
 	}
+	if (SkyLevel[client] > 0) CreateTimer(0.5, Timer_GiveLaserBeam, client, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action:Timer_GiveLaserBeam(Handle:timer, any:client) {
@@ -390,26 +391,28 @@ public Action:Timer_FrozenPlayer(Handle:timer, any:client) {
 }
 
 stock Float:GetActiveZoomTime(client) {
-	decl String:text[2][64];
+	new listClient = 0;
+	new Float:activeZoomTimeTime = 0.0;
 	new Float:activeZoomTime = GetEngineTime();
 	for (new i = 0; i < GetArraySize(zoomCheckList); i++) {
-		GetArrayString(Handle:zoomCheckList, i, text[0], sizeof(text[]));
-		ExplodeString(text[0], ":", text, 2, 64);
-		if (client != StringToInt(text[0])) continue;
-		activeZoomTime -= StringToFloat(text[1]);
+		listClient = GetArrayCell(Handle:zoomCheckList, i, 0);
+		if (client != listClient) continue;
+		activeZoomTimeTime = GetArrayCell(Handle:zoomCheckList, i, 1);
+		activeZoomTime -= activeZoomTimeTime;
 		return activeZoomTime;
 	}
 	return 0.0;
 }
 
 stock bool:isQuickscopeKill(client) {
-	decl String:text[2][64];
+	new listClient = 0;
+	new Float:fClientHoldingFireTime = 0.0;
 	new Float:killDelayAfterScope = GetEngineTime();
 	for (new i = 0; i < GetArraySize(zoomCheckList); i++) {
-		GetArrayString(Handle:zoomCheckList, i, text[0], sizeof(text[]));
-		ExplodeString(text[0], ":", text, 2, 64);
-		if (client != StringToInt(text[0])) continue;
-		killDelayAfterScope -= StringToFloat(text[1]);
+		listClient = GetArrayCell(Handle:zoomCheckList, i, 0);
+		if (client != listClient) continue;
+		fClientHoldingFireTime = GetArrayCell(Handle:zoomCheckList, i, 1);
+		killDelayAfterScope -= fClientHoldingFireTime;
 		if (killDelayAfterScope <= fquickScopeTime) return true;
 		return false;
 	}
@@ -417,26 +420,26 @@ stock bool:isQuickscopeKill(client) {
 }
 
 stock zoomCheckToggle(client, bool:insert = false) {
-	decl String:text[2][64];
+	new listClient = 0;
 	for (new i = 0; i < GetArraySize(zoomCheckList); i++) {
-		GetArrayString(Handle:zoomCheckList, i, text[0], sizeof(text[]));
-		ExplodeString(text[0], ":", text, 2, 64);
-		if (client != StringToInt(text[0])) continue;
+		listClient = GetArrayCell(Handle:zoomCheckList, i, 0);
+		if (client != listClient) continue;
 		if (insert) return;
 		// The user is unscoping so we remove them from the array.
 		RemoveFromArray(zoomCheckList, i);
 	}
 	if (insert) {
 		// we don't even get here if the user is already in the list.
-		Format(text[0], sizeof(text[]), "%d:%3.3f", client, GetEngineTime());
-		PushArrayString(zoomCheckList, text[0]);
+		new size = GetArraySize(zoomCheckList);
+		ResizeArray(zoomCheckList, size + 1);
+		SetArrayCell(zoomCheckList, size, client, 0);
+		SetArrayCell(zoomCheckList, size, GetEngineTime(), 1);
 	}
 	return;
 }
 
 public Action:Timer_ZoomcheckDelayer(Handle:timer, any:client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
-
 	if (IsPlayerZoomed(client)) {
 		// trigger nodes that fire when a player zooms in (like effects over time)
 		zoomCheckToggle(client, true);
@@ -447,32 +450,34 @@ public Action:Timer_ZoomcheckDelayer(Handle:timer, any:client) {
 }
 
 stock Float:GetHoldingFireTime(client) {
-	decl String:text[2][64];
+	new listClient = 0;
+	new Float:fClientHoldingFireTime = 0.0;
 	new Float:holdingFireTime = GetEngineTime();
 	for (new i = 0; i < GetArraySize(holdingFireList); i++) {
-		GetArrayString(Handle:holdingFireList, i, text[0], sizeof(text[]));
-		ExplodeString(text[0], ":", text, 2, 64);
-		if (client != StringToInt(text[0])) continue;
-		holdingFireTime -= StringToFloat(text[1]);
+		listClient = GetArrayCell(Handle:holdingFireList, i, 0);
+		if (listClient != client) continue;
+		fClientHoldingFireTime = GetArrayCell(Handle:holdingFireList, i, 1);
+		holdingFireTime -= fClientHoldingFireTime;
 		return holdingFireTime;
 	}
 	return 0.0;
 }
 
 stock holdingFireCheckToggle(client, bool:insert = false) {
-	decl String:text[2][64];
+	new listClient = 0;
 	for (new i = 0; i < GetArraySize(holdingFireList); i++) {
-		GetArrayString(Handle:holdingFireList, i, text[0], sizeof(text[]));
-		ExplodeString(text[0], ":", text, 2, 64);
-		if (client != StringToInt(text[0])) continue;
+		listClient = GetArrayCell(Handle:holdingFireList, i, 0);
+		if (listClient != client) continue;
 		if (insert) return;
 		// The user is unscoping so we remove them from the array.
 		RemoveFromArray(holdingFireList, i);
 	}
 	if (insert) {
 		// we don't even get here if the user is already in the list.
-		Format(text[0], sizeof(text[]), "%d:%3.3f", client, GetEngineTime());
-		PushArrayString(holdingFireList, text[0]);
+		new size = GetArraySize(holdingFireList);
+		ResizeArray(holdingFireList, size + 1);
+		SetArrayCell(holdingFireList, size, client, 0);
+		SetArrayCell(holdingFireList, size, GetEngineTime(), 1);
 	}
 	return;
 }
@@ -708,27 +713,17 @@ stock ResetCDImmunity(client) {
 	return Plugin_Stop;
 }*/
 
-public Action:Timer_IsIncapacitated(Handle:timer, any:client) {
-
-	static attacker					=	0;
-
+/*public Action:Timer_IsIncapacitated(Handle:timer, any:client) {
 	if (IsLegitimateClientAlive(client) && IsIncapacitated(client)) {
-	
-		if (attacker == 0) attacker	=	L4D2_GetInfectedAttacker(client);
-	
-		if (L4D2_GetInfectedAttacker(client) == -1) {
-		
-			if (attacker == -1) attacker			=	0;
-			GetAbilityStrengthByTrigger(client, attacker, "n", _, 0);
-			if (attacker > 0 && IsClientInGame(attacker)) GetAbilityStrengthByTrigger(attacker, client, "M", _, 0);
-			attacker								=	0;
-			return Plugin_Stop;
+		new attacker = L4D2_GetInfectedAttacker(client);
+		if (attacker == -1) GetAbilityStrengthByTrigger(client, attacker, "n", _, 0);
+		else {
+			GetAbilityStrengthByTrigger(attacker, client, "M");
+			GetAbilityStrengthByTrigger(client, attacker, "N");
 		}
-		return Plugin_Continue;
 	}
-	attacker						=	0;
 	return Plugin_Stop;
-}
+}*/
 
 public Action:Timer_Slow(Handle:timer, any:client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
@@ -1515,14 +1510,7 @@ stock ActiveTanks() {
 }
 
 stock DirectorTankLimit() {
-
-	if (iTankPlayerCount < 1) return 0;
-
-	//new Float:count = (LivingSurvivors() / fTankMultiplier) * iTankPlayerCount;
-	//if (count < 1.0) count = 1.0;
-	new count = GetSpecialInfectedLimit(true);
-
-	return count;
+	return GetSpecialInfectedLimit(true);
 }
 
 stock GetWitchCount() {

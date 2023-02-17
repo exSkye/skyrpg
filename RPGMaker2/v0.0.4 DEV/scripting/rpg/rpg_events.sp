@@ -177,7 +177,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 					bHealthIsSet[attacker] = false;
 					if (!b_IsHooked[attacker]) {
 						ChangeHook(attacker, true);
-						CreateMyHealthPool(attacker, true);
+						CreateMyHealthPool(attacker);
 					}
 					if (attackerZombieClass == ZOMBIECLASS_TANK) {
 						ClearArray(TankState_Array[attacker]);
@@ -340,7 +340,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			else ReadyUp_NtvFriendlyFire(attacker, victim, healthvalue, GetClientHealth(victim), 1, 0);
 		}
 		if (victimType == 2 && victimTeam == TEAM_INFECTED) SetEntityHealth(victim, 40000);
-		if (IsLegitimateClientAttacker && attackerTeam == TEAM_SURVIVOR && isinsaferoom == 1) b_IsInSaferoom[attacker] = true;
+		if (IsLegitimateClientAttacker && attackerTeam == TEAM_SURVIVOR && isinsaferoom == 1) bIsInCheckpoint[attacker] = true;
 	}
 	if (isshoved == 1 && victimType == 2 && IsLegitimateClientAttacker && victimTeam != attackerTeam) {
 		if (victimTeam == TEAM_INFECTED) SetEntityHealth(victim, GetClientHealth(victim) + healthvalue);
@@ -415,9 +415,11 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			else if (attackerZombieClass != ZOMBIECLASS_TANK) {
 				new iEnsnaredCount = EnsnaredInfected();
 				new livingSurvivors = LivingHumanSurvivors();
+				new ensnareBonus = (livingSurvivors > 1) ? livingSurvivors - 1 : 0;
 				if (IsEnsnarer(attacker)) {
-					if (iInfectedLimit == -1 ||
-					iInfectedLimit == 0 && iEnsnaredCount > livingSurvivors + RaidCommonBoost(_, true) ||
+					if (iInfectedLimit == -2 && iEnsnaredCount > RaidCommonBoost(_, true) + ensnareBonus ||
+					iInfectedLimit == -1 ||
+					iInfectedLimit == 0 && iEnsnaredCount > livingSurvivors ||
 					iInfectedLimit > 0 && iEnsnaredCount > iInfectedLimit ||
 					iIsLifelink > 1 && iLivSurvs < iIsLifelink && iLivSurvs < iMinSurvivors) {
 						while (IsEnsnarer(attacker, changeClassId)) {
@@ -866,7 +868,8 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 	if (IsLegitimateClientAlive(target)) GetClientAbsOrigin(target, TargetPos);
 
 	new Float:TheAbilityMultiplier = 0.0;
-	if (GetKeyValueInt(Keys, Values, "cannot be ensnared?") == 1 && L4D2_GetInfectedAttacker(client) != -1) return false;
+	new myAttacker = L4D2_GetInfectedAttacker(client);
+	if (GetKeyValueInt(Keys, Values, "cannot be ensnared?") == 1 && myAttacker != -1) return false;
 
 	new Float:ClientPos[3];
 	GetClientAbsOrigin(client, ClientPos);
@@ -888,10 +891,10 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 	if (SkyLevel[client] < iSkyLevelRequirement) return false;
 	FormatKeyValue(Effects, sizeof(Effects), Keys, Values, "toggle effect?");
 	if (StrEqual(Effects, "stagger", true)) {
-		if (L4D2_GetInfectedAttacker(client) == -1) return false;	// knife cannot trigger if you are not a victim.
+		if (myAttacker == -1) return false;	// knife cannot trigger if you are not a victim.
 		ReleasePlayer(client);
-		EmitSoundToClient(client, "player/heartbeatloop.wav");
-		StopSound(client, SNDCHAN_AUTO, "player/heartbeatloop.wav");
+		//EmitSoundToClient(client, "player/heartbeatloop.wav");
+		//StopSound(client, SNDCHAN_AUTO, "player/heartbeatloop.wav");
 	}
 	else if (StrEqual(Effects, "r", true)) {
 
@@ -907,28 +910,22 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 		else return false;
 	}
 	else if (StrEqual(Effects, "P", true)) {
-
 		// Toggles between pistol / magnum
 		if (IsValidEntity(MySecondary)) {
-
 			GetEntityClassname(MySecondary, MyWeapon, sizeof(MyWeapon));
-			if (StrEqual(MyWeapon, "pistol", false)) {
+			RemovePlayerItem(client, MySecondary);
+			AcceptEntityInput(MySecondary, "Kill");
+		}
+		if (StrContains(MyWeapon, "magnum", false) == -1 && StrContains(MyWeapon, "pistol", false) != -1) {
 
-				// This ability only works if a melee weapon is not equipped.
-				RemovePlayerItem(client, MySecondary);
-				AcceptEntityInput(MySecondary, "Kill");
-				if (StrEqual(MyWeapon, "magnum", false)) {
+			// give them a magnum.
+			ExecCheatCommand(client, "give", "pistol_magnum");
+		}
+		else {
 
-					// give them a magnum.
-					ExecCheatCommand(client, "give", "pistol_magnum");
-				}
-				else {
-
-					// make them dual wield.
-					ExecCheatCommand(client, "give", "pistol");
-					CreateTimer(0.5, Timer_GiveSecondPistol, client, TIMER_FLAG_NO_MAPCHANGE);
-				}
-			}
+			// make them dual wield.
+			ExecCheatCommand(client, "give", "pistol");
+			CreateTimer(0.5, Timer_GiveSecondPistol, client, TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	else if (StrEqual(Effects, "T", true)) {
@@ -1117,7 +1114,8 @@ stock bool:CastSpell(client, target = -1, String:TalentName[], Float:TargetPos[3
 	SetArrayCell(SpecialAmmoData, sadsize, GetTalentStrength(client, TalentName), 4);
 	SetArrayCell(SpecialAmmoData, sadsize, bulletStrength, 5);
 	SetArrayCell(SpecialAmmoData, sadsize, f_Interval, 6);
-	SetArrayCell(SpecialAmmoData, sadsize, StringToInt(key[10]), 7);	// only captures the #ID: 440606022 - is faster than parsing a string every time.
+	// only captures the #ID: STEAM_0:1:<--cuts off the front, only stores the numbers: 440606022 - is faster than parsing a string every time.
+	SetArrayCell(SpecialAmmoData, sadsize, StringToInt(key[10]), 7);
 	SetArrayCell(SpecialAmmoData, sadsize, f_TotalTime, 8);
 	SetArrayCell(SpecialAmmoData, sadsize, -1, 9);
 	SetArrayCell(SpecialAmmoData, sadsize, GetSpecialAmmoStrength(client, TalentName, 1), 10);	// float.
@@ -1527,22 +1525,16 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			CreateTimer(2.0, Timer_ResetStaggerCooldownOnTriggers, client, TIMER_FLAG_NO_MAPCHANGE);
 			EntityWasStaggered(client);
 		}
-		//new myTeam = GetClientTeam(client);
-		//if (myTeam == TEAM_SURVIVOR) {
-			//if ((GetEntityFlags(client) & IN_DUCK)) GetAbilityStrengthByTrigger(client, _, "crouch");
- 			//if ((GetEntityFlags(client) & FL_INWATER)) GetAbilityStrengthByTrigger(client, _, "wtr");
- 			//else if (!(GetEntityFlags(client) & FL_ONGROUND)) GetAbilityStrengthByTrigger(client, _, "grnd");
- 			//if ((GetEntityFlags(client) & FL_ONFIRE)) GetAbilityStrengthByTrigger(client, _, "onfire");
-		//}
 	}
-
 	new Float:TheTime = GetEngineTime();
-	/*if ((buttons & IN_ZOOM)) {
+	if ((buttons & IN_ZOOM)) {
 		if (ZoomcheckDelayer[client] == INVALID_HANDLE) {
 			ZoomcheckDelayer[client] = CreateTimer(0.1, Timer_ZoomcheckDelayer, client, TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
-	if ((buttons & IN_ATTACK)) {
+	new MyAttacker = L4D2_GetInfectedAttacker(client);
+	new bool:IsHoldingPrimaryFire = (buttons & IN_ATTACK) ? true : false;
+	if (IsHoldingPrimaryFire) {
 		new weaponEntity = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 		new bulletsRemaining = 0;
 		if (IsValidEntity(weaponEntity)) {
@@ -1550,58 +1542,39 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			if (bulletsRemaining == LastBulletCheck[client]) bulletsRemaining = 0;
 			else LastBulletCheck[client] = bulletsRemaining;
 		}
-		if (bulletsRemaining > 0 && GetEntProp(weaponEntity, Prop_Data, "m_bInReload") != 1 && L4D2_GetInfectedAttacker(client) == -1) {
+		if (bulletsRemaining > 0 && GetEntProp(weaponEntity, Prop_Data, "m_bInReload") != 1 && MyAttacker == -1) {
 			holdingFireCheckToggle(client, true);
 		}
 	}
-	else holdingFireCheckToggle(client);*/
+	else holdingFireCheckToggle(client);
 
-	if ((buttons & IN_SPEED)) {
-
-		bIsSprinting[client] = true;
-	}
+	new bool:isHoldingShift = (buttons & IN_SPEED) ? true : false;
+	if (isHoldingShift) bIsSprinting[client] = true;
 	else bIsSprinting[client] = false;
-
-	//if (IsFakeClient(client)) return Plugin_Continue;
-
-	if ((buttons & IN_USE) && b_IsRoundIsOver) {
-
+	new bool:isHoldingUseKey = (buttons & IN_USE) ? true : false;
+	if (isHoldingUseKey && b_IsRoundIsOver) {
 		if (ReadyUpGameMode == 3 || StrContains(TheCurrentMap, "zerowarn", false) != -1) {
-
 			decl String:EName[64];
 			new entity = GetClientAimTarget(client, false);
-
 			if (entity != -1) {
-
-				//GetEntPropString(entity, Prop_Data, "m_iName", EName, sizeof(EName));
 				GetEntityClassname(entity, EName, sizeof(EName));
-				//PrintToChat(client, "Name: %s", EName);
-
-				//PrintToChat(client, "ENTITY: %s", EName);
-				//if (StrEqual(EName, "survival_alarm_button", false) ||
-				//	StrEqual(EName, "escape_gate_button_survival", false)) {
-				if (StrContains(EName, "weapon", false) != -1 || StrContains(EName, "physics", false) != -1) {
-
-					//buttons &= ~IN_USE;
-					return Plugin_Continue;
-				}
-				//if (StrContains(EName, "radio", false) != -1) return Plugin_Handled;
+				if (StrContains(EName, "weapon", false) != -1 || StrContains(EName, "physics", false) != -1) return Plugin_Continue;
 			}
 			buttons &= ~IN_USE;
 			return Plugin_Changed;
 		}
 	}
+	new bool:isClientOnSolidGround = (clientFlags & FL_ONGROUND) ? true : false;
+	new bool:isClientHoldingMovementKeys = false;
+	if (isHoldingShift) isClientHoldingMovementKeys = (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT) ? true : false;
 	if (ReadyUpGameMode == 3 && !b_IsCheckpointDoorStartOpened && IsClientAlive && clientTeam == TEAM_SURVIVOR) {
-
-		if (buttons & IN_SPEED && (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT) && (clientFlags & FL_ONGROUND)) {
-
+		if (isHoldingShift && isClientOnSolidGround && isClientHoldingMovementKeys) {
 			MovementSpeed[client] = fSprintSpeed;
 			SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", MovementSpeed[client]);
 			buttons &= ~IN_SPEED;
 			return Plugin_Changed;
 		}
 		else {
-
 			MovementSpeed[client] = 1.0;
 			SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", MovementSpeed[client]);
 		}
@@ -1630,11 +1603,11 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 		if (clientTeam == TEAM_INFECTED && FindZombieClass(client) == ZOMBIECLASS_TANK) {
 
-			if (!IsAirborne[client] && !(clientFlags & FL_ONGROUND)) {
+			if (!IsAirborne[client] && !isClientOnSolidGround) {
 
 				IsAirborne[client] = true;	// when the tank lands, aoe explosion!
 			}
-			else if (IsAirborne[client] && (clientFlags & FL_ONGROUND)) {
+			else if (IsAirborne[client] && isClientOnSolidGround) {
 
 				IsAirborne[client] = false;	// the tank has landed; explosion;
 				CreateExplosion(client, _, client, true);
@@ -1659,14 +1632,13 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 				if (SurvivorsSaferoomWaiting() || !SurvivorsInRange(client, 1536.0, true)) SurvivorBotsRegroup(client);
 			}
 		}
-
-		if (buttons & IN_JUMP) bJumpTime[client] = true;
+		new bool:isClientHoldingJump = (buttons & IN_JUMP) ? true : false;
+		if (isClientHoldingJump) bJumpTime[client] = true;
 		else {
 
 			bJumpTime[client] = false;
 			JumpTime[client] = 0.0;
 		}
-		new MyAttacker = L4D2_GetInfectedAttacker(client);
 		if (!IsLegitimateClientAlive(MyAttacker)) StrugglePower[client] = 0;
 		new bool:EnrageActivity = IsEnrageActive();
 
@@ -1696,12 +1668,12 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 		if (IsPlayerAlive(client) && clientTeam == TEAM_SURVIVOR) {
 
-			if (!(clientFlags & FL_ONGROUND) && !b_IsFloating[client]) {
+			if (!isClientOnSolidGround && !b_IsFloating[client]) {
 
 				b_IsFloating[client] = true;
 				GetClientAbsOrigin(client, JumpPosition[client][0]);
 			}
-			if (clientFlags & FL_ONGROUND) {
+			if (isClientOnSolidGround) {
 
 				if (b_IsFloating[client]) {
 
@@ -1726,22 +1698,22 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			Format(EntityName, sizeof(EntityName), "}");
 			if (IsValidEntity(CurrentEntity)) GetEdictClassname(CurrentEntity, EntityName, sizeof(EntityName));
 
-			if (StrContains(EntityName, "chainsaw", false) != -1 && (buttons & IN_RELOAD) && GetEntProp(CurrentEntity, Prop_Data, "m_iClip1") < 30 && HasCommandAccess(client, "z")) {
+			if (StrContains(EntityName, "chainsaw", false) != -1 && (buttons & IN_RELOAD) && GetEntProp(CurrentEntity, Prop_Data, "m_iClip1") < 10) {
 
-				//SetEntProp(CurrentEntity, Prop_Data, "m_iClip1", 30);
+				SetEntProp(CurrentEntity, Prop_Data, "m_iClip1", 30);
 				buttons &= ~IN_RELOAD;
 			}
-
-			if (ActiveProgressBar(client) &&
+			new bool:theClientHasAnActiveProgressBar = ActiveProgressBar(client);
+			new bool:theClientHasPainPills = (StrContains(EntityName, "pain_pills", false) == -1) ? false : true;
+			new bool:theClientHasAdrenaline = (StrContains(EntityName, "adrenaline", false) == -1) ? false : true;
+			new bool:theClientHasFirstAid = (StrContains(EntityName, "first_aid", false) == -1) ? false : true;
+			new bool:theClientHasDefib = (StrContains(EntityName, "defib", false) == -1) ? false : true;
+			if (theClientHasAnActiveProgressBar &&
 				CurrentEntity != ProgressEntity[client] ||
-				(!(clientFlags & FL_ONGROUND) && !IsClientIncapacitated) ||
+				(!isClientOnSolidGround && !IsClientIncapacitated) ||
 				MyAttacker != -1 ||
 				!IsValidEntity(CurrentEntity) && !IsClientIncapacitated ||
-				((StrContains(EntityName, "pain_pills", false) == -1 &&
-				StrContains(EntityName, "adrenaline", false) == -1  &&
-				StrContains(EntityName, "first_aid", false) == -1 &&
-				StrContains(EntityName, "defib", false) == -1) && !IsClientIncapacitated)) {
-
+				!theClientHasPainPills && !theClientHasAdrenaline && !theClientHasFirstAid && !theClientHasDefib && !IsClientIncapacitated) {
 				CreateProgressBar(client, 0.0, true);
 				UseItemTime[client] = 0.0;
 				if (GetEntPropEnt(client, Prop_Send, "m_reviveOwner") == client) {
@@ -1750,12 +1722,9 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 					SetEntPropEnt(client, Prop_Send, "m_reviveTarget", -1);
 				}
 			}
+			new PlayerMaxStamina = GetPlayerStamina(client);
 
-			if (IsClientIncapacitated && MyAttacker == -1 || (MyAttacker == -1 && IsValidEntity(CurrentEntity) &&
-				(StrContains(EntityName, "pain_pills", false) != -1 ||
-				StrContains(EntityName, "adrenaline", false) != -1  ||
-				StrContains(EntityName, "first_aid", false) != -1 ||
-				StrContains(EntityName, "defib", false) != -1))) {
+			if (MyAttacker == -1 && (IsClientIncapacitated || (IsValidEntity(CurrentEntity) && (theClientHasPainPills || theClientHasAdrenaline || theClientHasFirstAid || theClientHasDefib)))) {
 
 				//blocks the use of meds on people. will add an option in the menu later for now allowing.
 				/*if ((buttons & IN_ATTACK2) && !IsIncapacitated(client)) {
@@ -1767,7 +1736,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 					}
 				}*/
 				new reviveOwner = -1;
-				if ((!(buttons & IN_ATTACK) && ActiveProgressBar(client) && !IsClientIncapacitated) || (!(buttons & IN_USE) && ActiveProgressBar(client) && IsClientIncapacitated)) {
+				if ((!IsHoldingPrimaryFire && theClientHasAnActiveProgressBar && !IsClientIncapacitated) || (!isHoldingUseKey && theClientHasAnActiveProgressBar && IsClientIncapacitated)) {
 
 					CreateProgressBar(client, 0.0, true);
 					UseItemTime[client] = 0.0;
@@ -1784,60 +1753,39 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 						SetEntPropEnt(client, Prop_Send, "m_reviveOwner", -1);
 					}*/
 				}
-				if (((buttons & IN_ATTACK) && !IsClientIncapacitated) || ((buttons & IN_USE) && IsClientIncapacitated)) {
-
+				if ((IsHoldingPrimaryFire && !IsClientIncapacitated) || (isHoldingUseKey && IsClientIncapacitated)) {
 					if (!IsClientIncapacitated) buttons &= ~IN_ATTACK;
 					else buttons &= ~IN_USE;
-
 					if (UseItemTime[client] < TheTime) {
-
-						if (ActiveProgressBar(client)) {
-
+						if (theClientHasAnActiveProgressBar) {
 							UseItemTime[client] = 0.0;
 							CreateProgressBar(client, 0.0, true);
 							if (!IsClientIncapacitated) {
-
-								if (StrContains(EntityName, "pain_pills", false) != -1) {
-
+								if (theClientHasPainPills) {
 									HealPlayer(client, client, GetTempHealth(client) + (GetMaximumHealth(client) * 0.3), 'h', true);//SetTempHealth(client, client, GetTempHealth(client) + (GetMaximumHealth(client) * 0.3), false);		// pills add 10% of your total health in temporary health.
 									AcceptEntityInput(CurrentEntity, "Kill");
 								}
-								else if (StrContains(EntityName, "adrenaline", false) != -1) {
-
+								else if (theClientHasAdrenaline) {
 									SetAdrenalineState(client);
-									new StaminaBonus = RoundToCeil(GetPlayerStamina(client) * 0.25);
-									if (SurvivorStamina[client] + StaminaBonus >= GetPlayerStamina(client)) {
-
-										SurvivorStamina[client] = GetPlayerStamina(client);
+									new StaminaBonus = RoundToCeil(PlayerMaxStamina * 0.25);
+									if (SurvivorStamina[client] + StaminaBonus >= PlayerMaxStamina) {
+										SurvivorStamina[client] = PlayerMaxStamina;
 										bIsSurvivorFatigue[client] = false;
 									}
 									else SurvivorStamina[client] += StaminaBonus;
 									AcceptEntityInput(CurrentEntity, "Kill");
 								}
-								else if (StrContains(EntityName, "defib", false) != -1) {
-
+								else if (theClientHasDefib) {
 									Defibrillator(client);
 									AcceptEntityInput(CurrentEntity, "Kill");
 								}
-								else if (StrContains(EntityName, "first_aid", false) != -1) {
-
+								else if (theClientHasFirstAid) {
 									GiveMaximumHealth(client);
 									RefreshSurvivor(client);
 									AcceptEntityInput(CurrentEntity, "Kill");
 								}
-								/*else if (IsIncapacitated(client)) {// && !IsLedged(client)) {
-
-									//if (bAutoRevive[client]) bAutoRevive[client] = false;
-
-									ReviveDownedSurvivor(client);
-									OnPlayerRevived(client, client);
-									reviveOwner = GetEntPropEnt(client, Prop_Send, "m_reviveOwner");
-									if (IsLegitimateClientAlive(reviveOwner)) SetEntPropEnt(reviveOwner, Prop_Send, "m_reviveTarget", -1);
-									SetEntPropEnt(client, Prop_Send, "m_reviveOwner", -1);
-								}*/
 							}
 							else {
-
 								ReviveDownedSurvivor(client);
 								OnPlayerRevived(client, client);
 								reviveOwner = GetEntPropEnt(client, Prop_Send, "m_reviveOwner");
@@ -1846,45 +1794,25 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 							}
 						}
 						else {
-
 							if (IsClientIncapacitated && UseItemTime[client] < TheTime) {
-
-								//if (!IsLedged(client)) {
-
 								reviveOwner = GetEntPropEnt(client, Prop_Send, "m_reviveOwner");
 								if (!IsLegitimateClientAlive(reviveOwner)) {
-
 									SetEntPropEnt(client, Prop_Send, "m_reviveOwner", client);
 									ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 									CreateProgressBar(client, 5.0);	// you can pick yourself up for free but it takes a bit.
 								}
-								//}
 							}
-							if (StrContains(EntityName, "pain_pills", false) != -1 && UseItemTime[client] < TheTime && !IsClientIncapacitated) {
-
-								ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
-								CreateProgressBar(client, 2.0);
-								//UseItemTime[client] = TheTime + 2;
+							if (!IsClientIncapacitated && UseItemTime[client] < TheTime) {
+								new Float:fProgressBarCompletionTime = -1.0;
+								if (theClientHasPainPills) fProgressBarCompletionTime = 2.0;
+								else if (theClientHasAdrenaline) fProgressBarCompletionTime = 1.0;
+								else if (theClientHasFirstAid || theClientHasDefib) fProgressBarCompletionTime = 5.0;
+								if (fProgressBarCompletionTime != -1.0) {
+									ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
+									CreateProgressBar(client, fProgressBarCompletionTime);
+								}
 							}
-							else if (StrContains(EntityName, "adrenaline", false) != -1 && UseItemTime[client] < TheTime && !IsClientIncapacitated) {
-
-								ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
-								CreateProgressBar(client, 1.0);
-								//UseItemTime[client] = TheTime + 1;
-							}
-							else if (StrContains(EntityName, "first_aid", false) != -1 && UseItemTime[client] < TheTime) {
-
-								ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
-								CreateProgressBar(client, 5.0);
-								//UseItemTime[client] = TheTime + 5;
-							}
-							else if (!IsClientIncapacitated && (StrContains(EntityName, "defib", false) != -1 || StrContains(EntityName, "first_aid", false) != -1) && UseItemTime[client] < TheTime) {
-
-								ProgressEntity[client]			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
-								CreateProgressBar(client, 5.0);
-								//UseItemTime[client] = TheTime + 10;
-							}
-							if (ActiveProgressBar(client)) SetEntPropEnt(client, Prop_Send, "m_reviveOwner", client);
+							if (theClientHasAnActiveProgressBar) SetEntPropEnt(client, Prop_Send, "m_reviveOwner", client);
 						}
 					}
 					return Plugin_Changed;
@@ -1892,39 +1820,25 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			}
 			// For drawing special ammo.
 			if (bIsSurvivorFatigue[client]) {
-
 				IsSpecialAmmoEnabled[client][0] = 0.0;
 				Format(ActiveSpecialAmmo[client], sizeof(ActiveSpecialAmmo[]), "none");
 			}
-			/*if (IsSpecialAmmoEnabled[client][2] <= TheTime || GetClientAimTarget(client, false) != IsSpecialAmmoEnabled[client][3] * 1.0) {
-
-				if (IsSpecialAmmoEnabled[client][0] == 1.0 && DrawSpecialAmmoTarget(client) == 0 && IsPlayerDebugMode[client] == 1) DrawSpecialAmmoTarget(client, true);
-				IsSpecialAmmoEnabled[client][2] = TheTime + fAmmoHighlightTime;
-			} deprecated */
-
-			if (!IsFakeClient(client)) {
-
-				//new ConsumptionInt = iStamConsumptionInt;
-
+			if (GetClientTeam(client) == TEAM_SURVIVOR) {
 				if ((ReadyUp_GetGameMode() != 3 || !b_IsSurvivalIntermission) && iRPGMode >= 1) {
-
 					new bool:IsJetpackBroken = IsCoveredInBile(client);
 					if (!IsJetpackBroken) IsJetpackBroken = AnyTanksNearby(client);
-
 					/*
 						Add or remove conditions from the following line to determine when the jetpack automatically disables.
 						When adding new conditions, consider a switch so server operators can choose which of them they want to use.
 					*/
-					if (bJetpack[client] && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && (!(buttons & IN_JUMP) || IsJetpackBroken || MyAttacker != -1)) ToggleJetpack(client, true);
-					//else if (!(GetEntityFlags(client) & FL_ONGROUND) && !bIsSurvivorFatigue[client] && !bJetpack[client] && (buttons & IN_JUMP)) ToggleJetpack(client);
-
-					if ((bJetpack[client] || !bJetpack[client] && !(clientFlags & FL_ONGROUND)) ||
-						((buttons & IN_JUMP) || ((buttons & IN_SPEED) && (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT))) &&
+					if (bJetpack[client] && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && (!isClientHoldingJump || IsJetpackBroken || MyAttacker != -1)) {
+						ToggleJetpack(client, true);
+					}
+					if ((bJetpack[client] || !bJetpack[client] && !isClientOnSolidGround) ||
+						(isClientHoldingJump || isHoldingShift && isClientHoldingMovementKeys) &&
 						SurvivorStamina[client] >= ConsumptionInt && !bIsSurvivorFatigue[client] && ISSLOW[client] == INVALID_HANDLE && ISFROZEN[client] == INVALID_HANDLE) {
-
 						if (MyAttacker == -1 && ISSLOW[client] == INVALID_HANDLE && ISFROZEN[client] == INVALID_HANDLE) {
-
-							if (SurvivorConsumptionTime[client] <= TheTime && (buttons & IN_JUMP || buttons & IN_SPEED)) {
+							if (SurvivorConsumptionTime[client] <= TheTime && (isClientHoldingJump || isHoldingShift)) {
 								if (bJetpack[client]) {
 									new Float:nextSprintInterval = GetAbilityStrengthByTrigger(client, client, "jetpack", _, 0, _, _, "flightcost", _, _, 2);
 									if (nextSprintInterval > 0.0) {
@@ -1934,39 +1848,29 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 								}
 								else SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 								SurvivorStamina[client] -= ConsumptionInt;
-								//AddTalentExperience(client, "endurance", ConsumptionInt);
 								if (SurvivorStamina[client] <= 0) {
-
 									bIsSurvivorFatigue[client] = true;
 									IsSpecialAmmoEnabled[client][0] = 0.0;
 									SurvivorStamina[client] = 0;
 									if (bJetpack[client]) ToggleJetpack(client, true);
 								}
 							}
-							if (!bIsSurvivorFatigue[client] && !bJetpack[client] && ((buttons & IN_JUMP) && (JumpTime[client] >= 0.2)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && MyAttacker == -1) ToggleJetpack(client);
+							if (!bIsSurvivorFatigue[client] && !bJetpack[client] && (isClientHoldingJump && (JumpTime[client] >= 0.2)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && MyAttacker == -1) ToggleJetpack(client);
 							if (!bJetpack[client]) MovementSpeed[client] = fSprintSpeed;
 						}
 						buttons &= ~IN_SPEED;
 						return Plugin_Changed;
 					}
-					if (!(buttons & IN_SPEED) && !bJetpack[client]) {
-
-						new PlayerMaxStamina = GetPlayerStamina(client);
-
+					if (!isHoldingShift && !bJetpack[client]) {
 						if (SurvivorStaminaTime[client] < TheTime && SurvivorStamina[client] < PlayerMaxStamina) {
-
 							if (!HasAdrenaline(client)) SurvivorStaminaTime[client] = TheTime + fStamRegenTime;
 							else SurvivorStaminaTime[client] = TheTime + fStamRegenTimeAdren;
 							SurvivorStamina[client]++;
 						}
-						//if (GetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue") != StringToFloat(GetConfigValue("base movement speed?"))) {
-
 						if (!bIsSurvivorFatigue[client]) MovementSpeed[client] = fBaseMovementSpeed;
 						else MovementSpeed[client] = fFatigueMovementSpeed;
 						if (ISSLOW[client] != INVALID_HANDLE) MovementSpeed[client] *= fSlowSpeed[client];
-						//}
 						if (SurvivorStamina[client] >= PlayerMaxStamina) {
-
 							bIsSurvivorFatigue[client] = false;
 							SurvivorStamina[client] = PlayerMaxStamina;
 						}
@@ -2313,12 +2217,12 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 	new bool:IsLegitimateClientKiller = IsLegitimateClient(killerblow);
 	new killerClientTeam = -1;
 	if (IsLegitimateClientKiller) killerClientTeam = GetClientTeam(killerblow);
-	if (ClientType >= 0 && IsLegitimateClientKiller && killerClientTeam == TEAM_SURVIVOR) {
+	/*if (ClientType >= 0 && IsLegitimateClientKiller && killerClientTeam == TEAM_SURVIVOR) {
 		if (isQuickscopeKill(killerblow)) {
 			// If the user met the server operators standards for a quickscope kill, we do something.
 			GetAbilityStrengthByTrigger(killerblow, client, "quickscope");
 		}
-	}
+	}*/
 	//CreateItemRoll(client, killerblow);	// all infected types can generate an item roll
 	new Float:SurvivorPoints = 0.0;
 	new SurvivorExperience = 0;
@@ -2390,6 +2294,12 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		else if (ClientType == 1) pos = FindListPositionByEntity(client, Handle:WitchDamage[i]);
 		else if (ClientType == 2) pos = FindListPositionByEntity(client, Handle:SpecialCommon[i]);
 		if (pos < 0) continue;
+		if (bIsInCheckpoint[i]) {
+			if (ClientType == 0) RemoveFromArray(Handle:InfectedHealth[i], pos);
+			else if (ClientType == 1) RemoveFromArray(Handle:WitchDamage[i], pos);
+			else if (ClientType == 2) RemoveFromArray(Handle:SpecialCommon[i], pos);
+			continue;
+		}
 		if (LastAttackedUser[i] == client) LastAttackedUser[i] = -1;
 		if (ClientType == 0) SurvivorDamage = GetArrayCell(Handle:InfectedHealth[i], pos, 2);
 		else if (ClientType == 1) SurvivorDamage = GetArrayCell(Handle:WitchDamage[i], pos, 2);
@@ -2618,7 +2528,7 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 
 stock bool:SameTeam_OnTakeDamage(healer, target, iHealerAmount, bool:IsDamageTalent = false, damagetype = -1) {
 	if (!AllowShotgunToTriggerNodes(healer)) return false;
-	if (HealImmunity[target]) return true;
+	if (HealImmunity[target] || bIsInCheckpoint[target]) return true;
 	new bool:TheBool = IsMeleeAttacker(healer);
 	if (TheBool && bIsMeleeCooldown[healer]) return true;
 	//https://pastebin.com/tLLK9kZM
