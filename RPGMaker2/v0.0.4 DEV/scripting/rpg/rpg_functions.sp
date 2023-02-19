@@ -1022,10 +1022,6 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage_ignore, 
 		LastAttackTime[attacker] = GetEngineTime();
 		if (!HasSeenCombat[attacker]) HasSeenCombat[attacker] = true;
 		if (attackerTeam == TEAM_SURVIVOR) {
-			if (bIsInCheckpoint[attacker]) {
-				damage_ignore = 0.0;
-				return Plugin_Handled;
-			}
 			VerifyHandicap(attacker);
 			baseWeaponDamage = GetBaseWeaponDamage(attacker, victim, _, _, _, damagetype);
 
@@ -7822,37 +7818,46 @@ stock TotalSurvivors() {
 	return count;
 }
 
-stock ChangeInfectedClass(client, zombieclass) {
+stock ChangeInfectedClass(client, zombieclass = 0, bool:dontChangeClass = false) {
+	new bool:clientIsFake = IsLegitimateClient(client) && IsFakeClient(client);
 
-	if (IsLegitimateClient(client) && !IsFakeClient(client) || IsLegitimateClientAlive(client) && IsFakeClient(client)) {
+	if (clientIsFake || IsLegitimateClient(client)) {
 
 		if (GetClientTeam(client) == TEAM_INFECTED) {
 
-			if (!IsGhost(client)) SetEntProp(client, Prop_Data, "m_takedamage", 1, 1);
-			new wi;
-			while ((wi = GetPlayerWeaponSlot(client, 0)) != -1) {
+			if (!dontChangeClass) {
+				if (!IsGhost(client)) SetEntProp(client, Prop_Data, "m_takedamage", 1, 1);
+				new wi;
+				while ((wi = GetPlayerWeaponSlot(client, 0)) != -1) {
 
-				RemovePlayerItem(client, wi);
-				AcceptEntityInput(wi, "Kill");
+					RemovePlayerItem(client, wi);
+					AcceptEntityInput(wi, "Kill");
+				}
+				SDKCall(g_hSetClass, client, zombieclass);
+				if (clientIsFake) {
+					if (zombieclass == 1) SetClientInfo(client, "name", "Smoker");
+					else if (zombieclass == 2) SetClientInfo(client, "name", "Boomer");
+					else if (zombieclass == 3) SetClientInfo(client, "name", "Hunter");
+					else if (zombieclass == 4) SetClientInfo(client, "name", "Spitter");
+					else if (zombieclass == 5) SetClientInfo(client, "name", "Jockey");
+					else if (zombieclass == 6) SetClientInfo(client, "name", "Charger");
+					else if (zombieclass == 8) SetClientInfo(client, "name", "Tank");
+				}
+				AcceptEntityInput(MakeCompatEntRef(GetEntProp(client, Prop_Send, "m_customAbility")), "Kill");
+				if (IsPlayerAlive(client)) SetEntProp(client, Prop_Send, "m_customAbility", GetEntData(SDKCall(g_hCreateAbility, client), g_oAbility));
+				if (!IsGhost(client)) SetEntProp(client, Prop_Data, "m_takedamage", 2, 1);		// client can be killed again.
 			}
-			SDKCall(g_hSetClass, client, zombieclass);
-			AcceptEntityInput(MakeCompatEntRef(GetEntProp(client, Prop_Send, "m_customAbility")), "Kill");
-			if (IsPlayerAlive(client)) SetEntProp(client, Prop_Send, "m_customAbility", GetEntData(SDKCall(g_hCreateAbility, client), g_oAbility));
-			if (!IsGhost(client))
-			{
-				SetEntProp(client, Prop_Data, "m_takedamage", 2, 1);		// client can be killed again.
-				SpeedMultiplier[client] = 1.0;		// defaulting the speed. It'll get modified in speed modifer spawn talents.
-				SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", SpeedMultiplier[client]);
-				SetSpecialInfectedHealth(client);
-				//GetAbilityStrengthByTrigger(client, _, "a", FindZombieClass(client), 0);	// activator, target, trigger ability, effects, zombieclass, damage
-			}
+			SpeedMultiplier[client] = 1.0;		// defaulting the speed. It'll get modified in speed modifer spawn talents.
+			SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", SpeedMultiplier[client]);
+			SetSpecialInfectedHealth(client, zombieclass);
+			//GetAbilityStrengthByTrigger(client, _, "a", FindZombieClass(client), 0);	// activator, target, trigger ability, effects, zombieclass, damage
 		}
 	}
 }
 
-stock SetSpecialInfectedHealth(attacker) {
+stock SetSpecialInfectedHealth(attacker, zombieclass = 0) {
 	new t_InfectedHealth = 0;
-	new myzombieclass = FindZombieClass(attacker);
+	new myzombieclass = (zombieclass == 0) ? FindZombieClass(attacker) : zombieclass;
 
 	if (myzombieclass == ZOMBIECLASS_TANK)  t_InfectedHealth = 4000;
 	else if (myzombieclass == ZOMBIECLASS_HUNTER || myzombieclass == ZOMBIECLASS_SMOKER) t_InfectedHealth = 200;

@@ -427,10 +427,13 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 						}
 						ChangeInfectedClass(attacker, changeClassId);
 					}
+					else ChangeInfectedClass(attacker, _, true);	// doesn't change class but sets base health and speeds.
 				}
+				else ChangeInfectedClass(attacker, _, true);
 			}
+			else ChangeInfectedClass(attacker, _, true);
 		}
-		else SetSpecialInfectedHealth(attacker);
+		else SetSpecialInfectedHealth(attacker, attackerZombieClass);
 	}
 	if (StrEqual(event_name, "ability_use")) {
 		if (attackerTeam == TEAM_INFECTED) {

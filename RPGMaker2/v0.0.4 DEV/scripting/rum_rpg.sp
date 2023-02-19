@@ -897,6 +897,7 @@ new Float:fStaminaPerPlayerLevel;
 new Float:fStaminaPerSkyLevel;
 new LastBulletCheck[MAXPLAYERS + 1];
 new iSpecialInfectedMinimum;
+new iEndRoundIfNoHealthySurvivors;
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1790,22 +1791,15 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		decl String:text[64];
 		new survivorCounter = TotalHumanSurvivors();
 		new bool:AnyBotsOnSurvivorTeam = BotsOnSurvivorTeam();
-
 		for (new i = 1; i <= MaxClients; i++) {
-
 			if (IsLegitimateClient(i)) {
-
-				//ChangeHook(i, true);
 				if (!IsFakeClient(i)) {
-
 					if (iTankRush == 1) RatingHandicap[i] = RatingPerLevel;
 					else {
-
 						iMaxHandicap = GetMaxHandicap(i);
 						if (RatingHandicap[i] < iMinHandicap) RatingHandicap[i] = iMinHandicap;
 						else if (RatingHandicap[i] > iMaxHandicap) RatingHandicap[i] = iMaxHandicap;
 					}
-
 					if (GroupMemberBonus > 0.0) {
 						if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
 						else PrintToChat(i, "%T", "group member benefit", i, orange, blue, GroupMemberBonus * 100.0, pct, green, blue);
@@ -1817,28 +1811,19 @@ public ReadyUp_CheckpointDoorStartOpened() {
 				else SetBotHandicap(i);
 			}
 		}
-
 		if (CurrentMapPosition != 0 || ReadyUpGameMode == 3) CheckDifficulty();
-
 		RoundTime					=	GetTime();
-
 		new ent = -1;
 		if (ReadyUpGameMode != 3) {
-
 			while ((ent = FindEntityByClassname(ent, "witch")) != -1) {
-
 				// Some maps, like Hard Rain pre-spawn a ton of witches - we want to add them to the witch table.
 				OnWitchCreated(ent);
 			}
 		}
 		else {
-
 			IsSurvivalMode = true;
-
 			for (new i = 1; i <= MaxClients; i++) {
-
 				if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
-
 					VerifyMinimumRating(i, true);
 					RespawnImmunity[i] = false;
 				}
@@ -1846,19 +1831,14 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			decl String:TheCurr[64];
 			GetCurrentMap(TheCurr, sizeof(TheCurr));
 			if (StrContains(TheCurr, "helms_deep", false) != -1) {
-
 				// the bot has to be teleported to the machine gun, because samurai blocks the teleportation in the actual map scripting
-
 				new Float:TeleportBots[3];
 				TeleportBots[0] = 1572.749146;
 				TeleportBots[1] = -871.468811;
 				TeleportBots[2] = 62.031250;
-
 				decl String:TheModel[64];
 				for (new i = 1; i <= MaxClients; i++) {
-
 					if (IsLegitimateClientAlive(i) && IsFakeClient(i)) {
-
 						GetClientModel(i, TheModel, sizeof(TheModel));
 						if (StrEqual(TheModel, LOUIS_MODEL)) TeleportEntity(i, TeleportBots, NULL_VECTOR, NULL_VECTOR);
 					}
@@ -1866,28 +1846,20 @@ public ReadyUp_CheckpointDoorStartOpened() {
 				PrintToChatAll("\x04Man the gun, Louis!");
 			}
 		}
-
-
 		b_IsCampaignComplete				= false;
 		if (ReadyUpGameMode != 3) b_IsRoundIsOver						= false;
 		if (ReadyUpGameMode == 2) MapRoundsPlayed = 0;	// Difficulty leniency does not occur in versus.
-
 		SpecialsKilled				=	0;
 		RoundDamageTotal			=	0;
 		//MVPDamage					=	0;
 		b_IsFinaleActive			=	false;
-
 		if (GetConfigValueInt("director save priority?") == 1) PrintToChatAll("%t", "Director Priority Save Enabled", white, green);
 		decl String:thetext[64];
 		GetConfigValue(thetext, sizeof(thetext), "path setting?");
-
 		if (ReadyUpGameMode != 3 && !StrEqual(thetext, "none")) {
-
 			if (!StrEqual(thetext, "random")) ServerCommand("sm_forcepath %s", thetext);
 			else {
-
 				if (StrEqual(PathSetting, "none")) {
-
 					new random = GetRandomInt(1, 100);
 					if (random <= 33) Format(PathSetting, sizeof(PathSetting), "easy");
 					else if (random <= 66) Format(PathSetting, sizeof(PathSetting), "medium");
@@ -1896,7 +1868,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 				ServerCommand("sm_forcepath %s", PathSetting);
 			}
 		}
-
 		//new RatingLevelMultiplier = GetConfigValueInt("rating level multiplier?");
 		for (new i = 1; i <= MaxClients; i++) {
 			if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
@@ -1910,7 +1881,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 				//ResetCoveredInBile(i);
 				//BlindPlayer(i);
 				//GiveMaximumHealth(i);
-
 				if (b_IsLoaded[i]) GiveMaximumHealth(i);
 				else if (!b_IsLoading[i]) OnClientLoaded(i);
 			}
@@ -3065,6 +3035,7 @@ stock LoadMainConfig() {
 	fMaxDamageResistance				= GetConfigValueFloat("max damage resistance?");
 	fStaminaPerPlayerLevel				= GetConfigValueFloat("stamina increase per player level?");
 	fStaminaPerSkyLevel					= GetConfigValueFloat("stamina increase per prestige level?");
+	iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?")
 
 	//if (fMaxDamageResistance < 0.0) fMaxDamageResistance = 0.9;
 	//iDropAcidOnLastDebuffDrop			= GetConfigValueInt("do prestige players poo acid on last tick?");

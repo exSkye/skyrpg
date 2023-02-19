@@ -930,7 +930,8 @@ public Action:Timer_CheckIfHooked(Handle:timer) {
 	if (RoundSeconds % HostNameTime == 0) {
 		PrintToChatAll("%t", "playing in server name", orange, blue, Hostname, orange, blue, MenuCommand, orange);
 	}
-	if (TotalHumanSurvivors() >= 1 && (LivingSerfs < 1 || LivingSerfs == LedgedSurvivors() || NoHealthySurvivors())) {
+	if (TotalHumanSurvivors() >= 1 &&
+		(iEndRoundIfNoHealthySurvivors == 1 && (LivingSerfs == LedgedSurvivors() || NoHealthySurvivors())) || LivingSerfs < 1) {
 		// scenario will not end if there are bots alive because dead players can take control of them.
 		ForceServerCommand("scenario_end");
 		CallRoundIsOver();
@@ -948,6 +949,8 @@ public Action:Timer_CheckIfHooked(Handle:timer) {
 		if (PlayerHasWeakness(i)) {
 			SetEntityRenderMode(i, RENDER_TRANSCOLOR);
 			SetEntityRenderColor(i, 0, 0, 0, 255);
+			SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
+			if (!IsFakeClient(i)) EmitSoundToClient(i, "player/heartbeatloop.wav");
 		}
 		else {
 			SetEntityRenderMode(i, RENDER_NORMAL);
