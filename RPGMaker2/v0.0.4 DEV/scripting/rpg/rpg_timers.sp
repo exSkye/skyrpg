@@ -118,7 +118,7 @@ public Action:Timer_CheckDifficulty(Handle:timer) {
 }
 
 public Action:Timer_ShowHUD(Handle:timer, any:client) {
-	if (!b_IsActiveRound || !IsLegitimateClient(client)) {
+	if (!b_IsActiveRound || !IsLegitimateClient(client) || !bTimersRunning[client]) {
 		return Plugin_Stop;
 	}
 	TimePlayed[client]++;
@@ -857,7 +857,7 @@ public Action:Timer_Explode(Handle:timer, Handle:packagey) {
 		if (!entityIsSpecialCommon) AddCommonInfectedDamage(client, ent, DamageValue);
 		else {
 			// We check what kind of special common the entity is
-			GetCommonValue(AuraEffect, sizeof(AuraEffect), ent, "aura effect?");
+			GetCommonValueAtPos(AuraEffect, sizeof(AuraEffect), ent, SUPER_COMMON_AURA_EFFECT);
 			if (StrContains(AuraEffect, "d", true) == -1 || IsClientInRangeSpecialAmmo(client, "R") == -2.0) {
 				if (IsClientInRangeSpecialAmmo(client, "R") == -2.0) AddSpecialCommonDamage(client, ent, RoundToCeil(DamageValue * IsClientInRangeSpecialAmmo(client, "R", false, _, DamageValue * 1.0)));
 				else AddSpecialCommonDamage(client, ent, DamageValue);
@@ -1386,7 +1386,7 @@ public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
 	new iSurvivors = TotalHumanSurvivors();
 	new iSurvivorBots = TotalSurvivors() - iSurvivors;
 	new LivingSerfs = LivingSurvivorCount();
-	new requiredAlwaysTanks = GetAlwaysTanks(iSurvivors + iSurvivorBots);
+	new requiredAlwaysTanks = GetAlwaysTanks(iSurvivors);
 	if (iSurvivorBots >= 2) iSurvivorBots /= 2;
 	theClient = FindAnyRandomClient();
 	if (requiredAlwaysTanks >= 1 && iTankCount < requiredAlwaysTanks && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) || iTankRush == 1 && !b_IsFinaleActive && iTankCount < (iSurvivors + iSurvivorBots)) {
@@ -1399,7 +1399,7 @@ public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
 			SpawnAnyInfected(theClient);
 		}
 	}
-	new iTankRequired = GetAlwaysTanks(iSurvivors + iSurvivorBots);
+	new iTankRequired = GetAlwaysTanks(iSurvivors);
 	if (iTankRequired != 0) {
 
 		if (theTankStartTime == -1) theTankStartTime = GetConfigValueInt("tank rush delay?");//theTankStartTime = GetRandomInt(30, 60);
@@ -1407,7 +1407,7 @@ public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
 
 			theTankStartTime = 0;
 
-			if (iInfectedCount - iTankCount < (iSurvivors + iSurvivorBots)) SpawnAnyInfected(theClient);
+			if (iInfectedCount - iTankCount < (iSurvivors)) SpawnAnyInfected(theClient);
 			//if (!b_IsFinaleActive && iTankCount < iTankLimit && iTankCount < iTanksAlways) {
 			// no finale active			don't force on this server		or if we do and not on cooldown
 			if (!b_IsFinaleActive && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) && ((iTankRequired > 0 && iTankCount < iTankLimit + iTankRequired) || (iTankRequired == 0 && iTankCount < iSurvivors + iSurvivorBots))) {
@@ -1504,7 +1504,7 @@ stock bool:bIsDirectorTankEligible() {
 stock ActiveTanks() {
 	new iSurvivors = TotalHumanSurvivors();
 	new iSurvivorBots = TotalSurvivors() - iSurvivors;
-	new count = GetAlwaysTanks(iSurvivors + iSurvivorBots);
+	new count = GetAlwaysTanks(iSurvivors);
 
 	for (new i = 1; i <= MaxClients; i++) {
 		if (IsClientInGame(i) && GetClientTeam(i) == TEAM_INFECTED && IsPlayerAlive(i) && FindZombieClass(i) == ZOMBIECLASS_TANK) count++;

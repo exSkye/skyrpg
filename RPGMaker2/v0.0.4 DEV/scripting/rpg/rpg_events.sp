@@ -83,12 +83,12 @@ stock FindPlayerWeapon(client, String:weapon[], size) {
 }
 
 public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
-	CallKeys							= GetArrayCell(a_Events, pos, 0);
+	//CallKeys							= GetArrayCell(a_Events, pos, 0);
 	CallValues							= GetArrayCell(a_Events, pos, 1);
 	decl String:ThePerp[64];
-	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "perpetrator?");
+	GetArrayString(CallValues, EVENT_PERPETRATOR, ThePerp, sizeof(ThePerp));
 	new attacker = GetClientOfUserId(GetEventInt(event, ThePerp));
-	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "victim?");
+	GetArrayString(CallValues, EVENT_VICTIM, ThePerp, sizeof(ThePerp));
 	new victim = GetClientOfUserId(GetEventInt(event, ThePerp));
 	new bool:IsLegitimateClientAttacker = IsLegitimateClient(attacker);
 	new attackerTeam = -1;
@@ -115,22 +115,22 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		// Talents/Nodes can be triggered when specific events occur.
 		// They can be special calls, so that it looks for specific case-sens strings instead of characters.
 		if (((victimType == 0 || victimType == 1) && attackerTeam == TEAM_SURVIVOR) ||
-			victimType == 2 && (!IsLegitimateClientAttacker || attackerTeam != victimTeam || GetKeyValueInt(CallKeys, CallValues, "same team event trigger?") == 1)) {
+			victimType == 2 && (!IsLegitimateClientAttacker || attackerTeam != victimTeam || GetKeyValueIntAtPos(CallValues, EVENT_SAMETEAM_TRIGGER) == 1)) {
 			decl String:abilityTriggerActivator[64];
 			decl String:abilityTriggerTarget[64];
-			FormatKeyValue(abilityTriggerActivator, sizeof(abilityTriggerActivator), CallKeys, CallValues, "perpetrator team required?");
+			GetArrayString(CallValues, EVENT_PERPETRATOR_TEAM_REQ, abilityTriggerActivator, sizeof(abilityTriggerActivator));
 			if (!StrEqual(abilityTriggerActivator, "-1")) {
 				Format(ThePerp, sizeof(ThePerp), "%d", attackerTeam);
 				if (StrContains(abilityTriggerActivator, ThePerp) != -1) {
-					FormatKeyValue(abilityTriggerActivator, sizeof(abilityTriggerActivator), CallKeys, CallValues, "perpetrator ability trigger?");
+					GetArrayString(CallValues, EVENT_PERPETRATOR_ABILITY_TRIGGER, abilityTriggerActivator, sizeof(abilityTriggerActivator));
 					if (!StrEqual(abilityTriggerActivator, "-1")) GetAbilityStrengthByTrigger(attacker, victim, abilityTriggerActivator);
 				}
 			}
-			FormatKeyValue(abilityTriggerTarget, sizeof(abilityTriggerTarget), CallKeys, CallValues, "victim team required?");
+			GetArrayString(CallValues, EVENT_VICTIM_TEAM_REQ, abilityTriggerTarget, sizeof(abilityTriggerTarget));
 			if (!StrEqual(abilityTriggerTarget, "-1")) {
 				Format(ThePerp, sizeof(ThePerp), "%d", victimTeam);
 				if (StrContains(abilityTriggerTarget, ThePerp) != -1) {
-					FormatKeyValue(abilityTriggerTarget, sizeof(abilityTriggerTarget), CallKeys, CallValues, "victim ability trigger?");
+					GetArrayString(CallValues, EVENT_VICTIM_ABILITY_TRIGGER, abilityTriggerTarget, sizeof(abilityTriggerTarget));
 					if (!StrEqual(abilityTriggerTarget, "-1")) GetAbilityStrengthByTrigger(victim, attacker, abilityTriggerTarget);
 				}
 			}
@@ -212,7 +212,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			GiveMaximumHealth(victim);
 		}
 	}
-	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "damage type?");
+	GetArrayString(CallValues, EVENT_DAMAGE_TYPE, ThePerp, sizeof(ThePerp));
 	new damagetype = GetEventInt(event, ThePerp);
 	if (StrEqual(event_name, "finale_radio_start") && !b_IsFinaleActive) {
 		// When the finale is active, players can earn experience whilst camping (not moving from a spot, re: farming)
@@ -250,22 +250,18 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 	//new RPGMode						= iRPGMode;	// 1 experience 2 experience & points
 	decl String:AbilityUsed[PLATFORM_MAX_PATH];
 	decl String:abilities[PLATFORM_MAX_PATH];
-	FormatKeyValue(ThePerp, sizeof(ThePerp), CallKeys, CallValues, "health?");
+	GetArrayString(CallValues, EVENT_GET_HEALTH, ThePerp, sizeof(ThePerp));
 	new healthvalue = GetEventInt(event, ThePerp);
-	new isdamageaward = GetKeyValueInt(CallKeys, CallValues, "damage award?");
-	//new healing = GetKeyValueInt(CallKeys, CallValues, "healing?");
-	//new deathaward = GetKeyValueInt(CallKeys, CallValues, "death award?");
-	FormatKeyValue(abilities, sizeof(abilities), CallKeys, CallValues, "abilities?");
-	new tagability = GetKeyValueInt(CallKeys, CallValues, "tag ability?");
-	//new tagexperience = GetKeyValueInt(CallKeys, CallValues, "tag experience?");
-	//new Float:tagpoints = GetKeyValueFloat(CallKeys, CallValues, "tag points?");
-	new originvalue = GetKeyValueInt(CallKeys, CallValues, "origin?");
-	new distancevalue = GetKeyValueInt(CallKeys, CallValues, "distance?");
-	new Float:multiplierpts = GetKeyValueFloat(CallKeys, CallValues, "multiplier points?");
-	new Float:multiplierexp = GetKeyValueFloat(CallKeys, CallValues, "multiplier exp?");
-	new isshoved = GetKeyValueInt(CallKeys, CallValues, "shoved?");
-	new bulletimpact = GetKeyValueInt(CallKeys, CallValues, "bulletimpact?");
-	new isinsaferoom = GetKeyValueInt(CallKeys, CallValues, "entered saferoom?");
+	new isdamageaward = GetKeyValueIntAtPos(CallValues, EVENT_DAMAGE_AWARD);
+	GetArrayString(CallValues, EVENT_GET_ABILITIES, abilities, sizeof(abilities));
+	new tagability = GetKeyValueIntAtPos(CallValues, EVENT_IS_PLAYER_NOW_IT);
+	new originvalue = GetKeyValueIntAtPos(CallValues, EVENT_IS_ORIGIN);
+	new distancevalue = GetKeyValueIntAtPos(CallValues, EVENT_IS_DISTANCE);
+	new Float:multiplierpts = GetKeyValueFloatAtPos(CallValues, EVENT_MULTIPLIER_POINTS);
+	new Float:multiplierexp = GetKeyValueFloatAtPos(CallValues, EVENT_MULTIPLIER_EXPERIENCE);
+	new isshoved = GetKeyValueIntAtPos(CallValues, EVENT_IS_SHOVED);
+	new bulletimpact = GetKeyValueIntAtPos(CallValues, EVENT_IS_BULLET_IMPACT);
+	new isinsaferoom = GetKeyValueIntAtPos(CallValues, EVENT_ENTERED_SAFEROOM);
 	if (bulletimpact == 1) {
 		if (attackerTeam == TEAM_SURVIVOR) {
 			new bulletsFired = 0;
@@ -310,7 +306,6 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		}
 	}
 	if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
-		if (victimType == 0 || victimType == 1) SetInfectedHealth(victim, 50000);	// we don't want NPC zombies to die prematurely.
 		if (IsLegitimateClientAttacker && IsPlayerUsingShotgun(attacker)) {
 			if (!shotgunCooldown[attacker]) CheckIfHeadshot(attacker, victim, event, healthvalue);
 			else return 0;
@@ -387,7 +382,7 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			new iSurvivorBots = TotalSurvivors() - iSurvivors;
 			new iLivSurvs = LivingSurvivorCount();
 			if (iSurvivorBots >= 2) iSurvivorBots /= 2;
-			new requiredTankCount = GetAlwaysTanks(iSurvivors + iSurvivorBots);
+			new requiredTankCount = GetAlwaysTanks(iSurvivors);
 			if (attackerZombieClass == ZOMBIECLASS_TANK) {
 				if (b_IsFinaleActive && b_IsFinaleTanks) {
 					b_IsFinaleTanks = false;
@@ -649,31 +644,6 @@ stock CreateGravityAmmo(client, Float:Force, Float:Range, bool:UseTheForceLuke=f
 	return entity;
 }
 
-/*
-
-	Need to determine if the player has special ammo or not.
-*/
-stock bool:HasSpecialAmmo(client, String:TalentNameEx[] = "none") {
-
-	decl String:TalentName[64];
-	new ArraySize = GetArraySize(a_Menu_Talents);
-	for (new i = 0; i < ArraySize; i++) {
-
-		SpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
-		SpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
-		SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
-
-		GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
-		if (!StrEqual(TalentNameEx, "none", false) && !StrEqual(TalentName, TalentNameEx, false)) continue;
-
-		if (GetKeyValueInt(SpecialAmmoKeys[client], SpecialAmmoValues[client], "special ammo?") == 0) continue;
-		if ((GetTalentStrength(client, TalentName) * 1.0) <= 0.0) continue;
-
-		return true;
-	}
-	return false;
-}
-
 stock bool:GetActiveSpecialAmmoType(client, effect) {
 
 	decl String:EffectT[4];
@@ -709,13 +679,21 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 	static bool:IsSameteam = false;
 
 	static Float:ClientPos[3];
+	new bool:clientIsLegitimate = IsLegitimateClient(client);
 	//decl String:EffectT[4];
-	if (!IsLegitimateClient(client) || !IsPlayerAlive(client)) return EffectStrength;
-	if (IsLegitimateClient(client)) GetClientAbsOrigin(client, ClientPos);
+	if (!clientIsLegitimate || !IsPlayerAlive(client)) return EffectStrength;
+	if (clientIsLegitimate) GetClientAbsOrigin(client, ClientPos);
 	else {
 		GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
 		IsInfected = true;
 	}
+	new experienceAwardType = (StrEqual(EffectT, "H", true)) ? 1 : (StrEqual(EffectT, "d", true) ||
+							StrEqual(EffectT, "D", true) ||
+							StrEqual(EffectT, "R", true) ||
+							StrEqual(EffectT, "E", true) ||
+							StrEqual(EffectT, "W", true) ||
+							StrEqual(EffectT, "a", true)) ? 2 : 0;
+	new otherExperienceAwardType = (StrEqual(EffectT, "F", true) || StrEqual(EffectT, "W", true) || StrEqual(EffectT, "x", true)) ? 1 :	(StrEqual(EffectT, "F", true) || StrEqual(EffectT, "x", true)) ? 2 : 0;
 
 	static Float:EffectStrengthValue = 0.0;
 	static Float:EffectMultiplierValue = 0.0;
@@ -740,32 +718,28 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 		// TalentInfo[2] = Talent Damage
 		// TalentInfo[3] = Talent Interval
 		owner = FindClientByIdNumber(GetArrayCell(SpecialAmmoData, i, 7));
-
 		if (!IsLegitimateClientAlive(owner) || GetArrayCell(SpecialAmmoData, i, 6) <= 0.0) continue;
-
 		pos			= GetArrayCell(SpecialAmmoData, i, 3);
-		IsClientInRangeSAKeys[owner]				= GetArrayCell(a_Menu_Talents, pos, 0);
-		IsClientInRangeSAValues[owner]				= GetArrayCell(a_Menu_Talents, pos, 1);
-		FormatKeyValue(value, sizeof(value), IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "ammo effect?");
-		if (!StrEqual(value, EffectT, true)) continue;
-		
-		GetTalentNameAtMenuPosition(client, GetArrayCell(SpecialAmmoData, i, 3), TalentInfo[0], sizeof(TalentInfo[]));
-
-		if (GetSpecialAmmoStrength(owner, TalentInfo[0], 3) == -1.0) continue;
+		GetTalentNameAtMenuPosition(client, pos, TalentInfo[0], sizeof(TalentInfo[]));
 		if (IsPvP[owner] != 0 && client != owner) continue;
 		t_Range		= GetSpecialAmmoStrength(owner, TalentInfo[0], 3);
 
 		if (GetVectorDistance(ClientPos, EntityPos) > (t_Range / 2)) continue;
-		if (GetStatusOnly) {
 
-			//LogMessage("Entity %d in range of ammo %c", client, effect);
+
+		
+		//IsClientInRangeSAKeys[owner]				= GetArrayCell(a_Menu_Talents, pos, 0);
+		IsClientInRangeSAValues[owner]				= GetArrayCell(a_Menu_Talents, pos, 1);
+		GetArrayString(IsClientInRangeSAValues[owner], SPELL_AMMO_EFFECT, value, sizeof(value));
+		if (!StrEqual(value, EffectT, true)) continue;
+		if (GetStatusOnly) {
 			return -2.0;		// -2.0 is a special designation.
 		}
 
 		if (realowner == 0 || realowner == owner) {
 
-			EffectStrengthValue = GetKeyValueFloat(IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "effect strength?");
-			EffectMultiplierValue = GetKeyValueFloat(IsClientInRangeSAKeys[owner], IsClientInRangeSAValues[owner], "effect multiplier?");
+			EffectStrengthValue = GetKeyValueFloatAtPos(IsClientInRangeSAValues[owner], SPECIAL_AMMO_TALENT_STRENGTH);
+			EffectMultiplierValue = GetKeyValueFloatAtPos(IsClientInRangeSAValues[owner], SPELL_EFFECT_MULTIPLIER);
 
 			if (EffectStrengthBonus == 0.0) {
 
@@ -796,19 +770,19 @@ stock Float:IsClientInRangeSpecialAmmo(client, String:EffectT[], bool:GetStatusO
 				if (baseeffectbonus > 0) {
 
 					if (IsSameteam) {
-
-						if (StrEqual(EffectT, "H", true)) AwardExperience(owner, 1, baseeffectbonus);
+						if (experienceAwardType > 0) AwardExperience(owner, experienceAwardType, baseeffectbonus);
+						/*if (StrEqual(EffectT, "H", true)) AwardExperience(owner, 1, baseeffectbonus);
 						if (StrEqual(EffectT, "d", true) ||
 							StrEqual(EffectT, "D", true) ||
 							StrEqual(EffectT, "R", true) ||
 							StrEqual(EffectT, "E", true) ||
 							StrEqual(EffectT, "W", true) ||
-							StrEqual(EffectT, "a", true)) AwardExperience(owner, 2, baseeffectbonus);
+							StrEqual(EffectT, "a", true)) AwardExperience(owner, 2, baseeffectbonus);*/
 					}
 					else {
 
-						if ((StrEqual(EffectT, "F", true) || StrEqual(EffectT, "W", true) || StrEqual(EffectT, "x", true)) && IsLegitimateClient(client) && GetClientTeam(client) != GetClientTeam(owner) ||
-							(StrEqual(EffectT, "F", true) || StrEqual(EffectT, "x", true)) && IsInfected) AwardExperience(owner, 3, baseeffectbonus);
+						if (otherExperienceAwardType == 1 && clientIsLegitimate ||
+							otherExperienceAwardType == 2 && IsInfected) AwardExperience(owner, 3, baseeffectbonus);
 					}
 				}
 			}
@@ -849,7 +823,7 @@ stock AdvertiseAction(client, String:TalentName[], bool:isSpell = false) {
 
 stock Float:GetSpellCooldown(client, String:TalentName[]) {
 
-	new Float:SpellCooldown = GetAbilityValue(client, TalentName, "cooldown?");
+	new Float:SpellCooldown = GetAbilityValue(client, TalentName, ABILITY_COOLDOWN);
 	if (SpellCooldown == -1.0) return 0.0;
 	new Float:TheAbilityMultiplier = GetAbilityMultiplier(client, "L", -1);
 
@@ -872,7 +846,7 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 
 	new Float:TheAbilityMultiplier = 0.0;
 	new myAttacker = L4D2_GetInfectedAttacker(client);
-	if (GetKeyValueInt(Keys, Values, "cannot be ensnared?") == 1 && myAttacker != -1) return false;
+	if (GetKeyValueIntAtPos(Values, ABILITY_REQ_NO_ENSNARE) == 1 && myAttacker != -1) return false;
 
 	new Float:ClientPos[3];
 	GetClientAbsOrigin(client, ClientPos);
@@ -881,18 +855,17 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 	decl String:MyWeapon[64];
 
 	decl String:Effects[64];
-	//new Float:AbilityTime = GetAbilityValue(client, TalentName, "active time?");
 	new Float:SpellCooldown = GetSpellCooldown(client, TalentName);
 
 	//new MyAttacker = L4D2_GetInfectedAttacker(client);
 	new MyStamina = GetPlayerStamina(client);
 	new MyBonus = 0;
 	//new MyMaxHealth = GetMaximumHealth(client);
-	new iSkyLevelRequirement = GetKeyValueInt(Keys, Values, "sky level requirement?");
+	new iSkyLevelRequirement = GetKeyValueIntAtPos(Values, ABILITY_SKY_LEVEL_REQ);
 	if (iSkyLevelRequirement < 0) iSkyLevelRequirement = 0;
 
 	if (SkyLevel[client] < iSkyLevelRequirement) return false;
-	FormatKeyValue(Effects, sizeof(Effects), Keys, Values, "toggle effect?");
+	GetArrayString(Values, ABILITY_TOGGLE_EFFECT, Effects, sizeof(Effects));
 	if (StrEqual(Effects, "stagger", true)) {
 		if (myAttacker == -1) return false;	// knife cannot trigger if you are not a victim.
 		ReleasePlayer(client);
@@ -937,7 +910,7 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 	/*if (StrContains(Effects, "S", true) != -1) {
 		StaggerPlayer(client, client);
 	}*/
-	FormatKeyValue(Effects, sizeof(Effects), Keys, Values, "active effect?");
+	GetArrayString(Values, ABILITY_ACTIVE_EFFECT, Effects, sizeof(Effects));
 	if (!StrEqual(Effects, "-1")) {
 
 		//if (AbilityTime > 0.0) IsAbilityActive(client, TalentName, AbilityTime);
@@ -970,17 +943,17 @@ stock bool:UseAbility(client, target = -1, String:TalentName[], Handle:Keys, Han
 	//IsAmmoActive(client, TalentName, SpellCooldown, true);
 
 	// We do this AFTER we've activated the talent.
-	if (GetKeyValueInt(Keys, Values, "reactive ability?") == 2) {	// instant, one-time-use abilities that have a cast-bar and then fire immediately.
+	if (GetKeyValueIntAtPos(Values, ABILITY_IS_REACTIVE) == 2) {	// instant, one-time-use abilities that have a cast-bar and then fire immediately.
 		if (GetAbilityMultiplier(client, Effects, 5) == -2.0) {
-			new reactiveType = GetKeyValueInt(Keys, Values, "reactive type?");
+			new reactiveType = GetKeyValueIntAtPos(Values, ABILITY_REACTIVE_TYPE);
 			if (reactiveType == 1) StaggerPlayer(client, GetAnyPlayerNotMe(client));
 			else if (reactiveType == 2) {
-				new Float:fActiveTime = GetKeyValueFloat(Keys, Values, "active time?");
+				new Float:fActiveTime = GetKeyValueFloatAtPos(Values, ABILITY_ACTIVE_TIME);
 				CreateProgressBar(client, fActiveTime);
 				new Handle:datapack;
 				CreateDataTimer(fActiveTime, Timer_ReactiveCast, datapack, TIMER_FLAG_NO_MAPCHANGE);
 				WritePackCell(datapack, client);
-				WritePackCell(datapack, RoundToCeil(GetMaximumHealth(client) * GetKeyValueFloat(Keys, Values, "active strength?")));
+				WritePackCell(datapack, RoundToCeil(GetMaximumHealth(client) * GetKeyValueFloatAtPos(Values, ABILITY_ACTIVE_STRENGTH)));
 			}
 			AdvertiseAction(client, TalentName, false);
 			IsAmmoActive(client, TalentName, SpellCooldown, true);
@@ -1199,24 +1172,23 @@ stock DrawSpecialAmmoTarget(TargetClient, bool:IsDebugMode=false, bool:IsValidTa
 	if (iRPGMode <= 0) return -1;
 	new CurrentPos	= GetMenuPosition(client, TalentName);
 	new bool:i_IsDebugMode = false;
-	DrawSpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, CurrentPos, 0);
 	DrawSpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, CurrentPos, 1);
 	if (CurrentPosEx == -1) {
 		new bool:IsTargetCommonInfected = IsCommonInfected(Target);
 		new bool:IsLegitimateClientTarget = IsLegitimateClientAlive(Target);
 		new targetTeam = -1;
 		if (IsLegitimateClientTarget) targetTeam = GetClientTeam(Target);
-		if (GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "humanoid only?") == 1) {
+		if (GetKeyValueIntAtPos(DrawSpecialAmmoValues[client], SPELL_HUMANOID_ONLY) == 1) {
 			//Humanoid Only could apply to a wide-range so we break it down here.
 			if (!IsTargetCommonInfected && !IsLegitimateClientTarget) i_IsDebugMode = true;
 		}
-		if (GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "inanimate only?") == 1) {
+		if (GetKeyValueIntAtPos(DrawSpecialAmmoValues[client], SPELL_INANIMATE_ONLY) == 1) {
 			//This is things like vehicles, dumpsters, and other objects that can one-shot your teammates.
 			if (IsTargetCommonInfected || IsLegitimateClientTarget) i_IsDebugMode = true;
 		}
-		if (GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "allow commons?") == 0 && IsTargetCommonInfected ||
-		GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "allow specials?") == 0 && IsLegitimateClientTarget && targetTeam == TEAM_INFECTED ||
-		GetKeyValueInt(DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "allow survivors?") == 0 && IsLegitimateClientTarget && targetTeam == TEAM_SURVIVOR) {
+		if (GetKeyValueIntAtPos(DrawSpecialAmmoValues[client], SPELL_ALLOW_COMMONS) == 0 && IsTargetCommonInfected ||
+		GetKeyValueIntAtPos(DrawSpecialAmmoValues[client], SPELL_ALLOW_SPECIALS) == 0 && IsLegitimateClientTarget && targetTeam == TEAM_INFECTED ||
+		GetKeyValueIntAtPos(DrawSpecialAmmoValues[client], SPELL_ALLOW_SURVIVORS) == 0 && IsLegitimateClientTarget && targetTeam == TEAM_SURVIVOR) {
 			i_IsDebugMode = true;
 		}
 		if (i_IsDebugMode && !IsDebugMode) return 0;		// ie if an invalid target is highlighted and debug mode is disabled we don't draw and we don't tell the player anything.
@@ -1231,11 +1203,12 @@ stock DrawSpecialAmmoTarget(TargetClient, bool:IsDebugMode=false, bool:IsValidTa
 	new Float:HighlightTime = fAmmoHighlightTime;
 	decl String:AfxDrawPos[64];
 	decl String:AfxDrawColour[64];
-	new drawpos = 0;
-	new drawcolor = 0;
+	new drawpos = TALENT_FIRST_RANDOM_KEY_POSITION;
+	new drawcolor = TALENT_FIRST_RANDOM_KEY_POSITION;
+	DrawSpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, CurrentPos, 0);
 	while (drawpos >= 0 && drawcolor >= 0) {
-		drawpos = FormatKeyValue(AfxDrawPos, sizeof(AfxDrawPos), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw pos?", _, _, drawpos);
-		drawcolor = FormatKeyValue(AfxDrawColour, sizeof(AfxDrawColour), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw colour?", _, _, drawcolor);
+		drawpos = FormatKeyValue(AfxDrawPos, sizeof(AfxDrawPos), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw pos?", _, _, drawpos, false);
+		drawcolor = FormatKeyValue(AfxDrawColour, sizeof(AfxDrawColour), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw colour?", _, _, drawcolor, false);
 		if (drawpos < 0 || drawcolor < 0) return -1;
 		//if (StrEqual(AfxDrawColour, "-1", false)) return -1;		// if there's no colour, we return otherwise you'll get errors like this: TE_Send Exception reported: No TempEntity call is in progress (return 0 here would cause endless loop set to -1 as it is ignored i broke the golden rule lul)
 		if (CurrentPosEx != -1) {
@@ -1246,83 +1219,10 @@ stock DrawSpecialAmmoTarget(TargetClient, bool:IsDebugMode=false, bool:IsValidTa
 			CreateRingSoloEx(Target, AfxRange, AfxDrawColour, AfxDrawPos, false, HighlightTime, TargetClient);
 			IsSpecialAmmoEnabled[client][3] = Target * 1.0;
 		}
+		drawpos++;
+		drawcolor++;
 	}
 	return 2;
-}
-
-// < 0 is no entity. 0 is invalid entity. we only draw invalid entities (red rings) if debug mode is enabled.
-//if (DrawSpecialAmmoTarget(client) == 0 && IsPlayerDebugMode[client] == 1) DrawSpecialAmmoTarget(client, true);
-
-/*
-
-	Using the position of the current special ammo, we find out what the previous or next slot in the array is that contains a special ammo
-	depending on what direction the player is going.
-*/
-stock CycleSpecialAmmo(client, bool:IsMoveForward=true, bool:GetCurrentPos=false) {
-
-	new CurrentPos = -1;
-	new firstPosition = -1;
-	decl String:TalentName[64];
-	new ArraySize = GetArraySize(a_Menu_Talents);
-	for (new i = 0; i < ArraySize; i++) {
-		SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
-		GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
-		if (GetTalentStrength(client, TalentName) < 1 || IsAbilityCooldown(client, TalentName)) continue;	
-
-		SpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
-		SpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
-		if (GetKeyValueInt(SpecialAmmoKeys[client], SpecialAmmoValues[client], "special ammo?") != 1) continue;
-		//GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
-		//if (GetTalentStrength(client, TalentName) < 1 || IsAbilityCooldown(client, TalentName)) continue;					// necessary in case a player has the ammo equipped and then respecs into a different ammo. have to make sure any current ammo has talent points.
-		if (firstPosition == -1) firstPosition = i;
-
-		if (GetActiveSpecialAmmo(client, TalentName)) {
-
-			CurrentPos = i;
-			break;
-		}
-	}
-	if (CurrentPos == -1) CurrentPos = firstPosition;
-
-	if (GetCurrentPos) return CurrentPos;
-
-	firstPosition = -1;
-	new lastPosition = -1;
-	for (new i = 0; i < ArraySize; i++) {
-		SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
-		GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
-		if (GetTalentStrength(client, TalentName) < 1 || IsAbilityCooldown(client, TalentName)) continue;
-
-		SpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
-		SpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
-		if (GetKeyValueInt(SpecialAmmoKeys[client], SpecialAmmoValues[client], "special ammo?") != 1) continue;
-
-		if (firstPosition == -1) {
-
-			firstPosition = i;
-			if (CurrentPos == -1) return firstPosition;								// If the player doesn't have a selected active talent, we default to the first one they have available.
-		}
-		if (!IsMoveForward && CurrentPos == firstPosition) lastPosition = i;		// Keep incrementing the last position and return whatever it ends up being if the current position is the first because we need the last.
-		else {																		// But if we're moving forward or the last position is the current position, this is how we do it.
-
-			if (!IsMoveForward && CurrentPos == i) break;							// If we're trying to get the previous ammo, and the current isn't the first, then it's obviously the last recorded, and we break out!
-			if (IsMoveForward && CurrentPos == lastPosition && lastPosition != i) {
-				
-				lastPosition = i;													// Looking at the code may seem odd, but this saves us having to create an extra variable/statement.
-				break;
-			}
-			lastPosition = i;
-
-		}
-	}
-	if (IsMoveForward && CurrentPos == lastPosition && firstPosition != -1) SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, firstPosition, 2);
-	else if (lastPosition != -1) SpecialAmmoSection[client]	= GetArrayCell(a_Menu_Talents, lastPosition, 2);
-
-	if (firstPosition != -1) GetArrayString(Handle:SpecialAmmoSection[client], 0, TalentName, sizeof(TalentName));
-	else Format(TalentName, sizeof(TalentName), "none");
-	Format(ActiveSpecialAmmo[client], sizeof(ActiveSpecialAmmo[]), "%s", TalentName);
-
-	return 0;
 }
 
 /*
@@ -1628,7 +1528,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 		if (clientTeam == TEAM_SURVIVOR) {
 
-			CheckIfItemPickup(client);
+			//CheckIfItemPickup(client);
 			//CheckBombs(client);
 			if (IsFakeClient(client) && !bIsInCheckpoint[client]) {
 
@@ -1929,18 +1829,18 @@ stock bool:IsEveryoneBoosterTime() {
 
 stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner = 0, Float:RangeOverride = 0.0) {
 	if (!IsSpecialCommon(client)) return;
-	new Float:AfxRange = GetCommonValueFloat(client, "range player level?");
-	new Float:AfxStrengthLevel = GetCommonValueFloat(client, "level strength?");
-	new Float:AfxRangeMax = GetCommonValueFloat(client, "range max?");
-	new AfxMultiplication = GetCommonValueInt(client, "enemy multiplication?");
-	new AfxStrength = GetCommonValueInt(client, "aura strength?");
-	new Float:AfxStrengthTarget = GetCommonValueFloat(client, "strength target?");
-	new Float:AfxRangeBase = GetCommonValueFloat(client, "range minimum?");
-	new Float:OnFireBase = GetCommonValueFloat(client, "onfire base time?");
-	new Float:OnFireLevel = GetCommonValueFloat(client, "onfire level?");
-	new Float:OnFireMax = GetCommonValueFloat(client, "onfire max time?");
-	new Float:OnFireInterval = GetCommonValueFloat(client, "onfire interval?");
-	new AfxLevelReq = GetCommonValueInt(client, "level required?");
+	new Float:AfxRange = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_PLAYER_LEVEL);
+	new Float:AfxStrengthLevel = GetCommonValueFloatAtPos(client, SUPER_COMMON_LEVEL_STRENGTH);
+	new Float:AfxRangeMax = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_MAX);
+	new AfxMultiplication = GetCommonValueIntAtPos(client, SUPER_COMMON_ENEMY_MULTIPLICATION);
+	new AfxStrength = GetCommonValueIntAtPos(client, SUPER_COMMON_AURA_STRENGTH);
+	new Float:AfxStrengthTarget = GetCommonValueFloatAtPos(client, SUPER_COMMON_STRENGTH_TARGET);
+	new Float:AfxRangeBase = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_MIN);
+	new Float:OnFireBase = GetCommonValueFloatAtPos(client, SUPER_COMMON_ONFIRE_BASE_TIME);
+	new Float:OnFireLevel = GetCommonValueFloatAtPos(client, SUPER_COMMON_ONFIRE_LEVEL);
+	new Float:OnFireMax = GetCommonValueFloatAtPos(client, SUPER_COMMON_ONFIRE_MAX_TIME);
+	new Float:OnFireInterval = GetCommonValueFloatAtPos(client, SUPER_COMMON_ONFIRE_INTERVAL);
+	new AfxLevelReq = GetCommonValueIntAtPos(client, SUPER_COMMON_LEVEL_REQ);
 	new Float:ClientPosition[3];
 	new Float:TargetPosition[3];
 	new t_Strength = 0;
@@ -2031,18 +1931,18 @@ stock Float:CreateBomberExplosion(client, target, String:Effects[], basedamage =
 
 		When a bomber dies, it explodes.
 	*/
-	new Float:AfxRange = GetCommonValueFloat(client, "range player level?");
-	new Float:AfxStrengthLevel = GetCommonValueFloat(client, "level strength?");
-	new Float:AfxRangeMax = GetCommonValueFloat(client, "range max?");
-	new AfxMultiplication = GetCommonValueInt(client, "enemy multiplication?");
-	new AfxStrength = GetCommonValueInt(client, "aura strength?");
-	new AfxChain = GetCommonValueInt(client, "chain reaction?");
-	new Float:AfxStrengthTarget = GetCommonValueFloat(client, "strength target?");
-	new Float:AfxRangeBase = GetCommonValueFloat(client, "range minimum?");
-	new AfxLevelReq = GetCommonValueInt(client, "level required?");
-	new isRaw = GetCommonValueInt(client, "raw strength?");
-	new rawCommon = GetCommonValueInt(client, "raw common strength?");
-	new rawPlayer = GetCommonValueInt(client, "raw player strength?");
+	new Float:AfxRange = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_PLAYER_LEVEL);
+	new Float:AfxStrengthLevel = GetCommonValueFloatAtPos(client, SUPER_COMMON_LEVEL_STRENGTH);
+	new Float:AfxRangeMax = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_MAX);
+	new AfxMultiplication = GetCommonValueIntAtPos(client, SUPER_COMMON_ENEMY_MULTIPLICATION);
+	new AfxStrength = GetCommonValueIntAtPos(client, SUPER_COMMON_AURA_STRENGTH);
+	new AfxChain = GetCommonValueIntAtPos(client, SUPER_COMMON_CHAIN_REACTION);
+	new Float:AfxStrengthTarget = GetCommonValueFloatAtPos(client, SUPER_COMMON_STRENGTH_TARGET);
+	new Float:AfxRangeBase = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_MIN);
+	new AfxLevelReq = GetCommonValueIntAtPos(client, SUPER_COMMON_LEVEL_REQ);
+	new isRaw = GetCommonValueIntAtPos(client, SUPER_COMMON_RAW_STRENGTH);
+	new rawCommon = GetCommonValueIntAtPos(client, SUPER_COMMON_RAW_COMMON_STRENGTH);
+	new rawPlayer = GetCommonValueIntAtPos(client, SUPER_COMMON_RAW_PLAYER_STRENGTH);
 
 
 	if (IsSpecialCommon(client) && IsLegitimateClient(target) && GetClientTeam(target) == TEAM_SURVIVOR && PlayerLevel[target] < AfxLevelReq) return;
@@ -2257,7 +2157,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 	// If it's a special common, we activate its death abilities.
 	if (ClientType == 2) {
 		decl String:TheEffect[10];
-		GetCommonValue(TheEffect, sizeof(TheEffect), client, "aura effect?");
+		GetCommonValueAtPos(TheEffect, sizeof(TheEffect), client, SUPER_COMMON_AURA_EFFECT);
 		CreateBomberExplosion(client, client, TheEffect);	// bomber aoe
 	}
 	new pos = -1;
@@ -2272,7 +2172,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		else {
 			if (ClientType == 1) Format(killedName, sizeof(killedName), "Witch");
 			else {
-				GetCommonValue(killedName, sizeof(killedName), client, "name?");
+				GetCommonValueAtPos(killedName, sizeof(killedName), client, SUPER_COMMON_NAME);
 				Format(killedName, sizeof(killedName), "Common %s", killedName);
 			}
 		}
@@ -2280,7 +2180,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 			GetClientName(killerblow, killerName, sizeof(killerName));
 			PrintToChatAll("%t", "player killed special infected", blue, killerName, white, orange, killedName);
 		}
-		else {
+		else if (ClientType != 2) {
 			PrintToChatAll("%t", "killed special infected", orange, killedName, white);
 		}
 	}
@@ -2315,8 +2215,8 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 					PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
 				}
 				else {
+					RatingTeamBonus += RoundToCeil(RatingBonus * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
 					AddCommasToString(RatingTeamBonus, ratingTeamBonusText, sizeof(ratingTeamBonusText));
-					RatingTeamBonus = RoundToCeil(RatingBonus * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
 					Rating[i] += RatingTeamBonus;
 					PrintToChat(i, "%T", "team rating increase", i, white, blue, ratingBonusText, orange, white, green, blue, ratingTeamBonusText, orange, white);
 				}
@@ -2403,7 +2303,7 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, Float:p_reward, t_r
 			enemytype = 2;
 		}
 		else if (IsSpecialCommon(infected)) {
-			GetCommonValue(InfectedName, sizeof(InfectedName), infected, "name?");
+			GetCommonValueAtPos(InfectedName, sizeof(InfectedName), infected, SUPER_COMMON_NAME);
 			enemytype = 1;
 		}
 		else if (IsCommonInfected(infected)) {

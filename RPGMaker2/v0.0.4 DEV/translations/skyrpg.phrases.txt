@@ -84,42 +84,42 @@
 	"node locked by talents all (treeview)"
 	{
 		"#format"			"{1:s},{2:s}"
-		"en"				"{1} (Missing ALL)\n{2}"
+		"en"				"{1} (Req. ALL)\n{2}"
 	}
 	"node locked by talents multiple (treeview)"
 	{
 		"#format"			"{1:s},{2:s},{3:i}"
-		"en"				"{1} (Missing {3})\n{2}"
+		"en"				"{1} (Req. {3})\n{2}"
 	}
 	"node locked by talents single (treeview)"
 	{
 		"#format"			"{1:s},{2:s},{3:i}"
-		"en"				"{1} (Missing {3})\n{2}"
+		"en"				"{1} (Req. {3})\n{2}"
 	}
 	"node locked by talents last one (treeview)"
 	{
 		"#format"			"{1:s},{2:s}"
-		"en"				"{1} (Missing below node)\n{2}"
+		"en"				"{1} (Req.)\n{2}"
 	}
 	"node locked by talents all (talentview)"
 	{
 		"#format"			"{1:s}"
-		"en"				"Node Locked (Missing ALL)\n{1}"
+		"en"				"Node Locked (Req. ALL)\n{1}"
 	}
 	"node locked by talents multiple (talentview)"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"Node Locked (Missing {2})\n{1}"
+		"en"				"Node Locked (Req. {2})\n{1}"
 	}
 	"node locked by talents single (talentview)"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"Node Locked (Missing {2})\n{1}"
+		"en"				"Node Locked (Req. {2})\n{1}"
 	}
 	"node locked by talents last one (talentview)"
 	{
 		"#format"			"{1:s}"
-		"en"				"Node Locked (Missing below node)\n{1}"
+		"en"				"Node Locked (Req. below node)\n{1}"
 	}
 	"node unlocked"
 	{
@@ -157,7 +157,7 @@
 	}
 	"damage resistance"
 	{
-		"en"				"damage resistance"
+		"en"				"DMG resistance"
 	}
 	"damage resistance info"
 	{
@@ -170,6 +170,10 @@
 	"progress bar speed info"
 	{
 		"en"				"Reduces time to use items that activate the progress bar."
+	}
+	"frontline talents"
+	{
+		"en"				"Frontline nodes\t"
 	}
 	"survival talents"
 	{
@@ -460,12 +464,12 @@
 	"auto level (locked)"
 	{
 		"#format"			"{1:3.1f},{2:s}"
-		"en"				"Auto-Level (Off-Locked)\nA level-up option is on the main page.\n{1}{2} Class XP / All Talent XP on death\nYou cannot de-level."
+		"en"				"Auto-Level (Off-Locked)\nA level-up option is on the main page."
 	}
 	"auto level (disabled)"
 	{
 		"#format"			"{1:3.1f},{2:s}"
-		"en"				"Auto-Level (Off)\nA level-up option is on the main page.\n{1}{2} Class XP / All Talent XP on death\nYou cannot de-level."
+		"en"				"Auto-Level (Off)\nA level-up option is on the main page."
 	}
 	"auto level (enabled)"
 	{
@@ -570,7 +574,7 @@
 	}
 	"Overdrive damage"
 	{
-		"en"				"Overdrive Damage"
+		"en"				"Overdrive DMG"
 	}
 	"Overdrive damage info"
 	{
@@ -586,7 +590,7 @@
 	}
 	"Overdrive absorb"
 	{
-		"en"				"Overdrive Damage Shield"
+		"en"				"Overdrive DMG Shield"
 	}
 	"Overdrive absorb info"
 	{
@@ -603,7 +607,7 @@
 	
 	"Cleanse damage"
 	{
-		"en"				"Cleanse Damage"
+		"en"				"Cleanse DMG"
 	}
 	"Cleanse damage info"
 	{
@@ -619,7 +623,7 @@
 	}
 	"Cleanse absorb"
 	{
-		"en"				"Cleanse Damage Shield"
+		"en"				"Cleanse DMG Shield"
 	}
 	"Cleanse absorb info"
 	{
@@ -640,7 +644,7 @@
 	}
 	"chainsaw damage increase"
 	{
-		"en"				"Chainsaw Damage+"
+		"en"				"Chainsaw DMG+"
 	}
 	"chainsaw damage increase info"
 	{
@@ -648,7 +652,7 @@
 	}
 	"explosion damage increase"
 	{
-		"en"				"Explosion Damage+"
+		"en"				"Explosion DMG+"
 	}
 	"explosion damage increase info"
 	{
@@ -656,7 +660,7 @@
 	}
 	"blunt damage increase"
 	{
-		"en"				"Blunt Melee Damage+"
+		"en"				"Blunt Melee DMG+"
 	}
 	"blunt damage increase info"
 	{
@@ -664,7 +668,7 @@
 	}
 	"sharp damage increase"
 	{
-		"en"				"Sharp Melee Damage+"
+		"en"				"Sharp Melee DMG+"
 	}
 	"sharp damage increase info"
 	{
@@ -823,7 +827,7 @@
 	"level requirement kick"
 	{
 		"#format"			"{1:i},{2:s}"
-		"en"				"Requires {2} Score (You are {1}\nvisit steamcommunity.com/groups/skyrpgdotprg"
+		"en"				"Requires level {2}, You are level{1}."
 	}
 	"incap survivor health"
 	{
@@ -1087,7 +1091,7 @@
 	"Prestige Level Text"
 	{
 		"#format"			"{1:i},{2:i},{3:s}"
-		"en"				"Prestige {1}\n{3}"
+		"en"				"Prestige Lv.{1} {3}"
 	}
 	"Player Level Text"
 	{
@@ -2425,7 +2429,7 @@
 	}
 	"Ammo Circle Talents"
 	{
-		"en"				"Active Talents\n!abar to toggle action menu display on/off"
+		"en"				"Active Talents\n!abilitybar to toggle action menu display on/off"
 	}
 	"Infected Talents"
 	{
@@ -2501,7 +2505,7 @@
 	}
 	"damage resistance i"
 	{
-		"en"				"Damage Resist I"
+		"en"				"DMG Resist I"
 	}
 	"damage resistance i info"
 	{
@@ -2533,31 +2537,99 @@
 	}
 	"survivor weak health i"
 	{
-		"en"				"(Weakness) Health I"
+		"en"				"(B&W) Health I"
 	}
 	"survivor weak health ii"
 	{
-		"en"				"(Weakness) Health II"
+		"en"				"(B&W) Health II"
 	}
 	"survivor weak health iii"
 	{
-		"en"				"(Weakness) Health III"
+		"en"				"(B&W) Health III"
 	}
 	"survivor weak health info"
 	{
 		"en"				"Raises your overall Health pool when black & white."
 	}
+	"bloodmage path i"
+	{
+		"en"				"Blood Mage I"
+	}
+	"bloodmage path i info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i}"
+		"en"				"Deal increased damage for each {1}{2} health missing."
+	}
+	"bloodmage path ii"
+	{
+		"en"				"Blood Mage II"
+	}
+	"bloodmage path ii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i}"
+		"en"				"Deal increased damage when you are under {5}{6} health."
+	}
+	"warrior path i"
+	{
+		"en"				"Warrior I"
+	}
+	"warrior path ii"
+	{
+		"en"				"Warrior II"
+	}
+	"warrior path i info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i}"
+		"en"				"Receive less damage when you are under {5}{6} health."
+	}
+	"coherency path i"
+	{
+		"en"				"Coherency I"
+	}
+	"coherency path i info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i}"
+		"en"				"Increase your health pool for each teammate within {7}units\nup to a maximum of {8} teammates."
+	}
+	"last resort i"
+	{
+		"en"				"(Incap) Last Resort I"
+	}
+	"last resort ii"
+	{
+		"en"				"(Incap) Last Resort II"
+	}
+	"last resort info"
+	{
+		"en"				"Deal increased pistol damage while incapacitated."
+	}
+	"adren rush i"
+	{
+		"en"				"(Adren) Rush I"
+	}
+	"adren rush i info"
+	{
+		"en"				"Deal increased damage with all guns when [Ad]renaline is active."
+	}
+	"adren rush ii"
+	{
+		"en"				"(Adren) Rush II"
+	}
+	"adren rush ii info"
+	{
+		"en"				"Deal increased damage with melee weapons when [Ad]renaline is active."
+	}
 	"survivor incap health i"
 	{
-		"en"				"(Incapped) Health I"
+		"en"				"(Incap) Health I"
 	}
 	"survivor incap health ii"
 	{
-		"en"				"(Incapped) Health II"
+		"en"				"(Incap) Health II"
 	}
 	"survivor incap health iii"
 	{
-		"en"				"(Incapped) Health III"
+		"en"				"(Incap) Health III"
 	}
 	"survivor incap health info"
 	{
@@ -2585,7 +2657,7 @@
 	}
 	"bile dmgdn i"
 	{
-		"en"				"(Biled) Damage Resist I"
+		"en"				"(Biled) DMG Resist I"
 	}
 	"bile dmgdn i info"
 	{
@@ -2593,7 +2665,7 @@
 	}
 	"weak dmgdn i"
 	{
-		"en"				"(Weakness) Damage Resist I"
+		"en"				"(B&W) DMG Resist I"
 	}
 	"weak dmgdn i info"
 	{
@@ -2601,7 +2673,7 @@
 	}
 	"adren dmgdn i"
 	{
-		"en"				"(Adren) Damage Resist I"
+		"en"				"(Adren) DMG Resist I"
 	}
 	"adren dmgdn i info"
 	{
@@ -2609,11 +2681,11 @@
 	}
 	"precision boost i"
 	{
-		"en"				"(Effect)Precision Boost I"
+		"en"				"(EoT)Precision Boost I"
 	}
 	"precision boost ii"
 	{
-		"en"				"(Effect)Precision Boost II"
+		"en"				"(EoT)Precision Boost II"
 	}
 	"precision boost"
 	{
@@ -2629,7 +2701,7 @@
 	}
 	"medic path i"
 	{
-		"en"				"(Effect)Medic Path I"
+		"en"				"(EoT)Medic I"
 	}
 	"medic path i info"
 	{
@@ -2637,7 +2709,7 @@
 	}
 	"medic path ii"
 	{
-		"en"				"(Effect)Medic Path II"
+		"en"				"(EoT)Medic II"
 	}
 	"medic path ii info"
 	{
@@ -2675,6 +2747,14 @@
 	{
 		"en"				"Reflects an enourmous percentage of the damage taken back at the attacker."
 	}
+	"thorns v"
+	{
+		"en"				"Thorns V"
+	}
+	"thorns v info"
+	{
+		"en"				"Reflects the ultimate percentage of damage taken back at the attacker."
+	}
 	"progress bar speed i"
 	{
 		"en"				"Progress Bar Speed I"
@@ -2689,7 +2769,7 @@
 	}
 	"commando path i"
 	{
-		"en"				"Commando Path I"
+		"en"				"Commando I"
 	}
 	"commando path i info"
 	{
@@ -2697,7 +2777,7 @@
 	}
 	"commando path ii"
 	{
-		"en"				"Commando Path II"
+		"en"				"Commando II"
 	}
 	"commando path ii info"
 	{
@@ -2705,7 +2785,7 @@
 	}
 	"commando path iii"
 	{
-		"en"				"Commando Path III"
+		"en"				"Commando III"
 	}
 	"commando path iii info"
 	{
@@ -2713,7 +2793,7 @@
 	}
 	"smg path i"
 	{
-		"en"				"SMG Path I"
+		"en"				"SMG I"
 	}
 	"smg path i info"
 	{
@@ -2721,7 +2801,7 @@
 	}
 	"assassin path i"
 	{
-		"en"				"Assassin Path I"
+		"en"				"Assassin I"
 	}
 	"assassin path i info"
 	{
@@ -2729,7 +2809,7 @@
 	}
 	"assassin path ii"
 	{
-		"en"				"Assassin Path II"
+		"en"				"Assassin II"
 	}
 	"assassin path ii info"
 	{
@@ -2737,7 +2817,7 @@
 	}
 	"assassin path iii"
 	{
-		"en"				"Assassin Path III"
+		"en"				"Assassin III"
 	}
 	"assassin path iii info"
 	{
@@ -2745,11 +2825,11 @@
 	}
 	"precision path i"
 	{
-		"en"				"Precision Path I"
+		"en"				"Precision I"
 	}
 	"precision path ii"
 	{
-		"en"				"Precision Path II"
+		"en"				"Precision II"
 	}
 	"precision path info"
 	{
@@ -2765,23 +2845,23 @@
 	}
 	"healer path i"
 	{
-		"en"				"Healer Path I"
+		"en"				"Healer I"
 	}
 	"healer path ii"
 	{
-		"en"				"Healer Path II"
+		"en"				"Healer II"
 	}
 	"healer path iii"
 	{
-		"en"				"Healer Path III"
+		"en"				"Healer III"
 	}
 	"healer path iv"
 	{
-		"en"				"Healer Path IV"
+		"en"				"Healer IV"
 	}
 	"healer path v"
 	{
-		"en"				"(Effect)Healer Path V"
+		"en"				"(EoT)Healer V"
 	}
 	"healer path info"
 	{
@@ -2797,7 +2877,7 @@
 	}
 	"overdose ammo"
 	{
-		"en"				"(Equippable)Overdose"
+		"en"				"(AB)Overdose"
 	}
 	"overdose ammo info"
 	{
@@ -2805,11 +2885,11 @@
 	}
 	"attack ab"
 	{
-		"en"				"Damage Up"
+		"en"				"DMG Up"
 	}
 	"attack ammo"
 	{
-		"en"				"(Equippable)Damage Up"
+		"en"				"(AB)DMG Up"
 	}
 	"attack ammo info"
 	{
@@ -2821,7 +2901,7 @@
 	}
 	"berserk ammo"
 	{
-		"en"				"(Equippable)Berserk"
+		"en"				"(AB)Berserk"
 	}
 	"berserk ammo info"
 	{
@@ -2833,7 +2913,7 @@
 	}
 	"adren ammo"
 	{
-		"en"				"(Equippable)Adrenaline"
+		"en"				"(AB)Adrenaline"
 	}
 	"adren ammo info"
 	{
@@ -2845,7 +2925,7 @@
 	}
 	"focus ability"
 	{
-		"en"				"(Equippable)Focused"
+		"en"				"(AB)Focused"
 	}
 	"focus info"
 	{
@@ -2857,7 +2937,7 @@
 	}
 	"heal ammo"
 	{
-		"en"				"(Equippable)Heal AoE"
+		"en"				"(AB)Heal AoE"
 	}
 	"heal ammo info"
 	{
@@ -2869,7 +2949,7 @@
 	}
 	"heal aura"
 	{
-		"en"				"(Equippable)Heal Aura"
+		"en"				"(AB)Heal Aura"
 	}
 	"heal aura info"
 	{
@@ -2881,11 +2961,35 @@
 	}
 	"reflect ammo"
 	{
-		"en"				"(Equippable)Reflect"
+		"en"				"(AB)Reflect"
 	}
 	"reflect ammo info"
 	{
 		"en"				"Places a temporary damage-reflection field at your aim target."
+	}
+	"weakness ab"
+	{
+		"en"				"Dark"
+	}
+	"weakness ammo"
+	{
+		"en"				"(AB)Dark"
+	}
+	"weakness ammo info"
+	{
+		"en"				"Survivors/Specials within the field have [Wk]Weakness."
+	}
+	"weakness aura ab"
+	{
+		"en"				"Dark Aura"
+	}
+	"weakness aura"
+	{
+		"en"				"(AB)Dark Aura"
+	}
+	"weakness aura info"
+	{
+		"en"				"Survivors/Specials within the field have [Wk]Weakness.\nThis field follows you."
 	}
 	"shield ab"
 	{
@@ -2893,7 +2997,7 @@
 	}
 	"shield ammo"
 	{
-		"en"				"(Equippable)Shield"
+		"en"				"(AB)Shield"
 	}
 	"shield ammo info"
 	{
@@ -2905,7 +3009,7 @@
 	}
 	"shield aura"
 	{
-		"en"				"(Equippable) Shield Aura"
+		"en"				"(AB) Shield Aura"
 	}
 	"shield aura info"
 	{
@@ -2913,7 +3017,7 @@
 	}
 	"psycho path i"
 	{
-		"en"				"Psycho Path I"
+		"en"				"Psycho I"
 	}
 	"psycho path i info"
 	{
@@ -2921,7 +3025,7 @@
 	}
 	"psycho path ii"
 	{
-		"en"				"Psycho Path II"
+		"en"				"Psycho II"
 	}
 	"psycho path ii info"
 	{
@@ -2937,7 +3041,7 @@
 	}
 	"elon path i"
 	{
-		"en"				"Elon Path I"
+		"en"				"Elon I"
 	}
 	"elon path i info"
 	{
@@ -2945,7 +3049,7 @@
 	}
 	"elon path ii"
 	{
-		"en"				"Elon Path II"
+		"en"				"Elon II"
 	}
 	"elon path ii info"
 	{
@@ -2953,7 +3057,7 @@
 	}
 	"elon path iii"
 	{
-		"en"				"Elon Path III"
+		"en"				"Elon III"
 	}
 	"elon path iii info"
 	{
@@ -2961,7 +3065,7 @@
 	}
 	"elon path iv"
 	{
-		"en"				"Elon Path IV"
+		"en"				"Elon IV"
 	}
 	"elon path iv info"
 	{
@@ -2969,23 +3073,23 @@
 	}
 	"shaman path i"
 	{
-		"en"				"Shaman Path I"
+		"en"				"Shaman I"
 	}
 	"shaman path ii"
 	{
-		"en"				"Shaman Path II"
+		"en"				"Shaman II"
 	}
 	"shaman path iii"
 	{
-		"en"				"Shaman Path III"
+		"en"				"Shaman III"
 	}
 	"shaman path iv"
 	{
-		"en"				"Shaman Path IV"
+		"en"				"Shaman IV"
 	}
 	"shaman path v"
 	{
-		"en"				"(Effect)Shaman Path V"
+		"en"				"(EoT)Shaman V"
 	}
 	"shaman path info"
 	{
@@ -2997,7 +3101,7 @@
 	}
 	"bloodwarrior path i"
 	{
-		"en"				"Blood Warrior Path I"
+		"en"				"Blood Warrior I"
 	}
 	"bloodwarrior path i info"
 	{
@@ -3005,15 +3109,15 @@
 	}
 	"bloodwarrior path ii"
 	{
-		"en"				"Blood Warrior Path II"
+		"en"				"Blood Warrior II"
 	}
 	"bloodwarrior path ii info"
 	{
-		"en"				"When Blood Warrior Path I triggers, heals you for a\npercentage of the heal your allies received."
+		"en"				"When Blood Warrior I triggers, heals you for a\npercentage of the heal your allies received."
 	}
 	"bloodwarrior path iii"
 	{
-		"en"				"Blood Warrior Path III"
+		"en"				"Blood Warrior III"
 	}
 	"bloodwarrior path iii info"
 	{
@@ -3021,19 +3125,19 @@
 	}
 	"sniper path i"
 	{
-		"en"				"Sniper Path I"
+		"en"				"Sniper I"
 	}
 	"sniper path ii"
 	{
-		"en"				"Sniper Path II"
+		"en"				"Sniper II"
 	}
 	"sniper path iii"
 	{
-		"en"				"Sniper Path III"
+		"en"				"Sniper III"
 	}
 	"sniper path iv"
 	{
-		"en"				"Sniper Path IV"
+		"en"				"Sniper IV"
 	}
 	"sniper path iv info"
 	{
@@ -3045,19 +3149,19 @@
 	}
 	"berserker path i"
 	{
-		"en"				"Berserker Path I"
+		"en"				"Berserk I"
 	}
 	"berserker path ii"
 	{
-		"en"				"Berserker Path II"
+		"en"				"Berserk II"
 	}
 	"berserker path iii"
 	{
-		"en"				"Berserker Path III"
+		"en"				"Berserk III"
 	}
 	"berserker path iv"
 	{
-		"en"				"Berserker Path IV"
+		"en"				"Berserk IV"
 	}
 	"berserker path info"
 	{
@@ -3069,15 +3173,15 @@
 	}
 	"gunslinger path i"
 	{
-		"en"				"Gunslinger Path I"
+		"en"				"Gunslinger I"
 	}
 	"gunslinger path ii"
 	{
-		"en"				"Gunslinger Path II"
+		"en"				"Gunslinger II"
 	}
 	"gunslinger path iii"
 	{
-		"en"				"Gunslinger Path III"
+		"en"				"Gunslinger III"
 	}
 	"gunslinger path info"
 	{
@@ -3085,11 +3189,11 @@
 	}
 	"deadeye path i"
 	{
-		"en"				"Dead Eye Path I"
+		"en"				"Dead Eye I"
 	}
 	"deadeye path ii"
 	{
-		"en"				"Dead Eye Path II"
+		"en"				"Dead Eye II"
 	}
 	"deadeye path info"
 	{
@@ -3101,11 +3205,11 @@
 	}
 	"surgeon path i"
 	{
-		"en"				"Surgeon Path I"
+		"en"				"Surgeon I"
 	}
 	"surgeon path ii"
 	{
-		"en"				"Surgeon Path II"
+		"en"				"Surgeon II"
 	}
 	"surgeon path info"
 	{
@@ -3117,19 +3221,19 @@
 	}
 	"specialist path i"
 	{
-		"en"				"Specialist Path I"
+		"en"				"Specialist I"
 	}
 	"specialist path ii"
 	{
-		"en"				"Specialist Path II"
+		"en"				"Specialist II"
 	}
 	"specialist path iii"
 	{
-		"en"				"Specialist Path III"
+		"en"				"Specialist III"
 	}
 	"specialist path iv"
 	{
-		"en"				"Specialist Path IV"
+		"en"				"Specialist IV"
 	}
 	"specialist path iv info"
 	{
@@ -3141,11 +3245,11 @@
 	}
 	"warblade path i"
 	{
-		"en"				"Warblade Path I"
+		"en"				"Warblade I"
 	}
 	"warblade path ii"
 	{
-		"en"				"Warblade Path II"
+		"en"				"Warblade II"
 	}
 	"warblade path info"
 	{
@@ -3153,7 +3257,7 @@
 	}
 	"warblade path iii"
 	{
-		"en"				"Warblade Path III"
+		"en"				"Warblade III"
 	}
 	"warblade path iii info"
 	{
@@ -3161,7 +3265,7 @@
 	}
 	"warblade path iv"
 	{
-		"en"				"Warblade Path IV"
+		"en"				"Warblade IV"
 	}
 	"warblade path iv info"
 	{
@@ -3169,7 +3273,7 @@
 	}
 	"warblade path v"
 	{
-		"en"				"(Effect)Warblade Path V"
+		"en"				"(EoT)Warblade V"
 	}
 	"warblade path v info"
 	{
@@ -3177,11 +3281,11 @@
 	}
 	"defender path i"
 	{
-		"en"				"Defender Path I"
+		"en"				"Defender I"
 	}
 	"defender path ii"
 	{
-		"en"				"Defender Path II"
+		"en"				"Defender II"
 	}
 	"defender path info"
 	{
@@ -3189,11 +3293,19 @@
 	}
 	"health regen wk i"
 	{
-		"en"				"(Weakness)Regen I"
+		"en"				"(B&W)Regen I"
 	}
 	"health regen wk i info"
 	{
 		"en"				"Regenerates a small amount of health over time when black and white."
+	}
+	"incap health regen i"
+	{
+		"en"				"(Incap) Regen I"
+	}
+	"incap health regen info"
+	{
+		"en"				"Regenerates health while incapacitated."
 	}
 	"health regen i"
 	{
@@ -3251,9 +3363,17 @@
 	{
 		"en"				"Increases your stamina by a large amount."
 	}
+	"stamina iv"
+	{
+		"en"				"Stamina IV"
+	}
+	"stamina iv info"
+	{
+		"en"				"Increases your stamina by a staggering amount."
+	}
 	"survivor health eot i"
 	{
-		"en"				"(Effect)Reactive Health I"
+		"en"				"(EoT)Reactive Health I"
 	}
 	"survivor health eot"
 	{
@@ -3261,7 +3381,7 @@
 	}
 	"survivor health eot ii"
 	{
-		"en"				"(Effect)Reactive Health II"
+		"en"				"(EoT)Reactive Health II"
 	}
 	"survivor health eot ii info"
 	{
@@ -3287,37 +3407,49 @@
 	{
 		"en"				"Health V"
 	}
-	"damage up cdr i"
+	"ic cooldown up cdr i"
 	{
-		"en"				"Damage Mastery I"
+		"en"				"(In-Combat)CD Mastery I"
 	}
-	"damage up i cooldown"
+	"cooldown up cdr i"
 	{
-		"en"				"Reduces the cooldown of all Tier-I nodes that increase Damage."
+		"en"				"CD Mastery I"
 	}
-	"damage up cdr ii"
+	"cooldown up i cooldown"
 	{
-		"en"				"Damage Mastery II"
+		"en"				"Reduces the cooldown of all Tier-I nodes."
 	}
-	"damage up ii cooldown"
+	"cooldown up cdr ii"
 	{
-		"en"				"Reduces the cooldown of all Tier-II nodes that increase Damage."
+		"en"				"CD Mastery II"
 	}
-	"damage up cdr iii"
+	"cooldown up ii cooldown"
 	{
-		"en"				"Damage Mastery III"
+		"en"				"Reduces the cooldown of all Tier-II nodes."
 	}
-	"damage up iii cooldown"
+	"cooldown up cdr iii"
 	{
-		"en"				"Reduces the cooldown of all Tier-III nodes that increase Damage."
+		"en"				"CD Mastery III"
 	}
-	"damage up cdr iv"
+	"cooldown up iii cooldown"
 	{
-		"en"				"Damage Mastery IV"
+		"en"				"Reduces the cooldown of all Tier-III nodes."
 	}
-	"damage up iv cooldown"
+	"cooldown up cdr iv"
 	{
-		"en"				"Reduces the cooldown of all Tier-IV nodes that increase damage."
+		"en"				"CD Mastery IV"
+	}
+	"cooldown up iv cooldown"
+	{
+		"en"				"Reduces the cooldown of all Tier-IV nodes."
+	}
+	"cooldown up cdr v"
+	{
+		"en"				"CD Mastery V"
+	}
+	"cooldown up v cooldown"
+	{
+		"en"				"Reduces the cooldown of all Tier-V nodes."
 	}
 	"ability chance"
 	{
@@ -3341,7 +3473,7 @@
 	}
 	"shotgun damage increase"
 	{
-		"en"				"Shotgun Critical Damage"
+		"en"				"Shotgun Critical DMG"
 	}
 	"ability chance infected"
 	{
@@ -3373,7 +3505,7 @@
 	}
 	"pistol damage increase"
 	{
-		"en"				"Pistol Critical Damage"
+		"en"				"Pistol Crit. DMG"
 	}
 	"Other Talents"
 	{
@@ -3389,11 +3521,11 @@
 	}
 	"headshot damage increase i"
 	{
-		"en"				"Headshot Damage I"
+		"en"				"Headshot DMG I"
 	}
 	"headshot damage increase ii"
 	{
-		"en"				"Headshot Damage II"
+		"en"				"Headshot DMG II"
 	}
 	"limb damage increase"
 	{
@@ -3401,23 +3533,23 @@
 	}
 	"limb damage increase i"
 	{
-		"en"				"Limb Damage I"
+		"en"				"Limb DMG I"
 	}
 	"limb damage increase ii"
 	{
-		"en"				"Limb Damage II"
+		"en"				"Limb DMG II"
 	}
 	"weapon damage increase i"
 	{
-		"en"				"Weapon Damage I"
+		"en"				"Gun DMG I"
 	}
 	"weapon damage increase ii"
 	{
-		"en"				"Weapon Damage II"
+		"en"				"Gun DMG II"
 	}
 	"weapon damage increase iii"
 	{
-		"en"				"Weapon Damage III"
+		"en"				"Gun DMG III"
 	}
 	"weapon damage increase"
 	{
@@ -3425,7 +3557,7 @@
 	}
 	"masochist path i"
 	{
-		"en"				"Masoschistic Path I"
+		"en"				"Masoschistic I"
 	}
 	"masochist path i info"
 	{
@@ -3433,11 +3565,11 @@
 	}
 	"melee damage increase i"
 	{
-		"en"				"Melee Damage I"
+		"en"				"Melee DMG I"
 	}
 	"melee damage increase ii"
 	{
-		"en"				"Melee Damage II"
+		"en"				"Melee DMG II"
 	}
 	"melee damage increase"
 	{
@@ -3453,15 +3585,15 @@
 	}
 	"tier1 damage increase i"
 	{
-		"en"				"Tier1 Damage I"
+		"en"				"T1 DMG I"
 	}
 	"tier1 damage increase ii"
 	{
-		"en"				"Tier1 Damage II"
+		"en"				"T1 DMG II"
 	}
 	"tier1 damage increase iii"
 	{
-		"en"				"Tier1 Damage III"
+		"en"				"T1 DMG III"
 	}
 	"tier2 damage increase"
 	{
@@ -3469,15 +3601,15 @@
 	}
 	"tier2 damage increase i"
 	{
-		"en"				"Tier2 Damage I"
+		"en"				"T2 DMG I"
 	}
 	"tier2 damage increase ii"
 	{
-		"en"				"Tier2 Damage II"
+		"en"				"T2 DMG II"
 	}
 	"tier2 damage increase iii"
 	{
-		"en"				"Tier2 Damage III"
+		"en"				"T2 DMG III"
 	}
 	"crouch damage increase"
 	{
@@ -3485,11 +3617,11 @@
 	}
 	"crouch damage increase i"
 	{
-		"en"				"Crouch Damage I"
+		"en"				"Crouch DMG I"
 	}
 	"burn damage increase"
 	{
-		"en"				"Fire Damage+"
+		"en"				"Fire DMG+"
 	}
 	"burn damage increase info"
 	{
@@ -3501,7 +3633,7 @@
 	}
 	"melee damage increase"
 	{
-		"en"				"Melee Damage Increase"
+		"en"				"Melee DMG Increase"
 	}
 	"melee damage increase info"
 	{
@@ -3509,7 +3641,7 @@
 	}
 	"smg damage increase"
 	{
-		"en"				"SMG Critical Damage"
+		"en"				"SMG Crit. DMG"
 	}
 	"rifle ability chance"
 	{
@@ -3517,7 +3649,7 @@
 	}
 	"rifle damage increase"
 	{
-		"en"				"Assault Rifle Critical Hit"
+		"en"				"Assault Rifle Crit. Hit"
 	}
 	"shotgun damage increase info"
 	{
@@ -3537,7 +3669,7 @@
 	}
 	"damage multiplier permanent"
 	{
-		"en"				"SI Damage"
+		"en"				"SI DMG"
 	}
 	"zero gravity ammo"
 	{
@@ -3585,7 +3717,7 @@
 	}
 	"Equip Action Bar"
 	{
-		"en"				"Modify Action Bar"
+		"en"				"Modify Action Bar\n!abilitybar toggles the ability bar on/off"
 	}
 	"Aoe Spell Talents"
 	{
@@ -3625,7 +3757,7 @@
 	}
 	"damage shield"
 	{
-		"en"				"Damage Shield"
+		"en"				"DMG Shield"
 	}
 	"speed boost"
 	{
@@ -3690,7 +3822,7 @@
 	}
 	"infected damage"
 	{
-		"en"				"Damage Multiplier"
+		"en"				"DMG Multiplier"
 	}
 	"wall of fire"
 	{
@@ -4331,15 +4463,15 @@
 	}
 	"(Sniper OoC)tank damage"
 	{
-		"en"				"(Sniper - OoC) Tank Damage"
+		"en"				"(Sniper - OoC) Tank DMG"
 	}
 	"(Combat)tank damage"
 	{
-		"en"				"(IC) Tank Damage"
+		"en"				"(IC) Tank DMG"
 	}
 	"(OoC) Common Recovery"
 	{
-		"en" "(OoC) Common Damage Recovery"
+		"en" "(OoC) Common DMG Recovery"
 	}
 	"(OoC) Common Ammo Recovery"
 	{
@@ -4460,12 +4592,12 @@
 	"round statistics"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s},{19:s}"
-		"en"				"{1}=== ROUND KILLS STATISTICS ===\n{2}Commons: {3}{4}\n{5}Super Commons: {6}{7}\n{8}Witches: {9}{10}\n{11}Special Infected: {12}{13}\n{14}Tanks: {15}{16}\n{17}Total: {18}{19}"
+		"en"				"{1}Round Statistics:\n{2}Commons: {3}{4}\n{5}Super Commons: {6}{7}\n{8}Witches: {9}{10}\n{11}Special Infected: {12}{13}\n{14}Tanks: {15}{16}\n{17}Total: {18}{19}"
 	}
 	"campaign statistics"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s},{19:s}"
-		"en"				"{1}=== TOTAL CAMPAIGN KILLS STATISTICS ===\n{2}Commons: {3}{4}\n{5}Super Commons: {6}{7}\n{8}Witches: {9}{10}\n{11}Special Infected: {12}{13}\n{14}Tanks: {15}{16}\n{17}Total: {18}{19}"
+		"en"				"{1}Campaign Statistics:\n{2}Commons: {3}{4}\n{5}Super Commons: {6}{7}\n{8}Witches: {9}{10}\n{11}Special Infected: {12}{13}\n{14}Tanks: {15}{16}\n{17}Total: {18}{19}"
 	}
 	"Talent requirements are not met"
 	{
@@ -5312,7 +5444,7 @@
 	}
 	"all guns damage increase"
 	{
-		"en"				"All-Weapon Critical Chance"
+		"en"				"All-Weapon Crit. Chance"
 	}
 	"all guns damage increase info"
 	{
@@ -5340,7 +5472,7 @@
 	}
 	"sniper tank damage"
 	{
-		"en"				"Sniper Tank Damage"
+		"en"				"Sniper Tank DMG"
 	}
 	"sniper tank damage info"
 	{
@@ -5573,6 +5705,14 @@
 	{
 		"en"				"Free yourself when ensnared by a special infected\nif activated before being ensnared."
 	}
+	"stagger Toggle Ability"
+	{
+		"en"				"Free yourself when ensnared by a special infected."
+	}
+	"stagger Disabled"
+	{
+		"en"				"Free yourself when ensnared by a special infected."
+	}
 	"firewall Active Ability"
 	{
 		"en"				"Unleash an ultimate ability, setting yourself\nand all enemies around you ablaze."
@@ -5793,7 +5933,7 @@
 	}
 	"transference ability"
 	{
-		"en"				"(Equippable)Transference"
+		"en"				"(AB)Transference"
 	}
 	"transference info"
 	{
@@ -5805,7 +5945,7 @@
 	}
 	"healers embrace ability"
 	{
-		"en"				"(Equippable)Healers Embrace"
+		"en"				"(AB)Healers Embrace"
 	}
 	"healers embrace info"
 	{
@@ -5817,7 +5957,7 @@
 	}
 	"phoenix ability"
 	{
-		"en"				"(Equippable)Rebirth"
+		"en"				"(AB)Rebirth"
 	}
 	"phoenix info"
 	{
@@ -5829,7 +5969,7 @@
 	}
 	"presstheattack ability"
 	{
-		"en"				"(Equippable)Press-The-Attack"
+		"en"				"(AB)Press-The-Attack"
 	}
 	"presstheattack info"
 	{
@@ -5841,7 +5981,7 @@
 	}
 	"rocketeer ability"
 	{
-		"en"				"(Equippable)Rocketeer"
+		"en"				"(AB)Rocketeer"
 	}
 	"rocketeer info"
 	{
@@ -5853,7 +5993,7 @@
 	}
 	"sharp eye ability"
 	{
-		"en"				"(Equippable)Sharp Eye"
+		"en"				"(AB)Sharp Eye"
 	}
 	"sharp eye info"
 	{
@@ -5865,7 +6005,7 @@
 	}
 	"bloodlust ability"
 	{
-		"en"				"(Equippable)Bloodlust"
+		"en"				"(AB)Bloodlust"
 	}
 	"bloodlust info"
 	{
@@ -5877,7 +6017,7 @@
 	}
 	"fade ability"
 	{
-		"en"				"(Equippable)Fade"
+		"en"				"(AB)Fade"
 	}
 	"fade info"
 	{
@@ -5901,7 +6041,7 @@
 	}
 	"knife ability"
 	{
-		"en"				"(Equippable)Knife"
+		"en"				"(AB)Knife"
 	}
 	"knife info"
 	{
@@ -5913,7 +6053,7 @@
 	}
 	"basilisk ability"
 	{
-		"en"				"(Equippable)Basilisk Armor"
+		"en"				"(AB)Basilisk Armor"
 	}
 	"last chance ab"
 	{
@@ -5921,7 +6061,7 @@
 	}
 	"last chance ability"
 	{
-		"en"				"(Equippable)Last Chance"
+		"en"				"(AB)Last Chance"
 	}
 	"last chance info"
 	{
@@ -5933,7 +6073,7 @@
 	}
 	"second holster ability"
 	{
-		"en"				"(Equippable)Second Holster"
+		"en"				"(AB)Second Holster"
 	}
 	"second holster info"
 	{
@@ -5945,7 +6085,7 @@
 	}
 	"featherweight ability"
 	{
-		"en"				"(Equippable)Featherweight"
+		"en"				"(AB)Featherweight"
 	}
 	"featherweight info"
 	{
@@ -5957,7 +6097,7 @@
 	}
 	"meditation ability"
 	{
-		"en"				"(Equippable)Meditation"
+		"en"				"(AB)Meditation"
 	}
 	"meditation info"
 	{
@@ -5969,7 +6109,7 @@
 	}
 	"refresh ability"
 	{
-		"en"				"(Equippable)Refresh"
+		"en"				"(AB)Refresh"
 	}
 	"refresh info"
 	{
@@ -5981,7 +6121,7 @@
 	}
 	"refresh aura"
 	{
-		"en"				"(Equippable)Refresh Aura"
+		"en"				"(AB)Refresh Aura"
 	}
 	"refresh aura info"
 	{
@@ -5993,7 +6133,7 @@
 	}
 	"stance ability"
 	{
-		"en"				"(Equippable)Taunt"
+		"en"				"(AB)Taunt"
 	}
 	"stance info"
 	{
@@ -6119,7 +6259,7 @@
 	"enrage in..."
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}Things are going to get really bad in {2}{3}{4}!"
+		"en"				"{1}Infected enrage in... {2}{3}{4}!"
 	}
 	"time until things get bad"
 	{

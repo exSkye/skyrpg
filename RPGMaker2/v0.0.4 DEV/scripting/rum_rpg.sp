@@ -24,7 +24,6 @@
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  */
-
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -40,7 +39,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"beta v1.0.6"
+#define PLUGIN_VERSION				"v1.1.2"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -103,6 +102,218 @@ public Plugin:myinfo = {
 	version = PLUGIN_VERSION,
 	url = "",
 };
+// trying to make it a bit easier to read...
+// for the talentmenu.cfg
+#define ABILITY_TYPE						0
+#define COMPOUNDING_TALENT					1
+#define COMPOUND_WITH						2
+#define ACTIVATOR_ABILITY_EFFECTS			3
+#define TARGET_ABILITY_EFFECTS				4
+#define SECONDARY_EFFECTS					5
+#define WEAPONS_PERMITTED					6
+#define HEALTH_PERCENTAGE_REQ				7
+#define COHERENCY_RANGE						8
+#define COHERENCY_MAX						9
+#define COHERENCY_REQ						10
+#define HEALTH_PERCENTAGE_REQ_TAR_REMAINING	11
+#define HEALTH_PERCENTAGE_REQ_TAR_MISSING	12
+#define ACTIVATOR_TEAM_REQ					13
+#define ACTIVATOR_CLASS_REQ					14
+#define REQUIRES_ZOOM						15
+#define COMBAT_STATE_REQ					16
+#define PLAYER_STATE_REQ					17
+#define PASSIVE_ABILITY						18
+#define REQUIRES_HEADSHOT					19
+#define REQUIRES_LIMBSHOT					20
+#define REQUIRES_CROUCHING					21
+#define ACTIVATOR_STAGGER_REQ				22
+#define TARGET_STAGGER_REQ					23
+#define CANNOT_TARGET_SELF					24
+#define MUST_BE_JUMPING_OR_FLYING			25
+#define VOMIT_STATE_REQ_ACTIVATOR			26
+#define VOMIT_STATE_REQ_TARGET				27
+#define REQ_ADRENALINE_EFFECT				28
+#define DISABLE_IF_WEAKNESS					29
+#define REQ_WEAKNESS						30
+#define TARGET_CLASS_REQ					31
+#define CLEANSE_TRIGGER						32
+#define REQ_CONSECUTIVE_HITS				33
+#define BACKGROUND_TALENT					34
+#define STATUS_EFFECT_MULTIPLIER			35
+#define MULTIPLY_RANGE						36
+#define MULTIPLY_COMMONS					37
+#define MULTIPLY_SUPERS						38
+#define MULTIPLY_WITCHES					39
+#define MULTIPLY_SURVIVORS					40
+#define MULTIPLY_SPECIALS					41
+#define STRENGTH_INCREASE_ZOOMED			42
+#define STRENGTH_INCREASE_TIME_CAP			43
+#define STRENGTH_INCREASE_TIME_REQ			44
+#define ZOOM_TIME_HAS_MINIMUM_REQ			45
+#define HOLDING_FIRE_STRENGTH_INCREASE		46
+#define DAMAGE_TIME_HAS_MINIMUM_REQ			47
+#define HEALTH_PERCENTAGE_REQ_MISSING		48
+#define HEALTH_PERCENTAGE_REQ_MISSING_MAX	49
+#define IS_OWN_TALENT						50
+#define SECONDARY_ABILITY_TRIGGER			51
+#define TARGET_IS_SELF						52
+#define PRIMARY_AOE							53
+#define SECONDARY_AOE						54
+#define GET_TALENT_NAME						55
+#define GET_TRANSLATION						56
+#define GOVERNING_ATTRIBUTE					57
+#define TALENT_TREE_CATEGORY				58
+#define PART_OF_MENU_NAMED					59
+#define GET_TALENT_LAYER					60
+#define IS_TALENT_ABILITY					61
+#define ACTION_BAR_NAME						62
+#define NUM_TALENTS_REQ						63
+#define TALENT_UPGRADE_STRENGTH_VALUE		64
+#define TALENT_UPGRADE_SCALE				65
+#define TALENT_COOLDOWN_STRENGTH_VALUE		66
+#define TALENT_COOLDOWN_SCALE				67
+#define TALENT_ACTIVE_STRENGTH_VALUE		68
+#define TALENT_ACTIVE_SCALE					69
+#define COOLDOWN_GOVERNOR_OF_TALENT			70
+#define TALENT_STRENGTH_HARD_LIMIT			71
+#define TALENT_IS_EFFECT_OVER_TIME			72
+#define SPECIAL_AMMO_TALENT_STRENGTH		73
+#define LAYER_COUNTING_IS_IGNORED			74
+#define IS_ATTRIBUTE						75
+#define HIDE_TRANSLATION					76
+#define TALENT_ROLL_CHANCE					77
+// spells
+#define SPELL_INTERVAL_PER_POINT			78
+#define SPELL_INTERVAL_FIRST_POINT			79
+#define SPELL_RANGE_PER_POINT				80
+#define SPELL_RANGE_FIRST_POINT				81
+#define SPELL_STAMINA_PER_POINT				82
+#define SPELL_BASE_STAMINA_REQ				83
+#define SPELL_COOLDOWN_PER_POINT			84
+#define SPELL_COOLDOWN_FIRST_POINT			85
+#define SPELL_COOLDOWN_START				86
+#define SPELL_ACTIVE_TIME_PER_POINT			87
+#define SPELL_ACTIVE_TIME_FIRST_POINT		88
+#define SPELL_AMMO_EFFECT					89
+#define SPELL_EFFECT_MULTIPLIER				90
+// abilities
+#define ABILITY_ACTIVE_EFFECT				91
+#define ABILITY_PASSIVE_EFFECT				92
+#define ABILITY_COOLDOWN_EFFECT				93
+#define ABILITY_IS_REACTIVE					94
+#define ABILITY_TEAMS_ALLOWED				95
+#define ABILITY_COOLDOWN_STRENGTH			96
+#define ABILITY_MAXIMUM_PASSIVE_MULTIPLIER	97
+#define ABILITY_MAXIMUM_ACTIVE_MULTIPLIER	98
+#define ABILITY_ACTIVE_STATE_ENSNARE_REQ	99
+#define ABILITY_ACTIVE_STRENGTH				100
+#define ABILITY_PASSIVE_IGNORES_COOLDOWN	101
+#define ABILITY_PASSIVE_STATE_ENSNARE_REQ	102
+#define ABILITY_PASSIVE_STRENGTH			103
+#define ABILITY_PASSIVE_ONLY				104
+#define ABILITY_IS_SINGLE_TARGET			105
+#define ABILITY_DRAW_DELAY					106
+#define ABILITY_ACTIVE_DRAW_DELAY			107
+#define ABILITY_PASSIVE_DRAW_DELAY			108
+#define ATTRIBUTE_MULTIPLIER				109
+#define ATTRIBUTE_USE_THESE_MULTIPLIERS		110
+#define ATTRIBUTE_BASE_MULTIPLIER			111
+#define ATTRIBUTE_DIMINISHING_MULTIPLIER	112
+#define ATTRIBUTE_DIMINISHING_RETURNS		113
+#define HUD_TEXT_BUFF_EFFECT_OVER_TIME		114
+#define IS_SUB_MENU_OF_TALENTCONFIG			115
+#define IS_TALENT_TYPE						116
+#define ITEM_ITEM_ID						117
+#define ITEM_RARITY							118
+#define OLD_ATTRIBUTE_EXPERIENCE_START		119
+#define OLD_ATTRIBUTE_EXPERIENCE_MULTIPLIER	120
+#define IS_AURA_INSTEAD						121
+#define EFFECT_COOLDOWN_TRIGGER				122
+#define EFFECT_INACTIVE_TRIGGER				123
+#define ABILITY_REACTIVE_TYPE				124
+#define ABILITY_ACTIVE_TIME					125
+#define ABILITY_REQ_NO_ENSNARE				126
+#define ABILITY_SKY_LEVEL_REQ				127
+#define ABILITY_TOGGLE_EFFECT				128
+#define SPELL_HUMANOID_ONLY					129
+#define SPELL_INANIMATE_ONLY				130
+#define SPELL_ALLOW_COMMONS					131
+#define SPELL_ALLOW_SPECIALS				132
+#define SPELL_ALLOW_SURVIVORS				133
+#define ABILITY_COOLDOWN					134
+#define EFFECT_ACTIVATE_PER_TICK			135
+#define EFFECT_SECONDARY_EPT_ONLY			136
+#define ABILITY_ACTIVE_END_ABILITY_TRIGGER	137
+#define ABILITY_COOLDOWN_END_TRIGGER		138
+#define ABILITY_DOES_DAMAGE					139
+#define TALENT_IS_SPELL						140
+#define TALENT_MINIMUM_LEVEL_REQ			141
+#define ABILITY_TOGGLE_STRENGTH				142
+// because this value changes when we increase the static list of key positions
+// we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
+#define TALENT_FIRST_RANDOM_KEY_POSITION	143
+
+// for super commons.
+#define SUPER_COMMON_MAX_ALLOWED			0
+#define SUPER_COMMON_AURA_EFFECT			1
+#define SUPER_COMMON_RANGE_MIN				2
+#define SUPER_COMMON_RANGE_PLAYER_LEVEL		3
+#define SUPER_COMMON_RANGE_MAX				4
+#define SUPER_COMMON_COOLDOWN				5
+#define SUPER_COMMON_AURA_STRENGTH			6
+#define SUPER_COMMON_STRENGTH_TARGET		7
+#define SUPER_COMMON_LEVEL_STRENGTH			8
+#define SUPER_COMMON_SPAWN_CHANCE			9
+#define SUPER_COMMON_DRAW_TYPE				10
+#define SUPER_COMMON_FIRE_IMMUNITY			11
+#define SUPER_COMMON_MODEL_SIZE				12
+#define SUPER_COMMON_GLOW					13
+#define SUPER_COMMON_GLOW_RANGE				14
+#define SUPER_COMMON_GLOW_COLOUR			15
+#define SUPER_COMMON_BASE_HEALTH			16
+#define SUPER_COMMON_HEALTH_PER_LEVEL		17
+#define SUPER_COMMON_NAME					18
+#define SUPER_COMMON_CHAIN_REACTION			19
+#define SUPER_COMMON_DEATH_EFFECT			20
+#define SUPER_COMMON_DEATH_BASE_TIME		21
+#define SUPER_COMMON_DEATH_MAX_TIME			22
+#define SUPER_COMMON_DEATH_INTERVAL			23
+#define SUPER_COMMON_DEATH_MULTIPLIER		24
+#define SUPER_COMMON_LEVEL_REQ				25
+#define SUPER_COMMON_FORCE_MODEL			26
+#define SUPER_COMMON_DAMAGE_EFFECT			27
+#define SUPER_COMMON_ENEMY_MULTIPLICATION	28
+#define SUPER_COMMON_ONFIRE_BASE_TIME		29
+#define SUPER_COMMON_ONFIRE_LEVEL			30
+#define SUPER_COMMON_ONFIRE_MAX_TIME		31
+#define SUPER_COMMON_ONFIRE_INTERVAL		32
+#define SUPER_COMMON_STRENGTH_SPECIAL		33
+#define SUPER_COMMON_RAW_STRENGTH			34
+#define SUPER_COMMON_RAW_COMMON_STRENGTH	35
+#define SUPER_COMMON_RAW_PLAYER_STRENGTH	36
+
+#define SUPER_COMMON_FIRST_RANDOM_KEY_POS	37
+
+// for the events.cfg
+#define EVENT_PERPETRATOR					0
+#define EVENT_VICTIM						1
+#define EVENT_SAMETEAM_TRIGGER				2
+#define EVENT_PERPETRATOR_TEAM_REQ			3
+#define EVENT_PERPETRATOR_ABILITY_TRIGGER	4
+#define EVENT_VICTIM_TEAM_REQ				5
+#define EVENT_VICTIM_ABILITY_TRIGGER		6
+#define EVENT_DAMAGE_TYPE					7
+#define EVENT_GET_HEALTH					8
+#define EVENT_DAMAGE_AWARD					9
+#define EVENT_GET_ABILITIES					10
+#define EVENT_IS_PLAYER_NOW_IT				11
+#define EVENT_IS_ORIGIN						12
+#define EVENT_IS_DISTANCE					13
+#define EVENT_MULTIPLIER_POINTS				14
+#define EVENT_MULTIPLIER_EXPERIENCE			15
+#define EVENT_IS_SHOVED						16
+#define EVENT_IS_BULLET_IMPACT				17
+#define EVENT_ENTERED_SAFEROOM				18
 
 new iHealingPlayerInCombatPutInCombat;
 new Handle:TimeOfEffectOverTime;
@@ -733,10 +944,8 @@ new iEnrageAdvertisement;
 new iJoinGroupAdvertisement;
 new iNotifyEnrage;
 new String:sBackpackModel[64];
-
 new String:ItemDropArraySize[64];
 new bool:bIsNewPlayer[MAXPLAYERS + 1];
-
 new Handle:MyGroup[MAXPLAYERS + 1];
 new iCommonsLimitUpper;
 new bool:bIsInCheckpoint[MAXPLAYERS + 1];
@@ -752,20 +961,18 @@ new OverHealth[MAXPLAYERS + 1];
 new bool:bHealthIsSet[MAXPLAYERS + 1];
 new iIsLevelingPaused[MAXPLAYERS + 1];
 new iIsBulletTrails[MAXPLAYERS + 1];
-
 new Handle:ActiveStatuses[MAXPLAYERS + 1];
 new InfectedTalentLevel;
 new Float:fEnrageModifier;
 new Float:LastAttackTime[MAXPLAYERS + 1];
-
 new Handle:hWeaponList[MAXPLAYERS + 1];
 new Handle:GCVKeys[MAXPLAYERS + 1];
 new Handle:GCVValues[MAXPLAYERS + 1];
 new Handle:GCVSection[MAXPLAYERS + 1];
 new MyStatusEffects[MAXPLAYERS + 1];
 new iShowLockedTalents;
-new Handle:GCMKeys[MAXPLAYERS + 1];
-new Handle:GCMValues[MAXPLAYERS + 1];
+//new Handle:GCMKeys[MAXPLAYERS + 1];
+//new Handle:GCMValues[MAXPLAYERS + 1];
 new Handle:PassiveStrengthKeys[MAXPLAYERS + 1];
 new Handle:PassiveStrengthValues[MAXPLAYERS + 1];
 new Handle:PassiveTalentName[MAXPLAYERS + 1];
@@ -773,15 +980,8 @@ new Handle:UpgradeCategoryKeys[MAXPLAYERS + 1];
 new Handle:UpgradeCategoryValues[MAXPLAYERS + 1];
 new Handle:UpgradeCategoryName[MAXPLAYERS + 1];
 new iChaseEnt[MAXPLAYERS + 1];
-//new Float:fSpellBulletStrength;
-//new Float:fSpellEnduranceMultiplier;
 new iTeamRatingRequired;
 new Float:fTeamRatingBonus;
-//new iNoobAssistanceLevel;
-//new iNoobAssistance[MAXPLAYERS + 1];
-//new Float:fNoobAssistanceResistance;
-//new Float:fNoobAssistanceHealing;
-//new Float:fNoobAssistanceRecovery;
 new Float:fRatingPercentLostOnDeath;
 new PlayerCurrentMenuLayer[MAXPLAYERS + 1];
 new iMaxLayers;
@@ -811,7 +1011,6 @@ new Handle:CooldownEffectTriggerKeys[MAXPLAYERS + 1];
 new Handle:CooldownEffectTriggerValues[MAXPLAYERS + 1];
 new Handle:IsSpellAnAuraKeys[MAXPLAYERS + 1];
 new Handle:IsSpellAnAuraValues[MAXPLAYERS + 1];
-//new Float:fStaggerTime;
 new Float:fStaggerTickrate;
 new Handle:StaggeredTargets;
 new Handle:staggerBuffer;
@@ -898,6 +1097,8 @@ new Float:fStaminaPerSkyLevel;
 new LastBulletCheck[MAXPLAYERS + 1];
 new iSpecialInfectedMinimum;
 new iEndRoundIfNoHealthySurvivors;
+new Float:fAcidDamagePlayerLevel;
+new Float:fAcidDamageSupersPlayerLevel;
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -939,7 +1140,6 @@ stock DoGunStuff(client) {
 }
 
 stock CMD_OpenRPGMenu(client) {
-	//DoGunStuff(client);
 	ClearArray(Handle:MenuStructure[client]);	// keeps track of the open menus.
 	//VerifyAllActionBars(client);	// Because.
 	if (LoadProfileRequestName[client] != -1) {
@@ -982,17 +1182,19 @@ public OnPluginStart() {
 	RegAdminCmd("debugrpg", Cmd_debugrpg, ADMFLAG_KICK);
 	RegAdminCmd("resettpl", Cmd_ResetTPL, ADMFLAG_KICK);
 	RegAdminCmd("origin", Cmd_GetOrigin, ADMFLAG_KICK);
+	RegAdminCmd("deleteprofiles", CMD_DeleteProfiles, ADMFLAG_ROOT);
 	// These are mandatory because of quick commands, so I hardcode the entries.
 	RegConsoleCmd("say", CMD_ChatCommand);
 	RegConsoleCmd("say_team", CMD_TeamChatCommand);
 	RegConsoleCmd("callvote", CMD_BlockVotes);
+	RegConsoleCmd("votemap", CMD_BlockIfReadyUpIsActive);
 	RegConsoleCmd("vote", CMD_BlockVotes);
 	//RegConsoleCmd("talentupgrade", CMD_TalentUpgrade);
 	RegConsoleCmd("loadoutname", CMD_LoadoutName);
 	RegConsoleCmd("stuck", CMD_IAmStuck);
 	RegConsoleCmd("ff", CMD_TogglePvP);
 	RegConsoleCmd("revive", CMD_RespawnYumYum);
-	RegConsoleCmd("abar", CMD_ActionBar);
+	//RegConsoleCmd("abar", CMD_ActionBar);
 	RegConsoleCmd("handicap", CMD_Handicap);
 	RegAdminCmd("firesword", CMD_FireSword, ADMFLAG_KICK);
 	RegAdminCmd("fbegin", CMD_FBEGIN, ADMFLAG_KICK);
@@ -1060,7 +1262,16 @@ public Action:Cmd_GetOrigin(client, args) {
 	return Plugin_Handled;
 }
 
+public Action:CMD_DeleteProfiles(client, args) {
+	if (DeleteAllProfiles(client)) PrintToChat(client, "all saved profiles are deleted.");
+	return Plugin_Handled;
+}
 public Action:CMD_BlockVotes(client, args) {
+	return Plugin_Handled;
+}
+
+public Action:CMD_BlockIfReadyUpIsActive(client, args) {
+	if (!b_IsRoundIsOver) return Plugin_Continue;
 	return Plugin_Handled;
 }
 
@@ -1244,8 +1455,8 @@ stock OnMapStartFunc() {
 			if (GetCategoryStrengthKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetCategoryStrengthKeys[i] = CreateArray(32);
 			if (GetCategoryStrengthValues[i] == INVALID_HANDLE || !b_FirstLoad) GetCategoryStrengthValues[i] = CreateArray(32);
 			if (GetCategoryStrengthSection[i] == INVALID_HANDLE || !b_FirstLoad) GetCategoryStrengthSection[i] = CreateArray(32);
-			if (GCMKeys[i] == INVALID_HANDLE || !b_FirstLoad) GCMKeys[i] = CreateArray(32);
-			if (GCMValues[i] == INVALID_HANDLE || !b_FirstLoad) GCMValues[i] = CreateArray(32);
+			//if (GCMKeys[i] == INVALID_HANDLE || !b_FirstLoad) GCMKeys[i] = CreateArray(32);
+			//if (GCMValues[i] == INVALID_HANDLE || !b_FirstLoad) GCMValues[i] = CreateArray(32);
 			if (PassiveStrengthKeys[i] == INVALID_HANDLE || !b_FirstLoad) PassiveStrengthKeys[i] = CreateArray(32);
 			if (PassiveStrengthValues[i] == INVALID_HANDLE || !b_FirstLoad) PassiveStrengthValues[i] = CreateArray(32);
 			if (PassiveTalentName[i] == INVALID_HANDLE || !b_FirstLoad) PassiveTalentName[i] = CreateArray(32);
@@ -1607,6 +1818,7 @@ public ReadyUp_ReadyUpStart() {
 	}
 	for (new i = 1; i <= MaxClients; i++) {
 		if (IsClientInGame(i)) {
+			if (CurrentMapPosition == 0 && GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
 			//if (GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
 			if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 			//if (GetClientTeam(i) == TEAM_SURVIVOR && !b_IsLoaded[i]) IsClientLoadedEx(i);
@@ -1759,7 +1971,7 @@ stock bool:PlayerHasWeakness(client) {
 	if (IsSpecialCommonInRange(client, 'w')) return true;
 	if (!b_IsCheckpointDoorStartOpened || DoomTimer != 0) return true;
 	if (IsClientInRangeSpecialAmmo(client, "W", true) == -2.0) return true;	// the player is not weak if inside cleansing ammo.*
-	if (GetTalentStrengthByKeyValue(client, "activator ability effects?", "weakness") > 0) return true;
+	if (GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "weakness") > 0) return true;
 	if (LastDeathTime[client] > GetEngineTime()) return true;
 	return false;
 }
@@ -1932,7 +2144,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 	}
 }
 
-
 stock RefreshSurvivorBots() {
 	for (new i = 1; i <= MaxClients; i++) {
 		if (IsSurvivorBot(i)) {
@@ -2002,8 +2213,8 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 				CastSection[client]			= GetArrayCell(a_Menu_Talents, i, 2);
 				GetArrayString(Handle:CastSection[client], 0, TalentName, sizeof(TalentName));
 				if (!StrEqual(TalentName, actionpos)) continue;
-				AbilityTalent = GetKeyValueInt(CastKeys[client], CastValues[client], "is ability?");
-				if (GetKeyValueInt(CastKeys[client], CastValues[client], "passive only?") == 1) continue;
+				AbilityTalent = GetKeyValueIntAtPos(CastValues[client], IS_TALENT_ABILITY);
+				if (GetKeyValueIntAtPos(CastValues[client], ABILITY_PASSIVE_ONLY) == 1) continue;
 				if (AbilityTalent != 1 && GetTalentStrength(client, actionpos) < 1) {
 					// talent exists but user has no points in it from a respec or whatever so we remove it.
 					// we don't tell them either, next time they use it they'll find out.
@@ -2011,8 +2222,8 @@ stock CastActionEx(client, String:t_actionpos[] = "none", TheSize, pos = -1) {
 					SetArrayString(Handle:ActionBar[client], pos, actionpos);
 				}
 				else {
-					RequiresTarget = GetKeyValueInt(CastKeys[client], CastValues[client], "is single target?");
-					visualDelayTime = GetKeyValueFloat(CastKeys[client], CastValues[client], "draw delay?");
+					RequiresTarget = GetKeyValueIntAtPos(CastValues[client], ABILITY_IS_SINGLE_TARGET);
+					visualDelayTime = GetKeyValueFloatAtPos(CastValues[client], ABILITY_DRAW_DELAY);
 					if (visualDelayTime < 1.0) visualDelayTime = 1.0;
 					if (RequiresTarget > 0) {
 						//GetClientAimTargetEx(client, actionpos, TheSize, true);
@@ -2295,9 +2506,7 @@ stock VerifyHandicap(client) {
 }
 
 public Action:CMD_Handicap(client, args) {
-
 	if (iIsRatingEnabled != 1) return Plugin_Handled;
-
 	new iMaxHandicap = GetMaxHandicap(client);
 	new iMinHandicap = RatingPerLevel;
 	if (RatingHandicap[client] < iMinHandicap) RatingHandicap[client] = iMinHandicap;
@@ -2307,15 +2516,11 @@ public Action:CMD_Handicap(client, args) {
 		PrintToChat(client, "%T", "handicap range", client, white, orange, iMinHandicap, white, orange, iMaxHandicap);
 	}
 	else {
-
 		if (!bIsHandicapLocked[client]) {
-
 			decl String:arg[10];
 			GetCmdArg(1, arg, sizeof(arg));
 			new iSetHandicap = StringToInt(arg);
-
 			if (iSetHandicap >= iMinHandicap && iSetHandicap <= iMaxHandicap) {
-
 				RatingHandicap[client] = iSetHandicap;
 			}
 			else if (iSetHandicap < iMinHandicap) RatingHandicap[client] = iMinHandicap;
@@ -2325,6 +2530,7 @@ public Action:CMD_Handicap(client, args) {
 			PrintToChat(client, "%T", "player handicap locked", client, orange);
 		}
 	}
+
 	PrintToChat(client, "%T", "player handicap", client, blue, orange, green, RatingHandicap[client]);
 	return Plugin_Handled;
 }
@@ -2351,7 +2557,6 @@ public Action:CMD_ActionBar(client, args) {
 		DisplayActionBar[client] = false;
 		ActionBarSlot[client] = -1;
 	}
-
 	return Plugin_Handled;
 }
 
@@ -2483,15 +2688,12 @@ stock CallRoundIsOver() {
 		CreateTimer(1.0, Timer_SaveAndClear, _, TIMER_FLAG_NO_MAPCHANGE);
 		b_IsCheckpointDoorStartOpened	= false;
 		RemoveImmunities(-1);
-
 		ClearArray(Handle:LoggedUsers);		// when a round ends, logged users are removed.
 		b_IsActiveRound = false;
 		MapRoundsPlayed++;
-
 		new Seconds			= GetTime() - RoundTime;
 		new Minutes			= 0;
 		while (Seconds >= 60) {
-
 			Minutes++;
 			Seconds -= 60;
 		}
@@ -2587,7 +2789,6 @@ public ReadyUp_ParseConfigFailed(String:config[], String:error[]) {
 }
 
 public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String:configname[], keyCount) {
-
 	//PrintToChatAll("Size: %d config: %s", GetArraySize(Handle:key), configname);
 	if (!StrEqual(configname, CONFIG_MAIN) &&
 		!StrEqual(configname, CONFIG_EVENTS) &&
@@ -2622,10 +2823,8 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 	}
 	new a_Size						= GetArraySize(key);
 	for (new i = 0; i < a_Size; i++) {
-
 		GetArrayString(Handle:key, i, s_key, sizeof(s_key));
 		GetArrayString(Handle:value, i, s_value, sizeof(s_value));
-
 		PushArrayString(TalentKeys, s_key);
 		PushArrayString(TalentValues, s_value);
 
@@ -2639,7 +2838,7 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 				LogMessage("=====\t\tRPG MODE SET TO %d\t\t=====", CurrentRPGMode);
 			}
 		}
-		//} else {
+
 		if (StrEqual(s_key, "EOM")) {
 
 			GetArrayString(Handle:section, i, s_section, sizeof(s_section));
@@ -2743,14 +2942,10 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		RegConsoleCmd(thetext, CMD_ChatTag);
 		GetConfigValue(thetext, sizeof(thetext), "share points command?");
 		RegConsoleCmd(thetext, CMD_SharePoints);
-		/*GetConfigValue(thetext, sizeof(thetext), "toggle ammo command?");
-		RegConsoleCmd(thetext, CMD_ToggleAmmo);
-		GetConfigValue(thetext, sizeof(thetext), "cycle ammo forward command?");
-		RegConsoleCmd(thetext, CMD_CycleForwardAmmo);
-		GetConfigValue(thetext, sizeof(thetext), "cycle ammo backward command?");*/
-		//RegConsoleCmd(thetext, CMD_CycleBackwardAmmo);
 		GetConfigValue(thetext, sizeof(thetext), "buy menu command?");
 		RegConsoleCmd(thetext, CMD_BuyMenu);
+		GetConfigValue(thetext, sizeof(thetext), "abilitybar menu command?");
+		RegConsoleCmd(thetext, CMD_ActionBar);
 		//RegConsoleCmd("collect", CMD_CollectBonusExperience);
 		RegConsoleCmd("myweapon", CMD_MyWeapon);
 		GetConfigValue(thetext, sizeof(thetext), "companion command?");
@@ -2778,34 +2973,28 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		Faster than searching every time.
 	*/
 	if (StrEqual(configname, CONFIG_MENUTALENTS)) {
-
 		ClearArray(ItemDropArray);
 		new mySize = GetArraySize(a_Menu_Talents);
 		new curSize= -1;
 		new pos = 0;
-
 		for (new i = 0; i <= iRarityMax; i++) {
 			for (new j = 0; j < mySize; j++) {
-				PreloadKeys				= GetArrayCell(a_Menu_Talents, j, 0);
+				//PreloadKeys				= GetArrayCell(a_Menu_Talents, j, 0);
 				PreloadValues			= GetArrayCell(a_Menu_Talents, j, 1);
-				if (GetKeyValueInt(PreloadKeys, PreloadValues, "is item?") == 1) {
-					//PushArrayCell(ItemDropArray, i);
-					if (GetKeyValueInt(PreloadKeys, PreloadValues, "rarity?") == i) {
-						curSize = GetArraySize(ItemDropArray);
-						if (pos == curSize) ResizeArray(ItemDropArray, curSize + 1);
-						SetArrayCell(ItemDropArray, pos, j, i);
-						pos++;
-					}
-				}
+				if (GetKeyValueIntAtPos(PreloadValues, ITEM_ITEM_ID) != 1) continue;
+				//PushArrayCell(ItemDropArray, i);
+				if (GetKeyValueIntAtPos(PreloadValues, ITEM_RARITY) != i) continue;
+				curSize = GetArraySize(ItemDropArray);
+				if (pos == curSize) ResizeArray(ItemDropArray, curSize + 1);
+				SetArrayCell(ItemDropArray, pos, j, i);
+				pos++;
 			}
-
 			if (i == 0) Format(ItemDropArraySize, sizeof(ItemDropArraySize), "%d", pos);
 			else Format(ItemDropArraySize, sizeof(ItemDropArraySize), "%s,%d", ItemDropArraySize, pos);
 			pos = 0;
 		}
 	}
 }
-
 /*
 	These specific variables can be called the same way, every time, so we declare them globally.
 	These are all from the config.cfg (main config file)
@@ -2882,6 +3071,8 @@ stock LoadMainConfig() {
 	fCommonDirectorPoints				= GetConfigValueFloat("common infected director points?");
 	iDisplayHealthBars					= GetConfigValueInt("display health bars?");
 	iMaxDifficultyLevel					= GetConfigValueInt("max difficulty level?");
+
+
 	decl String:text[64], String:text2[64], String:text3[64], String:text4[64];
 	for (new i = 0; i < 7; i++) {
 		if (i == 6) {
@@ -2901,6 +3092,8 @@ stock LoadMainConfig() {
 		iBaseSpecialDamage[i]			= GetConfigValueInt(text3);
 		iBaseSpecialInfectedHealth[i]	= GetConfigValueInt(text4);
 	}
+	fAcidDamagePlayerLevel				= GetConfigValueFloat("acid damage spitter player level?");
+	fAcidDamageSupersPlayerLevel		= GetConfigValueFloat("acid damage supers player level?");
 	fPointsMultiplierInfected			= GetConfigValueFloat("points multiplier infected?");
 	fPointsMultiplier					= GetConfigValueFloat("points multiplier survivor?");
 	fHealingMultiplier					= GetConfigValueFloat("experience multiplier healing?");
@@ -3036,7 +3229,6 @@ stock LoadMainConfig() {
 	fStaminaPerPlayerLevel				= GetConfigValueFloat("stamina increase per player level?");
 	fStaminaPerSkyLevel					= GetConfigValueFloat("stamina increase per prestige level?");
 	iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?")
-
 	//if (fMaxDamageResistance < 0.0) fMaxDamageResistance = 0.9;
 	//iDropAcidOnLastDebuffDrop			= GetConfigValueInt("do prestige players poo acid on last tick?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
@@ -3052,40 +3244,6 @@ public Action:CMD_BuyMenu(client, args) {
 	if (iRPGMode < 0 || iRPGMode == 1 && b_IsActiveRound) return Plugin_Handled;
 	//if (StringToInt(GetConfigValue("rpg mode?")) != 1) 
 	BuildPointsMenu(client, "Buy Menu", "rpg/points.cfg");
-	return Plugin_Handled;
-}
-
-public Action:CMD_ToggleAmmo(client, args) {
-	if (HasSpecialAmmo(client) && !bIsSurvivorFatigue[client]) {
-		if (IsSpecialAmmoEnabled[client][0] == 1.0) {
-			IsSpecialAmmoEnabled[client][0] = 0.0;
-			//LastTarget[client] = -1;
-			PrintToChat(client, "%T", "Special Ammo Disabled", client, white, orange);
-		}
-		else {
-
-			IsSpecialAmmoEnabled[client][0] = 1.0;
-			PrintToChat(client, "%T", "Special Ammo Enabled", client, white, green);
-		}
-	}
-	else {
-
-		//	If the user doesn't have special ammo...
-		PrintToChat(client, "%T", "No Special Ammo", client, white, orange, white);
-		IsSpecialAmmoEnabled[client][0] = 0.0;
-	}
-	return Plugin_Handled;
-}
-
-public Action:CMD_CycleForwardAmmo(client, args) {
-
-	if (HasSpecialAmmo(client) && !bIsSurvivorFatigue[client]) CycleSpecialAmmo(client, true);
-	return Plugin_Handled;
-}
-
-public Action:CMD_CycleBackwardAmmo(client, args) {
-
-	if (HasSpecialAmmo(client) && !bIsSurvivorFatigue[client]) CycleSpecialAmmo(client, false);
 	return Plugin_Handled;
 }
 
@@ -3173,21 +3331,1099 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 	decl String:key[64];
 	decl String:value[64];
 	new a_Size = GetArraySize(Keys);
-
 	for (new i = last; i < a_Size; i++) {
 
 		GetArrayString(Handle:Keys, i, key, sizeof(key));
 		GetArrayString(Handle:Values, i, value, sizeof(value));
+		//if (StrEqual(key, "EOM")) continue;	// we don't care about the EOM key at this point.
 
 		PushArrayString(TalentKey, key);
 		PushArrayString(TalentValue, value);
 	}
-
+	new pos = 0;
+	new sortSize = 0;
+	// Sort the keys/values for TALENTS ONLY /w.
+	if (StrEqual(Config, CONFIG_MENUTALENTS)) {
+		if (FindStringInArray(TalentKey, "toggle strength?") == -1) {
+			PushArrayString(TalentKey, "toggle strength?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "minimum level required?") == -1) {
+			PushArrayString(TalentKey, "minimum level required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "special ammo?") == -1) {
+			PushArrayString(TalentKey, "special ammo?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "does damage?") == -1) {
+			PushArrayString(TalentKey, "does damage?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cooldown end ability trigger?") == -1) {
+			PushArrayString(TalentKey, "cooldown end ability trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "active end ability trigger?") == -1) {
+			PushArrayString(TalentKey, "active end ability trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "secondary ept only?") == -1) {
+			PushArrayString(TalentKey, "secondary ept only?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "activate effect per tick?") == -1) {
+			PushArrayString(TalentKey, "activate effect per tick?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cooldown?") == -1) {
+			PushArrayString(TalentKey, "cooldown?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "allow survivors?") == -1) {
+			PushArrayString(TalentKey, "allow survivors?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "allow specials?") == -1) {
+			PushArrayString(TalentKey, "allow specials?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "allow commons?") == -1) {
+			PushArrayString(TalentKey, "allow commons?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "inanimate only?") == -1) {
+			PushArrayString(TalentKey, "inanimate only?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "humanoid only?") == -1) {
+			PushArrayString(TalentKey, "humanoid only?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "toggle effect?") == -1) {
+			PushArrayString(TalentKey, "toggle effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "sky level requirement?") == -1) {
+			PushArrayString(TalentKey, "sky level requirement?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cannot be ensnared?") == -1) {
+			PushArrayString(TalentKey, "cannot be ensnared?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "active time?") == -1) {
+			PushArrayString(TalentKey, "active time?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "reactive type?") == -1) {
+			PushArrayString(TalentKey, "reactive type?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "inactive trigger?") == -1) {
+			PushArrayString(TalentKey, "inactive trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cooldown trigger?") == -1) {
+			PushArrayString(TalentKey, "cooldown trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "is aura instead?") == -1) {
+			PushArrayString(TalentKey, "is aura instead?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requirement multiplier?") == -1) {
+			PushArrayString(TalentKey, "requirement multiplier?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "experience start?") == -1) {
+			PushArrayString(TalentKey, "experience start?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "rarity?") == -1) {
+			PushArrayString(TalentKey, "rarity?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "is item?") == -1) {
+			PushArrayString(TalentKey, "is item?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "talent type?") == -1) {
+			PushArrayString(TalentKey, "talent type?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "is sub menu?") == -1) {
+			PushArrayString(TalentKey, "is sub menu?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "buff bar text?") == -1) {
+			PushArrayString(TalentKey, "buff bar text?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "diminishing returns?") == -1) {
+			PushArrayString(TalentKey, "diminishing returns?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "diminishing multiplier?") == -1) {
+			PushArrayString(TalentKey, "diminishing multiplier?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "base multiplier?") == -1) {
+			PushArrayString(TalentKey, "base multiplier?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "use these multipliers?") == -1) {
+			PushArrayString(TalentKey, "use these multipliers?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "attribute?") == -1) {
+			PushArrayString(TalentKey, "attribute?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "passive draw delay?") == -1) {
+			PushArrayString(TalentKey, "passive draw delay?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "draw effect delay?") == -1) {
+			PushArrayString(TalentKey, "draw effect delay?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "draw delay?") == -1) {
+			PushArrayString(TalentKey, "draw delay?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "is single target?") == -1) {
+			PushArrayString(TalentKey, "is single target?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "passive only?") == -1) {
+			PushArrayString(TalentKey, "passive only?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "passive strength?") == -1) {
+			PushArrayString(TalentKey, "passive strength?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "passive requires ensnare?") == -1) {
+			PushArrayString(TalentKey, "passive requires ensnare?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "passive ignores cooldown?") == -1) {
+			PushArrayString(TalentKey, "passive ignores cooldown?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "active strength?") == -1) {
+			PushArrayString(TalentKey, "active strength?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "active requires ensnare?") == -1) {
+			PushArrayString(TalentKey, "active requires ensnare?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "maximum active multiplier?") == -1) {
+			PushArrayString(TalentKey, "maximum active multiplier?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "maximum passive multiplier?") == -1) {
+			PushArrayString(TalentKey, "maximum passive multiplier?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "cooldown strength?") == -1) {
+			PushArrayString(TalentKey, "cooldown strength?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "teams allowed?") == -1) {
+			PushArrayString(TalentKey, "teams allowed?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "reactive ability?") == -1) {
+			PushArrayString(TalentKey, "reactive ability?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cooldown effect?") == -1) {
+			PushArrayString(TalentKey, "cooldown effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "passive effect?") == -1) {
+			PushArrayString(TalentKey, "passive effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "active effect?") == -1) {
+			PushArrayString(TalentKey, "active effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "effect multiplier?") == -1) {
+			PushArrayString(TalentKey, "effect multiplier?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "ammo effect?") == -1) {
+			PushArrayString(TalentKey, "ammo effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "interval per point?") == -1) {
+			PushArrayString(TalentKey, "interval per point?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "interval first point?") == -1) {
+			PushArrayString(TalentKey, "interval first point?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "range per point?") == -1) {
+			PushArrayString(TalentKey, "range per point?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "range first point value?") == -1) {
+			PushArrayString(TalentKey, "range first point value?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "stamina per point?") == -1) {
+			PushArrayString(TalentKey, "stamina per point?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "base stamina required?") == -1) {
+			PushArrayString(TalentKey, "base stamina required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cooldown per point?") == -1) {
+			PushArrayString(TalentKey, "cooldown per point?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cooldown first point?") == -1) {
+			PushArrayString(TalentKey, "cooldown first point?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cooldown start?") == -1) {
+			PushArrayString(TalentKey, "cooldown start?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "active time per point?") == -1) {
+			PushArrayString(TalentKey, "active time per point?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "active time first point?") == -1) {
+			PushArrayString(TalentKey, "active time first point?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "roll chance?") == -1) {
+			PushArrayString(TalentKey, "roll chance?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "hide translation?") == -1) {
+			PushArrayString(TalentKey, "hide translation?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "is attribute?") == -1) {
+			PushArrayString(TalentKey, "is attribute?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "ignore for layer count?") == -1) {
+			PushArrayString(TalentKey, "ignore for layer count?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "effect strength?") == -1) {
+			PushArrayString(TalentKey, "effect strength?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "is effect over time?") == -1) {
+			PushArrayString(TalentKey, "is effect over time?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "talent hard limit?") == -1) {
+			PushArrayString(TalentKey, "talent hard limit?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "governs cooldown of talent named?") == -1) {
+			PushArrayString(TalentKey, "governs cooldown of talent named?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "talent active time scale?") == -1) {
+			PushArrayString(TalentKey, "talent active time scale?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "talent active time strength value?") == -1) {
+			PushArrayString(TalentKey, "talent active time strength value?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "talent cooldown scale?") == -1) {
+			PushArrayString(TalentKey, "talent cooldown scale?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "talent cooldown strength value?") == -1) {
+			PushArrayString(TalentKey, "talent cooldown strength value?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "talent upgrade scale?") == -1) {
+			PushArrayString(TalentKey, "talent upgrade scale?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "talent upgrade strength value?") == -1) {
+			PushArrayString(TalentKey, "talent upgrade strength value?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "required talents required?") == -1) {
+			PushArrayString(TalentKey, "required talents required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "action bar name?") == -1) {
+			PushArrayString(TalentKey, "action bar name?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "is ability?") == -1) {
+			PushArrayString(TalentKey, "is ability?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "layer?") == -1) {
+			PushArrayString(TalentKey, "layer?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "part of menu named?") == -1) {
+			PushArrayString(TalentKey, "part of menu named?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "talent tree category?") == -1) {
+			PushArrayString(TalentKey, "talent tree category?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "governing attribute?") == -1) {
+			PushArrayString(TalentKey, "governing attribute?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "translation?") == -1) {
+			PushArrayString(TalentKey, "translation?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "talent name?") == -1) {
+			PushArrayString(TalentKey, "talent name?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "secondary aoe?") == -1) {
+			PushArrayString(TalentKey, "secondary aoe?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "primary aoe?") == -1) {
+			PushArrayString(TalentKey, "primary aoe?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "target is self?") == -1) {
+			PushArrayString(TalentKey, "target is self?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "secondary ability trigger?") == -1) {
+			PushArrayString(TalentKey, "secondary ability trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "is own talent?") == -1) {
+			PushArrayString(TalentKey, "is own talent?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "health percentage required missing max?") == -1) {
+			PushArrayString(TalentKey, "health percentage required missing max?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "health percentage required missing?") == -1) {
+			PushArrayString(TalentKey, "health percentage required missing?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "no effect if damage time is not met?") == -1) {
+			PushArrayString(TalentKey, "no effect if damage time is not met?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "strength increase while holding fire?") == -1) {
+			PushArrayString(TalentKey, "strength increase while holding fire?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "no effect if zoom time is not met?") == -1) {
+			PushArrayString(TalentKey, "no effect if zoom time is not met?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "strength increase time required?") == -1) {
+			PushArrayString(TalentKey, "strength increase time required?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "strength increase time cap?") == -1) {
+			PushArrayString(TalentKey, "strength increase time cap?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "strength increase while zoomed?") == -1) {
+			PushArrayString(TalentKey, "strength increase while zoomed?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "multiply specials?") == -1) {
+			PushArrayString(TalentKey, "multiply specials?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "multiply survivors?") == -1) {
+			PushArrayString(TalentKey, "multiply survivors?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "multiply witches?") == -1) {
+			PushArrayString(TalentKey, "multiply witches?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "multiply supers?") == -1) {
+			PushArrayString(TalentKey, "multiply supers?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "multiply commons?") == -1) {
+			PushArrayString(TalentKey, "multiply commons?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "multiply range?") == -1) {
+			PushArrayString(TalentKey, "multiply range?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "status effect multiplier?") == -1) {
+			PushArrayString(TalentKey, "status effect multiplier?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "background talent?") == -1) {
+			PushArrayString(TalentKey, "background talent?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "require consecutive hits?") == -1) {
+			PushArrayString(TalentKey, "require consecutive hits?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cleanse trigger?") == -1) {
+			PushArrayString(TalentKey, "cleanse trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target class required?") == -1) {
+			PushArrayString(TalentKey, "target class required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "require weakness?") == -1) {
+			PushArrayString(TalentKey, "require weakness?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "disabled if weakness?") == -1) {
+			PushArrayString(TalentKey, "disabled if weakness?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "require adrenaline effect?") == -1) {
+			PushArrayString(TalentKey, "require adrenaline effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target vomit state required?") == -1) {
+			PushArrayString(TalentKey, "target vomit state required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "vomit state required?") == -1) {
+			PushArrayString(TalentKey, "vomit state required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cannot be touching earth?") == -1) {
+			PushArrayString(TalentKey, "cannot be touching earth?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cannot target self?") == -1) {
+			PushArrayString(TalentKey, "cannot target self?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target stagger required?") == -1) {
+			PushArrayString(TalentKey, "target stagger required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "activator stagger required?") == -1) {
+			PushArrayString(TalentKey, "activator stagger required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires crouching?") == -1) {
+			PushArrayString(TalentKey, "requires crouching?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires limbshot?") == -1) {
+			PushArrayString(TalentKey, "requires limbshot?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires headshot?") == -1) {
+			PushArrayString(TalentKey, "requires headshot?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "passive ability?") == -1) {
+			PushArrayString(TalentKey, "passive ability?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "player state required?") == -1) {
+			PushArrayString(TalentKey, "player state required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "combat state required?") == -1) {
+			PushArrayString(TalentKey, "combat state required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires zoom?") == -1) {
+			PushArrayString(TalentKey, "requires zoom?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "activator class required?") == -1) {
+			PushArrayString(TalentKey, "activator class required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "activator team required?") == -1) {
+			PushArrayString(TalentKey, "activator team required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "health percentage missing required target?") == -1) {
+			PushArrayString(TalentKey, "health percentage missing required target?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "health percentage remaining required target?") == -1) {
+			PushArrayString(TalentKey, "health percentage remaining required target?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "coherency required?") == -1) {
+			PushArrayString(TalentKey, "coherency required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "coherency max?") == -1) {
+			PushArrayString(TalentKey, "coherency max?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "coherency range?") == -1) {
+			PushArrayString(TalentKey, "coherency range?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "health percentage required?") == -1) {
+			PushArrayString(TalentKey, "health percentage required?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "weapons permitted?") == -1) {
+			PushArrayString(TalentKey, "weapons permitted?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "secondary effects?") == -1) {
+			PushArrayString(TalentKey, "secondary effects?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target ability effects?") == -1) {
+			PushArrayString(TalentKey, "target ability effects?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "activator ability effects?") == -1) {
+			PushArrayString(TalentKey, "activator ability effects?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "compound with?") == -1) {
+			PushArrayString(TalentKey, "compound with?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "compounding talent?") == -1) {
+			PushArrayString(TalentKey, "compounding talent?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "ability type?") == -1) {
+			PushArrayString(TalentKey, "ability type?");
+			PushArrayString(TalentValue, "-1");
+		}
+		sortSize = GetArraySize(TalentKey);
+		pos = 0;
+		while (pos < sortSize) {
+			GetArrayString(TalentKey, pos, text, sizeof(text));
+			if (
+			pos == 0 && !StrEqual(text, "ability type?") ||
+			pos == 1 && !StrEqual(text, "compounding talent?") ||
+			pos == 2 && !StrEqual(text, "compound with?") ||
+			pos == 3 && !StrEqual(text, "activator ability effects?") ||
+			pos == 4 && !StrEqual(text, "target ability effects?") ||
+			pos == 5 && !StrEqual(text, "secondary effects?") ||
+			pos == 6 && !StrEqual(text, "weapons permitted?") ||
+			pos == 7 && !StrEqual(text, "health percentage required?") ||
+			pos == 8 && !StrEqual(text, "coherency range?") ||
+			pos == 9 && !StrEqual(text, "coherency max?") ||
+			pos == 10 && !StrEqual(text, "coherency required?") ||
+			pos == 11 && !StrEqual(text, "health percentage remaining required target?") ||
+			pos == 12 && !StrEqual(text, "health percentage missing required target?") ||
+			pos == 13 && !StrEqual(text, "activator team required?") ||
+			pos == 14 && !StrEqual(text, "activator class required?") ||
+			pos == 15 && !StrEqual(text, "requires zoom?") ||
+			pos == 16 && !StrEqual(text, "combat state required?") ||
+			pos == 17 && !StrEqual(text, "player state required?") ||
+			pos == 18 && !StrEqual(text, "passive ability?") ||
+			pos == 19 && !StrEqual(text, "requires headshot?") ||
+			pos == 20 && !StrEqual(text, "requires limbshot?") ||
+			pos == 21 && !StrEqual(text, "requires crouching?") ||
+			pos == 22 && !StrEqual(text, "activator stagger required?") ||
+			pos == 23 && !StrEqual(text, "target stagger required?") ||
+			pos == 24 && !StrEqual(text, "cannot target self?") ||
+			pos == 25 && !StrEqual(text, "cannot be touching earth?") ||
+			pos == 26 && !StrEqual(text, "vomit state required?") ||
+			pos == 27 && !StrEqual(text, "target vomit state required?") ||
+			pos == 28 && !StrEqual(text, "require adrenaline effect?") ||
+			pos == 29 && !StrEqual(text, "disabled if weakness?") ||
+			pos == 30 && !StrEqual(text, "require weakness?") ||
+			pos == 31 && !StrEqual(text, "target class required?") ||
+			pos == 32 && !StrEqual(text, "cleanse trigger?") ||
+			pos == 33 && !StrEqual(text, "require consecutive hits?") ||
+			pos == 34 && !StrEqual(text, "background talent?") ||
+			pos == 35 && !StrEqual(text, "status effect multiplier?") ||
+			pos == 36 && !StrEqual(text, "multiply range?") ||
+			pos == 37 && !StrEqual(text, "multiply commons?") ||
+			pos == 38 && !StrEqual(text, "multiply supers?") ||
+			pos == 39 && !StrEqual(text, "multiply witches?") ||
+			pos == 40 && !StrEqual(text, "multiply survivors?") ||
+			pos == 41 && !StrEqual(text, "multiply specials?") ||
+			pos == 42 && !StrEqual(text, "strength increase while zoomed?") ||
+			pos == 43 && !StrEqual(text, "strength increase time cap?") ||
+			pos == 44 && !StrEqual(text, "strength increase time required?") ||
+			pos == 45 && !StrEqual(text, "no effect if zoom time is not met?") ||
+			pos == 46 && !StrEqual(text, "strength increase while holding fire?") ||
+			pos == 47 && !StrEqual(text, "no effect if damage time is not met?") ||
+			pos == 48 && !StrEqual(text, "health percentage required missing?") ||
+			pos == 49 && !StrEqual(text, "health percentage required missing max?") ||
+			pos == 50 && !StrEqual(text, "is own talent?") ||
+			pos == 51 && !StrEqual(text, "secondary ability trigger?") ||
+			pos == 52 && !StrEqual(text, "target is self?") ||
+			pos == 53 && !StrEqual(text, "primary aoe?") ||
+			pos == 54 && !StrEqual(text, "secondary aoe?") ||
+			pos == 55 && !StrEqual(text, "talent name?") ||
+			pos == 56 && !StrEqual(text, "translation?") ||
+			pos == 57 && !StrEqual(text, "governing attribute?") ||
+			pos == 58 && !StrEqual(text, "talent tree category?") ||
+			pos == 59 && !StrEqual(text, "part of menu named?") ||
+			pos == 60 && !StrEqual(text, "layer?") ||
+			pos == 61 && !StrEqual(text, "is ability?") ||
+			pos == 62 && !StrEqual(text, "action bar name?") ||
+			pos == 63 && !StrEqual(text, "required talents required?") ||
+			pos == 64 && !StrEqual(text, "talent upgrade strength value?") ||
+			pos == 65 && !StrEqual(text, "talent upgrade scale?") ||
+			pos == 66 && !StrEqual(text, "talent cooldown strength value?") ||
+			pos == 67 && !StrEqual(text, "talent cooldown scale?") ||
+			pos == 68 && !StrEqual(text, "talent active time strength value?") ||
+			pos == 69 && !StrEqual(text, "talent active time scale?") ||
+			pos == 70 && !StrEqual(text, "governs cooldown of talent named?") ||
+			pos == 71 && !StrEqual(text, "talent hard limit?") ||
+			pos == 72 && !StrEqual(text, "is effect over time?") ||
+			pos == 73 && !StrEqual(text, "effect strength?") ||
+			pos == 74 && !StrEqual(text, "ignore for layer count?") ||
+			pos == 75 && !StrEqual(text, "is attribute?") ||
+			pos == 76 && !StrEqual(text, "hide translation?") ||
+			pos == 77 && !StrEqual(text, "roll chance?")) {
+				ResizeArray(TalentKey, sortSize+1);
+				ResizeArray(TalentValue, sortSize+1);
+				SetArrayString(TalentKey, sortSize, text);
+				GetArrayString(TalentValue, pos, text, sizeof(text));
+				SetArrayString(TalentValue, sortSize, text);
+				RemoveFromArray(TalentKey, pos);
+				RemoveFromArray(TalentValue, pos);
+				continue;
+			}	// had to split this argument up due to internal compiler error on arguments exceeding 80
+			else if (
+			pos == 78 && !StrEqual(text, "interval per point?") ||
+			pos == 79 && !StrEqual(text, "interval first point?") ||
+			pos == 80 && !StrEqual(text, "range per point?") ||
+			pos == 81 && !StrEqual(text, "range first point value?") ||
+			pos == 82 && !StrEqual(text, "stamina per point?") ||
+			pos == 83 && !StrEqual(text, "base stamina required?") ||
+			pos == 84 && !StrEqual(text, "cooldown per point?") ||
+			pos == 85 && !StrEqual(text, "cooldown first point?") ||
+			pos == 86 && !StrEqual(text, "cooldown start?") ||
+			pos == 87 && !StrEqual(text, "active time per point?") ||
+			pos == 88 && !StrEqual(text, "active time first point?") ||
+			pos == 89 && !StrEqual(text, "ammo effect?") ||
+			pos == 90 && !StrEqual(text, "effect multiplier?") ||
+			pos == 91 && !StrEqual(text, "active effect?") ||
+			pos == 92 && !StrEqual(text, "passive effect?") ||
+			pos == 93 && !StrEqual(text, "cooldown effect?") ||
+			pos == 94 && !StrEqual(text, "reactive ability?") ||
+			pos == 95 && !StrEqual(text, "teams allowed?") ||
+			pos == 96 && !StrEqual(text, "cooldown strength?") ||
+			pos == 97 && !StrEqual(text, "maximum passive multiplier?") ||
+			pos == 98 && !StrEqual(text, "maximum active multiplier?") ||
+			pos == 99 && !StrEqual(text, "active requires ensnare?") ||
+			pos == 100 && !StrEqual(text, "active strength?") ||
+			pos == 101 && !StrEqual(text, "passive ignores cooldown?") ||
+			pos == 102 && !StrEqual(text, "passive requires ensnare?") ||
+			pos == 103 && !StrEqual(text, "passive strength?") ||
+			pos == 104 && !StrEqual(text, "passive only?") ||
+			pos == 105 && !StrEqual(text, "is single target?") ||
+			pos == 106 && !StrEqual(text, "draw delay?") ||
+			pos == 107 && !StrEqual(text, "draw effect delay?") ||
+			pos == 108 && !StrEqual(text, "passive draw delay?") ||
+			pos == 109 && !StrEqual(text, "attribute?") ||
+			pos == 110 && !StrEqual(text, "use these multipliers?") ||
+			pos == 111 && !StrEqual(text, "base multiplier?") ||
+			pos == 112 && !StrEqual(text, "diminishing multiplier?") ||
+			pos == 113 && !StrEqual(text, "diminishing returns?") ||
+			pos == 114 && !StrEqual(text, "buff bar text?") ||
+			pos == 115 && !StrEqual(text, "is sub menu?") ||
+			pos == 116 && !StrEqual(text, "talent type?") ||
+			pos == 117 && !StrEqual(text, "is item?") ||
+			pos == 118 && !StrEqual(text, "rarity?") ||
+			pos == 119 && !StrEqual(text, "experience start?") ||
+			pos == 120 && !StrEqual(text, "requirement multiplier?") ||
+			pos == 121 && !StrEqual(text, "is aura instead?") ||
+			pos == 122 && !StrEqual(text, "cooldown trigger?") ||
+			pos == 123 && !StrEqual(text, "inactive trigger?") ||
+			pos == 124 && !StrEqual(text, "reactive type?") ||
+			pos == 125 && !StrEqual(text, "active time?") ||
+			pos == 126 && !StrEqual(text, "cannot be ensnared?") ||
+			pos == 127 && !StrEqual(text, "sky level requirement?") ||
+			pos == 128 && !StrEqual(text, "toggle effect?") ||
+			pos == 129 && !StrEqual(text, "humanoid only?") ||
+			pos == 130 && !StrEqual(text, "inanimate only?") ||
+			pos == 131 && !StrEqual(text, "allow commons?") ||
+			pos == 132 && !StrEqual(text, "allow specials?") ||
+			pos == 133 && !StrEqual(text, "allow survivors?") ||
+			pos == 134 && !StrEqual(text, "cooldown?") ||
+			pos == 135 && !StrEqual(text, "activate effect per tick?") ||
+			pos == 136 && !StrEqual(text, "secondary ept only?") ||
+			pos == 137 && !StrEqual(text, "active end ability trigger?") ||
+			pos == 138 && !StrEqual(text, "cooldown end ability trigger?") ||
+			pos == 139 && !StrEqual(text, "does damage?") ||
+			pos == 140 && !StrEqual(text, "special ammo?")) {
+				ResizeArray(TalentKey, sortSize+1);
+				ResizeArray(TalentValue, sortSize+1);
+				SetArrayString(TalentKey, sortSize, text);
+				GetArrayString(TalentValue, pos, text, sizeof(text));
+				SetArrayString(TalentValue, sortSize, text);
+				RemoveFromArray(TalentKey, pos);
+				RemoveFromArray(TalentValue, pos);
+				continue;
+			}
+			else if (
+				pos == 141 && !StrEqual(text, "minimum level required?") ||
+				pos == 142 && !StrEqual(text, "toggle strength?")) {
+				ResizeArray(TalentKey, sortSize+1);
+				ResizeArray(TalentValue, sortSize+1);
+				SetArrayString(TalentKey, sortSize, text);
+				GetArrayString(TalentValue, pos, text, sizeof(text));
+				SetArrayString(TalentValue, sortSize, text);
+				RemoveFromArray(TalentKey, pos);
+				RemoveFromArray(TalentValue, pos);
+				continue;
+			}
+			pos++;
+		}
+	}
+	else if (StrEqual(Config, CONFIG_EVENTS)) {
+		if (FindStringInArray(TalentKey, "entered saferoom?") == -1) {
+			PushArrayString(TalentKey, "entered saferoom?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "bulletimpact?") == -1) {
+			PushArrayString(TalentKey, "bulletimpact?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "shoved?") == -1) {
+			PushArrayString(TalentKey, "shoved?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "multiplier exp?") == -1) {
+			PushArrayString(TalentKey, "multiplier exp?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "multiplier points?") == -1) {
+			PushArrayString(TalentKey, "multiplier points?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "distance?") == -1) {
+			PushArrayString(TalentKey, "distance?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "origin?") == -1) {
+			PushArrayString(TalentKey, "origin?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "tag ability?") == -1) {
+			PushArrayString(TalentKey, "tag ability?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "abilities?") == -1) {
+			PushArrayString(TalentKey, "abilities?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "damage award?") == -1) {
+			PushArrayString(TalentKey, "damage award?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "health?") == -1) {
+			PushArrayString(TalentKey, "health?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "damage type?") == -1) {
+			PushArrayString(TalentKey, "damage type?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "victim ability trigger?") == -1) {
+			PushArrayString(TalentKey, "victim ability trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "victim team required?") == -1) {
+			PushArrayString(TalentKey, "victim team required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "perpetrator ability trigger?") == -1) {
+			PushArrayString(TalentKey, "perpetrator ability trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "perpetrator team required?") == -1) {
+			PushArrayString(TalentKey, "perpetrator team required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "same team event trigger?") == -1) {
+			PushArrayString(TalentKey, "same team event trigger?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "victim?") == -1) {
+			PushArrayString(TalentKey, "victim?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "perpetrator?") == -1) {
+			PushArrayString(TalentKey, "perpetrator?");
+			PushArrayString(TalentValue, "-1");
+		}
+		sortSize = GetArraySize(TalentKey);
+		pos = 0;
+		while (pos < sortSize) {
+			GetArrayString(TalentKey, pos, text, sizeof(text));
+			if (
+			pos == 0 && !StrEqual(text, "perpetrator?") ||
+			pos == 1 && !StrEqual(text, "victim?") ||
+			pos == 2 && !StrEqual(text, "same team event trigger?") ||
+			pos == 3 && !StrEqual(text, "perpetrator team required?") ||
+			pos == 4 && !StrEqual(text, "perpetrator ability trigger?") ||
+			pos == 5 && !StrEqual(text, "victim team required?") ||
+			pos == 6 && !StrEqual(text, "victim ability trigger?") ||
+			pos == 7 && !StrEqual(text, "damage type?") ||
+			pos == 8 && !StrEqual(text, "health?") ||
+			pos == 9 && !StrEqual(text, "damage award?") ||
+			pos == 10 && !StrEqual(text, "abilities?") ||
+			pos == 11 && !StrEqual(text, "tag ability?") ||
+			pos == 12 && !StrEqual(text, "origin?") ||
+			pos == 13 && !StrEqual(text, "distance?") ||
+			pos == 14 && !StrEqual(text, "multiplier points?") ||
+			pos == 15 && !StrEqual(text, "multiplier exp?") ||
+			pos == 16 && !StrEqual(text, "shoved?") ||
+			pos == 17 && !StrEqual(text, "bulletimpact?") ||
+			pos == 18 && !StrEqual(text, "entered saferoom?")) {
+				ResizeArray(TalentKey, sortSize+1);
+				ResizeArray(TalentValue, sortSize+1);
+				SetArrayString(TalentKey, sortSize, text);
+				GetArrayString(TalentValue, pos, text, sizeof(text));
+				SetArrayString(TalentValue, sortSize, text);
+				RemoveFromArray(TalentKey, pos);
+				RemoveFromArray(TalentValue, pos);
+				continue;
+			}
+			pos++;
+		}
+	}
+	else if (StrEqual(Config, CONFIG_COMMONAFFIXES)) {
+		if (FindStringInArray(TalentKey, "raw player strength?") == -1) {
+			PushArrayString(TalentKey, "raw player strength?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "raw common strength?") == -1) {
+			PushArrayString(TalentKey, "raw common strength?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "raw strength?") == -1) {
+			PushArrayString(TalentKey, "raw strength?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "strength special?") == -1) {
+			PushArrayString(TalentKey, "strength special?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "onfire interval?") == -1) {
+			PushArrayString(TalentKey, "onfire interval?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "onfire max time?") == -1) {
+			PushArrayString(TalentKey, "onfire max time?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "onfire level?") == -1) {
+			PushArrayString(TalentKey, "onfire level?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "onfire base time?") == -1) {
+			PushArrayString(TalentKey, "onfire base time?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "enemy multiplication?") == -1) {
+			PushArrayString(TalentKey, "enemy multiplication?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "damage effect?") == -1) {
+			PushArrayString(TalentKey, "damage effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "force model?") == -1) {
+			PushArrayString(TalentKey, "force model?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "level required?") == -1) {
+			PushArrayString(TalentKey, "level required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "death multiplier?") == -1) {
+			PushArrayString(TalentKey, "death multiplier?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "death interval?") == -1) {
+			PushArrayString(TalentKey, "death interval?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "death max time?") == -1) {
+			PushArrayString(TalentKey, "death max time?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "death base time?") == -1) {
+			PushArrayString(TalentKey, "death base time?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "death effect?") == -1) {
+			PushArrayString(TalentKey, "death effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "chain reaction?") == -1) {
+			PushArrayString(TalentKey, "chain reaction?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "name?") == -1) {
+			PushArrayString(TalentKey, "name?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "health per level?") == -1) {
+			PushArrayString(TalentKey, "health per level?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "base health?") == -1) {
+			PushArrayString(TalentKey, "base health?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "glow colour?") == -1) {
+			PushArrayString(TalentKey, "glow colour?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "glow range?") == -1) {
+			PushArrayString(TalentKey, "glow range?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "glow?") == -1) {
+			PushArrayString(TalentKey, "glow?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "model size?") == -1) {
+			PushArrayString(TalentKey, "model size?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "fire immunity?") == -1) {
+			PushArrayString(TalentKey, "fire immunity?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "draw type?") == -1) {
+			PushArrayString(TalentKey, "draw type?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "chance?") == -1) {
+			PushArrayString(TalentKey, "chance?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "level strength?") == -1) {
+			PushArrayString(TalentKey, "level strength?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "strength target?") == -1) {
+			PushArrayString(TalentKey, "strength target?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "aura strength?") == -1) {
+			PushArrayString(TalentKey, "aura strength?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "cooldown?") == -1) {
+			PushArrayString(TalentKey, "cooldown?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "range max?") == -1) {
+			PushArrayString(TalentKey, "range max?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "range player level?") == -1) {
+			PushArrayString(TalentKey, "range player level?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "range minimum?") == -1) {
+			PushArrayString(TalentKey, "range minimum?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "aura effect?") == -1) {
+			PushArrayString(TalentKey, "aura effect?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "max allowed?") == -1) {
+			PushArrayString(TalentKey, "max allowed?");
+			PushArrayString(TalentValue, "-1");
+		}
+		sortSize = GetArraySize(TalentKey);
+		pos = 0;
+		while (pos < sortSize) {
+			GetArrayString(TalentKey, pos, text, sizeof(text));
+			if (
+			pos == 0 && !StrEqual(text, "max allowed?") ||
+			pos == 1 && !StrEqual(text, "aura effect?") ||
+			pos == 2 && !StrEqual(text, "range minimum?") ||
+			pos == 3 && !StrEqual(text, "range player level?") ||
+			pos == 4 && !StrEqual(text, "range max?") ||
+			pos == 5 && !StrEqual(text, "cooldown?") ||
+			pos == 6 && !StrEqual(text, "aura strength?") ||
+			pos == 7 && !StrEqual(text, "strength target?") ||
+			pos == 8 && !StrEqual(text, "level strength?") ||
+			pos == 9 && !StrEqual(text, "chance?") ||
+			pos == 10 && !StrEqual(text, "draw type?") ||
+			pos == 11 && !StrEqual(text, "fire immunity?") ||
+			pos == 12 && !StrEqual(text, "model size?") ||
+			pos == 13 && !StrEqual(text, "glow?") ||
+			pos == 14 && !StrEqual(text, "glow range?") ||
+			pos == 15 && !StrEqual(text, "glow colour?") ||
+			pos == 16 && !StrEqual(text, "base health?") ||
+			pos == 17 && !StrEqual(text, "health per level?") ||
+			pos == 18 && !StrEqual(text, "name?") ||
+			pos == 19 && !StrEqual(text, "chain reaction?") ||
+			pos == 20 && !StrEqual(text, "death effect?") ||
+			pos == 21 && !StrEqual(text, "death base time?") ||
+			pos == 22 && !StrEqual(text, "death max time?") ||
+			pos == 23 && !StrEqual(text, "death interval?") ||
+			pos == 24 && !StrEqual(text, "death multiplier?") ||
+			pos == 25 && !StrEqual(text, "level required?") ||
+			pos == 26 && !StrEqual(text, "force model?") ||
+			pos == 27 && !StrEqual(text, "damage effect?") ||
+			pos == 28 && !StrEqual(text, "enemy multiplication?") ||
+			pos == 29 && !StrEqual(text, "onfire base time?") ||
+			pos == 30 && !StrEqual(text, "onfire level?") ||
+			pos == 31 && !StrEqual(text, "onfire max time?") ||
+			pos == 32 && !StrEqual(text, "onfire interval?") ||
+			pos == 33 && !StrEqual(text, "strength special?") ||
+			pos == 34 && !StrEqual(text, "raw strength?") ||
+			pos == 35 && !StrEqual(text, "raw common strength?") ||
+			pos == 36 && !StrEqual(text, "raw player strength?")) {
+				ResizeArray(TalentKey, sortSize+1);
+				ResizeArray(TalentValue, sortSize+1);
+				SetArrayString(TalentKey, sortSize, text);
+				GetArrayString(TalentValue, pos, text, sizeof(text));
+				SetArrayString(TalentValue, sortSize, text);
+				RemoveFromArray(TalentKey, pos);
+				RemoveFromArray(TalentValue, pos);
+				continue;
+			}
+			pos++;
+		}
+	}
 	GetArrayString(Handle:Section, size, text, sizeof(text));
 	PushArrayString(TalentSection, text);
-
+	/*if (StrEqual(Config, CONFIG_MENUTALENTS) || StrEqual(Config, CONFIG_EVENTS)) {
+		LogMessage("%s", text);
+		sortSize = GetArraySize(TalentKey);
+		for (new i = 0; i < sortSize; i++) {
+			GetArrayString(TalentKey, i, key, sizeof(key));
+			GetArrayString(TalentValue, i, value, sizeof(value));
+			LogMessage("\t\"%s\"\t\t\"%s\"", key, value);
+		}
+	}*/
 	if (StrEqual(Config, CONFIG_MENUTALENTS)) PushArrayString(a_Database_Talents, text);
-
 	ResizeArray(Main, size + 1);
 	SetArrayCell(Main, size, TalentKey, 0);
 	SetArrayCell(Main, size, TalentValue, 1);

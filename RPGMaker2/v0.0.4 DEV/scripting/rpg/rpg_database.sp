@@ -261,7 +261,7 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 
 		DatabaseKeys			=	GetArrayCell(a_Menu_Talents, i, 0);
 		DatabaseValues			=	GetArrayCell(a_Menu_Talents, i, 1);
-		if (GetKeyValueInt(DatabaseKeys, DatabaseValues, "is sub menu?") == 1) continue;
+		if (GetKeyValueIntAtPos(DatabaseValues, IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
 
 		DatabaseSection			=	GetArrayCell(a_Menu_Talents, i, 2);
 
@@ -272,12 +272,6 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 			Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
 			//else Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s` int(32) NOT NULL DEFAULT '-1';", TheDBPrefix, text);
 			SQL_TQuery(hDatabase, QueryResults, tquery);
-
-			if (GetKeyValueInt(DatabaseKeys, DatabaseValues, "talent type?") == 1) {
-
-				Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s xp` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
-				SQL_TQuery(hDatabase, QueryResults, tquery);
-			}
 		}
 
 		//if (StringToInt(NewValue) < 0) Format(NewValue, sizeof(NewValue), "0");
@@ -567,8 +561,10 @@ stock ResetData(client) {
 	ClearArray(PlayerActiveAmmo[client]);
 	ClearArray(PlayActiveAbilities[client]);
 	ClearArray(ApplyDebuffCooldowns[client]);
-	if (ISFROZEN[client] != INVALID_HANDLE) KillTimer(ISFROZEN[client]);
-	ISFROZEN[client] = INVALID_HANDLE;
+	if (ISFROZEN[client] != INVALID_HANDLE) {
+		KillTimer(ISFROZEN[client]);
+		ISFROZEN[client] = INVALID_HANDLE;
+	}
 	StrugglePower[client] = 0;
 }
 
@@ -742,8 +738,8 @@ stock ModifyCartelValue(client, String:thetalent[], thevalue) {
 		CartelValueKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		CartelValueValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 
-		if (GetKeyValueInt(CartelValueKeys[client], CartelValueValues[client], "is sub menu?") == 1) continue;
-		if (GetKeyValueInt(CartelValueKeys[client], CartelValueValues[client], "talent type?") <= 0) continue;
+		if (GetKeyValueIntAtPos(CartelValueValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
+		if (GetKeyValueIntAtPos(CartelValueValues[client], IS_TALENT_TYPE) <= 0) continue;
 
 		GetArrayString(a_Database_Talents, i, text, sizeof(text));
 		if (!StrEqual(text, thetalent, false)) continue;
@@ -1110,14 +1106,14 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 		TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 
-		if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is sub menu?") == 1) continue;
+		if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
 
 		//if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1) continue;	// class roles aren't stored in the database in the same way that talents/CARTEL are.
 
 		GetArrayString(a_Database_Talents, i, text, sizeof(text));
 		talentlevel = GetArrayCell(a_Database_PlayerTalents[client], i);// GetArrayString(a_Database_PlayerTalents[client], i, text2, sizeof(text2));
 
-		if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1) {
+		/*if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1) {
 
 			talentexperience = GetArrayCell(a_Database_PlayerTalents_Experience[client], i);
 			//GetArrayString(a_Database_PlayerTalents_Experience[client], i, text3, sizeof(text3));
@@ -1125,10 +1121,10 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 			Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d', `%s xp` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, text, talentexperience, key);
 			SQL_TQuery(hDatabase, QueryResults5, tquery, client);
 		}
-		else {
-			Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, key);
-			SQL_TQuery(hDatabase, QueryResults6, tquery, client);
-		}
+		else {*/
+		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, key);
+		SQL_TQuery(hDatabase, QueryResults6, tquery, client);
+		//}
 	}
 	new ActionSlotSize = iActionBarSlots;
 	if (GetArraySize(Handle:ActionBar[client]) != ActionSlotSize) ResizeArray(Handle:ActionBar[client], ActionSlotSize);
@@ -1749,16 +1745,16 @@ public QueryResults_LoadTalentTrees(Handle:owner, Handle:hndl, const String:erro
 
 					while (LoadPos[client] < size) {
 
-						TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, LoadPos[client], 0);
+						//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, LoadPos[client], 0);
 						TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, LoadPos[client], 1);
 
-						if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is sub menu?") == 1) {
+						if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) {
 
 							LoadPos[client]++;
 							continue;
 						}
 
-						theresult						= GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?");
+						theresult						= GetKeyValueIntAtPos(TalentTreeValues[client], IS_TALENT_TYPE);
 						if (theresult <= 0) {
 
 							LoadPos[client]++;
@@ -1771,10 +1767,10 @@ public QueryResults_LoadTalentTrees(Handle:owner, Handle:hndl, const String:erro
 
 					for (new i = LoadPos[client]; i < size; i++) {
 
-						TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+						//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 						TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 
-						if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is sub menu?") == 1) continue; //||
+						if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue; //||
 							//GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1) continue;
 						LoadPos[client] = i;
 						break;
@@ -1850,15 +1846,15 @@ stock LoadTalentTrees(client, String:key[], bool:IsTalentTwo = false, String:pro
 
 		while (LoadPos[client] < size) {
 
-			TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, LoadPos[client], 0);
+			//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, LoadPos[client], 0);
 			TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, LoadPos[client], 1);
 
-			if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is sub menu?") == 1) {
+			if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) {
 
 				LoadPos[client]++;
 				continue;
 			}
-			theresult						= GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?");
+			theresult						= GetKeyValueIntAtPos(TalentTreeValues[client], IS_TALENT_TYPE);
 			if (theresult <= 0) {
 
 				LoadPos[client]++;
@@ -1871,10 +1867,10 @@ stock LoadTalentTrees(client, String:key[], bool:IsTalentTwo = false, String:pro
 
 		for (new i = LoadPos[client]; i < size; i++) {
 
-			TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+			//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 			TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 
-			if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is sub menu?") == 1) continue;// ||
+			if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;// ||
 				//GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1) continue;
 			LoadPos[client] = i;
 			break;
@@ -1966,12 +1962,12 @@ stock TotalPointsAssigned(client) {
 	new size = GetArraySize(a_Database_PlayerTalents[client]);
 	for (new i = 0; i < size; i++) {
 
-		TalentsAssignedKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
+		//TalentsAssignedKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
 		TalentsAssignedValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
 
-		if (GetKeyValueInt(TalentsAssignedKeys[client], TalentsAssignedValues[client], "talent type?") == 1) continue;
+		if (GetKeyValueIntAtPos(TalentsAssignedValues[client], IS_TALENT_TYPE) == 1) continue;
 		//if (GetKeyValueInt(TalentsAssignedKeys[client], TalentsAssignedValues[client], "is survivor class role?") == 1) continue;
-		if (GetKeyValueInt(TalentsAssignedKeys[client], TalentsAssignedValues[client], "is sub menu?") == 1) continue;
+		if (GetKeyValueIntAtPos(TalentsAssignedValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
 		currentValue = GetArrayCell(Handle:a_Database_PlayerTalents[client], i);
 		if (currentValue > 0) count += currentValue;
 	}
@@ -2075,8 +2071,8 @@ public OnClientDisconnect(client)
 		if (IsFakeClient(client)) {
 			//LogMessage("bot removed, setting to not loaded.");
 			b_IsLoaded[client] = false;
-			bTimersRunning[client] = false;
 		}
+		bTimersRunning[client] = false;
 
 		if (ISEXPLODE[client] != INVALID_HANDLE) {
 
@@ -2227,8 +2223,10 @@ stock OnClientLoaded(client, bool:IsHooked = false) {
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	}*/
 	ClearArray(ApplyDebuffCooldowns[client]);
-	if (ISFROZEN[client] != INVALID_HANDLE) KillTimer(ISFROZEN[client]);
-	ISFROZEN[client] = INVALID_HANDLE;
+	if (ISFROZEN[client] != INVALID_HANDLE) {
+		KillTimer(ISFROZEN[client]);
+		ISFROZEN[client] = INVALID_HANDLE;
+	}
 	FreeUpgrades[client] = 0;
 	bIsHideThreat[client] = true;
 	iThreatLevel[client] = 0;

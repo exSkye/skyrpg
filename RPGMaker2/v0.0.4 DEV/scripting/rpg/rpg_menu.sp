@@ -358,13 +358,12 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 				LoadPos[client]++;
 				while (LoadPos[client] < GetArraySize(a_Database_Talents)) {
 
-					TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, LoadPos[client], 0);
+					//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, LoadPos[client], 0);
 					TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, LoadPos[client], 1);
 
-					if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1 ||
-						GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1 ||
-						GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is sub menu?") == 1 ||
-						GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is item?") == 1) {
+					if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_TALENT_TYPE) == 1 ||
+						GetKeyValueIntAtPos(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1 ||
+						GetKeyValueIntAtPos(TalentTreeValues[client], ITEM_ITEM_ID) == 1) {
 
 						LoadPos[client]++;
 						continue;	// we don't load class attributes because we're loading another players talent specs. don't worry... we'll load the CARTEL for the user, after.
@@ -419,13 +418,12 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 
 			for (new i = 0; i < size; i++) {
 
-				MenuKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+				//MenuKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 				MenuValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
 				MenuSection[client]			= GetArrayCell(a_Menu_Talents, i, 2);
-				if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "talent type?") == 1) continue;		// skips attributes.
-				if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is survivor class role?") == 1) continue;
+				if (GetKeyValueIntAtPos(MenuValues[client], IS_TALENT_TYPE) == 1) continue;		// skips attributes.
 				//if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is ability?") == 1) continue;		// abilities used to be auto-unlocked, now they require a point.
-				if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is item?") == 1) continue;
+				if (GetKeyValueIntAtPos(MenuValues[client], ITEM_ITEM_ID) == 1) continue;
 
 				GetArrayString(Handle:MenuSection[client], 0, TalentName, sizeof(TalentName));
 
@@ -850,7 +848,7 @@ stock ShowActionBar(client) {
 				fAmmoCooldownTime = AmmoCooldownTime;
 
 				// abilities dont show active time correctly (NOT FIXED)
-				fAmmoActive = GetAbilityValue(client, talentname, "active time?");
+				fAmmoActive = GetAbilityValue(client, talentname, ABILITY_ACTIVE_TIME);
 				if (fAmmoCooldownTime != -1.0) {
 
 					fAmmoCooldown = GetSpellCooldown(client, talentname);
@@ -871,8 +869,8 @@ stock ShowActionBar(client) {
 stock bool:AbilityDoesDamage(client, String:TalentName[]) {
 
 	decl String:theQuery[64];
-	Format(theQuery, sizeof(theQuery), "does damage?");
-	IsAbilityTalent(client, TalentName, theQuery, sizeof(theQuery));
+	//Format(theQuery, sizeof(theQuery), "does damage?");
+	IsAbilityTalent(client, TalentName, theQuery, 64, ABILITY_DOES_DAMAGE);
 
 	if (StringToInt(theQuery) == 1) return true;
 	return false;
@@ -890,7 +888,7 @@ stock bool:VerifyActionBar(client, String:TalentName[], pos) {
 	return true;
 }
 
-stock bool:IsAbilityTalent(client, String:TalentName[], String:SearchKey[] = "none", TheSize = 0) {	// Can override the search query, and then said string will be replaced and sent back
+stock bool:IsAbilityTalent(client, String:TalentName[], String:SearchKey[] = "none", TheSize = 0, pos = -1) {	// Can override the search query, and then said string will be replaced and sent back
 
 	decl String:text[64];
 
@@ -900,16 +898,16 @@ stock bool:IsAbilityTalent(client, String:TalentName[], String:SearchKey[] = "no
 		IsAbilitySection[client]		= GetArrayCell(a_Menu_Talents, i, 2);
 		GetArrayString(Handle:IsAbilitySection[client], 0, text, sizeof(text));
 		if (!StrEqual(TalentName, text)) continue;
-		IsAbilityKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+		//IsAbilityKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		IsAbilityValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
 
-		if (StrEqual(SearchKey, "none")) {
+		if (pos == -1) {
 
-			if (GetKeyValueInt(IsAbilityKeys[client], IsAbilityValues[client], "is ability?") == 1) return true;
+			if (GetKeyValueIntAtPos(IsAbilityValues[client], IS_TALENT_ABILITY) == 1) return true;
 		}
 		else {
 
-			FormatKeyValue(SearchKey, TheSize, IsAbilityKeys[client], IsAbilityValues[client], SearchKey);
+			GetArrayString(IsAbilityValues[client], pos, SearchKey, TheSize);
 			return true;
 		}
 		break;
@@ -920,6 +918,7 @@ stock bool:IsAbilityTalent(client, String:TalentName[], String:SearchKey[] = "no
 stock DrawAbilityEffect(client, String:sDrawEffect[], Float:fDrawHeight, Float:fDrawDelay = 0.0, Float:fDrawSize, String:sTalentName[], iEffectType = 0) {
 
 	// no longer needed because we check for it before we get here.if (StrEqual(sDrawEffect, "-1")) return;							//size					color		pos		   pulse?  lifetime
+	//CreateRingEx(client, fDrawSize, sDrawEffect, fDrawHeight, false, 0.2);
 	if (iEffectType == 1 || iEffectType == 2) CreateRingEx(client, fDrawSize, sDrawEffect, fDrawHeight, false, 0.2);
 	else {
 		new Handle:drawpack;
@@ -955,7 +954,7 @@ stock bool:IsActionAbilityCooldown(client, String:TalentName[], bool:IsActiveIns
 	new Float:fAmmoCooldown = 0.0;
 
 	// abilities dont show active time correctly (NOT FIXED)
-	new Float:fAmmoActive = GetAbilityValue(client, TalentName, "active time?");
+	new Float:fAmmoActive = GetAbilityValue(client, TalentName, ABILITY_ACTIVE_TIME);
 	if (fAmmoCooldownTime != -1.0) {
 
 		fAmmoCooldown = GetSpellCooldown(client, TalentName);
@@ -990,10 +989,10 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 	//new MyAttacker = L4D2_GetInfectedAttacker(client);
 	new size = GetArraySize(Handle:ActionBar[client]);
 	//new Float:fAbilityTime = 0.0;
-	new drawpos = 0;
-	new drawheight = 0;
-	new drawdelay = 0;
-	new drawsize = 0;
+	new drawpos = TALENT_FIRST_RANDOM_KEY_POSITION;
+	new drawheight = TALENT_FIRST_RANDOM_KEY_POSITION;
+	new drawdelay = TALENT_FIRST_RANDOM_KEY_POSITION;
+	new drawsize = TALENT_FIRST_RANDOM_KEY_POSITION;
 
 	new IsPassiveAbility = 0;
 	new abPos = -1;
@@ -1013,15 +1012,20 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 		CheckAbilityKeys[client]		= GetArrayCell(a_Menu_Talents, pos, 0);
 		CheckAbilityValues[client]		= GetArrayCell(a_Menu_Talents, pos, 1);
 		if (IsDrawEffect) {
-			if (GetKeyValueInt(CheckAbilityKeys[client], CheckAbilityValues[client], "is ability?") == 1) {
-				IsPassiveAbility = GetKeyValueInt(CheckAbilityKeys[client], CheckAbilityValues[client], "passive only?");
+			if (GetKeyValueIntAtPos(CheckAbilityValues[client], IS_TALENT_ABILITY) == 1) {
+				IsPassiveAbility = GetKeyValueIntAtPos(CheckAbilityValues[client], ABILITY_PASSIVE_ONLY);
 				if (IsInstantDraw) {
 					while (drawpos >= 0 && drawheight >= 0 && drawdelay >= 0 && drawsize >= 0) {
-						drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw?", _, _, drawpos);
-						drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw pos?", _, _, drawheight);
-						drawdelay = FormatKeyValue(sDrawDelay, sizeof(sDrawDelay), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw delay?", _, _, drawdelay);
-						drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw size?", _, _, drawsize);
-						if (drawpos >= 0 && drawheight >= 0 && drawdelay >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), StringToFloat(sDrawDelay), StringToFloat(sDrawSize), text);
+						drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw?", _, _, drawpos, false);
+						drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw pos?", _, _, drawheight, false);
+						drawdelay = FormatKeyValue(sDrawDelay, sizeof(sDrawDelay), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw delay?", _, _, drawdelay, false);
+						drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw size?", _, _, drawsize, false);
+						if (drawpos == -1 || drawheight == -1 || drawdelay == -1 || drawsize == -1) break;
+						DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text);
+						drawpos++;
+						drawheight++;
+						drawdelay++;
+						drawsize++;
 					}
 				}
 				else {
@@ -1034,21 +1038,29 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 						continue;	// do not draw if visuals are on cooldown
 					}
 					if (IsActionAbilityCooldown(client, text, true)) {// || !StrEqual(sPassiveEffects, "-1.0") && !IsActionAbilityCooldown(client, text)) {
-						SetArrayCell(PlayActiveAbilities[client], abPos, GetKeyValueFloat(CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect delay?"), 3);
-						while (drawpos >= 0) {
-							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect?", _, _, drawpos);
-							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect pos?", _, _, drawheight);
-							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect size?", _, _, drawsize);
-							if (drawpos >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 1);
+						SetArrayCell(PlayActiveAbilities[client], abPos, GetKeyValueFloatAtPos(CheckAbilityValues[client], ABILITY_ACTIVE_DRAW_DELAY), 3);
+						while (drawpos >= 0 && drawheight >= 0 && drawsize >= 0) {
+							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect?", _, _, drawpos, false);
+							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect pos?", _, _, drawheight, false);
+							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect size?", _, _, drawsize, false);
+							if (drawpos == -1 || drawheight == -1 || drawsize == -1) break;
+							DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 1);
+							drawpos++;
+							drawheight++;
+							drawsize++;
 						}
 					}
 					else if (PassiveEffectDisplay[client] == i && IsPassiveAbility == 1) {
-						SetArrayCell(PlayActiveAbilities[client], abPos, GetKeyValueFloat(CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw delay?"), 3);
-						while (drawpos >= 0) {
-							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw?", _, _, drawpos);
-							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw pos?", _, _, drawheight);
-							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw size?", _, _, drawsize);
-							if (drawpos >= 0) DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 2);
+						SetArrayCell(PlayActiveAbilities[client], abPos, GetKeyValueFloatAtPos(CheckAbilityValues[client], ABILITY_PASSIVE_DRAW_DELAY), 3);
+						while (drawpos >= 0 && drawheight >= 0 && drawsize >= 0) {
+							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw?", _, _, drawpos, false);
+							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw pos?", _, _, drawheight, false);
+							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw size?", _, _, drawsize, false);
+							if (drawpos == -1 || drawheight == -1 || drawsize == -1) break;
+							DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 2);
+							drawpos++;
+							drawheight++;
+							drawsize++;
 						}
 					}
 				}
@@ -1060,7 +1072,7 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 		
 		if (!IsPassive) {
 
-			FormatKeyValue(Effects, sizeof(Effects), CheckAbilityKeys[client], CheckAbilityValues[client], "active effect?");
+			GetArrayString(CheckAbilityValues[client], ABILITY_ACTIVE_EFFECT, Effects, sizeof(Effects));
 
 			if (StrContains(Effects, "X", true) != -1) {
 
@@ -1076,7 +1088,7 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 		}
 		else {
 
-			FormatKeyValue(Effects, sizeof(Effects), CheckAbilityKeys[client], CheckAbilityValues[client], "passive effect?");
+			GetArrayString(CheckAbilityValues[client], ABILITY_PASSIVE_EFFECT, Effects, sizeof(Effects));
 
 			if (StrContains(Effects, "S", true) != -1 && thevalue == 19) {
 
@@ -1177,7 +1189,11 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 	decl String:translationInfo[64];
 
 	decl String:formattedText[64];
-
+	new Float:fPercentageHealthRequired;
+	new Float:fPercentageHealthRequiredMax;
+	new Float:fPercentageHealthRequiredBelow;
+	new Float:fCoherencyRange;
+	new iCoherencyMax = 0;
 	for (new i = 0; i < size; i++) {
 
 		// Pull data from the parsed config.
@@ -1329,7 +1345,15 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 			else continue;
 		}
 		if (!StrEqual(translationInfo, "-1")) {
-			Format(translationInfo, sizeof(translationInfo), "%T", translationInfo, client);
+			fPercentageHealthRequired = GetKeyValueFloat(MenuKeys[client], MenuValues[client], "health percentage required missing?");
+			fPercentageHealthRequiredBelow = GetKeyValueFloat(MenuKeys[client], MenuValues[client], "health percentage required?");
+			fCoherencyRange = GetKeyValueFloat(MenuKeys[client], MenuValues[client], "coherency range?");
+			iCoherencyMax = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "coherency max?");
+			if (fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0) {
+				fPercentageHealthRequiredMax = GetKeyValueFloat(MenuKeys[client], MenuValues[client], "health percentage required missing max?");
+				Format(translationInfo, sizeof(translationInfo), "%T", translationInfo, client, fPercentageHealthRequired * 100.0, pct, fPercentageHealthRequiredMax * 100.0, pct, fPercentageHealthRequiredBelow * 100.0, pct, fCoherencyRange, iCoherencyMax);
+			}
+			else Format(translationInfo, sizeof(translationInfo), "%T", translationInfo, client);
 			Format(text, sizeof(text), "%s\n%s", text, translationInfo);
 		}
 
@@ -1561,10 +1585,10 @@ stock GetNodesInExistence() {
 	nodesInExistence	=	0;
 	new nodeLayer		=	0;	// this will hide nodes not currently available from players total node count.
 	for (new i = 0; i < size; i++) {
-		SetNodesKeys			=	GetArrayCell(a_Menu_Talents, i, 0);
+		//SetNodesKeys			=	GetArrayCell(a_Menu_Talents, i, 0);
 		SetNodesValues			=	GetArrayCell(a_Menu_Talents, i, 1);
-		if (GetKeyValueInt(SetNodesKeys, SetNodesValues, "is sub menu?") == 1) continue;
-		nodeLayer = GetKeyValueInt(SetNodesKeys, SetNodesValues, "layer?");
+		if (GetKeyValueIntAtPos(SetNodesValues, IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
+		nodeLayer = GetKeyValueIntAtPos(SetNodesValues, GET_TALENT_LAYER);
 		if (nodeLayer >= 1 && nodeLayer <= iMaxLayers) nodesInExistence++;
 	}
 	if (StrContains(Hostname, "{N}", true) != -1) {
@@ -2405,6 +2429,16 @@ stock DeleteProfile(client, bool:DisplayToClient = true) {
 	}
 }
 
+stock bool:DeleteAllProfiles(client) {
+	decl String:tquery[512];
+	decl String:pct[4];
+	Format(pct, sizeof(pct), "%");
+	Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%sSavedProfile%s';", TheDBPrefix, pct, pct);
+	LogMessage(tquery);
+	SQL_TQuery(hDatabase, QueryResults, tquery, client);
+	return true;
+}
+
 public ProfileEditorMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 
 	if (action == MenuAction_Select) {
@@ -2532,14 +2566,13 @@ stock SaveProfileEx(client, String:key[], SaveType) {
 	for (new i = 0; i < size; i++) {
 
 		GetArrayString(a_Database_Talents, i, text, sizeof(text));
-		TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+		//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 
-		if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1) continue;	// we don't save class attributes.
-		if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1) continue;
-		if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is sub menu?") == 1) continue;
+		if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_TALENT_TYPE) == 1) continue;	// we don't save class attributes.
+		if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
 		//if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is ability?") == 1) continue;
-		if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is item?") == 1) continue;
+		if (GetKeyValueIntAtPos(TalentTreeValues[client], ITEM_ITEM_ID) == 1) continue;
 
 		talentlevel = GetArrayCell(a_Database_PlayerTalents[client], i);// GetArrayString(a_Database_PlayerTalents[client], i, text2, sizeof(text2));
 		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, text, talentlevel, key);
@@ -2632,7 +2665,7 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 	decl String:sTalentsRequired[512];
 	new bool:bIsNotEligible = false;
 	//new iSkyLevelReq = 0;//deprecated for now
-	new nodeUnlockCost = 0;
+	//new nodeUnlockCost = 0;
 	new optionsRemaining = 0;
 	Format(pct, sizeof(pct), "%");//required for translations
 
@@ -2653,8 +2686,8 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 
 		GetArrayString(Handle:MenuSection[client], 0, TalentName, sizeof(TalentName));
 		if (!bEquipSpells[client] && !TalentListingFound(client, MenuKeys[client], MenuValues[client], MenuName)) continue;
-		AbilityTalent	=	GetKeyValueInt(MenuKeys[client], MenuValues[client], "is ability?");
-		isSpecialAmmo	=	GetKeyValueInt(MenuKeys[client], MenuValues[client], "special ammo?");
+		AbilityTalent	=	GetKeyValueIntAtPos(MenuValues[client], IS_TALENT_ABILITY);
+		isSpecialAmmo	=	GetKeyValueIntAtPos(MenuValues[client], TALENT_IS_SPELL);
 		PlayerTalentPoints = GetTalentStrength(client, TalentName);
 
 		if (bEquipSpells[client]) {
@@ -2662,7 +2695,7 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 			if (PlayerTalentPoints < 1) continue;
 
 			//Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", TalentName, client);
-			FormatKeyValue(text, sizeof(text), MenuKeys[client], MenuValues[client], "action bar name?");
+			GetArrayString(MenuValues[client], ACTION_BAR_NAME, text, sizeof(text));
 			if (StrEqual(text, "-1")) SetFailState("%s missing action bar name", TalentName);
 			Format(text, sizeof(text), "%T", text, client);
 			AddMenuItem(menu, text, text);
@@ -2671,8 +2704,8 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 
 		GetTranslationOfTalentName(client, TalentName, TalentName_Temp, sizeof(TalentName_Temp), true);
 		Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", TalentName_Temp, client);
-		isSubMenu = GetKeyValueInt(MenuKeys[client], MenuValues[client], "is sub menu?");
-		TalentLevelRequired = GetKeyValueInt(MenuKeys[client], MenuValues[client], "minimum level required?");
+		isSubMenu = GetKeyValueIntAtPos(MenuValues[client], IS_SUB_MENU_OF_TALENTCONFIG);
+		TalentLevelRequired = GetKeyValueIntAtPos(MenuValues[client], TALENT_MINIMUM_LEVEL_REQ);
 		// isSubMenu 3 is for a different operation, we do || instead of &&
 		if (isSubMenu == 1 || isSubMenu == 2) {
 
@@ -2681,20 +2714,20 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 			else Format(text, sizeof(text), "%T", "Submenu Available", client, TalentName_Temp);
 		}
 		else {
-			if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is item?") == 1) continue;	// ignore items.
+			if (GetKeyValueIntAtPos(MenuValues[client], ITEM_ITEM_ID) == 1) continue;	// ignore items.
 			//AbilityInherited = GetKeyValueInt(MenuKeys[client], MenuValues[client], "ability inherited?");
-			nodeUnlockCost = GetKeyValueInt(MenuKeys[client], MenuValues[client], "node unlock cost?", "1");	// we want to default the nodeUnlockCost to 1 if it's not set.
+			//nodeUnlockCost = GetKeyValueInt(MenuKeys[client], MenuValues[client], "node unlock cost?", "1");	// we want to default the nodeUnlockCost to 1 if it's not set.
 			if (!b_IsDirectorTalents[client]) {
 				//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), MenuKeys[client], MenuValues[client], "talents required?");
-				if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "show debug info?") == 1) PrintToChat(client, "%s", sTalentsRequired);
-				requiredTalentsRequiredToUnlock = GetKeyValueInt(MenuKeys[client], MenuValues[client], "required talents required?");
+				//if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "show debug info?") == 1) PrintToChat(client, "%s", sTalentsRequired);
+				requiredTalentsRequiredToUnlock = GetKeyValueIntAtPos(MenuValues[client], NUM_TALENTS_REQ);
 				requiredCopy = requiredTalentsRequiredToUnlock;
 				optionsRemaining = TalentRequirementsMet(client, MenuKeys[client], MenuValues[client], _, -1);
 				if (requiredTalentsRequiredToUnlock > 0) requiredTalentsRequiredToUnlock = TalentRequirementsMet(client, MenuKeys[client], MenuValues[client], sTalentsRequired, sizeof(sTalentsRequired), requiredTalentsRequiredToUnlock);
 				if (requiredTalentsRequiredToUnlock > 0) {
 					bIsNotEligible = true;
 					if (PlayerTalentPoints > 0) {
-						FreeUpgrades[client] += nodeUnlockCost;
+						FreeUpgrades[client]++;// += nodeUnlockCost;
 						PlayerUpgradesTotal[client] -= PlayerTalentPoints;
 						AddTalentPoints(client, TalentName, 0);
 					}
@@ -2716,7 +2749,7 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 				}
 			}
 			else PlayerTalentPoints = GetTalentStrength(-1, TalentName);
-			if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "talent type?") <= 0) {
+			if (GetKeyValueIntAtPos(MenuValues[client], IS_TALENT_TYPE) <= 0) {
 				if (bIsNotEligible) {
 					if (iShowLockedTalents == 0) continue;
 					if (requiredTalentsRequiredToUnlock > 1) {
@@ -2728,7 +2761,7 @@ stock BuildSubMenu(client, String:MenuName[], String:ConfigName[], String:Return
 					}
 				}
 				else if (PlayerTalentPoints < 1) {
-					Format(text, sizeof(text), "%T", "node locked", client, TalentName_Temp, nodeUnlockCost);
+					Format(text, sizeof(text), "%T", "node locked", client, TalentName_Temp, 1);
 				}
 				else Format(text, sizeof(text), "%T", "node unlocked", client, TalentName_Temp);
 			}
@@ -2831,22 +2864,22 @@ public BuildSubMenuHandle(Handle:menu, MenuAction:action, client, slot)
 
 			GetArrayString(Handle:MenuSection[client], 0, TalentName, sizeof(TalentName));
 			if (!bEquipSpells[client] && !TalentListingFound(client, MenuKeys[client], MenuValues[client], MenuName)) continue;
-			AbilityTalent	=	GetKeyValueInt(MenuKeys[client], MenuValues[client], "is ability?");
-			isSpecialAmmo	=	GetKeyValueInt(MenuKeys[client], MenuValues[client], "special ammo?");
+			AbilityTalent	=	GetKeyValueIntAtPos(MenuValues[client], IS_TALENT_ABILITY);
+			isSpecialAmmo	=	GetKeyValueIntAtPos(MenuValues[client], TALENT_IS_SPELL);
 			PlayerTalentPoints = GetTalentStrength(client, TalentName);
 			if (bEquipSpells[client]) {
 				if (AbilityTalent != 1 && isSpecialAmmo != 1) continue;
 				if (PlayerTalentPoints < 1) continue;
 			}
-			isSubMenu = GetKeyValueInt(MenuKeys[client], MenuValues[client], "is sub menu?");
-			TalentLevelRequired = GetKeyValueInt(MenuKeys[client], MenuValues[client], "minimum level required?");
+			isSubMenu = GetKeyValueIntAtPos(MenuValues[client], IS_SUB_MENU_OF_TALENTCONFIG);
+			TalentLevelRequired = GetKeyValueIntAtPos(MenuValues[client], TALENT_MINIMUM_LEVEL_REQ);
 			//iSkyLevelReq	=	GetKeyValueInt(MenuKeys[client], MenuValues[client], "sky level requirement?");
 			//nodeUnlockCost = GetKeyValueInt(MenuKeys[client], MenuValues[client], "node unlock cost?", "1");
-			FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), MenuKeys[client], MenuValues[client], "talents required?");
+			//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), MenuKeys[client], MenuValues[client], "talents required?");
 			//if (!TalentRequirementsMet(client, sTalentsRequired)) continue;
-			if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is item?") == 1) continue;
+			if (GetKeyValueIntAtPos(MenuValues[client], ITEM_ITEM_ID) == 1) continue;
 			pos++;
-			FormatKeyValue(SurvEffects, sizeof(SurvEffects), MenuKeys[client], MenuValues[client], "survivor ability effects?");
+			//FormatKeyValue(SurvEffects, sizeof(SurvEffects), MenuKeys[client], MenuValues[client], "survivor ability effects?");
 			if (pos == slot) break;
 		}
 
@@ -2865,7 +2898,6 @@ public BuildSubMenuHandle(Handle:menu, MenuAction:action, client, slot)
 			if (PlayerLevel[client] >= TalentLevelRequired || bEquipSpells[client]) {// submenu 2 is to send to spell equip screen *Flex*
 
 				PurchaseTalentName[client] = TalentName;
-				PurchaseSurvEffects[client] = SurvEffects;
 				PurchaseTalentPoints[client] = PlayerTalentPoints;
 
 				if (bEquipSpells[client]) ShowTalentInfoScreen(client, TalentName, MenuKeys[client], MenuValues[client], true);
@@ -2875,8 +2907,7 @@ public BuildSubMenuHandle(Handle:menu, MenuAction:action, client, slot)
 				decl String:TalentName_temp[64];
 				Format(TalentName_temp, sizeof(TalentName_temp), "%T", TalentName, client);
 
-				if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is survivor class role?") != 1) PrintToChat(client, "%T", "talent level requirement not met", client, orange, blue, TalentLevelRequired, orange, green, TalentName_temp);
-				else PrintToChat(client, "%T", "class level requirement not met", client, orange, blue, TalentLevelRequired, orange, green, TalentName_temp);
+				PrintToChat(client, "%T", "talent level requirement not met", client, orange, blue, TalentLevelRequired, orange, green, TalentName_temp);
 				BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
 			}
 		}
@@ -2910,63 +2941,35 @@ stock ShowTalentInfoScreen(client, String:TalentName[], Handle:Keys, Handle:Valu
 	//else if (IsSpecialAmmo == 1 || IsAbilityType == 1) SendPanelToClientAndClose(TalentInfoScreen_Special(client), client, TalentInfoScreen_Special_Init, MENU_TIME_FOREVER);
 }
 
-stock Float:GetTalentInfo(client, Handle:Keys, Handle:Values, infotype = 0, bool:bIsNext = false, String:pTalentNameOverride[] = "none", target = 0, iStrengthOverride = 0) {
-
+stock Float:GetTalentInfo(client, Handle:Values, infotype = 0, bool:bIsNext = false, String:pTalentNameOverride[] = "none", target = 0, iStrengthOverride = 0) {
 	new Float:f_Strength	= 0.0;
 	decl String:TalentNameOverride[64];
 	if (iStrengthOverride > 0) f_Strength = iStrengthOverride * 1.0;
 	else {
-
-		//if (!StrEqual(TalentNameOverride, "none")) f_Strength = GetTalentStrength(client, TalentNameOverride, target) * 1.0;
 		if (StrEqual(pTalentNameOverride, "none")) Format(TalentNameOverride, sizeof(TalentNameOverride), "%s", PurchaseTalentName[client]);
 		else Format(TalentNameOverride, sizeof(TalentNameOverride), "%s", pTalentNameOverride);
 		f_Strength	=	GetTalentStrength(client, TalentNameOverride) * 1.0;
 	}
 	if (bIsNext) f_Strength++;
-
 	if (f_Strength <= 0.0) return 0.0;
-
 	new Float:f_StrengthPoint	= 0.0;
-	//new Float:f_StrengthFirst	= 0.0;
-	//new Float:f_StrengthT		= 0.0;
-	//new Float:f_StrengthP		= 0.0;
-
 	if (target == 0 || !IsLegitimateClient(target)) target = client;
-
 	/*
 		Server operators can make up their own custom attributes, and make them affect any node they want.
 		This key "governing attribute?" lets me know what attribute multiplier to collect.
 		If you don't want a node governed by an attribute, omit the field.
 	*/
+	Values = GetArrayCell(a_Menu_Talents, GetMenuPosition(client, TalentNameOverride), 1);
 	decl String:text[64];
-	FormatKeyValue(text, sizeof(text), Keys, Values, "governing attribute?");
+	GetArrayString(Values, GOVERNING_ATTRIBUTE, text, sizeof(text));
 	new Float:governingAttributeMultiplier = 0.0;
 	if (!StrEqual(text, "-1")) governingAttributeMultiplier = GetAttributeMultiplier(client, text);
 
-	//new Cons = GetTalentStrength(target, "constitution");
-	//new Resi = GetTalentStrength(target, "resilience");
-	//new Agil = GetTalentStrength(target, "agility");
-	//new Tech = GetTalentStrength(target, "technique");
-	//new Endu = GetTalentStrength(target, "endurance");
-	//new Luck = GetTalentStrength(client, "luck");
-	//new Float:f_StrEach = f_Strength - 1;
-	//new Float:TheAbilityMultiplier = 0.0;
-	
 	//we want to add support for a "type" of talent.
 	decl String:sTalentStrengthType[64];
-	if (infotype == 0 || infotype == 1) FormatKeyValue(sTalentStrengthType, sizeof(sTalentStrengthType), Keys, Values, "talent upgrade strength value?", "1.0");
-	else if (infotype == 2) FormatKeyValue(sTalentStrengthType, sizeof(sTalentStrengthType), Keys, Values, "talent active time strength value?", "1.0");
-	else if (infotype == 3) FormatKeyValue(sTalentStrengthType, sizeof(sTalentStrengthType), Keys, Values, "talent cooldown strength value?", "1.0");
-	//new iExplodeCount = GetDelimiterCount(sTalentStrengthType, ",") + 1;
-	//new bool:isInteger = (StrContains(sTalentStrengthType, ".") == -1)? false : true;
-	//decl String:sTalentStrengthLevels[iExplodeCount][512];
-	//if (iExplodeCount > 1) ExplodeString(sTalentStrengthType, ",", sTalentStrengthLevels, iExplodeCount, 512);
-	//else Format(sTalentStrengthLevels[0], sizeof(sTalentStrengthLevels[]), "%s", sTalentStrengthType);
-	
-	/* 1,2,3,3,4
-	"talent point value?"							"0.01,0.03,0.05,0.1,0.15"	// new talent point system
-	"talent last point scale?"						"1.25"						// new talent point system
-	"talent tree category?"							"survival"					// new talent point system*/
+	if (infotype == 0 || infotype == 1) GetArrayString(Values, TALENT_UPGRADE_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
+	else if (infotype == 2) GetArrayString(Values, TALENT_ACTIVE_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
+	else if (infotype == 3) GetArrayString(Values, TALENT_COOLDOWN_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
 	new istrength = RoundToCeil(f_Strength);
 	new Float:f_StrengthIncrement = StringToFloat(sTalentStrengthType);
 	if (istrength < 1) return 0.0;
@@ -2980,22 +2983,19 @@ stock Float:GetTalentInfo(client, Handle:Keys, Handle:Values, infotype = 0, bool
 		new Float:cdReduction = 0.0;
 		new acdReduction = GetArraySize(a_Menu_Talents);
 		for (new i = 0; i < acdReduction; i++) {
-			acdrKeys[client] = GetArrayCell(a_Menu_Talents, i, 0);
 			acdrValues[client] = GetArrayCell(a_Menu_Talents, i, 1);
-			FormatKeyValue(sCooldownGovernor, sizeof(sCooldownGovernor), acdrKeys[client], acdrValues[client], "governs cooldown of talent named?");
-			//if (GetKeyValueInt(acdrKeys[client], acdrValues[client], "show debug info?") == 1) PrintToChat(client, "%s", sCooldownGovernor);
+			GetArrayString(acdrValues[client], COOLDOWN_GOVERNOR_OF_TALENT, sCooldownGovernor, sizeof(sCooldownGovernor));
 			if (!FoundCooldownReduction(TalentNameOverride, sCooldownGovernor)) continue;
-			//if (StrContains(TalentNameOverride, sCooldownGovernor, false) == -1) continue;
 
 			acdrSection[client] = GetArrayCell(a_Menu_Talents, i, 2);
 			GetArrayString(acdrSection[client], 0, sCooldownGovernor, sizeof(sCooldownGovernor));
-			cdReduction += GetTalentInfo(client, acdrKeys[client], acdrValues[client], _, _, sCooldownGovernor);
+			cdReduction += GetTalentInfo(client, acdrValues[client], _, _, sCooldownGovernor);
 		}
 		if (cdReduction > 0.0) f_StrengthPoint -= (f_StrengthPoint * cdReduction);
 		if (f_StrengthPoint < 0.0) f_StrengthPoint = 0.0;	// can't have cooldowns that are less than 0.0 seconds.
 	}
 
-	new Float:TalentHardLimit = GetKeyValueFloat(Keys, Values, "talent hard limit?");
+	new Float:TalentHardLimit = GetKeyValueFloatAtPos(Values, TALENT_STRENGTH_HARD_LIMIT);
 	if (infotype != 3 && f_StrengthPoint > TalentHardLimit && TalentHardLimit > 0.0) f_StrengthPoint = TalentHardLimit;
 
 	return f_StrengthPoint;
@@ -3018,15 +3018,15 @@ public Handle:TalentInfoScreen(client) {
 	new TalentType = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "talent type?");
 	new nodeUnlockCost = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "node unlock cost?", "1");
 
-	new Float:s_TalentPoints = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client]);
-	new Float:s_OtherPointNext = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], _, true);
+	new Float:s_TalentPoints = GetTalentInfo(client, PurchaseValues[client]);
+	new Float:s_OtherPointNext = GetTalentInfo(client, PurchaseValues[client], _, true);
 	new Float:s_SoftCapCooldown = 0.0;
 
 	decl String:pct[4];
 	Format(pct, sizeof(pct), "%");
 	
-	new Float:f_CooldownNow = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], 3);
-	new Float:f_CooldownNext = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], 3, true);
+	new Float:f_CooldownNow = GetTalentInfo(client, PurchaseValues[client], 3);
+	new Float:f_CooldownNext = GetTalentInfo(client, PurchaseValues[client], 3, true);
 
 	decl String:TalentIdCode[64];
 	decl String:TalentIdNum[64];
@@ -3057,22 +3057,22 @@ public Handle:TalentInfoScreen(client) {
 		Format(text, sizeof(text), "%T", "Node Governing Attribute", client, text);
 		DrawPanelText(menu, text);
 	}
-	new Float:AoEEffectRange = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "primary aoe?");
+	new Float:AoEEffectRange = GetKeyValueFloatAtPos(PurchaseValues[client], PRIMARY_AOE);
 	if (AoEEffectRange > 0.0) {
 		Format(text, sizeof(text), "%T", "primary aoe range", client, AoEEffectRange);
 		DrawPanelText(menu, text);
 	}
-	AoEEffectRange = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "secondary aoe?");
+	AoEEffectRange = GetKeyValueFloatAtPos(PurchaseValues[client], SECONDARY_AOE);
 	if (AoEEffectRange > 0.0) {
 		Format(text, sizeof(text), "%T", "secondary aoe range", client, AoEEffectRange);
 		DrawPanelText(menu, text);
 	}
-	AoEEffectRange = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "multiply range?");
+	AoEEffectRange = GetKeyValueFloatAtPos(PurchaseValues[client], MULTIPLY_RANGE);
 	if (AoEEffectRange > 0.0) {
 		Format(text, sizeof(text), "%T", "multiply aoe range", client, AoEEffectRange);
 		DrawPanelText(menu, text);
 	}
-	new bool:IsEffectOverTime = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is effect over time?") == 1) ? true : false;
+	new bool:IsEffectOverTime = (GetKeyValueIntAtPos(PurchaseValues[client], TALENT_IS_EFFECT_OVER_TIME) == 1) ? true : false;
 
 	decl String:TalentInfo[128];
 	new AbilityType = 0;
@@ -3084,15 +3084,15 @@ public Handle:TalentInfoScreen(client) {
 			else Format(text, sizeof(text), "%T", "Talent Cooldown Info", client, s_SoftCapCooldown + f_CooldownNow, s_SoftCapCooldown + f_CooldownNext);
 			if (f_CooldownNext > 0.0) DrawPanelText(menu, text);
 
-			new Float:i_AbilityTime = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], 2);
-			new Float:i_AbilityTimeNext = GetTalentInfo(client, PurchaseKeys[client], PurchaseValues[client], 2, true);
+			new Float:i_AbilityTime = GetTalentInfo(client, PurchaseValues[client], 2);
+			new Float:i_AbilityTimeNext = GetTalentInfo(client, PurchaseValues[client], 2, true);
 			/*
 				ability type ONLY EXISTS for displaying different information to the players via menus.
 				the EXCEPTION to this is type 3, where rpg_functions.sp line 2428 makes a check using it.
 
 				Otherwise, it's just how we translate it for the player to understand.
 			*/
-			AbilityType = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ability type?");
+			AbilityType = GetKeyValueIntAtPos(PurchaseValues[client], ABILITY_TYPE);
 			if (AbilityType < 0) AbilityType = 0;	// if someone forgets to set this, we have to set it to the default value.
 			//if (TalentPointAmount > 0) s_PenaltyPoint = 0.0;
 			if (TalentType <= 0) {
@@ -3156,7 +3156,7 @@ public Handle:TalentInfoScreen(client) {
 				Format(text, sizeof(text), "%T", "Special Ammo Range Max", client, GetSpecialAmmoStrength(client, TalentName, 3));
 				DrawPanelText(menu, text);
 			}
-			Format(text, sizeof(text), "%T", "Special Ammo Effect Strength", client, GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "effect strength?") * 100.0, pct);
+			Format(text, sizeof(text), "%T", "Special Ammo Effect Strength", client, GetKeyValueFloatAtPos(PurchaseValues[client], SPECIAL_AMMO_TALENT_STRENGTH) * 100.0, pct);
 			DrawPanelText(menu, text);
 			//DrawPanelText(menu, TalentIdCode);
 		}
@@ -3165,15 +3165,15 @@ public Handle:TalentInfoScreen(client) {
 	if (TalentType <= 0 || AbilityTalent == 1) {
 
 		if (TalentPointAmount == 0) {
-			new ignoreLayerCount = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?") == 1) ? 1 :
-								   (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is attribute?") == 1) ? 1 : 0;
+			new ignoreLayerCount = (GetKeyValueIntAtPos(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 :
+								   (GetKeyValueIntAtPos(PurchaseValues[client], IS_ATTRIBUTE) == 1) ? 1 : 0;
 			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
 			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 
 			//decl String:sTalentsRequired[64];
 			decl String:formattedTalentsRequired[64];
 			//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
-			new requirementsRemaining = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "required talents required?");
+			new requirementsRemaining = GetKeyValueIntAtPos(PurchaseValues[client], NUM_TALENTS_REQ);
 			new requiredCopy = requirementsRemaining;
 			requirementsRemaining = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], formattedTalentsRequired, sizeof(formattedTalentsRequired), requirementsRemaining);
 			new optionsRemaining = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], _, -1);	// -1 for size gets the count remaining
@@ -3214,7 +3214,7 @@ public Handle:TalentInfoScreen(client) {
 		Format(text, sizeof(text), "%T", "cartel experience screen", client, talentlevel, talentexperience, talentrequirement, TalentName_Temp, theExperienceBar);
 		DrawPanelText(menu, text);
 	}
-	new talentCombatStatesAllowed = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "combat state required?");
+	new talentCombatStatesAllowed = GetKeyValueIntAtPos(PurchaseValues[client], COMBAT_STATE_REQ);
 	if (talentCombatStatesAllowed >= 0) {
 		if (talentCombatStatesAllowed == 1) Format(text, sizeof(text), "%T", "in combat state required", client);
 		else Format(text, sizeof(text), "%T", "no combat state required", client);
@@ -3223,13 +3223,21 @@ public Handle:TalentInfoScreen(client) {
 	Format(text, sizeof(text), "%T", "return to talent menu", client);
 	DrawPanelItem(menu, text);
 
-	if (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "hide translation?") != 1) {
+	if (GetKeyValueIntAtPos(PurchaseValues[client], HIDE_TRANSLATION) != 1) {
 		//	Talents now have a brief description of what they do on their purchase page.
 		//	This variable is pre-determined and calls a translation file in the language of the player.
 		GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation));
 		//Format(TalentInfo, sizeof(TalentInfo), "%s", GetTranslationOfTalentName(client, TalentName));
-		new Float:rollChance = GetKeyValueFloat(PurchaseKeys[client], PurchaseValues[client], "roll chance?");
-		if (TalentType <= 0 && rollChance > 0.0) {
+		new Float:rollChance = GetKeyValueFloatAtPos(PurchaseValues[client], TALENT_ROLL_CHANCE);
+		new Float:fPercentageHealthRequired = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_MISSING);
+		new Float:fPercentageHealthRequiredBelow = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ);
+		new Float:fCoherencyRange = GetKeyValueFloatAtPos(PurchaseValues[client], COHERENCY_RANGE);
+		new iCoherencyMax = GetKeyValueIntAtPos(PurchaseValues[client], COHERENCY_MAX);
+		if (fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0) {
+			new Float:fPercentageHealthRequiredMax = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_MISSING_MAX);
+			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, fPercentageHealthRequired * 100.0, pct, fPercentageHealthRequiredMax * 100.0, pct, fPercentageHealthRequiredBelow * 100.0, pct, fCoherencyRange, iCoherencyMax);
+		}
+		else if (TalentType <= 0 && rollChance > 0.0) {
 			Format(text, sizeof(text), "%3.2f%s", rollChance * 100.0, pct);
 			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, text);
 		}
@@ -3241,11 +3249,11 @@ public Handle:TalentInfoScreen(client) {
 
 		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client]);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], "passive effect?");
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_PASSIVE_EFFECT);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], "toggle effect?");
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_TOGGLE_EFFECT);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], "cooldown effect?");
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_COOLDOWN_EFFECT);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
 	}
 	if (AbilityType == 1) {	// show the player what the buff shows as on the buff bar because we aren't monsters like Fatshark.
@@ -3267,40 +3275,40 @@ public Handle:TalentInfoScreen(client) {
 	return menu;
 }
 
-stock GetAbilityText(client, String:TheString[], TheSize, Handle:Keys, Handle:Values, String:TheQuery[] = "active effect?") {
+stock GetAbilityText(client, String:TheString[], TheSize, Handle:Keys, Handle:Values, pos = ABILITY_ACTIVE_EFFECT) {
 
 	decl String:text[512], String:text2[512], String:tDraft[512], String:AbilityType[64], String:TheMaximumMultiplier[64];
 	new Float:TheAbilityMultiplier = 0.0;
 	decl String:pct[4];
 	Format(pct, sizeof(pct), "%");
-	FormatKeyValue(text, sizeof(text), Keys, Values, TheQuery);
+	GetArrayString(Values, pos, text, sizeof(text));
 	if (StrEqual(text, "-1")) {
 
 		Format(TheString, TheSize, "-1");
 		return;
 	}
 
-	if (StrContains(TheQuery, "active", false) != -1) {
+	if (pos == ABILITY_ACTIVE_EFFECT) {
 
 		Format(tDraft, sizeof(tDraft), "%T", "Active Effects", client);
 		Format(AbilityType, sizeof(AbilityType), "Active Ability");
-		TheAbilityMultiplier = GetKeyValueFloat(Keys, Values, "active strength?");
+		TheAbilityMultiplier = GetKeyValueFloatAtPos(Values, ABILITY_ACTIVE_STRENGTH);
 
 		Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "active");
 	}
-	else if (StrContains(TheQuery, "passive", false) != -1) {
+	else if (pos == ABILITY_PASSIVE_EFFECT) {
 
 		Format(tDraft, sizeof(tDraft), "%T", "Passive Effects", client);
 		Format(AbilityType, sizeof(AbilityType), "Passive Ability");
-		TheAbilityMultiplier = GetKeyValueFloat(Keys, Values, "passive strength?");
+		TheAbilityMultiplier = GetKeyValueFloatAtPos(Values, ABILITY_PASSIVE_STRENGTH);
 
 		Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "passive");
 	}
-	else if (StrContains(TheQuery, "cooldown", false) != -1) {
+	else if (pos == ABILITY_COOLDOWN_EFFECT) {
 
 		Format(tDraft, sizeof(tDraft), "%T", "Cooldown Effects", client);
 		Format(AbilityType, sizeof(AbilityType), "Cooldown Ability");
-		TheAbilityMultiplier = GetKeyValueFloat(Keys, Values, "cooldown strength?");
+		TheAbilityMultiplier = GetKeyValueFloatAtPos(Values, ABILITY_COOLDOWN_STRENGTH);
 
 		Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "cooldown");
 	}
@@ -3308,10 +3316,10 @@ stock GetAbilityText(client, String:TheString[], TheSize, Handle:Keys, Handle:Va
 
 		Format(tDraft, sizeof(tDraft), "%T", "Toggle Effects", client);
 		Format(AbilityType, sizeof(AbilityType), "Toggle Ability");
-		TheAbilityMultiplier = GetKeyValueFloat(Keys, Values, "toggle strength?");
+		TheAbilityMultiplier = GetKeyValueFloatAtPos(Values, ABILITY_TOGGLE_STRENGTH);
 	}
 	Format(text2, sizeof(text2), "%s %s", text, AbilityType);
-	new isReactive = GetKeyValueInt(Keys, Values, "reactive ability?");
+	new isReactive = GetKeyValueIntAtPos(Values, ABILITY_IS_REACTIVE);
 	if (isReactive == 1) {
 		Format(text2, sizeof(text2), "%T", text2, client);
 	}
@@ -3319,7 +3327,7 @@ stock GetAbilityText(client, String:TheString[], TheSize, Handle:Keys, Handle:Va
 		if (StrEqual(text, "C", true)) {
 
 			Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "maximum %s multiplier?", TheMaximumMultiplier);
-			new Float:MaxMult = GetKeyValueFloat(Keys, Values, TheMaximumMultiplier);
+			new Float:MaxMult = GetKeyValueFloat(Keys, Values, TheMaximumMultiplier, _, _, TALENT_FIRST_RANDOM_KEY_POSITION);
 			Format(text2, sizeof(text2), "%T", text2, client, TheAbilityMultiplier * 100.0, pct, MaxMult * 100.0, pct);
 		}
 		else if (TheAbilityMultiplier > 0.0 || StrEqual(text, "S", true)) {
@@ -3333,9 +3341,9 @@ stock GetAbilityText(client, String:TheString[], TheSize, Handle:Keys, Handle:Va
 		}
 	}
 	Format(tDraft, sizeof(tDraft), "%s\n%s", tDraft, text2);
-	if (StrContains(TheQuery, "active", false) != -1) {
+	if (pos == ABILITY_ACTIVE_EFFECT) {
 
-		FormatKeyValue(text, sizeof(text), Keys, Values, "cooldown?");
+		GetArrayString(Values, ABILITY_COOLDOWN, text, sizeof(text));
 
 		TheAbilityMultiplier = GetAbilityMultiplier(client, "L");
 		if (TheAbilityMultiplier != -1.0) {
@@ -3351,7 +3359,7 @@ stock GetAbilityText(client, String:TheString[], TheSize, Handle:Keys, Handle:Va
 		if (!StrEqual(text, "-1")) Format(text, sizeof(text), "%T", "Ability Cooldown", client, text);
 		else Format(text, sizeof(text), "%T", "No Ability Cooldown", client);
 
-		FormatKeyValue(text2, sizeof(text2), Keys, Values, "active time?");
+		GetArrayString(Values, ABILITY_ACTIVE_TIME, text2, sizeof(text2));
 		if (!StrEqual(text2, "-1")) Format(text2, sizeof(text2), "%T", "Ability Active Time", client, text2);
 		else Format(text2, sizeof(text2), "%T", "Instant Ability", client);
 
@@ -3477,11 +3485,11 @@ public Handle:TalentInfoScreen_Special (client) {
 
 		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client]);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], "passive effect?");
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_PASSIVE_EFFECT);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], "toggle effect?");
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_TOGGLE_EFFECT);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], "cooldown effect?");
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_COOLDOWN_EFFECT);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
 	}
 	else DrawPanelText(menu, TalentInfo);	// rawline means not a selectable option.
@@ -3496,20 +3504,20 @@ public TalentInfoScreen_Init (Handle:topmenu, MenuAction:action, client, param2)
 		new TalentStrength = GetTalentStrength(client, PurchaseTalentName[client]);
 		decl String:TalentName[64];
 		Format(TalentName, sizeof(TalentName), "%s", PurchaseTalentName[client]);
-		new TalentType = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "talent type?");
-		new AbilityTalent = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is ability?");
+		new TalentType = GetKeyValueIntAtPos(PurchaseValues[client], IS_TALENT_TYPE);
+		new AbilityTalent = GetKeyValueIntAtPos(PurchaseValues[client], IS_TALENT_ABILITY);
 
 		//decl String:sTalentsRequired[64];
 		//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
-		new requiredTalentsRequired = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "required talents required?");
+		new requiredTalentsRequired = GetKeyValueIntAtPos(PurchaseValues[client], NUM_TALENTS_REQ);
 		if (requiredTalentsRequired > 0) requiredTalentsRequired = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], _, _, requiredTalentsRequired);
 		
-		new nodeUnlockCost = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "node unlock cost?", "1");	// if the key is not found, return a default value of 1.
+		new nodeUnlockCost = 1;
 		new bool:isNodeCostMet = (UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
-		new currentLayer = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "layer?");
+		new currentLayer = GetKeyValueIntAtPos(PurchaseValues[client], GET_TALENT_LAYER);
 		//new ignoreLayerCount = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?");
-		new ignoreLayerCount = (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?") == 1) ? 1 :
-								   (GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "is attribute?") == 1) ? 1 : 0;	// attributes both count towards the layer requirements and can be unlocked when the layer requirements are met.
+		new ignoreLayerCount = (GetKeyValueIntAtPos(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 :
+								   (GetKeyValueIntAtPos(PurchaseValues[client], IS_ATTRIBUTE) == 1) ? 1 : 0;	// attributes both count towards the layer requirements and can be unlocked when the layer requirements are met.
 
 		new bool:bIsLayerEligible = (TalentStrength > 0) ? true : false;
 		if (!bIsLayerEligible) {
@@ -3776,11 +3784,8 @@ stock WipeTalentPoints(client) {
 	new value = 0;
 
 	for (new i = 0; i < size; i++) {	// We only reset talents a player has points in, so locked talents don't become unlocked.
-
-		TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
-		TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
-		if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1) continue;	// we don't wipe attributes.
-		if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1) continue;		// we don't wipe classes
+		//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+		//TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 
 		value = GetArrayCell(a_Database_PlayerTalents[client], i);
 		if (value > 0)	SetArrayCell(a_Database_PlayerTalents[client], i, 0);
