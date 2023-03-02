@@ -39,7 +39,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v1.1.2"
+#define PLUGIN_VERSION				"v1.3.1"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -249,9 +249,24 @@ public Plugin:myinfo = {
 #define TALENT_IS_SPELL						140
 #define TALENT_MINIMUM_LEVEL_REQ			141
 #define ABILITY_TOGGLE_STRENGTH				142
+#define TARGET_AND_LAST_TARGET_CLASS_MATCH	143
+#define TARGET_RANGE_REQUIRED				144
+#define TARGET_RANGE_REQUIRED_OUTSIDE		145
+#define TARGET_MUST_BE_LAST_TARGET			146
+#define ACTIVATOR_MUST_BE_ON_FIRE			147
+#define ACTIVATOR_MUST_SUFFER_ACID_BURN		148
+#define ACTIVATOR_MUST_BE_EXPLODING			149
+#define ACTIVATOR_MUST_BE_SLOW				150
+#define ACTIVATOR_MUST_BE_FROZEN			151
+#define ACTIVATOR_MUST_BE_SCORCHED			152
+#define ACTIVATOR_MUST_BE_STEAMING			153
+#define ACTIVATOR_MUST_BE_DROWNING			154
+#define ACTIVATOR_MUST_HAVE_HIGH_GROUND		155
+#define TARGET_MUST_HAVE_HIGH_GROUND		156
+#define ACTIVATOR_TARGET_MUST_EVEN_GROUND	157
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION	143
+#define TALENT_FIRST_RANDOM_KEY_POSITION	158
 
 // for super commons.
 #define SUPER_COMMON_MAX_ALLOWED			0
@@ -315,6 +330,7 @@ public Plugin:myinfo = {
 #define EVENT_IS_BULLET_IMPACT				17
 #define EVENT_ENTERED_SAFEROOM				18
 
+new String:LastTargetClass[MAXPLAYERS + 1][10];
 new iHealingPlayerInCombatPutInCombat;
 new Handle:TimeOfEffectOverTime;
 new Handle:EffectOverTime;
@@ -1099,6 +1115,7 @@ new iSpecialInfectedMinimum;
 new iEndRoundIfNoHealthySurvivors;
 new Float:fAcidDamagePlayerLevel;
 new Float:fAcidDamageSupersPlayerLevel;
+new String:ClientStatusEffects[MAXPLAYERS + 1][2][64];
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -3267,8 +3284,6 @@ public Action:CMD_DataEraseBot(client, args) {
 }
 
 stock DeleteAndCreateNewData(client, bool:IsBot = false) {
-	//decl String:thetext[64];
-	//GetConfigValue(thetext, sizeof(thetext), "database prefix?");
 	decl String:key[64];
 	decl String:tquery[1024];
 	decl String:text[64];
@@ -3344,6 +3359,66 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 	new sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
 	if (StrEqual(Config, CONFIG_MENUTALENTS)) {
+		if (FindStringInArray(TalentKey, "activator neither high or low ground?") == -1) {
+			PushArrayString(TalentKey, "activator neither high or low ground?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target high ground?") == -1) {
+			PushArrayString(TalentKey, "target high ground?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "activator high ground?") == -1) {
+			PushArrayString(TalentKey, "activator high ground?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires activator drowning?") == -1) {
+			PushArrayString(TalentKey, "requires activator drowning?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires activator steaming?") == -1) {
+			PushArrayString(TalentKey, "requires activator steaming?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires activator scorched?") == -1) {
+			PushArrayString(TalentKey, "requires activator scorched?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires activator frozen?") == -1) {
+			PushArrayString(TalentKey, "requires activator frozen?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires activator slowed?") == -1) {
+			PushArrayString(TalentKey, "requires activator slowed?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires activator exploding?") == -1) {
+			PushArrayString(TalentKey, "requires activator exploding?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires activator acid burn?") == -1) {
+			PushArrayString(TalentKey, "requires activator acid burn?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "requires activator on fire?") == -1) {
+			PushArrayString(TalentKey, "requires activator on fire?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target must be last target?") == -1) {
+			PushArrayString(TalentKey, "target must be last target?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target must be outside range required?") == -1) {
+			PushArrayString(TalentKey, "target must be outside range required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target range required?") == -1) {
+			PushArrayString(TalentKey, "target range required?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "target class must be last target class?") == -1) {
+			PushArrayString(TalentKey, "target class must be last target class?");
+			PushArrayString(TalentValue, "-1");
+		}
 		if (FindStringInArray(TalentKey, "toggle strength?") == -1) {
 			PushArrayString(TalentKey, "toggle strength?");
 			PushArrayString(TalentValue, "-1.0");
@@ -4079,11 +4154,27 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 				SetArrayString(TalentValue, sortSize, text);
 				RemoveFromArray(TalentKey, pos);
 				RemoveFromArray(TalentValue, pos);
+
 				continue;
 			}
 			else if (
 				pos == 141 && !StrEqual(text, "minimum level required?") ||
-				pos == 142 && !StrEqual(text, "toggle strength?")) {
+				pos == 142 && !StrEqual(text, "toggle strength?") ||
+				pos == 143 && !StrEqual(text, "target class must be last target class?") ||
+				pos == 144 && !StrEqual(text, "target range required?") ||
+				pos == 145 && !StrEqual(text, "target must be outside range required?") ||
+				pos == 146 && !StrEqual(text, "target must be last target?") ||
+				pos == 147 && !StrEqual(text, "requires activator on fire?") ||			// [Bu]
+				pos == 148 && !StrEqual(text, "requires activator acid burn?") ||		// [Ab]
+				pos == 149 && !StrEqual(text, "requires activator exploding?") ||		// [Ex]
+				pos == 150 && !StrEqual(text, "requires activator slowed?") ||			// [Sl]
+				pos == 151 && !StrEqual(text, "requires activator frozen?") ||			// [Fr]
+				pos == 152 && !StrEqual(text, "requires activator scorched?") ||		// [Sc]
+				pos == 153 && !StrEqual(text, "requires activator steaming?") ||		// [St]
+				pos == 154 && !StrEqual(text, "requires activator drowning?") ||		// [Wa]
+				pos == 155 && !StrEqual(text, "activator high ground?") ||
+				pos == 156 && !StrEqual(text, "target high ground?") ||
+				pos == 157 && !StrEqual(text, "activator neither high or low ground?")){
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);

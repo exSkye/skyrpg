@@ -10,11 +10,11 @@
 	}
 	"compounding talent info"
 	{
-		"en"				"This node stacks with similarly-named nodes."
+		"en"				"This node stacks with other nodes."
 	}
 	"not compounding talent info"
 	{
-		"en"				"This node is independent from other nodes."
+		"en"				"This nodes output is independent of other nodes."
 	}
 	"effect over time talent info"
 	{
@@ -2557,7 +2557,7 @@
 	}
 	"bloodmage path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
 		"en"				"Deal increased damage for each {1}{2} health missing."
 	}
 	"bloodmage path ii"
@@ -2566,8 +2566,48 @@
 	}
 	"bloodmage path ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
 		"en"				"Deal increased damage when you are under {5}{6} health."
+	}
+	"bloodmage path iii"
+	{
+		"en"				"Blood Mage III"
+	}
+	"bloodmage path iii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Deal increased damage for each {1}{2} health missing\nwhen you are under {5}{6} health."
+	}
+	"precision path ii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Increases your limb/head shot damage with non-snipers\nwhen enemies are within {9} units."
+	}
+	"swimmer path i"
+	{
+		"en"				"Swimmer Path I"
+	}
+	"swimmer path i info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Increases all damage when you are in water\nwhen the target is further than {9} units from you."
+	}
+	"assassin path iv"
+	{
+		"en"				"Assassin Path IV"
+	}
+	"assassin path iv info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Non-sniper/melee damage bonus when hurting a new target\nthat is further than {9} units from you."
+	}
+	"arsonist path i"
+	{
+		"en"				"Arsonist I"
+	}
+	"arsonist path i info"
+	{
+		"en"				"Deal increased damage when you are on fire."
 	}
 	"warrior path i"
 	{
@@ -2577,10 +2617,22 @@
 	{
 		"en"				"Warrior II"
 	}
+	"warrior path iv"
+	{
+		"en"				"Warrior IV"
+	}
 	"warrior path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
 		"en"				"Receive less damage when you are under {5}{6} health."
+	}
+	"warrior path iii"
+	{
+		"en"				"Warrior III"
+	}
+	"warrior path iii info"
+	{
+		"en"				"Deal greatly-increased melee damage when in combat."
 	}
 	"coherency path i"
 	{
@@ -2588,8 +2640,26 @@
 	}
 	"coherency path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
 		"en"				"Increase your health pool for each teammate within {7}units\nup to a maximum of {8} teammates."
+	}
+	"coherency path ii"
+	{
+		"en"				"Coherency II"
+	}
+	"coherency path ii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Increase your melee damage for each teammate within {7}units\nup to a maximum of {8} teammates."
+	}
+	"coherency path iii"
+	{
+		"en"				"Coherency III"
+	}
+	"coherency path iii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Increase your damage resistance for each teammate within {7}units\nup to a maximum of {8} teammates."
 	}
 	"last resort i"
 	{
@@ -2598,6 +2668,10 @@
 	"last resort ii"
 	{
 		"en"				"(Incap) Last Resort II"
+	}
+	"last resort iii"
+	{
+		"en"				"(Incap) Last Resort III"
 	}
 	"last resort info"
 	{
@@ -2831,7 +2905,7 @@
 	{
 		"en"				"Precision II"
 	}
-	"precision path info"
+	"precision path i info"
 	{
 		"en"				"Increases your outgoing damage when using\nthe zoom scope on your weapon."
 	}
@@ -3303,9 +3377,25 @@
 	{
 		"en"				"(Incap) Regen I"
 	}
+	"incap health regen ii"
+	{
+		"en"				"(Incap) Regen II"
+	}
 	"incap health regen info"
 	{
 		"en"				"Regenerates health while incapacitated."
+	}
+	"ooc health regen i"
+	{
+		"en"				"(Oc) Regen I"
+	}
+	"ooc health regen ii"
+	{
+		"en"				"(Oc) Regen II"
+	}
+	"ooc health regen iii"
+	{
+		"en"				"(Oc) Regen III"
 	}
 	"health regen i"
 	{
@@ -3387,6 +3477,10 @@
 	{
 		"en"				"Increases nearby teammates total health after you take damage."
 	}
+	"ooc survivor health i"
+	{
+		"en"				"(Oc) Health I"
+	}
 	"survivor health i"
 	{
 		"en"				"Health I"
@@ -3410,6 +3504,10 @@
 	"ic cooldown up cdr i"
 	{
 		"en"				"(In-Combat)CD Mastery I"
+	}
+	"ic cooldown up cdr ii"
+	{
+		"en"				"(In-Combat)CD Mastery II"
 	}
 	"cooldown up cdr i"
 	{

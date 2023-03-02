@@ -1345,12 +1345,12 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 			else continue;
 		}
 		if (!StrEqual(translationInfo, "-1")) {
-			fPercentageHealthRequired = GetKeyValueFloat(MenuKeys[client], MenuValues[client], "health percentage required missing?");
-			fPercentageHealthRequiredBelow = GetKeyValueFloat(MenuKeys[client], MenuValues[client], "health percentage required?");
-			fCoherencyRange = GetKeyValueFloat(MenuKeys[client], MenuValues[client], "coherency range?");
-			iCoherencyMax = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "coherency max?");
+			fPercentageHealthRequired = GetKeyValueFloatAtPos(MenuValues[client], HEALTH_PERCENTAGE_REQ_MISSING);
+			fPercentageHealthRequiredBelow = GetKeyValueFloatAtPos(MenuValues[client], HEALTH_PERCENTAGE_REQ);
+			fCoherencyRange = GetKeyValueFloatAtPos(MenuValues[client], COHERENCY_RANGE);
+			iCoherencyMax = GetKeyValueIntAtPos(PurchaseValues[client], COHERENCY_MAX);
 			if (fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0) {
-				fPercentageHealthRequiredMax = GetKeyValueFloat(MenuKeys[client], MenuValues[client], "health percentage required missing max?");
+				fPercentageHealthRequiredMax = GetKeyValueFloatAtPos(MenuValues[client], HEALTH_PERCENTAGE_REQ_MISSING_MAX);
 				Format(translationInfo, sizeof(translationInfo), "%T", translationInfo, client, fPercentageHealthRequired * 100.0, pct, fPercentageHealthRequiredMax * 100.0, pct, fPercentageHealthRequiredBelow * 100.0, pct, fCoherencyRange, iCoherencyMax);
 			}
 			else Format(translationInfo, sizeof(translationInfo), "%T", translationInfo, client);
@@ -3232,10 +3232,11 @@ public Handle:TalentInfoScreen(client) {
 		new Float:fPercentageHealthRequired = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_MISSING);
 		new Float:fPercentageHealthRequiredBelow = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ);
 		new Float:fCoherencyRange = GetKeyValueFloatAtPos(PurchaseValues[client], COHERENCY_RANGE);
+		new Float:fTargetRangeRequired = GetKeyValueFloatAtPos(PurchaseValues[client], TARGET_RANGE_REQUIRED);
 		new iCoherencyMax = GetKeyValueIntAtPos(PurchaseValues[client], COHERENCY_MAX);
-		if (fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0) {
+		if (fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0 || fTargetRangeRequired > 0.0) {
 			new Float:fPercentageHealthRequiredMax = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_MISSING_MAX);
-			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, fPercentageHealthRequired * 100.0, pct, fPercentageHealthRequiredMax * 100.0, pct, fPercentageHealthRequiredBelow * 100.0, pct, fCoherencyRange, iCoherencyMax);
+			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, fPercentageHealthRequired * 100.0, pct, fPercentageHealthRequiredMax * 100.0, pct, fPercentageHealthRequiredBelow * 100.0, pct, fCoherencyRange, iCoherencyMax, fTargetRangeRequired);
 		}
 		else if (TalentType <= 0 && rollChance > 0.0) {
 			Format(text, sizeof(text), "%3.2f%s", rollChance * 100.0, pct);

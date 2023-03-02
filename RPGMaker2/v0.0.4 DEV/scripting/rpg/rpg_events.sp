@@ -306,11 +306,14 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 		}
 	}
 	if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
-		if (IsLegitimateClientAttacker && IsPlayerUsingShotgun(attacker)) {
-			if (!shotgunCooldown[attacker]) CheckIfHeadshot(attacker, victim, event, healthvalue);
-			else return 0;
-			shotgunCooldown[attacker] = true;
-			CreateTimer(0.1, Timer_ResetShotgunCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
+		if (IsLegitimateClientAttacker) {
+			CheckIfHeadshot(attacker, victim, event, healthvalue);
+			CheckIfLimbDamage(attacker, victim, event, healthvalue);
+			if (IsPlayerUsingShotgun(attacker)) {
+				if (shotgunCooldown[attacker]) return 0;
+				shotgunCooldown[attacker] = true;
+				CreateTimer(0.1, Timer_ResetShotgunCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
+			}
 		}
 		if (victimType == 2 && !b_IsHooked[victim]) ChangeHook(victim, true);
 		//if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !b_IsHooked[victim]) ChangeHook(victim, true);
@@ -1072,7 +1075,7 @@ stock bool:CastSpell(client, target = -1, String:TalentName[], Float:TargetPos[3
 	}
 
 	new bulletStrength = RoundToCeil(GetBaseWeaponDamage(client, target, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET) * 0.1);
-	bulletStrength = RoundToCeil(GetAbilityStrengthByTrigger(client, -2, "D", _, bulletStrength, _, _, "D", 1, true));
+	bulletStrength = RoundToCeil(GetAbilityStrengthByTrigger(client, -2, "D", _, bulletStrength, _, _, "D", 1, true, _, _, _, DMG_BULLET));
 	new Float:amSTR = GetSpecialAmmoStrength(client, TalentName, 5);
 	if (amSTR > 0.0) bulletStrength = RoundToCeil(bulletStrength * amSTR);
 	//decl String:SpecialAmmoData_s[512];
@@ -1485,7 +1488,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 	if (IsClientAlive && b_IsActiveRound) {
 
-		if (!IsFakeClient(client) && clientTeam == TEAM_SURVIVOR) {
+		/*if (!IsFakeClient(client) && clientTeam == TEAM_SURVIVOR) {
 
 			if (MyBirthday[client] == 0) MyBirthday[client] = GetTime();
 			if (iRushingModuleEnabled == 1) {
@@ -1502,7 +1505,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 					PrintToChat(client, "%T", "Rushing Return To Team", client, orange, blue, orange);
 				}
 			}
-		}
+		}*/
 
 		if (clientTeam == TEAM_INFECTED && FindZombieClass(client) == ZOMBIECLASS_TANK) {
 
@@ -1526,7 +1529,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			}
 		}
 
-		if (clientTeam == TEAM_SURVIVOR) {
+		/*if (clientTeam == TEAM_SURVIVOR) {
 
 			//CheckIfItemPickup(client);
 			//CheckBombs(client);
@@ -1534,7 +1537,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 				if (SurvivorsSaferoomWaiting() || !SurvivorsInRange(client, 1536.0, true)) SurvivorBotsRegroup(client);
 			}
-		}
+		}*/
 		new bool:isClientHoldingJump = (buttons & IN_JUMP) ? true : false;
 		if (isClientHoldingJump) bJumpTime[client] = true;
 		else {
@@ -1619,6 +1622,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 				!theClientHasPainPills && !theClientHasAdrenaline && !theClientHasFirstAid && !theClientHasDefib && !IsClientIncapacitated) {
 				CreateProgressBar(client, 0.0, true);
 				UseItemTime[client] = 0.0;
+				theClientHasAnActiveProgressBar = false;
 				if (GetEntPropEnt(client, Prop_Send, "m_reviveOwner") == client) {
 
 					SetEntPropEnt(client, Prop_Send, "m_reviveOwner", -1);
@@ -1643,6 +1647,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 
 					CreateProgressBar(client, 0.0, true);
 					UseItemTime[client] = 0.0;
+					theClientHasAnActiveProgressBar = false;
 					reviveOwner = GetEntPropEnt(client, Prop_Send, "m_reviveOwner");
 					if (reviveOwner == client) {
 
@@ -2435,14 +2440,17 @@ stock bool:SameTeam_OnTakeDamage(healer, target, iHealerAmount, bool:IsDamageTal
 	new bool:TheBool = IsMeleeAttacker(healer);
 	if (TheBool && bIsMeleeCooldown[healer]) return true;
 	//https://pastebin.com/tLLK9kZM
-	if (!TheBool) {
-		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "d", 2, true));
-		iHealerAmount += RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "healshot", 2, true));
+	if (damagetype & DMG_BULLET || damagetype & DMG_SLASH || damagetype & DMG_CLUB) {
+		if (!TheBool) {
+			iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "d", 2, true, _, _, _, damagetype));
+			iHealerAmount += RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "healshot", 2, true, _, _, _, damagetype));
+		}
+		else {
+			iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "d", 2, true, _, _, _, damagetype));
+			iHealerAmount += RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "healmelee", 2, true, _, _, _, damagetype));
+		}
 	}
-	else {
-		iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "d", 2, true));
-		iHealerAmount += RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "healmelee", 2, true));
-	}
+	else return true;
 	if (iHealerAmount < 1) return true;
 	if (iHealingPlayerInCombatPutInCombat == 1 && bIsInCombat[target]) {
 		CombatTime[healer] = GetEngineTime() + fOutOfCombatTime;
