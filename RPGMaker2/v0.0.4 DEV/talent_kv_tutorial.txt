@@ -1,0 +1,171 @@
+I will get this updated in another commit, but for now, what's here are all of the keys used to create a talent.
+Due to the amount of possible keys, it's better to just omit the ones you don't need when creating a talent
+and the software will automatically create (for sorting reasons) the key and push the default value.
+
+Default value = ignores key.
+
+Until I can fill this in, if you need to create talents, please reference the talentmenu.cfg for legends on each key
+though the key name should (hopefully) be self-explanatory.
+
+
+=============================================================
+KEY	 =========================================	DEFAULT VALUE
+=============================================================
+"ability type?"									"-1"
+"compounding talent?"							"-1"
+"compound with?"								"-1"
+"activator ability effects?"					"-1"
+"target ability effects?"						"-1"
+"secondary effects?"							"-1"
+"weapons permitted?"							"-1"
+"health percentage required?"					"-1.0"
+"coherency range?"								"-1.0"
+"coherency max?"								"-1"
+"coherency required?"							"-1"
+"health percentage remaining required target?"	"-1.0"
+"health percentage missing required target?"	"-1.0"
+"activator team required?"						"-1"
+"activator class required?"						"-1"
+"requires zoom?"								"-1"
+"combat state required?"						"-1"
+"player state required?"						"-1"
+"passive ability?"								"-1"
+"requires headshot?"							"-1"
+"requires limbshot?"							"-1"
+"requires crouching?"							"-1"
+"activator stagger required?"					"-1"
+"target stagger required?"						"-1"
+"cannot target self?"							"-1"
+"cannot be touching earth?"						"-1"
+"vomit state required?"							"-1"
+"target vomit state required?"					"-1"
+"require adrenaline effect?"					"-1"
+"disabled if weakness?"							"-1"
+"require weakness?"								"-1"
+"target class required?"						"-1"
+"cleanse trigger?"								"-1"
+"require consecutive hits?"						"-1"
+"background talent?"							"-1"
+"status effect multiplier?"						"-1"
+"multiply range?"								"-1.0"
+"multiply commons?"								"-1"		// 1 to enable
+"multiply supers?"								"-1"
+"multiply witches?"								"-1"
+"multiply survivors?"							"-1"
+"multiply specials?"							"-1"
+"strength increase while zoomed?"				"-1.0"		// percentage
+"strength increase time cap?"					"-1.0"
+"strength increase time required?"				"-1.0"		// how long a player must be zoomed
+"no effect if zoom time is not met?"			"-1"		// 1 to enforce zoom time required
+"strength increase while holding fire?"			"-1.0"
+"no effect if damage time is not met?"			"-1.0"		// how long a player must be holding fire (one variable instead of two like zoom due to functional hooks)
+"health percentage required missing?"			"-1.0"		// remainder-based, if you're missing 90% and set it to 0.05, it'll be 18 * talent strength.
+"health percentage required missing max?"		"-1.0"		// won't calculate talent strengths beyond this value.
+"is own talent?"								"-1"
+"secondary ability trigger?"					"-1"		// see talentmenu.cfg for a list of known triggers.
+"target is self?"								"-1"
+"primary aoe?"									"-1.0"
+"secondary aoe?"								"-1.0"
+"talent name?"									"-1"
+"translation?"									"-1"
+"governing attribute?"							"-1"		// set if you want points in an attribute to increase the efficacy (cooldown, strength, and all) of the talent
+"talent tree category?"							"-1"
+"part of menu named?"							"-1"
+"layer?"										"-1"
+"is ability?"									"-1"
+"action bar name?"								"-1"
+"required talents required?"					"-1"
+"talent upgrade strength value?"				"-1.0"
+"talent upgrade scale?"							"-1.0"
+"talent cooldown strength value?"				"-1.0"
+"talent cooldown scale?"						"-1.0"
+"talent active time strength value?"			"-1.0"
+"talent active time scale?"						"-1.0"	
+"governs cooldown of talent named?"				"-1"
+"talent hard limit?"							"-1.0"		// talent strength hard limit in strength (percent)
+"is effect over time?"							"-1"
+"effect strength?"								"-1.0"
+"ignore for layer count?"						"-1"
+"is attribute?"									"-1"
+"hide translation?"								"-1"
+"roll chance?"									"-1.0"
+"interval per point?"							"-1.0"
+"interval first point?"							"-1.0"
+"range per point?"								"-1.0"
+"range first point value?"						"-1.0"
+"stamina per point?"							"-1"
+"base stamina required?"						"-1"
+"cooldown per point?"							"-1.0"	// time in seconds
+"cooldown first point?"							"-1.0"
+"cooldown start?"								"-1.0"
+"active time per point?"						"-1.0"
+"active time first point?"						"-1.0"
+"ammo effect?"									"-1"	// see talentmenu.cfg for a list of ammo effects
+"effect multiplier?"							"-1.0"
+"active effect?"								"-1"
+"passive effect?"								"-1"
+"cooldown effect?"								"-1"
+"reactive ability?"								"-1"
+"teams allowed?"								"-1"
+"cooldown strength?"							"-1.0"
+"maximum passive multiplier?"					"-1.0"
+"maximum active multiplier?"					"-1.0"
+"active requires ensnare?"						"-1"
+"active strength?"								"-1.0"
+"passive ignores cooldown?"						"-1"
+"passive requires ensnare?"						"-1"
+"passive strength?"								"-1.0"
+"passive only?"									"-1"
+"is single target?"								"-1"
+"draw delay?"									"-1.0"
+"draw effect delay?"							"-1.0"
+"passive draw delay?"							"-1.0"
+"attribute?"									"-1"
+"use these multipliers?"						"-1"
+"base multiplier?"								"-1.0"
+"diminishing multiplier?"						"-1.0"
+"diminishing returns?"							"-1"
+"buff bar text?"								"-1"
+"is sub menu?"									"-1"
+"talent type?"									"-1"
+"is item?"										"-1"
+"rarity?"										"-1"
+"experience start?"								"-1"
+"requirement multiplier?"						"-1.0"
+"is aura instead?"								"-1"
+"cooldown trigger?"								"-1"
+"inactive trigger?"								"-1"
+"reactive type?"								"-1"
+"active time?"									"-1.0"
+"cannot be ensnared?"							"-1"
+"sky level requirement?"						"-1"
+"toggle effect?"								"-1"
+"humanoid only?"								"-1"
+"inanimate only?"								"-1"
+"allow commons?"								"-1"
+"allow specials?"								"-1"
+"allow survivors?"								"-1"
+"cooldown?"										"-1.0"
+"activate effect per tick?"						"-1"
+"secondary ept only?"							"-1"
+"active end ability trigger?"					"-1"
+"cooldown end ability trigger?"					"-1"
+"does damage?"									"-1"
+"special ammo?"									"-1"
+"minimum level required?"						"-1"
+"toggle strength?"								"-1.0"
+"target class must be last target class?"		"-1"
+"target range required?"						"-1.0"
+"target must be outside range required?"		"-1"
+"target must be last target?"					"-1"
+"requires activator on fire?"					"-1"		// [Bu]
+"requires activator acid burn?"					"-1"		// [Ab]
+"requires activator exploding?"					"-1"		// [Ex]
+"requires activator slowed?"					"-1"		// [Sl]
+"requires activator frozen?"					"-1"		// [Fr]
+"requires activator scorched?"					"-1"		// [Sc]
+"requires activator steaming?"					"-1"		// [St]
+"requires activator drowning?"					"-1"		// [Wa]
+"activator high ground?"						"-1"
+"target high ground?"							"-1"
+"activator neither high or low ground?"			"-1"
