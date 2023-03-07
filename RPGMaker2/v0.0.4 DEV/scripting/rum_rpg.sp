@@ -24,6 +24,7 @@
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  */
+
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -39,7 +40,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v1.3.1"
+#define PLUGIN_VERSION				"v1.3.5"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -60,7 +61,7 @@
 #define LOGFILE						"rum_rpg.txt"
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
 //	=================================
-#define DEBUG     		false
+#define DEBUG     				false
 //	=================================
 #define CVAR_SHOW			FCVAR_NOTIFY | FCVAR_PLUGIN
 #define DMG_HEADSHOT		2147483648
@@ -264,10 +265,11 @@ public Plugin:myinfo = {
 #define ACTIVATOR_MUST_HAVE_HIGH_GROUND		155
 #define TARGET_MUST_HAVE_HIGH_GROUND		156
 #define ACTIVATOR_TARGET_MUST_EVEN_GROUND	157
+#define TARGET_MUST_BE_IN_THE_AIR			158
+#define ABILITY_EVENT_TYPE					159
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION	158
-
+#define TALENT_FIRST_RANDOM_KEY_POSITION	160
 // for super commons.
 #define SUPER_COMMON_MAX_ALLOWED			0
 #define SUPER_COMMON_AURA_EFFECT			1
@@ -306,8 +308,9 @@ public Plugin:myinfo = {
 #define SUPER_COMMON_RAW_STRENGTH			34
 #define SUPER_COMMON_RAW_COMMON_STRENGTH	35
 #define SUPER_COMMON_RAW_PLAYER_STRENGTH	36
+#define SUPER_COMMON_REQ_BILED_SURVIVORS	37
 
-#define SUPER_COMMON_FIRST_RANDOM_KEY_POS	37
+#define SUPER_COMMON_FIRST_RANDOM_KEY_POS	38
 
 // for the events.cfg
 #define EVENT_PERPETRATOR					0
@@ -389,7 +392,6 @@ new iRestedSecondsRequired;
 new iRestedMaximum;
 new iFriendlyFire;
 new String:sDonatorFlags[10];
-new iDropsEnabled;
 new Float:fDeathPenalty;
 new iHardcoreMode;
 new iDeathPenaltyPlayers;
@@ -550,7 +552,6 @@ new Handle:InfectedHealth[MAXPLAYERS + 1];
 new Handle:SpecialCommon[MAXPLAYERS + 1];
 new Handle:WitchList;
 new Handle:WitchDamage[MAXPLAYERS + 1];
-//new IncapacitatedHealth[MAXPLAYERS + 1];
 new Handle:Give_Store_Keys;
 new Handle:Give_Store_Values;
 new Handle:Give_Store_Section;
@@ -564,7 +565,6 @@ new String:Infected_LastChatUser[64];
 new String:Survivor_LastChatUser[64];
 new String:Spectator_LastChatUser[64];
 new String:currentCampaignName[64];
-//new Float:g_MapFlowDistance;
 new Handle:h_KilledPosition_X[MAXPLAYERS + 1];
 new Handle:h_KilledPosition_Y[MAXPLAYERS + 1];
 new Handle:h_KilledPosition_Z[MAXPLAYERS + 1];
@@ -578,19 +578,15 @@ new bool:b_MapStart;
 new bool:b_HardcoreMode[MAXPLAYERS + 1];
 new PreviousRoundIncaps[MAXPLAYERS + 1];
 new RoundIncaps[MAXPLAYERS + 1];
-//new RoundDeaths[MAXPLAYERS + 1];
 new String:CONFIG_MAIN[64];
 new bool:b_IsCampaignComplete;
 new bool:b_IsRoundIsOver;
 new RatingHandicap[MAXPLAYERS + 1];
 new bool:bIsHandicapLocked[MAXPLAYERS + 1];
 new bool:b_IsCheckpointDoorStartOpened;
-//new bool:b_IsSavingInfectedBotData;
-//new bool:b_IsLoadingInfectedBotData;
 new resr[MAXPLAYERS + 1];
 new LastPlayLength[MAXPLAYERS + 1];
 new RestedExperience[MAXPLAYERS + 1];
-//new bool:bIsLoadedBotData;
 new MapRoundsPlayed;
 new String:LastSpoken[MAXPLAYERS + 1][512];
 new Handle:RPGMenuPosition[MAXPLAYERS + 1];
@@ -598,7 +594,6 @@ new bool:b_IsInSaferoom[MAXPLAYERS + 1];
 new Handle:hDatabase												=	INVALID_HANDLE;
 new String:ConfigPathDirectory[64];
 new String:LogPathDirectory[64];
-new String:PurchaseSurvEffects[MAXPLAYERS + 1][64];
 new String:PurchaseTalentName[MAXPLAYERS + 1][64];
 new PurchaseTalentPoints[MAXPLAYERS + 1];
 new Handle:a_Trails;
@@ -628,7 +623,6 @@ new Handle:SaveSection[MAXPLAYERS + 1];
 new OriginalHealth[MAXPLAYERS + 1];
 new bool:b_IsLoadingStore[MAXPLAYERS + 1];
 new Handle:LoadStoreSection[MAXPLAYERS + 1];
-new SlatePoints[MAXPLAYERS + 1];
 new FreeUpgrades[MAXPLAYERS + 1];
 new Handle:StoreTimeKeys[MAXPLAYERS + 1];
 new Handle:StoreTimeValues[MAXPLAYERS + 1];
@@ -815,7 +809,6 @@ new String:TheCurrentMap[64];
 new bool:IsEnrageNotified;
 //new bool:bIsNewClass[MAXPLAYERS + 1];
 new ClientActiveStance[MAXPLAYERS + 1];
-new bool:b_RescueIsHere;
 new Handle:SurvivorsIgnored[MAXPLAYERS + 1];
 new bool:HasSeenCombat[MAXPLAYERS + 1];
 new MyBirthday[MAXPLAYERS + 1];
@@ -828,7 +821,6 @@ new iTankRush;
 new iTanksAlways;
 new Float:fSprintSpeed;
 new iRPGMode;
-new iTankPlayerCount;
 new DirectorWitchLimit;
 new Float:fCommonQueueLimit;
 new Float:fDirectorThoughtDelay;
@@ -933,7 +925,6 @@ new DisplayType;
 new String:sDirectorTeam[64];
 new Float:fRestedExpMult;
 new Float:fSurvivorExpMult;
-new iIsPvpServer;
 new iDebuffLimit;
 new iRatingSpecialsRequired;
 new iRatingTanksRequired;
@@ -943,18 +934,17 @@ new RatingPerHandicap;
 new Handle:ItemDropArray;
 new String:sItemModel[512];
 new iSurvivorGroupMinimum;
-new Float:fDropChanceSpecial;
+/*new Float:fDropChanceSpecial;
 new Float:fDropChanceCommon;
 new Float:fDropChanceWitch;
 new Float:fDropChanceTank;
-new Float:fDropChanceInfected;
+new Float:fDropChanceInfected;*/
 new Handle:PreloadKeys;
 new Handle:PreloadValues;
 new Handle:ItemDropKeys;
 new Handle:ItemDropValues;
 new Handle:ItemDropSection;
 new Handle:persistentCirculation;
-new iItemExpireDate;
 new iRarityMax;
 new iEnrageAdvertisement;
 new iJoinGroupAdvertisement;
@@ -1050,7 +1040,6 @@ new String:DefaultInfectedProfileName[64];
 new Handle:GetGoverningAttributeKeys[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeValues[MAXPLAYERS + 1];
 new Handle:GetGoverningAttributeSection[MAXPLAYERS + 1];
-new iRushingModuleEnabled;
 new iTanksAlwaysEnforceCooldown;
 new Handle:WeaponResultKeys[MAXPLAYERS + 1];
 new Handle:WeaponResultValues[MAXPLAYERS + 1];
@@ -1101,12 +1090,11 @@ new Handle:TalentAtMenuPositionSection[MAXPLAYERS + 1];
 new iStrengthOnSpawnIsStrength;
 new Handle:SetNodesKeys;
 new Handle:SetNodesValues;
-new Float:fDrawAbilityInterval;
 new Float:fDrawHudInterval;
 new bool:ImmuneToAllDamage[MAXPLAYERS + 1];
 new iPlayersLeaveCombatDuringFinales;
 new iAllowPauseLeveling;
-new iDropAcidOnLastDebuffDrop;
+//new iDropAcidOnLastDebuffDrop;
 new Float:fMaxDamageResistance;
 new Float:fStaminaPerPlayerLevel;
 new Float:fStaminaPerSkyLevel;
@@ -1116,7 +1104,9 @@ new iEndRoundIfNoHealthySurvivors;
 new Float:fAcidDamagePlayerLevel;
 new Float:fAcidDamageSupersPlayerLevel;
 new String:ClientStatusEffects[MAXPLAYERS + 1][2][64];
-
+new Float:fTankMovementSpeed_Burning;
+new Float:fTankMovementSpeed_Hulk;
+new Float:fTankMovementSpeed_Death;
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 	if (!IsValidEntity(CurrentEntity) || CurrentEntity < 1) return Plugin_Handled;
@@ -1996,7 +1986,6 @@ stock bool:PlayerHasWeakness(client) {
 public ReadyUp_CheckpointDoorStartOpened() {
 	if (!b_IsCheckpointDoorStartOpened) {
 		b_IsCheckpointDoorStartOpened		= true;
-		b_RescueIsHere = false;
 		b_IsActiveRound = true;
 		bIsSettingsCheck = true;
 		IsEnrageNotified = false;
@@ -2410,6 +2399,7 @@ public Action:CMD_GiveLevel(client, args) {
 			}
 		}
 	}
+
 	return Plugin_Handled;
 }
 
@@ -2423,15 +2413,15 @@ stock GetPlayerLevel(client) {
 		iLevel++;
 		ExperienceRequirement = CheckExperienceRequirement(client, false, iLevel);
 	}
-
 	return iLevel;
 }
 
-stock SetTotalExperienceByLevel(client, newlevel) {
+stock SetTotalExperienceByLevel(client, newlevel, bool:giveMaxXP = false) {
 
 	new oldlevel = PlayerLevel[client];
 	ExperienceOverall[client] = 0;
 	ExperienceLevel[client] = 0;
+	if (newlevel > iMaxLevel) newlevel = iMaxLevel;
 	PlayerLevel[client] = newlevel;
 	for (new i = 1; i <= newlevel; i++) {
 
@@ -2441,6 +2431,7 @@ stock SetTotalExperienceByLevel(client, newlevel) {
 
 	ExperienceOverall[client]++;
 	ExperienceLevel[client]++;	// i don't like 0 / level, so i always do 1 / level as the minimum.
+	if (giveMaxXP) ExperienceOverall[client] = CheckExperienceRequirement(client, false, iMaxLevel);
 	if (oldlevel > PlayerLevel[client]) ChallengeEverything(client);
 	else if (PlayerLevel[client] > oldlevel) {
 		FreeUpgrades[client] += (PlayerLevel[client] - oldlevel);
@@ -2614,11 +2605,8 @@ public Action:CMD_MyWeapon(client, args){
 	return Plugin_Handled;
 }
 public Action:CMD_CollectBonusExperience(client, args) {
-
 	/*if (CurrentMapPosition != 0 && RoundExperienceMultiplier[client] > 0.0 && BonusContainer[client] > 0 && !b_IsActiveRound) {
-
 		new RewardWaiting = RoundToCeil(BonusContainer[client] * RoundExperienceMultiplier[client]);
-
 		ExperienceLevel[client] += RewardWaiting;
 		ExperienceOverall[client] += RewardWaiting;
 		decl String:Name[64];
@@ -2628,6 +2616,7 @@ public Action:CMD_CollectBonusExperience(client, args) {
 		RoundExperienceMultiplier[client] = 0.0;
 		ConfirmExperienceAction(client);
 	}*/
+
 	return Plugin_Handled;
 }
 
@@ -2672,7 +2661,6 @@ stock CallRoundIsOver() {
 		for (new i = 1; i <= MaxClients; i++) {
 			if (IsLegitimateClient(i)) bTimersRunning[i] = false;
 		}
-		b_RescueIsHere = false;
 		if (b_IsActiveRound) b_IsActiveRound = false;
 		//SetSurvivorsAliveHostname();
 		if (!b_IsMissionFailed) {
@@ -2775,9 +2763,7 @@ stock CallRoundIsOver() {
 	}
 }
 
-
 public Action:Timer_ResetMap(Handle:timer) {
-
 	ServerCommand("changelevel %s", TheCurrentMap);
 	return Plugin_Stop;
 }
@@ -2932,17 +2918,14 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 
 	decl String:thetext[64];
 	if (StrEqual(configname, CONFIG_MAIN) && !b_IsFirstPluginLoad) {
-
 		b_IsFirstPluginLoad = true;
 		if (hDatabase == INVALID_HANDLE) {
 
 			MySQL_Init();
 		}
 		LoadMainConfig();
-
 		GetConfigValue(RPGMenuCommand, sizeof(RPGMenuCommand), "rpg menu command?");
 		RPGMenuCommandExplode = GetDelimiterCount(RPGMenuCommand, ",") + 1;
-
 		GetConfigValue(thetext, sizeof(thetext), "drop weapon command?");
 		RegConsoleCmd(thetext, CMD_DropWeapon);
 		GetConfigValue(thetext, sizeof(thetext), "director talent command?");
@@ -2973,17 +2956,14 @@ public ReadyUp_LoadFromConfigEx(Handle:key, Handle:value, Handle:section, String
 		//etConfigValue(thetext, sizeof(thetext), "rpg data force save?");
 		//RegConsoleCmd(thetext, CMD_SaveData);
 	}
-
 	if (StrEqual(configname, CONFIG_EVENTS)) SubmitEventHooks(1);
 	ReadyUp_NtvGetHeader();
-
 	if (StrEqual(configname, CONFIG_MAIN)) {
 		GetConfigValue(thetext, sizeof(thetext), "item drop model?");
 		PrecacheModel(thetext, true);
 		GetConfigValue(thetext, sizeof(thetext), "backpack model?");
 		PrecacheModel(thetext, true);
 	}
-
 	/*
 
 		We need to preload an array full of all the positions of item drops.
@@ -3053,13 +3033,10 @@ stock LoadMainConfig() {
 	fDeathPenalty						= GetConfigValueFloat("death penalty?");
 	iDeathPenaltyPlayers				= GetConfigValueInt("death penalty players required?");
 	iTankRush							= GetConfigValueInt("tank rush?");
-	iRushingModuleEnabled				= GetConfigValueInt("anti-rushing enabled?");
 	iTanksAlways						= GetConfigValueInt("tanks always active?");
 	iTanksAlwaysEnforceCooldown 		= GetConfigValueInt("tanks always enforce cooldown?");
 	fSprintSpeed						= GetConfigValueFloat("sprint speed?");
 	iRPGMode							= GetConfigValueInt("rpg mode?");
-	//fTankMultiplier					= GetConfigValueFloat("director tanks player multiplier?");
-	iTankPlayerCount					= GetConfigValueInt("director tanks per _ players?");
 	DirectorWitchLimit					= GetConfigValueInt("director witch limit?");
 	fCommonQueueLimit					= GetConfigValueFloat("common queue limit?");
 	fDirectorThoughtDelay				= GetConfigValueFloat("director thought process delay?");
@@ -3088,8 +3065,6 @@ stock LoadMainConfig() {
 	fCommonDirectorPoints				= GetConfigValueFloat("common infected director points?");
 	iDisplayHealthBars					= GetConfigValueInt("display health bars?");
 	iMaxDifficultyLevel					= GetConfigValueInt("max difficulty level?");
-
-
 	decl String:text[64], String:text2[64], String:text3[64], String:text4[64];
 	for (new i = 0; i < 7; i++) {
 		if (i == 6) {
@@ -3109,6 +3084,7 @@ stock LoadMainConfig() {
 		iBaseSpecialDamage[i]			= GetConfigValueInt(text3);
 		iBaseSpecialInfectedHealth[i]	= GetConfigValueInt(text4);
 	}
+
 	fAcidDamagePlayerLevel				= GetConfigValueFloat("acid damage spitter player level?");
 	fAcidDamageSupersPlayerLevel		= GetConfigValueFloat("acid damage supers player level?");
 	fPointsMultiplierInfected			= GetConfigValueFloat("points multiplier infected?");
@@ -3118,7 +3094,6 @@ stock LoadMainConfig() {
 	fHexingMultiplier					= GetConfigValueFloat("experience multiplier hexing?");
 	TanksNearbyRange					= GetConfigValueFloat("tank nearby ability deactivate?");
 	iCommonAffixes						= GetConfigValueInt("common affixes?");
-
 	BroadcastType						= GetConfigValueInt("hint text type?");
 	iDoomTimer							= GetConfigValueInt("doom kill timer?");
 	iSurvivorStaminaMax					= GetConfigValueInt("survivor stamina?");
@@ -3185,7 +3160,6 @@ stock LoadMainConfig() {
 	GetConfigValue(sDirectorTeam, sizeof(sDirectorTeam), "director team name?");
 	fRestedExpMult						= GetConfigValueFloat("rested experience multiplier?");
 	fSurvivorExpMult					= GetConfigValueFloat("survivor experience bonus?");
-	iIsPvpServer						= GetConfigValueInt("pvp server?");
 	iDebuffLimit						= GetConfigValueInt("debuff limit?");
 	iRatingSpecialsRequired				= GetConfigValueInt("specials rating required?");
 	iRatingTanksRequired				= GetConfigValueInt("tank rating required?");
@@ -3193,13 +3167,6 @@ stock LoadMainConfig() {
 	iIsLifelink							= GetConfigValueInt("lifelink enabled?");
 	RatingPerHandicap					= GetConfigValueInt("rating level handicap?");
 	GetConfigValue(sItemModel, sizeof(sItemModel), "item drop model?");
-	fDropChanceSpecial					= GetConfigValueFloat("item chance supers?");
-	fDropChanceCommon					= GetConfigValueFloat("item chance commons?");
-	fDropChanceWitch					= GetConfigValueFloat("item chance witch?");
-	fDropChanceTank						= GetConfigValueFloat("item chance tank?");
-	fDropChanceInfected					= GetConfigValueFloat("item chance infected?");
-	iDropsEnabled						= GetConfigValueInt("item drop enabled?");
-	iItemExpireDate						= GetConfigValueInt("item expire date?");
 	iRarityMax							= GetConfigValueInt("item rarity max?");
 	iEnrageAdvertisement				= GetConfigValueInt("enrage advertise time?");
 	iNotifyEnrage						= GetConfigValueInt("enrage notification?");
@@ -3217,7 +3184,6 @@ stock LoadMainConfig() {
 	iShowTotalNodesOnTalentTree			= GetConfigValueInt("show upgrade maximum by nodes?");
 	fDrawHudInterval					= GetConfigValueFloat("hud display tick rate?");
 	fSpecialAmmoInterval				= GetConfigValueFloat("special ammo tick rate?");
-	fDrawAbilityInterval				= GetConfigValueFloat("ability visual effect tick rate?");
 	fEffectOverTimeInterval				= GetConfigValueFloat("effect over time tick rate?");
 	//fStaggerTime						= GetConfigValueFloat("stagger debuff time?");
 	fStaggerTickrate					= GetConfigValueFloat("stagger tickrate?");
@@ -3245,7 +3211,10 @@ stock LoadMainConfig() {
 	fMaxDamageResistance				= GetConfigValueFloat("max damage resistance?");
 	fStaminaPerPlayerLevel				= GetConfigValueFloat("stamina increase per player level?");
 	fStaminaPerSkyLevel					= GetConfigValueFloat("stamina increase per prestige level?");
-	iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?")
+	iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?");
+	fTankMovementSpeed_Burning			= GetConfigValueFloat("fire tank movement speed?", 1.0);	// if this key is omitted, a default value is set. these MUST be > 0.0, so the default is hard-coded.
+	fTankMovementSpeed_Hulk				= GetConfigValueFloat("hulk tank movement speed?", 0.75);
+	fTankMovementSpeed_Death			= GetConfigValueFloat("death tank movement speed?", 0.5);
 	//if (fMaxDamageResistance < 0.0) fMaxDamageResistance = 0.9;
 	//iDropAcidOnLastDebuffDrop			= GetConfigValueInt("do prestige players poo acid on last tick?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
@@ -3267,7 +3236,6 @@ public Action:CMD_BuyMenu(client, args) {
 public Action:CMD_DataErase(client, args) {
 	decl String:arg[MAX_NAME_LENGTH];
 	decl String:thetext[64];
-
 	GetConfigValue(thetext, sizeof(thetext), "delete bot flags?");
 	if (args > 0 && HasCommandAccess(client, thetext)) {
 		GetCmdArg(1, arg, sizeof(arg));
@@ -3359,6 +3327,14 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 	new sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
 	if (StrEqual(Config, CONFIG_MENUTALENTS)) {
+		if (FindStringInArray(TalentKey, "event type?") == -1) {
+			PushArrayString(TalentKey, "event type?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target must be in the air?") == -1) {
+			PushArrayString(TalentKey, "target must be in the air?");
+			PushArrayString(TalentValue, "-1");
+		}
 		if (FindStringInArray(TalentKey, "activator neither high or low ground?") == -1) {
 			PushArrayString(TalentKey, "activator neither high or low ground?");
 			PushArrayString(TalentValue, "-1");
@@ -4154,7 +4130,6 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 				SetArrayString(TalentValue, sortSize, text);
 				RemoveFromArray(TalentKey, pos);
 				RemoveFromArray(TalentValue, pos);
-
 				continue;
 			}
 			else if (
@@ -4174,7 +4149,9 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 				pos == 154 && !StrEqual(text, "requires activator drowning?") ||		// [Wa]
 				pos == 155 && !StrEqual(text, "activator high ground?") ||
 				pos == 156 && !StrEqual(text, "target high ground?") ||
-				pos == 157 && !StrEqual(text, "activator neither high or low ground?")){
+				pos == 157 && !StrEqual(text, "activator neither high or low ground?") ||
+				pos == 158 && !StrEqual(text, "target must be in the air?") ||
+				pos == 159 && !StrEqual(text, "event type?")){
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -4301,6 +4278,10 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 		}
 	}
 	else if (StrEqual(Config, CONFIG_COMMONAFFIXES)) {
+		if (FindStringInArray(TalentKey, "require bile?") == -1) {
+			PushArrayString(TalentKey, "require bile?");
+			PushArrayString(TalentValue, "-1");
+		}
 		if (FindStringInArray(TalentKey, "raw player strength?") == -1) {
 			PushArrayString(TalentKey, "raw player strength?");
 			PushArrayString(TalentValue, "-1");
@@ -4490,7 +4471,8 @@ stock SetConfigArrays(String:Config[], Handle:Main, Handle:Keys, Handle:Values, 
 			pos == 33 && !StrEqual(text, "strength special?") ||
 			pos == 34 && !StrEqual(text, "raw strength?") ||
 			pos == 35 && !StrEqual(text, "raw common strength?") ||
-			pos == 36 && !StrEqual(text, "raw player strength?")) {
+			pos == 36 && !StrEqual(text, "raw player strength?") ||
+			pos == 37 && !StrEqual(text, "require bile?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);

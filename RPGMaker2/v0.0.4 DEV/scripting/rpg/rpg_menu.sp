@@ -782,7 +782,12 @@ stock ShowActionBar(client) {
 		baseWeaponDamage = DataScreenWeaponDamage(client);
 		if (baseWeaponDamage > 0) {
 			AddCommasToString(baseWeaponDamage, baseWeaponDamageText, sizeof(baseWeaponDamageText));
-			Format(text, sizeof(text), "%s\nBullet DMG: %s", text, baseWeaponDamageText);
+			if (IsMeleeAttacker(client)) Format(text, sizeof(text), "%s\nMelee Damage: %s", text, baseWeaponDamageText);
+			else Format(text, sizeof(text), "%s\nGun Damage: %s", text, baseWeaponDamageText);
+			// DataScreenTargetName returns two results on every call - an integer return value, and the text it formats w/ baseWeaponDamageText
+			if (DataScreenTargetName(client, baseWeaponDamageText, sizeof(baseWeaponDamageText)) != -1) {
+				Format(text, sizeof(text), "%s (%s)", text, baseWeaponDamageText);
+			}
 		}
 	}
 	//if (baseWeaponDamage > 0) Format(text, sizeof(text), "%s\nBullet Damage: %s", text, AddCommasToString(baseWeaponDamage));
@@ -879,7 +884,7 @@ stock bool:AbilityDoesDamage(client, String:TalentName[]) {
 stock bool:VerifyActionBar(client, String:TalentName[], pos) {
 	//if (defaultTalentStrength == -1) defaultTalentStrength = GetTalentStrength(client, TalentName);
 	if (StrEqual(TalentName, "none", false)) return false;
-	if (!IsAbilityTalent(client, TalentName) && (!IsTalentExists(TalentName) || GetTalentStrength(client, TalentName) < 1)) {
+	if (!IsTalentExists(TalentName) || GetTalentStrength(client, TalentName) < 1) {
 		decl String:none[64];
 		Format(none, sizeof(none), "none");
 		SetArrayString(Handle:ActionBar[client], pos, none);
@@ -1004,8 +1009,8 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 	for (new i = 0; i < size; i++) {
 		if (IsInstantDraw && thevalue != i) continue;
 		GetArrayString(Handle:ActionBar[client], i, text, sizeof(text));
-		//if (!VerifyActionBar(client, text, i)) continue;	// not a real talent or has no points in it.
-		if (StrEqual(text, "none", false) || GetTalentStrength(client, text) < 1) continue;
+		if (!VerifyActionBar(client, text, i)) continue;	// not a real talent or has no points in it.
+		//if (StrEqual(text, "none", false) || GetTalentStrength(client, text) < 1) continue;
 		if (!IsAbilityActive(client, text) && !IsDrawEffect) continue;	// inactive / passive / toggle abilities go through to the draw section.
 		pos = GetMenuPosition(client, text);
 		if (pos < 0) continue;
@@ -1068,7 +1073,7 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 			continue;
 		}
 
-		if (GetKeyValueInt(CheckAbilityKeys[client], CheckAbilityValues[client], "event type?") != eventtype) continue;
+		if (GetKeyValueIntAtPos(CheckAbilityValues[client], ABILITY_EVENT_TYPE) != eventtype) continue;
 		
 		if (!IsPassive) {
 
@@ -1293,12 +1298,7 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 				else continue;
 			}
 			else if (StrEqual(configname, "prestige") && SkyLevel[client] < iSkyLevelMax && PlayerLevel[client] == iMaxLevel) {// we now require players to be max level to see the prestige information.
-
-				if (ExperienceLevel[client] >= XPRequired) Format(text, sizeof(text), "%T", "prestige up available", client, GetPrestigeLevelNodeUnlocks(SkyLevel[client]));
-				else {
-					AddCommasToString(XPRequired - ExperienceLevel[client], formattedText, sizeof(formattedText));
-					Format(text, sizeof(text), "%T", "prestige unavailable", client, formattedText, GetPrestigeLevelNodeUnlocks(SkyLevel[client]));
-				}
+				Format(text, sizeof(text), "%T", "prestige up available", client, GetPrestigeLevelNodeUnlocks(SkyLevel[client]));
 			}
 			else if (StrEqual(configname, "layerup")) {
 				if (PlayerCurrentMenuLayer[client] <= 1) continue;
@@ -1482,9 +1482,7 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 			BuildMenu(client);
 		}
 		else if (StrEqual(config, "prestige", false)) {
-
-			if (ExperienceLevel[client] >= XPRequired && PlayerLevel[client] >= iMaxLevel && SkyLevel[client] < iSkyLevelMax) {
-
+			if (PlayerLevel[client] >= iMaxLevel && SkyLevel[client] < iSkyLevelMax) {
 				PlayerLevel[client] = 1;
 				SkyLevel[client]++;
 				ExperienceLevel[client] = 0;
@@ -2846,7 +2844,7 @@ public BuildSubMenuHandle(Handle:menu, MenuAction:action, client, slot)
 		new isSpecialAmmo				= 0;
 		//decl String:sClassAllowed[64];
 		//decl String:sClassID[64];
-		decl String:sTalentsRequired[64];
+		//decl String:sTalentsRequired[64];
 		//new nodeUnlockCost = 0;
 
 		//new bool:bIsNotEligible = false;
@@ -3020,7 +3018,6 @@ public Handle:TalentInfoScreen(client) {
 
 	new Float:s_TalentPoints = GetTalentInfo(client, PurchaseValues[client]);
 	new Float:s_OtherPointNext = GetTalentInfo(client, PurchaseValues[client], _, true);
-	new Float:s_SoftCapCooldown = 0.0;
 
 	decl String:pct[4];
 	Format(pct, sizeof(pct), "%");
@@ -3079,10 +3076,12 @@ public Handle:TalentInfoScreen(client) {
 	if (AbilityTalent != 1) {
 
 		if (IsSpecialAmmo != 1) {
-
-			if (TalentPointAmount == 0) Format(text, sizeof(text), "%T", "Talent Cooldown Info - No Points", client, s_SoftCapCooldown + f_CooldownNext);
-			else Format(text, sizeof(text), "%T", "Talent Cooldown Info", client, s_SoftCapCooldown + f_CooldownNow, s_SoftCapCooldown + f_CooldownNext);
-			if (f_CooldownNext > 0.0) DrawPanelText(menu, text);
+			if (f_CooldownNext > 0.0) {
+				if (TalentPointAmount == 0) Format(text, sizeof(text), "%T", "Talent Cooldown Info - No Points", client, f_CooldownNext);
+				else Format(text, sizeof(text), "%T", "Talent Cooldown Info", client, f_CooldownNow, f_CooldownNext);
+				DrawPanelText(menu, text);
+			}
+			//else Format(text, sizeof(text), "%T", "No Talent Cooldown Info", client);
 
 			new Float:i_AbilityTime = GetTalentInfo(client, PurchaseValues[client], 2);
 			new Float:i_AbilityTimeNext = GetTalentInfo(client, PurchaseValues[client], 2, true);

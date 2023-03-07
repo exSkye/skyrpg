@@ -1037,7 +1037,6 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	decl String:key[512];
 	decl String:text[512];
 	//decl String:text2[512];
-	new talentexperience = 0;
 	new talentlevel = 0;
 
 	PreviousRoundIncaps[client] = RoundIncaps[client];

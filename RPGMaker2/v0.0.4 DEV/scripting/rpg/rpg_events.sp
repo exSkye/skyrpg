@@ -136,6 +136,9 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			}
 		}
 	}
+	if (StrEqual(event_name, "ammo_pickup") && IsLegitimateClientAttacker) {
+		GiveAmmoBack(attacker, 999);	// whenever a player picks up an ammo pile, we want to give them their full ammo reserves - vanilla + talents.
+	}
 	decl String:weapon[64];
 	if (StrEqual(event_name, "player_left_start_area") && IsLegitimateClientAttacker) {
 		if (attackerTeam == TEAM_SURVIVOR) {
@@ -226,7 +229,6 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 	if (StrEqual(event_name, "finale_vehicle_ready")) {
 		// When the vehicle arrives, the finale is no longer active, but no experience can be earned. This stops farming.
 		if (b_IsFinaleActive) {
-			b_RescueIsHere = true;
 			b_IsFinaleActive = false;
 			new TheInfectedLevel = HumanSurvivorLevels();
 			new TheHumans = HumanPlayersInGame();
@@ -438,10 +440,10 @@ public Call_Event(Handle:event, String:event_name[], bool:dontBroadcast, pos) {
 			GetAbilityStrengthByTrigger(attacker, victim, "infected_abilityuse");
 			GetEventString(event, "ability", AbilityUsed, sizeof(AbilityUsed));
 			if (StrContains(AbilityUsed, "ability_throw") != -1) {
-				if (!(GetEntityFlags(attacker) & FL_ONFIRE) && !SurvivorsInRange(attacker, 128.0)) ChangeTankState(attacker, "burn");
+				if (!(GetEntityFlags(attacker) & FL_ONFIRE) && !SurvivorsInRange(attacker, 1024.0)) ChangeTankState(attacker, "burn");
 				else {
 					ChangeTankState(attacker, "hulk");
-					if (!SurvivorsInRange(attacker, 128.0)) ForceClientJump(attacker, 1000.0);
+					if (!SurvivorsInRange(attacker, 256.0)) ForceClientJump(attacker, 1000.0);
 				}
 			}
 			/*if (StrContains(AbilityUsed, abilities, false) != -1) {
@@ -1431,6 +1433,15 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			CreateTimer(2.0, Timer_ResetStaggerCooldownOnTriggers, client, TIMER_FLAG_NO_MAPCHANGE);
 			EntityWasStaggered(client);
 		}
+		if (clientTeam == TEAM_SURVIVOR) {
+			if ((clientFlags & FL_ONFIRE) && (IsCoveredInBile(client) || clientFlags & FL_INWATER)) {
+				RemoveAllDebuffs(client, "burn");
+				ExtinguishEntity(client);
+			}
+			if ((clientFlags & FL_INWATER) && GetClientStatusEffect(client, "acid") > 0) {
+				RemoveAllDebuffs(client, "acid");
+			}
+		}
 	}
 	new Float:TheTime = GetEngineTime();
 	if ((buttons & IN_ZOOM)) {
@@ -1471,6 +1482,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 		}
 	}
 	new bool:isClientOnSolidGround = (clientFlags & FL_ONGROUND) ? true : false;
+	new bool:isClientOnFire = (clientFlags & FL_ONFIRE) ? true : false;
 	new bool:isClientHoldingMovementKeys = false;
 	if (isHoldingShift) isClientHoldingMovementKeys = (buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT) ? true : false;
 	if (ReadyUpGameMode == 3 && !b_IsCheckpointDoorStartOpened && IsClientAlive && clientTeam == TEAM_SURVIVOR) {
@@ -1519,7 +1531,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 				CreateExplosion(client, _, client, true);
 			}
 			new MyLifetime = GetTime() - MyBirthday[client];
-			if (MyBirthday[client] > 0 && NearbySurvivors(client, 1536.0) < 1 && MyLifetime >= 30) {	// by this design, all tanks should ping-pong to the rushers.
+			if (MyBirthday[client] > 0 && NearbySurvivors(client, 1028.0) < 1 && MyLifetime >= 30) {	// by this design, all tanks should ping-pong to the rushers.
 
 				if (MyLifetime >= 90) {
 
@@ -1535,7 +1547,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			//CheckBombs(client);
 			if (IsFakeClient(client) && !bIsInCheckpoint[client]) {
 
-				if (SurvivorsSaferoomWaiting() || !SurvivorsInRange(client, 1536.0, true)) SurvivorBotsRegroup(client);
+				if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup(client);
 			}
 		}*/
 		new bool:isClientHoldingJump = (buttons & IN_JUMP) ? true : false;
@@ -1733,7 +1745,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			}
 			if (GetClientTeam(client) == TEAM_SURVIVOR) {
 				if ((ReadyUp_GetGameMode() != 3 || !b_IsSurvivalIntermission) && iRPGMode >= 1) {
-					new bool:IsJetpackBroken = IsCoveredInBile(client);
+					new bool:IsJetpackBroken = (isClientOnFire || IsCoveredInBile(client));
 					if (!IsJetpackBroken) IsJetpackBroken = AnyTanksNearby(client);
 					/*
 						Add or remove conditions from the following line to determine when the jetpack automatically disables.
@@ -1893,11 +1905,89 @@ stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner =
 			if (target != 0 && ent != target) continue;
 			GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
 			if (GetVectorDistance(ClientPosition, TargetPosition) > (AfxRangeMax / 2)) continue;
-			if (!IsSpecialCommon(ent)) OnCommonInfectedCreated(ent, true, _, true); // will calculate xp rewards, unhook, and set on fire.
+			if (!IsSpecialCommon(ent)) {
+				OnCommonInfectedCreated(ent, true, _, true); // will calculate xp rewards, unhook, and set on fire.
+				if (i > 0) i--;
+			}
 			else if (IsLegitimateClient(owner) && GetClientTeam(owner) == TEAM_SURVIVOR) AddSpecialCommonDamage(owner, ent, damage);
 		}
 	}
 	//ClearSpecialCommon(client);
+}
+
+stock FindEntityInArrayBinarySearch(Handle:hArray, target) {
+	new left = 0, right = GetArraySize(hArray);
+	new middle;
+	new ent;
+	while (left < right) {
+		middle = (left + right) / 2;
+		ent = GetArrayCell(hArray, middle);
+		if (ent == target) return middle;
+		if (ent < target) left = middle + 1;
+		else right = middle;
+	}
+	return -1;
+}
+
+// inserting entity into an arraylist in ascending order so it's compatible with binary search
+stock InsertIntoArrayAscending(Handle:hArray, entity) {
+	new size = GetArraySize(hArray);
+	new left = 0, right = size;
+	if (right < 1) {	// if the array is empty, just push.
+		PushArrayCell(Handle:hArray, entity);
+		return 0;
+	}
+	else if (right < 2) {	// another outlier check to prevent array oob.
+		if (entity > GetArrayCell(hArray, 0)) {
+			PushArrayCell(hArray, entity);
+			return 1;
+		}
+		else {
+			ResizeArray(hArray, size+1);
+			ShiftArrayUp(hArray, size);
+			SetArrayCell(hArray, size, entity);
+			return 0;
+		}
+	}
+	else {
+		new middle = (left + right) / 2;
+		new middleEnt = GetArrayCell(hArray, middle);
+		new leftEnt = GetArrayCell(hArray, middle - 1);
+		while (entity < leftEnt || entity > middleEnt) {
+			middle = (left + right) / 2;
+			middleEnt = GetArrayCell(hArray, middle);
+			leftEnt = GetArrayCell(hArray, middle - 1);
+			if (entity < leftEnt) right--;
+			else if (entity > rightEnt) left++;
+			else break;
+		}
+		ResizeArray(hArray, size+1);
+		ShiftArrayUp(hArray, middle);	// middle is now undefined.
+		SetArrayCell(hArray, middle, entity);	// place new entity in middle.
+		return middle;
+	}
+	return -1;	// should be unreachable.
+}
+
+stock FindListPositionByEntity(entity, Handle:h_SearchList, block = 0) {
+
+	new size = GetArraySize(Handle:h_SearchList);
+	if (size < 1) return -1;
+	for (new i = 0; i < size; i++) {
+
+		if (GetArrayCell(Handle:h_SearchList, i, block) == entity) return i;
+	}
+	return -1;	// returns false
+}
+
+stock FindCommonInfectedTargetInArray(Handle:hArray, target) {
+	new size = GetArraySize(hArray);
+	for (new i = 0; i < size; i++) {
+		if (i >= size - 1 - i) break;
+		if (GetArrayCell(hArray, i) == target) return i;
+		if (GetArrayCell(hArray, size - 1 - i) == target) return size-1-i;
+	}
+	return -1;
 }
 
 stock ExplosiveAmmo(client, damage, TalentClient) {
@@ -2460,6 +2550,7 @@ stock bool:SameTeam_OnTakeDamage(healer, target, iHealerAmount, bool:IsDamageTal
 		bIsMeleeCooldown[healer] = true;				
 		CreateTimer(0.5, Timer_IsMeleeCooldown, healer, TIMER_FLAG_NO_MAPCHANGE);
 	}
+	else GiveAmmoBack(healer, 1);
 	HealImmunity[target] = true;
 	CreateTimer(0.1, Timer_HealImmunity, target, TIMER_FLAG_NO_MAPCHANGE);
 	HealPlayer(target, healer, iHealerAmount * 1.0, 'h', true);

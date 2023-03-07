@@ -38,11 +38,11 @@
 	}
 	"common aim target"
 	{
-		"en"				"Common Infected"
+		"en"				"Common"
 	}
 	"special common aim target"
 	{
-		"en"				"Super Common"
+		"en"				"Super"
 	}
 	"witch aim target"
 	{
@@ -2578,6 +2578,10 @@
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
 		"en"				"Deal increased damage for each {1}{2} health missing\nwhen you are under {5}{6} health."
 	}
+	"bloodmage path iv"
+	{
+		"en"				"Blood Mage IV"
+	}
 	"precision path ii info"
 	{
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
@@ -2609,6 +2613,38 @@
 	{
 		"en"				"Deal increased damage when you are on fire."
 	}
+	"arsonist path ii"
+	{
+		"en"				"Arsonist II"
+	}
+	"arsonist path ii info"
+	{
+		"en"				"Take reduced damage when you are on fire."
+	}
+	"opportunist path i"
+	{
+		"en"				"Opportunist I"
+	}
+	"opportunist path i info"
+	{
+		"en"				"Deal increased damage when you are suffering [Sc]orch ([Ab]+[Bu])"
+	}
+	"opportunist path ii"
+	{
+		"en"				"Opportunist II"
+	}
+	"opportunist path ii info"
+	{
+		"en"				"Deal increased damage when skeeting (air shots) enemy infected."
+	}
+	"revenge path i"
+	{
+		"en"				"Revenge I"
+	}
+	"revenge path i info"
+	{
+		"en"				"Reduced damage when your attacker is the same\nclass/type as your last attacker."
+	}
 	"warrior path i"
 	{
 		"en"				"Warrior I"
@@ -2625,6 +2661,15 @@
 	{
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
 		"en"				"Receive less damage when you are under {5}{6} health."
+	}
+	"warrior path v"
+	{
+		"en"				"Warrior V"
+	}
+	"warrior path v info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Increased health regen for each {1}{2} health missing\nwhen you are under {5}{6} health."
 	}
 	"warrior path iii"
 	{
@@ -2661,6 +2706,24 @@
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
 		"en"				"Increase your damage resistance for each teammate within {7}units\nup to a maximum of {8} teammates."
 	}
+	"coherency path iv"
+	{
+		"en"				"Coherency IV"
+	}
+	"coherency path iv info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Increase your gun damage for each teammate within {7}units\nup to a maximum of {8} teammates."
+	}
+	"coherency path v"
+	{
+		"en"				"Coherency V"
+	}
+	"coherency path v info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f}"
+		"en"				"Increase your health regen for each teammate within {7}units\nup to a maximum of {8} teammates."
+	}
 	"last resort i"
 	{
 		"en"				"(Incap) Last Resort I"
@@ -2672,6 +2735,10 @@
 	"last resort iii"
 	{
 		"en"				"(Incap) Last Resort III"
+	}
+	"last resort iv"
+	{
+		"en"				"(Incap) Last Resort IV"
 	}
 	"last resort info"
 	{
@@ -2693,6 +2760,78 @@
 	{
 		"en"				"Deal increased damage with melee weapons when [Ad]renaline is active."
 	}
+	"adren rush iii"
+	{
+		"en"				"(Adren) Rush III"
+	}
+	"adren rush iii info"
+	{
+		"en"				"Health regen talents cooldown faster when [Ad]renaline is active."
+	}
+	"ammo regen i (single)"
+	{
+		"en"				"Arms Dealer I"
+	}
+	"ammo regen i (single) info"
+	{
+		"en"				"Regenerate reserve ammo over time."
+	}
+	"ammo regen ii (single)"
+	{
+		"en"				"Arms Dealer II"
+	}
+	"ammo regen ii (single) info"
+	{
+		"en"				"Successful headshots now return ammo to your reserves."
+	}
+	"arms dealer iii"
+	{
+		"en"				"(Holstered) Arms Dealer III"
+	}
+	"arms dealer iii info"
+	{
+		"en"				"Regenerate a percentage of your reserve ammo\nwhile your primary weapon is holstered."
+	}
+	"ammo reserve i"
+	{
+		"en"				"Ammunisionist I"
+	}
+	"ammo reserve ii"
+	{
+		"en"				"Ammunisionist II"
+	}
+	"ammo reserve iii"
+	{
+		"en"				"Ammunisionist III"
+	}
+	"yerawizard i"
+	{
+		"en"				"Yer A Wizard I"
+	}
+	"yerawizard i info"
+	{
+		"en"				"You practice waiving your gun around like a wand.\nAoE fields you create last longer."
+	}
+	"ammo reserve i info"
+	{
+		"en"				"Increase your total ammo reserves."
+	}
+	"optimist i"
+	{
+		"en"				"Optimist I"
+	}
+	"optimist i info"
+	{
+		"en"				"Bullets in the last-half of your magazine deal increased damage\nup to the talent strength for the last bullet."
+	}
+	"optimist ii"
+	{
+		"en"				"Optimist II"
+	}
+	"optimist ii info"
+	{
+		"en"				"Bullets in the last-half of your magazine deal increased damage\nfor every two headshots in-a-row on the same target."
+	}
 	"survivor incap health i"
 	{
 		"en"				"(Incap) Health I"
@@ -2704,6 +2843,10 @@
 	"survivor incap health iii"
 	{
 		"en"				"(Incap) Health III"
+	}
+	"survivor incap health iv"
+	{
+		"en"				"(Incap) Health IV"
 	}
 	"survivor incap health info"
 	{
@@ -2980,6 +3123,18 @@
 	"berserk ammo info"
 	{
 		"en"				"Increase the outgoing AND incoming damage\nof anything inside the field."
+	}
+	"cleanse ab"
+	{
+		"en"				"Cleanse"
+	}
+	"cleanse ammo"
+	{
+		"en"				"(AB)Cleanse"
+	}
+	"cleanse ammo info"
+	{
+		"en"				"Removes temporary debuffs on tick and pauses permanent debuffs."
 	}
 	"adren ab"
 	{
@@ -3381,6 +3536,10 @@
 	{
 		"en"				"(Incap) Regen II"
 	}
+	"incap health regen iii"
+	{
+		"en"				"(Incap) Regen III"
+	}
 	"incap health regen info"
 	{
 		"en"				"Regenerates health while incapacitated."
@@ -3508,6 +3667,10 @@
 	"ic cooldown up cdr ii"
 	{
 		"en"				"(In-Combat)CD Mastery II"
+	}
+	"ic cooldown up cdr iii"
+	{
+		"en"				"(In-Combat)CD Mastery III"
 	}
 	"cooldown up cdr i"
 	{
@@ -3840,14 +4003,6 @@
 	"darkness ammo info"
 	{
 		"en"				"Grants weakness."
-	}
-	"cleansing ammo"
-	{
-		"en"				"Cleanse"
-	}
-	"cleansing ammo info"
-	{
-		"en"				"Recipients suffering Weakness [Wk] are immune\nwhile removing negative effects from\nthose who are not."
 	}
 	"fire ammo"
 	{
@@ -4722,6 +4877,10 @@
 		"#format"			"{1:3.2f},{2:3.2f}"
 		"en"				"Cooldown\t: {1}s"
 	}
+	"No Talent Cooldown Info"
+	{
+		"en"				"Cooldown\t: None"
+	}
 	"Ability Info Raw"
 	{
 		"#format"			"{1:i},{2:i}"
@@ -5579,10 +5738,6 @@
 	"Overdrive Talents"
 	{
 		"en"				"Overdrive\nGet cleansed, earn overdrive stacks."
-	}
-	"Cleanse Ammo Talents"
-	{
-		"en"				"Cleanse Ammo\nCleanse allies/enemies, earn cleanse stacks."
 	}
 	"Bullet Talents"
 	{

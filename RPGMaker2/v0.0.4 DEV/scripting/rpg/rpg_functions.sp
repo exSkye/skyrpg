@@ -19,7 +19,7 @@ stock GetConfigValue(String:TheString[], TheSize, String:KeyName[]) {
 	Format(TheString, TheSize, "-1");
 }
 
-stock Float:GetConfigValueFloat(String:KeyName[]) {
+stock Float:GetConfigValueFloat(String:KeyName[], Float:fDefaultVal = -1.0) {
 	
 	static String:text[512];
 
@@ -35,7 +35,7 @@ stock Float:GetConfigValueFloat(String:KeyName[]) {
 			return StringToFloat(text);
 		}
 	}
-	return -1.0;
+	return fDefaultVal;
 }
 
 stock GetConfigValueInt(String:KeyName[]) {
@@ -258,7 +258,6 @@ stock DataScreenTargetName(client, String:stringRef[], size) {
 	//decl String:text[64];
 	new Float:TargetPos[3];
 	new target = GetAimTargetPosition(client, TargetPos);
-
 	//GetClientAimTargetEx(client, text, sizeof(text), true);
 	//new target = StringToInt(text);
 	if (target == -1) {
@@ -283,7 +282,6 @@ stock DataScreenTargetName(client, String:stringRef[], size) {
 			return 1;
 		}
 	}
-	return 0;
 }
 
 stock DataScreenWeaponDamage(client) {
@@ -337,11 +335,11 @@ stock GetWeaponResult(client, result = 0, amountToAdd = 0) {
 	}
 
 	for (new i = 0; i < size; i++) {
-		WeaponResultKeys[client] = GetArrayCell(a_WeaponDamages, i, 0);
-		WeaponResultValues[client] = GetArrayCell(a_WeaponDamages, i, 1);
 		WeaponResultSection[client] = GetArrayCell(a_WeaponDamages, i, 2);
 		GetArrayString(Handle:WeaponResultSection[client], 0, WeaponName, sizeof(WeaponName));
 		if (!StrEqual(WeaponName, Weapon, false)) continue;
+		WeaponResultKeys[client] = GetArrayCell(a_WeaponDamages, i, 0);
+		WeaponResultValues[client] = GetArrayCell(a_WeaponDamages, i, 1);
 		if (result == 0) {
 			fValue = GetKeyValueFloat(WeaponResultKeys[client], WeaponResultValues[client], "range");
 			fValue = GetAbilityStrengthByTrigger(client, _, "gunRNG", _, RoundToCeil(fValue), _, _, "d", 1, true);
@@ -352,7 +350,7 @@ stock GetWeaponResult(client, result = 0, amountToAdd = 0) {
 		if (result == 1) return GetKeyValueInt(WeaponResultKeys[client], WeaponResultValues[client], "offset");
 		if (result == 2) {
 			new value = GetKeyValueInt(WeaponResultKeys[client], WeaponResultValues[client], "ammo");
-			return RoundToCeil(GetAbilityStrengthByTrigger(client, _, "ammoreserve", _, value, _, _, "d", 1, true));
+			return value + RoundToCeil(GetAbilityStrengthByTrigger(client, _, "ammoreserve", _, value, _, _, "ammoreserve", 0, true));
 		}
 		if (result == 3) {
 			return GetEntData(client, (targetgun + wOffset));
@@ -375,7 +373,7 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
 	new bool:IsMelee = false;
 	//new bool:IsTank = (IsLegitimateClient(target) && FindZombieClass(target) == ZOMBIECLASS_TANK) ? true : false;
 	// we only want this to return true for standard commons, not super commons.
-	new bool:IsCommonInfectedTarget = (IsCommonInfected(target)) ? true : false;
+	//new bool:IsCommonInfectedTarget = (IsCommonInfected(target)) ? true : false;
 	GetClientWeapon(client, Weapon, sizeof(Weapon));
 	if (StrEqual(Weapon, "weapon_melee", false)) {
 
@@ -449,28 +447,27 @@ stock GetBaseWeaponDamage(client, target, Float:impactX = 0.0, Float:impactY = 0
 		if (damagetype == DMG_BLAST) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "S", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
 		if (damagetype == DMG_CLUB) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "U", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
 	 	if (damagetype == DMG_SLASH) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "u", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
-
-		if (baseWeaponTemp > 0) WeaponDamage = baseWeaponTemp;
 		
 		WeaponRange = GetKeyValueFloat(DamageKeys[client], DamageValues[client], "range");
 
 		//if (!IsMelee && (damagetype & DMG_BULLET)) {
 		if (!IsMelee) {
-			WeaponRange = GetAbilityStrengthByTrigger(client, target, "gunRNG", _, RoundToCeil(WeaponRange), _, _, "d", 1, true, _, _, _, damagetype);
-			WeaponDamage = RoundToCeil(GetAbilityStrengthByTrigger(client, target, "gunDMG", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
+			WeaponRange += GetAbilityStrengthByTrigger(client, target, "gunRNG", _, RoundToCeil(WeaponRange), _, _, "d", 1, true, _, _, _, damagetype);
+			baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "gunDMG", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
 
 			if (bIsInCombat[client]) {
-				WeaponRange = GetAbilityStrengthByTrigger(client, target, "ICwRNG", _, RoundToCeil(WeaponRange), _, _, "d", 1, true, _, _, _, damagetype);
-				WeaponDamage = RoundToCeil(GetAbilityStrengthByTrigger(client, target, "ICwDMG", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
+				WeaponRange += GetAbilityStrengthByTrigger(client, target, "ICwRNG", _, RoundToCeil(WeaponRange), _, _, "d", 1, true, _, _, _, damagetype);
+				baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "ICwDMG", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
 			}
 			else {
-				WeaponRange = GetAbilityStrengthByTrigger(client, target, "OCwRNG", _, RoundToCeil(WeaponRange), _, _, "d", 1, true, _, _, _, damagetype);
-				WeaponDamage = RoundToCeil(GetAbilityStrengthByTrigger(client, target, "OCwDMG", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
+				WeaponRange += GetAbilityStrengthByTrigger(client, target, "OCwRNG", _, RoundToCeil(WeaponRange), _, _, "d", 1, true, _, _, _, damagetype);
+				baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "OCwDMG", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
 			}
 		}
 		else {
-			WeaponDamage = RoundToCeil(GetAbilityStrengthByTrigger(client, target, "mDMG", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
+			baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "mDMG", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
 		}
+		if (baseWeaponTemp > 0) WeaponDamage = baseWeaponTemp;
 
 		TheAbilityMultiplier = GetAbilityMultiplier(client, "N");
 		if (TheAbilityMultiplier != -1.0) WeaponDamage += RoundToCeil(WeaponDamage * TheAbilityMultiplier);
@@ -862,29 +859,24 @@ stock CheckTankSubroutine(tank, survivor = 0, damage = 0, bool:TankIsVictim = fa
 	new bool:IsBiled	= IsCoveredInBile(tank);
 	new IsHulkState		= ChangeTankState(tank, "hulk", _, true);
 
-	if (IsHulkState == 1) {
-
-		if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 0.75);
-		else SetSpeedMultiplierBase(tank, 1.5);
-
+	if (bIsDefenderTank[tank] || DeathState == 1) {
+		SetSpeedMultiplierBase(tank, fTankMovementSpeed_Death);
 		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-		SetEntityRenderColor(tank, 0, 255, 0, 255);
+		if (bIsDefenderTank[tank]) SetEntityRenderColor(tank, 0, 0, 255, 255);
+		else SetEntityRenderColor(tank, 0, 0, 0, 150);
 	}
-	else if (DeathState == 1) {
-
-		if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 0.5);
-		else SetSpeedMultiplierBase(tank, 1.0);
+	else if (IsHulkState == 1) {
+		SetSpeedMultiplierBase(tank, fTankMovementSpeed_Hulk);
 
 		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-		SetEntityRenderColor(tank, 0, 0, 0, 255);
+		SetEntityRenderColor(tank, 0, 255, 0, 200);
 	}
 	else if (BurnState == 1) {
 
-		if (!b_RescueIsHere) SetSpeedMultiplierBase(tank, 1.0);
-		else SetSpeedMultiplierBase(tank, 1.5);
+		SetSpeedMultiplierBase(tank, fTankMovementSpeed_Burning);
 
 		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-		SetEntityRenderColor(tank, 255, 0, 0, 255);
+		SetEntityRenderColor(tank, 255, 0, 0, 200);
 		if (!(tankFlags & FL_ONFIRE)) IgniteEntity(tank, 3.0);
 	}
 	if (BurnState != 1) ExtinguishEntity(tank);
@@ -1516,9 +1508,9 @@ stock bool:IsMeleeAttacker(client) {
 	decl String:weapon[64];
 	GetClientWeapon(client, weapon, sizeof(weapon));
 	if (StrContains(weapon, "melee", false) != -1 || StrContains(weapon, "chainsaw", false) != -1) {
-
-		if (!bIsMeleeCooldown[client]) return true;
-		return false;
+		return true;
+		//if (!bIsMeleeCooldown[client] || cooldownIsIgnored) return true;
+		//return false;
 	}
 	return false;
 }
@@ -1692,13 +1684,12 @@ stock AddSpecialInfectedDamage(client, target, TotalDamage, bool:IsTankingInstea
 	new i_DamageBonus = TotalDamage;
 	new i_InfectedMaxHealth = GetArrayCell(Handle:InfectedHealth[client], isEntityPos, 1);
 	new i_InfectedCurrent = GetArrayCell(Handle:InfectedHealth[client], isEntityPos, 2);
-	//new i_HealthRemaining = i_InfectedMaxHealth - i_InfectedCurrent;
-
-	//new TrueHealthRemaining = RoundToCeil((1.0 - CheckTeammateDamages(target, client)) * i_InfectedMaxHealth);
 	if (i_InfectedCurrent < 0) i_InfectedCurrent = 0;
 	//if (i_DamageBonus > TrueHealthRemaining) i_DamageBonus = TrueHealthRemaining;
 
 	if (!IsTankingInstead) {
+		new i_HealthRemaining = i_InfectedMaxHealth - i_InfectedCurrent;
+		if (i_DamageBonus > i_HealthRemaining) i_DamageBonus = i_HealthRemaining;
 
 		if (IsSpecialCommonInRange(target, 't')) return 0;
 		if (damagevariant != 2 && i_DamageBonus > 0) {
@@ -2080,7 +2071,7 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 	decl String:TargetClass[32];
 	new targetEntityType = -1;
 	//new activatorEntityType = 0;
-	new bool:activatorIsSurvivorBot = IsSurvivorBot(activator);
+	//new bool:activatorIsSurvivorBot = IsSurvivorBot(activator);
 	if (IsLegitimateClient(target)) {
 
 		if (GetClientTeam(target) == TEAM_INFECTED) {
@@ -2118,7 +2109,6 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 	}
 	else Format(PlayerWeapon, sizeof(PlayerWeapon), "ignore");
 	new bool:activatorIsSurvivor = (GetClientTeam(activator) == TEAM_SURVIVOR) ? true : false;
-
 	new Float:f_Strength			= 0.0;
 	//new Float:f_FirstPoint			= 0.0;
 	new Float:f_EachPoint			= 0.0;
@@ -2143,16 +2133,14 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 	new iStrengthOverride = 0;
 	//decl String:sClassAllowed[64];
 	//decl String:sClassID[64];
-	new requiredTalentsRequired = 0;
+	//new requiredTalentsRequired = 0;
 	new bool:bIsStatusEffects = false;
-	new nodeUnlockCost = 0;
+	//new nodeUnlockCost = 0;
 	new isRawType = 0;
-
 	new bool:activatorBileStatus = IsCoveredInBile(activator);
 	new bool:targetBileStatus = IsCoveredInBile(target);
 	new hitgroupType = GetHitgroupType(hitgroup);
 	new consecutiveHitsRequired = 0;
-
 	new Float:fMultiplyRange = 0.0;
 	new iMultiplyCount = 0;
 	new bool:isScoped = false;
@@ -2169,11 +2157,11 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 		isScoped = IsPlayerZoomed(activator);
 	}
 	new Float:fPlayerMaxHoldingFireTime = 0.0;
-
 	new ASize = GetArraySize(a_Menu_Talents);
 	new bool:IsAFakeClient = IsFakeClient(activator);
 	new activatorFlags = GetEntityFlags(activator);
-
+	new targetFlags = (IsLegitimateClient(target)) ? GetEntityFlags(target) : -1;
+	new bool:isTargetInTheAir = (targetFlags != -1 && !(targetFlags & FL_ONGROUND)) ? true : false;
 	new bool:activatorHasAdrenaline = HasAdrenaline(activator);
 	new bool:activatorIsTouchingTheGround = (activatorFlags & FL_ONGROUND) ? true : false;
 	new bool:activatorIsDucking = (activatorFlags & IN_DUCK) ? true : false;
@@ -2203,10 +2191,9 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 	new bool:activatorIsExploding = (ISEXPLODE[activator] != INVALID_HANDLE) ? true : false;
 	new bool:activatorIsSlowed = ((ISSLOW[activator] != INVALID_HANDLE || IsClientInRangeSpecialAmmo(activator, "s") == -2.0) && fSlowSpeed[activator] < 1.0) ? true : false;
 	new bool:activatorIsFrozen = (ISFROZEN[activator] != INVALID_HANDLE) ? true : false;
-	new bool:activatorIsScorched = (activatorIsOnFire && (activatorIsExploding || activatorBileStatus)) ? true : false;
+	new bool:activatorIsScorched = (activatorIsOnFire && activatorIsSufferingAcidBurn) ? true : false;
 	new bool:activatorIsSteaming = (activatorIsOnFire && activatorIsFrozen) ? true : false;
 	new bool:activatorIsDrowning = (activatorFlags & FL_INWATER) ? true : false;
-
 	for (new i = 0; i < ASize; i++) {
 		TriggerKeys[activator]		= GetArrayCell(a_Menu_Talents, i, 0);
 		TriggerValues[activator]	= GetArrayCell(a_Menu_Talents, i, 1);
@@ -2237,6 +2224,7 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 		iLastTargetResult = GetKeyValueIntAtPos(TriggerValues[activator], TARGET_MUST_BE_LAST_TARGET);
 		if (!bTargetIsLastTarget && iLastTargetResult == 1) continue;
 		if (bTargetIsLastTarget && iLastTargetResult == 0) continue;
+		if (!isTargetInTheAir && GetKeyValueIntAtPos(TriggerValues[activator], TARGET_MUST_BE_IN_THE_AIR) == 1) continue;
 
 		if (activator != target) {
 			activatorHighGroundResult = DoesClientHaveTheHighGround(activatorPos, target);
@@ -2253,10 +2241,7 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 		if (!activatorIsScorched && GetKeyValueIntAtPos(TriggerValues[activator], ACTIVATOR_MUST_BE_SCORCHED) == 1) continue;
 		if (!activatorIsSteaming && GetKeyValueIntAtPos(TriggerValues[activator], ACTIVATOR_MUST_BE_STEAMING) == 1) continue;
 		if (!activatorIsDrowning && GetKeyValueIntAtPos(TriggerValues[activator], ACTIVATOR_MUST_BE_DROWNING) == 1) continue;
-
-
 		//if (!IsStatusEffectFound(activator, TriggerKeys[activator], TriggerValues[activator])) continue;
-
 		isRawType = (GetKeyValueIntAtPos(TriggerValues[activator], ABILITY_TYPE) == 3) ? 1 : 0;
 		if (typeOfValuesToRetrieve == 1 && isRawType == 1 || typeOfValuesToRetrieve == 2 && isRawType == 0) continue;
 
@@ -2363,7 +2348,6 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 		f_Time					= GetTalentInfo(activator, TriggerValues[activator], 2, _, TalentName, talenttarget, iStrengthOverride);
 		f_Cooldown				= GetTalentInfo(activator, TriggerValues[activator], 3, _, TalentName, talenttarget, iStrengthOverride);
 		f_Strength				= f_EachPoint;
-
 		// we don't put the node on cooldown if we're not activating it.
 		if (!bDontActuallyActivate && f_Cooldown > 0.0) CreateCooldown(activator, GetTalentPosition(activator, TalentName), f_Cooldown);
 		p_Strength += f_Strength;
@@ -2373,7 +2357,7 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 		if (GetKeyValueIntAtPos(TriggerValues[activator], BACKGROUND_TALENT) == 1) bDontActuallyActivate = true;
 		if (activator == target) Format(MultiplierText, sizeof(MultiplierText), "tS_%s", activatoreffects);
 		else Format(MultiplierText, sizeof(MultiplierText), "tS_%s", targeteffects);
-		if (GetKeyValueIntAtPos(TriggerValues[activator], STATUS_EFFECT_MULTIPLIER) == 1) bIsStatusEffects = true;
+		//if (GetKeyValueIntAtPos(TriggerValues[activator], STATUS_EFFECT_MULTIPLIER) == 1) bIsStatusEffects = true;
 		
 		fMultiplyRange = GetKeyValueFloatAtPos(TriggerValues[activator], MULTIPLY_RANGE);
 		if (fMultiplyRange > 0.0) { // this talent multiplies its strength by the # of a certain type of entities in range.
@@ -2486,12 +2470,11 @@ stock Float:GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[]
 		p_Time = 0.0;
 	}
 	Format(LastTargetClass[activator], sizeof(LastTargetClass[]), "%s", TargetClass);
-	if (damagevalue > 0) {
+	if (damagevalue > 0 && t_Strength > 0.0) {
 
 		if (ResultType == 0 || ResultType == 2) return (t_Strength * damagevalue);
 		if (ResultType == 1) return (damagevalue + (t_Strength * damagevalue));
 	}
-	//PrintToChat(activator, "strength: %3.3f", t_Strength);
 	return t_Strength;
 }
 
@@ -3382,6 +3365,7 @@ stock CreateLineSoloEx(client, target, String:DrawColour[], String:DrawPos[], Fl
 	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
 	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
 	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
+	else if (StrEqual(DrawColour, "white", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
 	else return 0;
 	TE_SendToClient(targetClient);
 	return 1;
@@ -3416,6 +3400,7 @@ stock CreateRingSoloEx(client, Float:RingAreaSize, String:DrawColour[], String:D
 	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
 	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
 	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "white", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
 	else return 0;
 	TE_SendToClient(targetClient);
 	return 1;
@@ -3441,6 +3426,7 @@ stock CreateRingEx(client, Float:RingAreaSize, String:DrawColour[], Float:DrawPo
 	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
 	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
 	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+	else if (StrEqual(DrawColour, "white", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
 	else return 0;
 	TE_SendToAll();
 	return 1;
@@ -3506,6 +3492,7 @@ stock CreateLineSolo(client, target, String:DrawColour[], String:DrawPos[], Floa
 		else if (StrEqual(t_DrawColour[i], "black", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
 		else if (StrEqual(t_DrawColour[i], "brightblue", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
 		else if (StrEqual(t_DrawColour[i], "darkgreen", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
+		else if (StrEqual(t_DrawColour[i], "white", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
 		else continue;
 		TE_SendToClient(targetClient);
 	}
@@ -3558,6 +3545,7 @@ stock CreateRingSolo(client, Float:RingAreaSize, String:DrawColour[], String:Dra
 		else if (StrEqual(t_DrawColour[i], "black", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
 		else if (StrEqual(t_DrawColour[i], "brightblue", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
 		else if (StrEqual(t_DrawColour[i], "darkgreen", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (StrEqual(t_DrawColour[i], "white", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
 		else continue;
 		TE_SendToClient(targetClient);
 	}
@@ -3599,6 +3587,7 @@ stock CreateLine(client, target, String:DrawColour[], String:DrawPos[], Float:li
 		else if (StrEqual(t_DrawColour[i], "black", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
 		else if (StrEqual(t_DrawColour[i], "brightblue", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
 		else if (StrEqual(t_DrawColour[i], "darkgreen", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
+		else if (StrEqual(t_DrawColour[i], "white", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
 		else continue;
 		TE_SendToAll();
 	}
@@ -3637,6 +3626,7 @@ stock CreateRing(client, Float:RingAreaSize, String:DrawColour[], String:DrawPos
 		else if (StrEqual(t_DrawColour[i], "black", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
 		else if (StrEqual(t_DrawColour[i], "brightblue", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
 		else if (StrEqual(t_DrawColour[i], "darkgreen", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (StrEqual(t_DrawColour[i], "white", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
 		else continue;
 		TE_SendToAll();
 	}
@@ -4400,6 +4390,7 @@ stock ActivateAbilityEx(activator, target, d_Damage, String:Effects[], Float:g_T
 		else if (StrEqual(Effects, "t")) CreateAcid(activator, target, 512.0);
 		else if (StrEqual(Effects, "T")) HealPlayer(target, activator, iDamage * 1.0, 'T');
 		else if (StrEqual(Effects, "z")) ZeroGravity(activator, target, g_TalentStrength, g_TalentTime);
+		else if (StrEqual(Effects, "revive")) ReviveDownedSurvivor(target);
 	}
 }
 
@@ -4918,9 +4909,7 @@ stock CheckExperienceRequirement(client, bool:bot = false, iLevel = 0) {
 }*/
 
 stock bool:SurvivorsBiled() {
-
 	for (new i = 1; i <= MaxClients; i++) {
-
 		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR && IsCoveredInBile(i)) return true;
 	}
 	return false;
@@ -4960,19 +4949,19 @@ stock CreateCommonAffix(entity) {
 		RemoveFromArray(Handle:SuperCommonQueue, 0);
 	}
 	new maxallowed = 1;
-	decl String:iglowColour[3][4];
-	decl String:glowColour[10];
-	//new Float:ModelSize = 1.0;
+	//decl String:iglowColour[3][4];
+	//decl String:glowColour[10];
+	new Float:ModelSize = 1.0;
 	new bool:SurvivorsAreBiled = SurvivorsBiled();
 	for (new i = 0; i < size; i++) {
 		CCAKeys				= GetArrayCell(a_CommonAffixes, i, 0);
 		CCAValues			= GetArrayCell(a_CommonAffixes, i, 1);
 		//if (GetArraySize(AfxSection) < 1 || GetArraySize(AfxKeys) < 1) continue;
-		if (GetKeyValueInt(CCAKeys, CCAValues, "require bile?") == 1 && SurvivorsAreBiled) continue;
-		maxallowed = GetKeyValueInt(CCAKeys, CCAValues, "max allowed?");
+		if (GetKeyValueIntAtPos(CCAValues, SUPER_COMMON_REQ_BILED_SURVIVORS) == 1 && !SurvivorsAreBiled) continue;
+		maxallowed = GetKeyValueIntAtPos(CCAValues, SUPER_COMMON_MAX_ALLOWED);
 		if (maxallowed < 0) maxallowed = 1;
 		if (SuperCommonsInPlay(Section_Name) >= maxallowed) continue;
-		RollChance = GetKeyValueFloat(CCAKeys, CCAValues, "chance?");
+		RollChance = GetKeyValueFloatAtPos(CCAValues, SUPER_COMMON_SPAWN_CHANCE);
 		if (StrEqual(ForceName, "none", false) && GetRandomInt(1, RoundToCeil(1.0 / RollChance)) > 1) continue;		// == 1 for successful roll
 		CCASection			= GetArrayCell(a_CommonAffixes, i, 2);
 		GetArrayString(Handle:CCASection, 0, Section_Name, sizeof(Section_Name));
@@ -4982,9 +4971,13 @@ stock CreateCommonAffix(entity) {
 		OnCommonCreated(entity);
 		//	Now that we've confirmed this common is special, let's go ahead and activate pertinent functions...
 		//	Doing some of these, repeatedly, in a timer is a) wasteful and b) crashy. I know, from experience.
-		FormatKeyValue(AuraEffectCCA, sizeof(AuraEffectCCA), CCAKeys, CCAValues, "aura effect?");
+		GetArrayString(CCAValues, SUPER_COMMON_AURA_EFFECT, AuraEffectCCA, sizeof(AuraEffectCCA));
+		//FormatKeyValue(AuraEffectCCA, sizeof(AuraEffectCCA), CCAKeys, CCAValues, "aura effect?");
 		if (StrEqual(AuraEffectCCA, "f", true)) CreateAndAttachFlame(entity, _, _, _, _, "burn");
-		FormatKeyValue(Model, sizeof(Model), CCAKeys, CCAValues, "force model?");
+		ModelSize = GetKeyValueFloatAtPos(CCAValues, SUPER_COMMON_MODEL_SIZE);
+		if (ModelSize > 0.0) SetEntPropFloat(entity, Prop_Send, "m_flModelScale", ModelSize);
+		GetArrayString(CCAValues, SUPER_COMMON_FORCE_MODEL, Model, sizeof(Model));
+		//FormatKeyValue(Model, sizeof(Model), CCAKeys, CCAValues, "force model?");
 		if (IsModelPrecached(Model)) SetEntityModel(entity, Model);
 		else if (GetArraySize(CommonInfectedQueue) > 0) {
 			GetArrayString(Handle:CommonInfectedQueue, 0, Model, sizeof(Model));
@@ -5002,7 +4995,19 @@ stock CreateCommonAffix(entity) {
 	//LogMessage("This common remains normal... %d", entity);
 }
 
-
+stock RemoveAllDebuffs(client, String:debuffName[]) {
+	new size = GetArraySize(Handle:EntityOnFire);
+	decl String:text[64];
+	for (new i = 0; i < size; i++) {
+		if (client != GetArrayCell(EntityOnFire, i, 0)) continue;	// client isn't the client owning this debuff
+		GetArrayString(EntityOnFireName, i, text, sizeof(text));
+		if (!StrEqual(debuffName, text)) continue;
+		RemoveFromArray(EntityOnFireName, i);
+		RemoveFromArray(EntityOnFire, i);
+		size--;
+		if (i > 0) i--;
+	}
+}
 
 /*
 
@@ -5087,6 +5092,22 @@ stock CreateAndAttachFlame(client, damage = 0, Float:lifetime = 10.0, Float:tick
 		}
 	}
 }*/
+
+stock RemoveClientStatusEffect(client, String:EffectName[] = "all") {
+	decl String:text[64];
+	if (!IsLegitimateClient(client)) return 0;
+	for (new i = 0; i < GetArraySize(Handle:EntityOnFire); i++) {
+		if (GetArrayCell(EntityOnFire, i, 0) != client) continue;
+		if (!StrEqual(EffectName, "all")) {
+			GetArrayString(EntityOnFireName, i, text, sizeof(text));
+			if (!StrEqual(EffectName, text)) continue;
+		}
+		RemoveFromArray(EntityOnFire, i);
+		RemoveFromArray(EntityOnFireName, i);
+		return 1;
+	}
+	return 0;
+}
 
 stock GetClientStatusEffect(client, String:EffectName[] = "burn") {
 	new Count = 0;
@@ -6198,6 +6219,8 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 	static dataAmmoType = 0;
 	static bulletStrength = 0;
 	static Float:fVisualDelay = 0.0;
+	static numOfStatusEffects = 0;
+	numOfStatusEffects = GetClientStatusEffect(client);
 	CheckActiveAbility(client, -1, _, _, true);	// draws effects for any active ability this client has.
 	for (new i = 0; i < GetArraySize(Handle:SpecialAmmoData); i++) {
 		dataClient = FindClientByIdNumber(GetArrayCell(SpecialAmmoData, i, 7));
@@ -6251,10 +6274,10 @@ public Action:Timer_SpecialAmmoData(Handle:timer, any:client) {
 				else if (dataAmmoType == 6) HealingAmmo(client, RoundToCeil(AmmoStrength), dataClient);
 				else if (dataAmmoType == 7 && !ISBILED[client]) {
 					SDKCall(g_hCallVomitOnPlayer, client, dataClient, true);
-					CreateTimer(15.0, Timer_RemoveBileStatus, client, TIMER_FLAG_NO_MAPCHANGE);
+					CreateTimer(20.0, Timer_RemoveBileStatus, client, TIMER_FLAG_NO_MAPCHANGE);
 					ISBILED[client] = true;
 				}
-				//else if (dataAmmoType == 8 && IsClientStatusEffect(client)) TransferStatusEffect(client, dataClient);
+				else if (dataAmmoType == 8 && numOfStatusEffects > 0) RemoveClientStatusEffect(client); //TransferStatusEffect(client, dataClient);
 			}
 		}
 		if (dataClient == client) {	// if this player is the owner of this spell or talent...
@@ -7255,6 +7278,7 @@ stock Float:GetSpecialAmmoStrength(client, String:TalentName[], resulttype=0, bo
 			i_EachPoint *= f_StrEach;
 
 			f_Str			=	i_FirstPoint + i_EachPoint;
+			f_Str += GetAbilityStrengthByTrigger(client, _, "spellbuff", _, _, _, _, "activetime", 0, true);
 		}
 		else if (resulttype == 1) {		// Cooldown Time
 
@@ -7283,6 +7307,9 @@ stock Float:GetSpecialAmmoStrength(client, String:TalentName[], resulttype=0, bo
 
 			f_Str			=	i_FirstPoint + i_EachPoint;
 			f_Str			+=	i_CooldownStart;
+			f_Str += GetAbilityStrengthByTrigger(client, _, "spellbuff", _, _, _, _, "cooldown", 0, true);
+			// If talents reduce the cooldown time, we need to make sure the cooldown is never less than the active time - or they could have multiple of the same spell active at one time.
+			if (f_Str < 0.0) f_Str = 0.0;//f_Str = GetSpecialAmmoStrength(client, TalentName, _, bGetNextUpgrade, TalentStrengthOverride);
 		}
 		else if (resulttype == 2) {		// Stamina Cost
 
@@ -7301,6 +7328,8 @@ stock Float:GetSpecialAmmoStrength(client, String:TalentName[], resulttype=0, bo
 
 			f_Str								=	i_FirstPoint + i_EachPoint;
 			if (f_Str < baseTalentStrength) f_Str = baseTalentStrength;
+			f_Str += GetAbilityStrengthByTrigger(client, _, "spellbuff", _, _, _, _, "staminacost", 0, true);
+			if (f_Str < 1.0) f_Str = 1.0;
 			// we do class multiplier after because we want to allow classes to modify the restrictions
 		}
 		else if (resulttype == 3) {		// Range
@@ -7319,6 +7348,7 @@ stock Float:GetSpecialAmmoStrength(client, String:TalentName[], resulttype=0, bo
 			i_EachPoint *= f_StrEach;
 
 			f_Str			=	i_FirstPoint + i_EachPoint;
+			f_Str += GetAbilityStrengthByTrigger(client, _, "spellbuff", _, _, _, _, "range", 0, true);
 		}
 		else if (resulttype == 4) {		// Interval
 
@@ -7333,9 +7363,11 @@ stock Float:GetSpecialAmmoStrength(client, String:TalentName[], resulttype=0, bo
 
 			i_EachPoint *= f_StrEach;
 			f_Str			=	i_FirstPoint + i_EachPoint;
+			f_Str += GetAbilityStrengthByTrigger(client, _, "spellbuff", _, _, _, _, "interval", 0, true);
 		}
 	}
 	//if (resulttype == 3) return (f_Str / 2);	// we always measure from the center-point.
+	f_Str += (f_Str * GetAbilityStrengthByTrigger(client, _, "spellbuff", _, _, _, _, "strengthup", 0, true));
 	return f_Str;
 }
 
@@ -7810,7 +7842,14 @@ stock AddCommonInfectedDamage(client, entity, playerDamage, bool:IsStatusDamage 
 		OnCommonInfectedCreated(entity, true, client);
 		return;
 	}*/
+	//new Float:searchTime = GetEngineTime();
+	//new pos		= FindCommonInfectedTargetInArray(Handle:CommonInfected, entity);
+	//PrintToChatAll("FindCommonInfectedTargetInArray() in %3.20fs", GetEngineTime() - searchTime);
+	//searchTime = GetEngineTime();
 	new pos		= FindListPositionByEntity(entity, Handle:CommonInfected);
+	//PrintToChatAll("FindListPositionByEntity() in %3.20fs", GetEngineTime() - searchTime);
+
+	
 	if (pos < 0) {
 		OnCommonInfectedCreated(entity);
 		return 1;
@@ -7819,7 +7858,9 @@ stock AddCommonInfectedDamage(client, entity, playerDamage, bool:IsStatusDamage 
 	if (playerDamage > 0) {
 		new commonHealthRemaining = GetArrayCell(Handle:CommonInfectedHealth, pos);
 		if (playerDamage >= commonHealthRemaining) {
+			//if (IsMeleeAttacker(client)) GiveAmmoBack(client, 1);
 			// common dies.
+			// give 1 ammo back if the client used a melee weapon.
 			Rating[client] += RoundToCeil(fRatingMultCommons * 100.0);
 			ReadyUp_NtvStatistics(client, 2, 1);
 			SetArrayCell(Handle:RoundStatistics, 0, GetArrayCell(RoundStatistics, 0) + 1);
@@ -8104,11 +8145,11 @@ stock ClearSpecialCommon(entity, bool:IsCommonEntity = true, playerDamage = 0, l
 		RemoveCommonAffixes(entity);
 		OnCommonInfectedCreated(entity, true);
 	}
-	/*if (IsValidEntity(entity)) {
-
+	//if (IsValidEntity(entity)) SetInfectedHealth(entity, 1);	// this is so it dies right away.
+	if (IsValidEntity(entity)) {
 		AcceptEntityInput(entity, "Kill");
 		//IgniteEntity(entity, 1.0);
-	}*/
+	}
 }
 
 stock GetTeamRatingAverage(teamToGatherRatingOf = 2) {	// 2 == survivors
@@ -8134,6 +8175,7 @@ stock OnCommonCreated(entity, bool:bIsDestroyed = false, bool:isSpecial = false)
 	//decl String:EntityId[64];
 	//Format(EntityId, sizeof(EntityId), "%d", entity);
 
+	//if (!bIsDestroyed) InsertCommonSorted(entity);
 	if (!bIsDestroyed) PushArrayCell(Handle:CommonList, entity);
 	else if (isSpecial || IsSpecialCommon(entity)) ClearSpecialCommon(entity);
 }
@@ -8321,44 +8363,29 @@ stock FindListPositionBySearchKey(String:SearchKey[], Handle:h_SearchList, block
 	return -1;
 }
 
-stock FindListPositionByEntity(entity, Handle:h_SearchList, block = 0) {
-
-	new size = GetArraySize(Handle:h_SearchList);
-	if (size < 1) return -1;
-	for (new i = 0; i < size; i++) {
-
-		if (GetArrayCell(Handle:h_SearchList, i, block) == entity) return i;
-	}
-	return -1;	// returns false
-}
-
 stock bool:SurvivorsSaferoomWaiting() {
 
 	new count = 0;
+	new numOfLivingHumanSurvivors = LivingHumanSurvivors();
+	if (numOfLivingHumanSurvivors < 1) return false;
 	for (new i = 1; i <= MaxClients; i++) {
 
 		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR && !IsFakeClient(i) && bIsInCheckpoint[i]) count++;
 	}
-	if (count >= LivingHumanSurvivors()) return true;
+	if (count >= numOfLivingHumanSurvivors) return true;
 	return false;
 }
 
-stock SurvivorBotsRegroup(client) {
-
-	if (IsLegitimateClient(client) && !IsFakeClient(client)) return;
-	if (IsSurvivorBot(client)) {
-
-		new Float:Origin[3];
-
-		for (new i = 1; i <= MaxClients; i++) {
-
-			if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR && !IsFakeClient(i)) {
-
-				GetClientAbsOrigin(i, Origin);
-				TeleportEntity(client, Origin, NULL_VECTOR, NULL_VECTOR);
-				return;
-			}
-		}
+stock SurvivorBotsRegroup() {
+	new Float:pos[3];
+	for (new i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		GetClientAbsOrigin(i, pos);
+		break;
+	}
+	for (new i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || !IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		TeleportEntity(i, pos, NULL_VECTOR, NULL_VECTOR);
 	}
 }
 
@@ -8831,22 +8858,23 @@ stock GetStatusEffects(client, EffectType = 0, String:theStringToStoreItIn[], th
 	if (EffectType == 0) {
 
 		//new AcidCount = GetClientStatusEffect(client, Handle:EntityOnFire, "acid");
-		new FireCount = GetClientStatusEffect(client);
+		new FireCount = GetClientStatusEffect(client, "burn");
+		new AcidCount = GetClientStatusEffect(client, "acid");
 		Format(theStringToStoreItIn, theSizeOfTheString, "[-]");
 		if (DoomTimer != 0) Format(theStringToStoreItIn, theSizeOfTheString, "[Dm%d]%s", iDoomTimer - DoomTimer, theStringToStoreItIn);
 		if (bIsSurvivorFatigue[client]) Format(theStringToStoreItIn, theSizeOfTheString, "[Fa]%s", theStringToStoreItIn);
 
-		Count = GetClientStatusEffect(client, "burn");
-		if (Count > 0) iNumStatusEffects++;
-		if (Count >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "[Bu++]%s", theStringToStoreItIn);
-		else if (Count >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "[Bu++]%s", theStringToStoreItIn);
-		else if (Count > 0) Format(theStringToStoreItIn, theSizeOfTheString, "[Bu]%s", theStringToStoreItIn);
+		//Count = GetClientStatusEffect(client, "burn");
+		if (FireCount > 0) iNumStatusEffects++;
+		if (FireCount >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "[Bu++]%s", theStringToStoreItIn);
+		else if (FireCount >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "[Bu++]%s", theStringToStoreItIn);
+		else if (FireCount > 0) Format(theStringToStoreItIn, theSizeOfTheString, "[Bu]%s", theStringToStoreItIn);
 
-		Count = GetClientStatusEffect(client, "acid");
-		if (Count > 0) iNumStatusEffects++;
-		if (Count >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "[Ab++]%s", theStringToStoreItIn);
-		else if (Count >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "[Ab+]%s", theStringToStoreItIn);
-		else if (Count > 0) Format(theStringToStoreItIn, theSizeOfTheString, "[Ab]%s", theStringToStoreItIn);
+		//Count = GetClientStatusEffect(client, "acid");
+		if (AcidCount > 0) iNumStatusEffects++;
+		if (AcidCount >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "[Ab++]%s", theStringToStoreItIn);
+		else if (AcidCount >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "[Ab+]%s", theStringToStoreItIn);
+		else if (AcidCount > 0) Format(theStringToStoreItIn, theSizeOfTheString, "[Ab]%s", theStringToStoreItIn);
 
 		Count = GetClientStatusEffect(client, "reflect");
 		if (Count > 0) iNumStatusEffects++;
@@ -8890,7 +8918,7 @@ stock GetStatusEffects(client, EffectType = 0, String:theStringToStoreItIn[], th
 			Format(theStringToStoreItIn, theSizeOfTheString, "[St]%s", theStringToStoreItIn);
 			iNumStatusEffects++;
 		}
-		if (FireCount > 0 && (ISEXPLODE[client] != INVALID_HANDLE || ISBILED[client])) {
+		if (FireCount > 0 && AcidCount > 0) {
 
 			Format(theStringToStoreItIn, theSizeOfTheString, "[Sc]%s", theStringToStoreItIn);
 			iNumStatusEffects++;

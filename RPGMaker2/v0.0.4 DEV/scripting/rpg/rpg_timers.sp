@@ -121,6 +121,7 @@ public Action:Timer_ShowHUD(Handle:timer, any:client) {
 	if (!b_IsActiveRound || !IsLegitimateClient(client) || !bTimersRunning[client]) {
 		return Plugin_Stop;
 	}
+	if (PlayerLevel[client] > iMaxLevel) SetTotalExperienceByLevel(client, iMaxLevel, true);
 	TimePlayed[client]++;
 	//if (TotalHumanSurvivors() < 1) RoundTime++;	// we don't count time towards enrage if there are no human survivors.
 	static String:pct[10];
@@ -156,6 +157,9 @@ public Action:Timer_ShowHUD(Handle:timer, any:client) {
 		}
 		ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
 		if (GetClientHealth(client) > mymaxhealth) SetEntityHealth(client, mymaxhealth);
+	}
+	if (playerTeam != TEAM_SPECTATOR) {
+		GetAbilityStrengthByTrigger(client, client, "p");	// adding support for any type of passive.
 	}
 	RemoveStoreTime(client);
 	LastPlayLength[client]++;
@@ -195,11 +199,20 @@ stock LedgedSurvivors() {
 	return count;
 }
 
-stock bool:NoHealthySurvivors() {
+stock bool:NoLivingHumanSurvivors() {
+	for (new i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
+		return false;
+	}
+	return true;
+}
+
+stock bool:NoHealthySurvivors(bool:bMustNotBeABot = false) {
 
 	for (new i = 1; i <= MaxClients; i++) {
-
-		if (IsLegitimateClientAlive(i) && !IsIncapacitated(i) && GetClientTeam(i) == TEAM_SURVIVOR) return false;
+		if (!IsLegitimateClientAlive(i) || IsIncapacitated(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (bMustNotBeABot && IsFakeClient(i)) continue;
+		return false;
 	}
 	return true;
 }
@@ -512,17 +525,14 @@ public Action:Timer_Blinder(Handle:timer, any:client) {
 }
 
 public Action:Timer_Freezer(Handle:timer, any:client) {
-	if (ISFROZEN[client] == INVALID_HANDLE) return Plugin_Stop;
-	if (!b_IsActiveRound || !IsLegitimateClient(client) || IsLegitimateClient(client) && !IsPlayerAlive(client) || !IsSpecialCommonInRange(client, 'r') || (ISEXPLODE[client] != INVALID_HANDLE)) {
-
+	if (!b_IsActiveRound || !IsLegitimateClient(client) || !IsPlayerAlive(client) || !IsSpecialCommonInRange(client, 'r')) {
 		/*
 
 			If the client is scorched, they no longer freeze.
 		*/
-		if (IsLegitimateClient(client)) FrozenPlayer(client, _, 0);
-		KillTimer(ISFROZEN[client]);
+		//KillTimer(ISFROZEN[client]);
 		ISFROZEN[client] = INVALID_HANDLE;
-		//CloseHandle(ISBLIND[client]);
+		FrozenPlayer(client, _, 0);
 		return Plugin_Stop;
 	}
 	new Float:Velocity[3];
@@ -930,8 +940,9 @@ public Action:Timer_CheckIfHooked(Handle:timer) {
 	if (RoundSeconds % HostNameTime == 0) {
 		PrintToChatAll("%t", "playing in server name", orange, blue, Hostname, orange, blue, MenuCommand, orange);
 	}
+	if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
 	if (TotalHumanSurvivors() >= 1 &&
-		(iEndRoundIfNoHealthySurvivors == 1 && (LivingSerfs == LedgedSurvivors() || NoHealthySurvivors())) || LivingSerfs < 1) {
+		(iEndRoundIfNoHealthySurvivors == 1 && (LivingSerfs == LedgedSurvivors() || NoHealthySurvivors())) || LivingSerfs < 1 || NoLivingHumanSurvivors()) {
 		// scenario will not end if there are bots alive because dead players can take control of them.
 		ForceServerCommand("scenario_end");
 		CallRoundIsOver();
@@ -1503,7 +1514,7 @@ stock bool:bIsDirectorTankEligible() {
 
 stock ActiveTanks() {
 	new iSurvivors = TotalHumanSurvivors();
-	new iSurvivorBots = TotalSurvivors() - iSurvivors;
+	//new iSurvivorBots = TotalSurvivors() - iSurvivors;
 	new count = GetAlwaysTanks(iSurvivors);
 
 	for (new i = 1; i <= MaxClients; i++) {
