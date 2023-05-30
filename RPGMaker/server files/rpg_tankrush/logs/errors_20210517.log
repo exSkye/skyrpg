@@ -1,8 +1,0 @@
-L 05/17/2021 - 16:07:27: SourceMod error session started
-L 05/17/2021 - 16:07:27: Info (map "c4m4_milltown_b") (file "/home/steam/l4d2/left4dead2/addons/rpg_tankrush/logs/errors_20210517.log")
-L 05/17/2021 - 16:07:27: [SM] Exception reported: Client 2 is not in game
-L 05/17/2021 - 16:07:27: [SM] Blaming: rum_playerplus2.smx
-L 05/17/2021 - 16:07:27: [SM] Call stack trace:
-L 05/17/2021 - 16:07:27: [SM]   [0] GetClientTeam
-L 05/17/2021 - 16:07:27: [SM]   [1] Line 71, F:\black_drive\rpg302\scripting\rum_playerplus2.sp::Cmd_JoinTeam
-L 05/17/2021 - 16:11:00: Error log file session closed.

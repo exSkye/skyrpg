@@ -1,8 +1,0 @@
-L 05/14/2021 - 16:26:14: SourceMod error session started
-L 05/14/2021 - 16:26:14: Info (map "c2m5_concert") (file "/home/steam/l4d2/left4dead2/addons/rpg_tankrush/logs/errors_20210514.log")
-L 05/14/2021 - 16:26:14: [SM] Exception reported: Error fetching data from field 2
-L 05/14/2021 - 16:26:14: [SM] Blaming: rum_rpg.smx
-L 05/14/2021 - 16:26:14: [SM] Call stack trace:
-L 05/14/2021 - 16:26:14: [SM]   [0] SQL_FetchInt
-L 05/14/2021 - 16:26:14: [SM]   [1] Line 1895, rpg/rpg_database.sp::QueryResults_LoadTalentTrees
-L 05/14/2021 - 16:38:57: Error log file session closed.
