@@ -3,6 +3,21 @@
 
 "Phrases"
 {
+	"survivalist bonus experience"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:3.2f},{5:s},{6:s}"
+		"en"				"{1}Round Survivalist bonus experience{2}: {3}{4}{5}{6}"
+	}
+	"director points earned"
+	{
+		"#format"			"{1:s},{2:s},{3:3.3f},{4:s},{5:s}"
+		"en"				"{1}{5} {2}earns {3} {4}point(s) for SkyNet."
+	}
+	"director purchase announcement"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:3.3f},{8:s}"
+		"en"				"{1}SkyNet {2}buys {3}{4} {5}for {6}{7} {8}points."
+	}
 	"buff visual display text"
 	{
 		"#format"			"{1:s}"
@@ -70,7 +85,8 @@
 	}
 	"Survivor Sheet Info"
 	{
-		"en"				"Playtime: {PLAYTIME}\nMax Health: {MYHP}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}\n \nConstitution:  {CON}\nAgility:\t\t\t{AGI}\nResilience:\t {RES}\nTechnique:\t {TEC}\nEndurance:\t{END}\nLuck:\t\t\t {LUC}"
+		"#format"			"{1:s}"
+		"en"				"{PLAYTIME}\nMax Health: {MYHP}\nHealth RGN: {HPRGN}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}\n \nConstitution:  {CON}\nAgility:\t\t\t{AGI}\nResilience:\t {RES}\nTechnique:\t {TEC}\nEndurance:\t{END}\nLuck:\t\t\t {LUC}\n \nMelee Heal: {HEALSTRMEL}\nBullet Heal: {HEALSTRGUN}"
 	}
 	"Infected Sheet Info"
 	{
@@ -155,6 +171,46 @@
 	{
 		"en"				"damage increased when half or less bullets remaining\nup to this amount for the last bullet."
 	}
+	"battle focus i"
+	{
+		"en"				"Battle Focus I"
+	}
+	"battle focus i info"
+	{
+		"en"				"Chance on Hit to heal for a percentage of the damage you deal."
+	}
+	"sharpshooter i"
+	{
+		"en"				"Sharpshooter I"
+	}
+	"sharpshooter i info"
+	{
+		"en"				"Chance on Hit to deal bonus damage if your last hit was a headshot."
+	}
+	"high ground i"
+	{
+		"en"				"High Ground I"
+	}
+	"high ground i info"
+	{
+		"en"				"Deal increased damage when you have\na high-ground advantage over your target."
+	}
+	"against all odds i"
+	{
+		"en"				"Against All Odds I"
+	}
+	"against all odds i info"
+	{
+		"en"				"Deal increased damage when your target\nhas a high-ground advantage on you."
+	}
+	"leeching i"
+	{
+		"en"				"Leeching I"
+	}
+	"leeching i info"
+	{
+		"en"				"On infected kill, heal for a percentage of your weapon damage."
+	}
 	"damage resistance"
 	{
 		"en"				"DMG resistance"
@@ -171,33 +227,37 @@
 	{
 		"en"				"Reduces time to use items that activate the progress bar."
 	}
+	"talent trees"
+	{
+		"en"				"Talent Trees"
+	}
 	"frontline talents"
 	{
-		"en"				"Frontline nodes\t"
+		"en"				"Frontline\t"
 	}
 	"survival talents"
 	{
-		"en"				"Survivalist nodes"
+		"en"				"Survivalist"
 	}
 	"offensive talents"
 	{
-		"en"				"Offensive nodes "
+		"en"				"Offensive "
 	}
 	"utility talents"
 	{
-		"en"				"Utility nodes\t\t"
+		"en"				"Utility\t\t"
 	}
 	"attribute talents"
 	{
-		"en"				"Attributes\t\t\t"
+		"en"				"Attributes\t"
 	}
 	"support talents"
 	{
-		"en"				"Support nodes\t\t"
+		"en"				"Support\t\t"
 	}
 	"ambush talents"
 	{
-		"en"				"Ambush nodes\t\t"
+		"en"				"Ambush\t\t"
 	}
 	"proficiency level up"
 	{
@@ -302,6 +362,11 @@
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
 		"en"				"{1}{2} {3}has {4}Entered The Battlefield!"
 	}
+	"tank shift notification"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}{2} {3}has {4}Entered The Battlefield!"
+	}
 	"round bonus multiplier"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:3.2f},{6:s},{7:s},{8:s}"
@@ -317,7 +382,7 @@
 	}
 	"personal settings"
 	{
-		"en"				"Settings"
+		"en"				"Settings\nLoadout Editor\nChat Colours\nBullet Trails"
 	}
 	"threat menu"
 	{
@@ -481,7 +546,7 @@
 	}
 	"respec"
 	{
-		"en"				"Refund Talent Upgrades"
+		"en"				"Refund Talents"
 	}
 	"layer move"
 	{
@@ -491,7 +556,7 @@
 	"layer move locked"
 	{
 		"#format"			"{1:i},{2:i},{3:i}"
-		"en"				"(Preview Only) Layer {1}\nYou must first unlock an additional {3}\nmore nodes from the below trees."
+		"en"				"(Preview Only) Layer {1}\n{3} additional node(s) required from the\ntalent trees on the current layer."
 		//"en"				"(Preview Only) Layer {1}\nThis layer requires {3} more upgrades before\nyou can unlock deeper layers."
 	}
 	"prestige"
@@ -1098,6 +1163,16 @@
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s}"
 		"en"				"\t\tLv.{1}/{2}\n\t\t{4}\n\t{3}/{5}XP\nYour score: {6}"
 	}
+	"XP Level Cap"
+	{
+		"#format"			"{1:s},{2:i}"
+		"en"				"This server caps XP earning at Lv.{2}\n\n{1}"
+	}
+	"XP Level Cap Reached"
+	{
+		"#format"			"{1:s},{2:i}"
+		"en"				"You earn no XP on this server (>= Lv.{2})\n\n{1}"
+	}
 	"Sky Level Text"
 	{
 		"#format"			"{1:i},{2:s},{3:s},{4:s}"
@@ -1111,7 +1186,7 @@
 	"RPG Layer Eligible"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:i},{6:i}"
-		"en"				"{1}\n \nLayer {2} info:\nRequired node unlocks: {3}/{4}({5}/{6})
+		"en"				"{1}\n \nLayer {2} info:\nRequired node unlocks: {3}/{4}({5}/{6})"
 	}
 	"RPG Layer Not Eligible"
 	{
@@ -1157,7 +1232,7 @@
 	}
 	"RPG Menu"
 	{
-		"en"				"Talent Trees"
+		"en"				"RPG Menu\nLayer Up/Dn\nTalent Trees\nRefund Talents\nCharacter Sheet"
 	}
 	"Buy Menu Option 1"
 	{
@@ -2024,21 +2099,31 @@
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
 		"en"				"{1}+{2}{3} {4}score"
-	}	
+	}
+	"living survivors experience bonus"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:3.3f},{7:s},{8:s},{9:s}"
+		"en"				"{1}All {2}living survivors {3}earn an additional {4}+{5}{6}{7}{8} {9}experience until they die."
+	}
+	"team rating increase"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s}"
+		"en"				"{1}+{2}{3} {4}score {5}( +{6}{7} {8}bonus{9})"
+	}
 	"player killed special infected"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
 		"en"				"{1}{2} {3}killed {4}{5}"
 	}
+	"player damage to special"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:i},{9:s}"
+		"en"				"{1}{2} {3}lands the killing blow on {4}{5} {6}for {7}{8} {9}damage"
+	}
 	"killed special infected"
 	{
 		"#format"			"{1:s},{2:s},{3:s}"
 		"en"				"{1}{2} {3}died"
-	}
-	"team rating increase"
-	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s}"
-		"en"				"{1}+{2}{3} {4}score {5}({6}bonus: {7}+{8} {9}score{10})"
 	}
 	"Enable Class"
 	{
@@ -2437,7 +2522,7 @@
 	}
 	"team composition"
 	{
-		"en"				"View Team Composition"
+		"en"				"Team Info"
 	}
 	"Infected Passives"
 	{
@@ -3555,6 +3640,10 @@
 	"ooc health regen iii"
 	{
 		"en"				"(Oc) Regen III"
+	}
+	"ooc health regen iv"
+	{
+		"en"				"(Oc) Regen IV"
 	}
 	"health regen i"
 	{
@@ -4844,13 +4933,13 @@
 	}
 	"round statistics"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s},{19:s}"
-		"en"				"{1}Round Statistics:\n{2}Commons: {3}{4}\n{5}Super Commons: {6}{7}\n{8}Witches: {9}{10}\n{11}Special Infected: {12}{13}\n{14}Tanks: {15}{16}\n{17}Total: {18}{19}"
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s},{19:s},{20:s},{21:s}"
+		"en"				"{20}=== {1}Infected killed this round {21}===\n{2}Commons: {3}{4} {5}(Supers: {6}{7}{8})\nWitches: {9}{10}\n{11}Special Infected: {12}{13} {14}(Tanks: {15}{16}{17})\nTotal: {18}{19}"
 	}
 	"campaign statistics"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s},{19:s}"
-		"en"				"{1}Campaign Statistics:\n{2}Commons: {3}{4}\n{5}Super Commons: {6}{7}\n{8}Witches: {9}{10}\n{11}Special Infected: {12}{13}\n{14}Tanks: {15}{16}\n{17}Total: {18}{19}"
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:s},{14:s},{15:s},{16:s},{17:s},{18:s},{19:s},{20:s},{21:s}"
+		"en"				"{20}=== {1}Infected killed this campaign {21}===\n{2}Commons: {3}{4} {5}(Supers: {6}{7}{8})\nWitches: {9}{10}\n{11}Special Infected: {12}{13} {14}(Tanks: {15}{16}{17})\nTotal: {18}{19}"
 	}
 	"Talent requirements are not met"
 	{
@@ -4920,6 +5009,11 @@
 	{
 		"#format"			"{1:3.1f}"
 		"en"				"Distance: {1}units"
+	}
+	"Roll Chance Talent Info"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Roll Chance: {1}{2}"
 	}
 	"Ability Info Aura"
 	{
@@ -5246,11 +5340,11 @@
 	}
 	"chat settings"
 	{
-		"en"				"Chat Settings\n!name\nSet a custom chat name"
+		"en"				"Chat Colours\n!name\nSet a custom chat name"
 	}
 	"Chat Settings (Reserve)"
 	{
-		"en"				"Chat Settings Config"
+		"en"				"Chat Colours Config"
 	}
 	"Farming Prevention Disabled"
 	{
@@ -5975,6 +6069,11 @@
 		"#format"			"{1:3.2f},{2:s}"
 		"en"				"Reduces all incoming damage by {1}{2}"
 	}
+	"expo Passive Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases all incoming damage by {1}{2}"
+	}
 	"P Disabled"
 	{
 		"en"				"Switch between dual pistols and magnum"
@@ -6358,23 +6457,23 @@
 	}
 	"refresh ab"
 	{
-		"en"				"Refresh"
+		"en"				"Heal Self"
 	}
 	"refresh ability"
 	{
-		"en"				"(AB)Refresh"
+		"en"				"(AB)Heal Self"
 	}
 	"refresh info"
 	{
-		"en"				"Heal yourself for a large portion of your health, instantly."
+		"en"				"Instantly heal yourself for a percentage of your max health."
 	}
 	"refresh aura ab"
 	{
-		"en"				"Refresh Aura"
+		"en"				"Heal Aura"
 	}
 	"refresh aura"
 	{
-		"en"				"(AB)Refresh Aura"
+		"en"				"(AB)Heal Aura"
 	}
 	"refresh aura info"
 	{
@@ -6395,7 +6494,7 @@
 	"Action Slot Range"
 	{
 		"#format"			"{1:s},{2:s},{3:i},{4:s}"
-		"en"				"{1}Available action slots are {2}!action1 - !action{3}\n{4}You can substitute / for ! to suppress."
+		"en"				"{1}Available action slots are {2}!ability1 - !ability{3}\n{4}You can substitute / for ! to suppress."
 	}
 	"group member bonus"
 	{
@@ -6512,12 +6611,12 @@
 	"enrage in..."
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}Infected enrage in... {2}{3}{4}!"
+		"en"				"{1}The enrage period starts in {2}{3}{4}..."
 	}
 	"time until things get bad"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}You have {2}{3} {4}until things get really bad..."
+		"en"				"{1}The enrage period starts in {2}{3} {4}... Better get moving!"
 	}
 	"Creating New Class"
 	{

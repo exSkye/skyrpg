@@ -18,22 +18,29 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 		new CheckRPGMode = iRPGMode;
 		if (CheckRPGMode > 0) {
 
-			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
+			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
 
 			new TotalPoints = TotalPointsAssigned(client);
 			decl String:PlayerLevelText[256];
 			MenuExperienceBar(client, _, _, PlayerLevelText, sizeof(PlayerLevelText));
 			Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted);
 			if (SkyLevel[client] > 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Prestige Level Text", client, SkyLevel[client], iSkyLevelMax, PlayerLevelText);
+			if (iExperienceLevelCap > 0) {
+				if (PlayerLevel[client] < iExperienceLevelCap) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "XP Level Cap", client, PlayerLevelText, iExperienceLevelCap);
+				else Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "XP Level Cap Reached", client, PlayerLevelText, iExperienceLevelCap);
+			}
 			new maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
 			if (CheckRPGMode != 0) {
+				//decl String:upgradeCap[64];
+				//(iMaxServerUpgrades < 1) ? Format(upgradeCap, sizeof(upgradeCap), "N/A") : Format(upgradeCap, sizeof(upgradeCap), "%d", iMaxServerUpgrades);
 				Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
 				if (ShowLayerEligibility) {
 					if (bIsLayerEligible) {
 						new strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true);
 						new allUpgradesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, true);//true for skip attributes, too?
 						new totalPossibleNodesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true);
-						Format(text, sizeof(text), "%T", "RPG Layer Eligible", client, text, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, PlayerCurrentMenuLayer[client] + 1, allUpgradesThisLayer, totalPossibleNodesThisLayer);
+						new totalPossibleNodesThisLayerWithoutAttributes = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true);
+						Format(text, sizeof(text), "%T", "RPG Layer Eligible", client, text, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, RoundToCeil(totalPossibleNodesThisLayerWithoutAttributes * fUpgradesRequiredPerLayer), allUpgradesThisLayer, totalPossibleNodesThisLayer);
 					}
 					else Format(text, sizeof(text), "%T", "RPG Layer Not Eligible", client, text, PlayerCurrentMenuLayer[client]);
 				}
@@ -52,7 +59,7 @@ stock BuildMenuTitle(client, Handle:menu, bot = 0, type = 0, bool:bIsPanel = fal
 		AddCommasToString(CheckExperienceRequirement(-1, true), targExperience, sizeof(targExperience));
 		AddCommasToString(GetUpgradeExperienceCost(-1), ratingFormatted, sizeof(ratingFormatted));
 
-		if (CurRPGMode == 0 || CurRPGMode == 2 && bot == -1) Format(text, sizeof(text), "%T", "Menu Header 0 Director", client, Points_Director);
+		if (CurRPGMode == 0 || bot == -1) Format(text, sizeof(text), "%T", "Menu Header 0 Director", client, Points_Director);
 		else if (CurRPGMode == 1) {
 
 			// Bots level up strictly based on experience gain. Honestly, I have been thinking about removing talent-based leveling.
@@ -180,6 +187,7 @@ public Action:CMD_LoadProfileEx(client, args) {
 			}
 		}
 	}
+	if (!StrEqual(serverKey, "-1")) Format(arg, sizeof(arg), "%s%s", serverKey, arg);
 	ReadProfiles(client, arg);
 	PrintToChat(client, "trying to load profile of steam id: %s", arg);
 	return Plugin_Handled;
@@ -197,7 +205,7 @@ stock LoadProfileEx(client, String:key[]) {
 }
 
 stock LoadProfileEx_Confirm(client, String:key[]) {
-	if (!IsLegitimateClient(client)) return;
+	if (!IsLegitimateClient(client) || StrEqual(key, "-1")) return;
 
 	decl String:tquery[512];
 	if (hDatabase == INVALID_HANDLE) {
@@ -349,7 +357,7 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 
 			SQL_FetchString(hndl, 0, key, sizeof(key));
 
-			if (LoadPos[client] < GetArraySize(a_Database_Talents)) {
+			if (LoadPos[client] >= 0 && LoadPos[client] < GetArraySize(a_Database_Talents)) {
 
 				talentlevel = SQL_FetchInt(hndl, 1);
 				//SetArrayString(TempTalents[client], LoadPos[client], text);
@@ -379,13 +387,26 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 				}
 				else {
 
-					Format(tquery, sizeof(tquery), "SELECT `steam_id`, `primarywep`, `secondwep` FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
+					/*Format(tquery, sizeof(tquery), "SELECT `steam_id`, `primarywep`, `secondwep` FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 					//PrintToChat(client, "%s", tquery);
+					LoadPos[client] = -2;
 					SQL_TQuery(hDatabase, QueryResults_LoadTalentTreesEx, tquery, client);
+					return;*/
+					new ActionSlots = iActionBarSlots;
+					Format(tquery, sizeof(tquery), "SELECT `steam_id`");
+					for (new i = 0; i < ActionSlots; i++) {
+						Format(tquery, sizeof(tquery), "%s, `aslot%d`", tquery, i+1);
+					}
+					Format(tquery, sizeof(tquery), "%s, `disab`, `primarywep`, `secondwep`", tquery);
+					Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
+					SQL_TQuery(hDatabase, QueryResults_LoadActionBar, tquery, client);
+					LoadPos[client] = 0;
 					return;
 				}
 			}
-			else {
+			else if (LoadPos[client] == -2) {
+				FreeUpgrades[client]		=	MaximumPlayerUpgrades(client) - TotalPointsAssigned(client);
+				UpgradesAvailable[client]	=	0;
 				if (GetArraySize(hWeaponList[client]) != 2) {
 
 					ClearArray(Handle:hWeaponList[client]);
@@ -405,6 +426,7 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 				//}
 
 				GetClientAuthString(client, skey, sizeof(skey));	// this is necessary, because they might still be in the process of loading another users data. this is a backstop in-case the loader has switched targets mid-load. this is why we don't first check the value of LoadProfileRequestName[client].
+				if (!StrEqual(serverKey, "-1")) Format(skey, sizeof(skey), "%s%s", serverKey, skey);
 				LoadPos[client] = 0;
 				LoadTalentTrees(client, skey, true, key);
 			}
@@ -458,12 +480,10 @@ public QueryResults_LoadTalentTreesEx(Handle:owner, Handle:hndl, const String:er
 				if (PlayerLevel[client] >= iPlayerStartingLevel) {
 
 					PrintToChatAll("%t", "loaded profile", blue, Name, white, green, LoadoutName[client]);
-					if (bIsNewPlayer[client]) {
-
-						bIsNewPlayer[client] = false;
-						SaveAndClear(client);
-						ReadProfiles(client, "all");	// new players are given an option on what they want to play.
-					}
+					if (bIsNewPlayer[client]) bIsNewPlayer[client] = false;
+						//SaveAndClear(client);
+						//ReadProfiles(client, "all");	// new players are given an option on what they want to play.
+					//}
 				}
 				else SetTotalExperienceByLevel(client, iPlayerStartingLevel);
 				//EquipBackpack(client);
@@ -564,7 +584,7 @@ stock GetTeamComposition(client) {
 		GetClientName(i, text, sizeof(text));
 
 		AddCommasToString(Rating[i], ratingText, sizeof(ratingText));
-		Format(text, sizeof(text), "%s Lv.%d\t\tScore: %s", text, PlayerLevel[i], ratingText);
+		Format(text, sizeof(text), "%s\t\tScore: %s", text, ratingText);
 		AddMenuItem(menu, text, text);
 	}
 	SetMenuExitBackButton(menu, true);
@@ -610,7 +630,7 @@ stock LoadProfileTargetSurvivorBot(client) {
 			PushArrayString(Handle:RPGMenuPosition[client], pos);
 			GetClientName(i, pos, sizeof(pos));
 			AddCommasToString(Rating[i], ratingText, sizeof(ratingText));
-			Format(pos, sizeof(pos), "%s Lv.%d\t\tScore: %s", pos, PlayerLevel[i], ratingText);
+			Format(pos, sizeof(pos), "%s\t\tScore: %s", pos, ratingText);
 			AddMenuItem(menu, pos, pos);
 		}
 	}
@@ -707,6 +727,7 @@ public ReadProfilesMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 			//(!bIsInCombat[client] || target != client) &&
 
 			GetArrayString(Handle:PlayerProfiles[client], StringToInt(text), text, sizeof(text));
+			LogMessage("Client is trying to load a profile: %s", text);
 			LoadProfile_Confirm(client, text);
 		}
 		else ProfileEditorMenu(client);
@@ -774,43 +795,40 @@ stock ShowActionBar(client) {
 
 	new Handle:menu = CreateMenu(ActionBarHandle);
 
-	decl String:text[128], String:talentname[64];
-	Format(text, sizeof(text), "Stamina: %d/%d", SurvivorStamina[client], GetPlayerStamina(client));
+	decl String:text[128], String:talentname[64], String:staminabar[64];
+	new maxstam = GetPlayerStamina(client);
+	MenuExperienceBar(client, SurvivorStamina[client], maxstam, staminabar, 64);
+	Format(text, sizeof(text), "stamina: %d%s%d", SurvivorStamina[client], staminabar, maxstam);
 	static baseWeaponDamage = 0;
 	static String:baseWeaponDamageText[64];
-	if (iShowDamageOnActionBar == 1) {
-		baseWeaponDamage = DataScreenWeaponDamage(client);
-		if (baseWeaponDamage > 0) {
-			AddCommasToString(baseWeaponDamage, baseWeaponDamageText, sizeof(baseWeaponDamageText));
-			if (IsMeleeAttacker(client)) Format(text, sizeof(text), "%s\nMelee Damage: %s", text, baseWeaponDamageText);
-			else Format(text, sizeof(text), "%s\nGun Damage: %s", text, baseWeaponDamageText);
-			// DataScreenTargetName returns two results on every call - an integer return value, and the text it formats w/ baseWeaponDamageText
-			if (DataScreenTargetName(client, baseWeaponDamageText, sizeof(baseWeaponDamageText)) != -1) {
-				Format(text, sizeof(text), "%s (%s)", text, baseWeaponDamageText);
-			}
-		}
+	static String:lastBaseDamageText[64];
+	if (iShowDamageOnActionBar == 1) baseWeaponDamage = DataScreenWeaponDamage(client);	// expensive way
+	if (baseWeaponDamage > 0) {
+		AddCommasToString(lastBaseDamage[client], lastBaseDamageText, sizeof(lastBaseDamageText));
+		AddCommasToString(baseWeaponDamage, baseWeaponDamageText, sizeof(baseWeaponDamageText));
+		if (baseWeaponDamage > 0) Format(text, sizeof(text), "%s\ndmg: %s", text, baseWeaponDamageText);
+		if (ConsecutiveHits[client] > 0) Format(text, sizeof(text), "%s\nConsecutive Hits: %d", text, ConsecutiveHits[client]);
+		//DataScreenTargetName returns two results on every call - an integer return value, and the text it formats w/ baseWeaponDamageText
+		(DataScreenTargetName(client, baseWeaponDamageText, sizeof(baseWeaponDamageText)) != -1) ? Format(text, sizeof(text), "%s\ntarget: %s", text, baseWeaponDamageText) : Format(text, sizeof(text), "%s\ntarget: n/a", text);
+		//if (baseWeaponDamage > 0) Format(text, sizeof(text), "%s\nBullet Damage: %s", text, AddCommasToString(baseWeaponDamage));
 	}
-	//if (baseWeaponDamage > 0) Format(text, sizeof(text), "%s\nBullet Damage: %s", text, AddCommasToString(baseWeaponDamage));
 	SetMenuTitle(menu, text);
 	new size = iActionBarSlots;
 	new Float:AmmoCooldownTime = -1.0, Float:fAmmoCooldownTime = -1.0, Float:fAmmoCooldown = 0.0, Float:fAmmoActive = 0.0;
 
-	decl String:acmd[10];
-	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
+	// decl String:acmd[10];
+	// GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	new TalentStrength = 0;
 
 	//decl String:TheValue[64];
 	new bool:bIsAbility = false;
 	new ManaCost = 0;
-	new Float:TheAbilityMultiplier = 0.0;
 	//decl String:tCooldown[16];
 	for (new i = 0; i < size; i++) {
 
 		GetArrayString(Handle:ActionBar[client], i, talentname, sizeof(talentname));
 		TalentStrength = GetTalentStrength(client, talentname);
 		if (TalentStrength > 0) {
-
-			AmmoCooldownTime = GetAmmoCooldownTime(client, talentname);
 			GetTranslationOfTalentName(client, talentname, text, sizeof(text), _, true);
 			Format(text, sizeof(text), "%T", text, client);
 		}
@@ -820,7 +838,7 @@ stock ShowActionBar(client) {
 		if (TalentStrength > 0) {
 
 			bIsAbility = IsAbilityTalent(client, talentname);
-
+			// spells
 			if (!bIsAbility) {
 
 				ManaCost = RoundToCeil(GetSpecialAmmoStrength(client, talentname, 2));
@@ -841,14 +859,14 @@ stock ShowActionBar(client) {
 
 					AmmoCooldownTime = GetSpecialAmmoStrength(client, talentname);
 				}
-			}
+			}	// abilities
 			else {
-				if (AbilityDoesDamage(client, talentname)) {
-					TheAbilityMultiplier = GetAbilityMultiplier(client, "0", _, talentname);
-					baseWeaponDamage = RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
+				// if (AbilityDoesDamage(client, talentname)) {
+				// 	TheAbilityMultiplier = GetAbilityMultiplier(client, "0", _, talentname);
+				// 	baseWeaponDamage = RoundToCeil(baseWeaponDamage * TheAbilityMultiplier);
 
-					Format(text, sizeof(text), "%s\nDamage: %d", text, baseWeaponDamage);
-				}
+				// 	Format(text, sizeof(text), "%s\nDamage: %d", text, baseWeaponDamage);
+				// }
 				AmmoCooldownTime = GetAmmoCooldownTime(client, talentname, true);
 				fAmmoCooldownTime = AmmoCooldownTime;
 
@@ -860,7 +878,8 @@ stock ShowActionBar(client) {
 					AmmoCooldownTime = fAmmoActive - (fAmmoCooldown - fAmmoCooldownTime);
 				}
 			}
-			if (bIsAbility && AmmoCooldownTime != -1.0 && AmmoCooldownTime > 0.0 || !bIsAbility && (AmmoCooldownTime > 0.0 || AmmoCooldownTime == -1.0)) Format(text, sizeof(text), "%s\nActive: %3.2fs", text, AmmoCooldownTime);
+			if (bIsAbility && AmmoCooldownTime != -1.0 && AmmoCooldownTime > 0.0 ||
+				!bIsAbility && (AmmoCooldownTime > 0.0 || AmmoCooldownTime == -1.0)) Format(text, sizeof(text), "%s\nActive: %3.2fs", text, AmmoCooldownTime);
 
 			AmmoCooldownTime = fAmmoCooldownTime;
 			if (AmmoCooldownTime != -1.0) Format(text, sizeof(text), "%s\nCooldown: %3.2fs", text, AmmoCooldownTime);
@@ -870,6 +889,8 @@ stock ShowActionBar(client) {
 	SetMenuExitBackButton(menu, false);
 	DisplayMenu(menu, client, 0);
 }
+
+
 
 stock bool:AbilityDoesDamage(client, String:TalentName[]) {
 
@@ -1307,8 +1328,9 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 			else if (StrEqual(configname, "layerdown")) {
 				if (PlayerCurrentMenuLayer[client] >= iMaxLayers) continue;
 				strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]);
-				if (strengthOfCurrentLayer >= PlayerCurrentMenuLayer[client] + 1) Format(text, sizeof(text), "%T", "layer move", client, PlayerCurrentMenuLayer[client] + 1);
-				else Format(text, sizeof(text), "%T", "layer move locked", client, PlayerCurrentMenuLayer[client] + 1, PlayerCurrentMenuLayer[client], PlayerCurrentMenuLayer[client] + 1 - strengthOfCurrentLayer);
+				new layerUpgradesRequired = RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer);
+				if (strengthOfCurrentLayer >= layerUpgradesRequired) Format(text, sizeof(text), "%T", "layer move", client, PlayerCurrentMenuLayer[client] + 1);
+				else Format(text, sizeof(text), "%T", "layer move locked", client, PlayerCurrentMenuLayer[client] + 1, PlayerCurrentMenuLayer[client], layerUpgradesRequired - strengthOfCurrentLayer);
 			}
 		}
 		else {
@@ -1333,16 +1355,8 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 		}
 		// important that this specific statement about hiding/displaying menus is last, due to potential conflicts with director menus.
 		if (!b_IsDirectorTalents[client]) {
-
-			decl String:thevalue[64];
-			GetConfigValue(thevalue, sizeof(thevalue), "chat settings flags?");
-
-			if ((HasCommandAccess(client, thevalue) || GetConfigValueInt("all players chat settings?") == 1) || !StrEqual(configname, CONFIG_CHATSETTINGS)) {
-
-				Format(pos, sizeof(pos), "%d", i);
-				PushArrayString(Handle:RPGMenuPosition[client], pos);
-			}
-			else continue;
+			Format(pos, sizeof(pos), "%d", i);
+			PushArrayString(Handle:RPGMenuPosition[client], pos);
 		}
 		if (!StrEqual(translationInfo, "-1")) {
 			fPercentageHealthRequired = GetKeyValueFloatAtPos(MenuValues[client], HEALTH_PERCENTAGE_REQ_MISSING);
@@ -1489,7 +1503,7 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 				GetClientName(client, Name, sizeof(Name));
 				PrintToChatAll("%t", "player sky level up", green, white, blue, Name, SkyLevel[client]);
 				ChallengeEverything(client);
-				SaveAndClear(client);
+				SavePlayerData(client);
 			}
 			BuildMenu(client);
 		}
@@ -1524,11 +1538,6 @@ public BuildMenuHandle(Handle:menu, MenuAction:action, client, slot) {
 		else if (GetArraySize(a_Store) > 0 && StrEqual(config, CONFIG_STORE)) {
 
 			BuildStoreMenu(client);
-		}
-		else if (StrEqual(config, CONFIG_CHATSETTINGS)) {
-
-			Format(ChatSettingsName[client], sizeof(ChatSettingsName[]), "none");
-			BuildChatSettingsMenu(client);
 		}
 		else if (StrEqual(config, CONFIG_MENUTALENTS)) {
 
@@ -1616,15 +1625,23 @@ stock Float:PlayerBuffLevel(client) {
 	return PBL;
 }
 
+stock bool:IsProfileLevelTooHigh(client) {
+	if (PlayerUpgradesTotal[client] + FreeUpgrades[client] > MaximumPlayerUpgrades(client)) return true;
+	return false;
+}
+
 stock MaximumPlayerUpgrades(client, bool:getNodeCountInstead = false) {
 
 	if (!getNodeCountInstead) {
-		if (SkyLevel[client] < 1) return PlayerLevel[client];
+		if (SkyLevel[client] < 1 || iSkyLevelMax < 1) return (iMaxServerUpgrades < 0 || PlayerLevel[client] + iStartingPlayerUpgrades < iMaxServerUpgrades)
+																? PlayerLevel[client] + iStartingPlayerUpgrades
+																: iMaxServerUpgrades;
 		new count = 0;
 		for (new i = 1; i < SkyLevel[client] + 1; i++) {
 			count += GetPrestigeLevelNodeUnlocks(i);
 		}
-		return count + PlayerLevel[client];
+		new upgradesAllowed = count + PlayerLevel[client] + iStartingPlayerUpgrades;
+		return (iMaxServerUpgrades < 0 || upgradesAllowed <= iMaxServerUpgrades) ? upgradesAllowed : iMaxServerUpgrades;
 	}
 	return nodesInExistence;
 }
@@ -1650,6 +1667,7 @@ stock LoadInventory(client) {
 	if (hDatabase == INVALID_HANDLE) return;
 	decl String:key[64];
 	GetClientAuthString(client, key, sizeof(key));
+	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	Format(key, sizeof(key), "%s%s", key, LOOT_VERSION);
 	decl String:tquery[128];
 	Format(tquery, sizeof(tquery), "SELECT `owner_id` FROM `%s_loot` WHERE (`owner_id` = '%s');", TheDBPrefix, key);
@@ -2168,13 +2186,23 @@ public Handle:CharacterSheetMenu(client) {
 	}
 	else { // Survivor Sheet!
 		decl String:targetName[64];
-		//new typeOfAimTarget = DataScreenTargetName(client, targetName, sizeof(targetName));
+		new Float:TargetPos[3];
+		new target = GetAimTargetPosition(client, TargetPos);
+		if (target == -1) {
+			target = FindAnotherSurvivor(client);
+			if (target == -1) target = client;
+		}
+		new typeOfAimTarget = DataScreenTargetName(client, targetName, sizeof(targetName));
 		decl String:weaponDamage[64];
 		decl String:otherText[64];
-		AddCommasToString(DataScreenWeaponDamage(client), weaponDamage, sizeof(weaponDamage));
+		decl String:pct[4];
+		Format(pct, sizeof(pct), "%");
+		new currentWeaponDamage = DataScreenWeaponDamage(client);
+		AddCommasToString(currentWeaponDamage, weaponDamage, sizeof(weaponDamage));
 		Format(weaponDamage, sizeof(weaponDamage), "%s", weaponDamage);
+		new infected = FindInfectedClient(true);
 
-		Format(text, sizeof(text), "%T", "Survivor Sheet Info", client);
+		Format(text, sizeof(text), "%T", "Survivor Sheet Info", client, pct);
 		if (StrContains(text, "{PLAYTIME}", true) != -1) {
 			GetTimePlayed(client, otherText, sizeof(otherText));
 			ReplaceString(text, sizeof(text), "{PLAYTIME}", otherText);
@@ -2218,6 +2246,29 @@ public Handle:CharacterSheetMenu(client) {
 			Format(weaponDamage, sizeof(weaponDamage), "%d", GetTalentStrength(client, "luck", _, _, true));
 			ReplaceString(text, sizeof(text), "{LUC}", weaponDamage);
 		}
+		if (StrContains(text, "{DR}", true) != -1) {
+			Format(weaponDamage, sizeof(weaponDamage), "%3.2f", GetAbilityStrengthByTrigger(client, client, "L", _, currentWeaponDamage, _, _, "o", _, true, _, _, _, _, 1));
+			ReplaceString(text, sizeof(text), "{DR}", weaponDamage);
+		}
+		if (StrContains(text, "{HPRGN}", true) != -1) {
+			Format(weaponDamage, sizeof(weaponDamage), "%d", RoundToCeil(GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, true, 0, _, _, _, 1)));
+			ReplaceString(text, sizeof(text), "{HPRGN}", weaponDamage);
+		}
+		if (!IsMeleeAttacker(client)) {
+			if (StrContains(text, "{HEALSTRGUN}", true) != -1) {
+				new pelletMultiplication = (IsPlayerUsingShotgun(client)) ? 10 : 1;
+				Format(weaponDamage, sizeof(weaponDamage), "%d", pelletMultiplication * GetBulletOrMeleeHealAmount(client, target, currentWeaponDamage, DMG_BULLET, false));
+				ReplaceString(text, sizeof(text), "{HEALSTRGUN}", weaponDamage);
+			}
+			if (StrContains(text, "{HEALSTRMEL}", true) != -1) ReplaceString(text, sizeof(text), "{HEALSTRMEL}", "N/A");
+		}
+		else {
+			if (StrContains(text, "{HEALSTRMEL}", true) != -1) {
+				Format(weaponDamage, sizeof(weaponDamage), "%d", GetBulletOrMeleeHealAmount(client, target, currentWeaponDamage, DMG_SLASH, true));
+				ReplaceString(text, sizeof(text), "{HEALSTRMEL}", weaponDamage);
+			}
+			if (StrContains(text, "{HEALSTRGUN}", true) != -1) ReplaceString(text, sizeof(text), "{HEALSTRGUN}", "N/A");
+		}
 	}
 
 	SetMenuTitle(menu, text);
@@ -2242,13 +2293,13 @@ stock bool:IsWeaponPermittedFound(client, String:WeaponsPermitted[], String:Play
 		StrContains(WeaponsPermitted, "{50CAL}", true) != -1 && (StrContains(PlayerWeapon, "magnum", false) != -1 || StrContains(PlayerWeapon, "awp", false) != -1) ||
 		StrContains(WeaponsPermitted, "{SR}", true) != -1 && (StrContains(PlayerWeapon, "awp", false) != -1 || StrContains(PlayerWeapon, "scout", false) != -1) ||
 		StrContains(WeaponsPermitted, "{DMR}", true) != -1 && (StrContains(PlayerWeapon, "hunting", false) != -1 || StrContains(PlayerWeapon, "military", false) != -1) ||
-		StrContains(WeaponsPermitted, "{PISTOL}", true) != -1 && (StrContains(PlayerWeapon, "pistol", false) != -1 && StrContains(PlayerWeapon, "magnum", false) == -1) ||
+		StrContains(WeaponsPermitted, "{PISTOL}", true) != -1 && StrContains(PlayerWeapon, "pistol", false) != -1 ||
 		StrContains(WeaponsPermitted, "{GUNS}", true) != -1 && !IsMeleeAttacker(client) ||
 		StrContains(WeaponsPermitted, "{MELEE}", true) != -1 && IsMeleeAttacker(client) ||
 		StrContains(WeaponsPermitted, "{TIER1}", true) != -1 &&
 			(StrContains(PlayerWeapon, "smg", false) != -1 || StrContains(PlayerWeapon, "chrome", false) != -1 ||
 			StrContains(PlayerWeapon, "pump", false) != -1 ||
-			(StrContains(PlayerWeapon, "pistol", false) != -1 && StrContains(PlayerWeapon, "magnum", false) == -1)) ||
+			StrContains(PlayerWeapon, "pistol", false) != -1) ||
 		StrContains(WeaponsPermitted, "{TIER2}", true) != -1 &&
 			(StrContains(PlayerWeapon, "spas", false) != -1 || StrContains(PlayerWeapon, "autoshotgun", false) != -1 ||
 			StrContains(PlayerWeapon, "sniper", false) != -1 ||
@@ -2259,30 +2310,30 @@ stock bool:IsWeaponPermittedFound(client, String:WeaponsPermitted[], String:Play
 
 stock GetCharacterSheetData(client, String:stringRef[], theSize, request, zombieclass = 0, bool:isRecalled = false) {
 	//new Float:fResult;
-	new iResult = (iBotLevelType == 1) ? SurvivorLevels() : GetDifficultyRating(client);
+	new iResult;
 	new Float:fMultiplier;
-	new Float:AbilityMultiplier = (request % 2 == 0) ? GetAbilityMultiplier(client, "X", 4) : 0.0;
+	//new Float:AbilityMultiplier = (request % 2 == 0) ? GetAbilityMultiplier(client, "X", 4) : 0.0;
 	new theCount = LivingSurvivorCount();
+	new myCurrentDifficulty = GetDifficultyRating(client);
 	// common infected health
 	if (request == 1) {	// odd requests return integers
 						// equal requests return floats
-		fMultiplier = (iBotLevelType == 1) ? fCommonRaidHealthMult : fCommonLevelHealthMult;
-		iResult = iCommonBaseHealth + RoundToCeil(iCommonBaseHealth * (iResult * fMultiplier));
+		iResult = GetCommonBaseHealth();
 	}
 	// common infected damage
 	if (request == 2) {
 		fMultiplier = fCommonDamageLevel;
-		iResult = iCommonInfectedBaseDamage + RoundToCeil(iCommonInfectedBaseDamage * (fMultiplier * iResult));
+		iResult = iCommonInfectedBaseDamage + RoundToCeil(iCommonInfectedBaseDamage * (myCurrentDifficulty * fMultiplier));
 	}
 	// witch health
 	if (request == 3) {
 		fMultiplier = fWitchHealthMult;
-		iResult = iWitchHealthBase + RoundToCeil(iWitchHealthBase * (iResult * fWitchHealthMult));
+		iResult = iWitchHealthBase + RoundToCeil(iWitchHealthBase * (myCurrentDifficulty * fWitchHealthMult));
 	}
 	// witch infected damage
 	if (request == 4) {
 		fMultiplier = fWitchDamageScaleLevel;
-		iResult = iWitchDamageInitial + RoundToCeil(fMultiplier * iResult);
+		iResult = iWitchDamageInitial + RoundToCeil(iWitchDamageInitial * (myCurrentDifficulty * fMultiplier));
 	}
 	// only if a zombieclass has been specified.
 	if (zombieclass != 0) {
@@ -2292,20 +2343,24 @@ stock GetCharacterSheetData(client, String:stringRef[], theSize, request, zombie
 	// special infected health
 	if (request == 5) {
 		fMultiplier = fHealthPlayerLevel[zombieclass];
-		iResult = iBaseSpecialInfectedHealth[zombieclass] + RoundToCeil(iBaseSpecialInfectedHealth[zombieclass] * (iResult * fMultiplier));
+		iResult = iBaseSpecialInfectedHealth[zombieclass];
+		iResult += RoundToCeil(iResult * (myCurrentDifficulty * fMultiplier));
 	}
 	// special infected damage
 	if (request == 6) {
 		fMultiplier = fDamagePlayerLevel[zombieclass];
-		iResult = iBaseSpecialDamage[zombieclass] + RoundToFloor(iBaseSpecialDamage[zombieclass] * (iResult * fMultiplier));
+		iResult = iBaseSpecialDamage[zombieclass];
+		iResult += RoundToFloor(iResult * (myCurrentDifficulty * fMultiplier));
 	}// even requests are for damage.
-	if (request != 7 && theCount >= iSurvivorModifierRequired) {
+	if (request != 7 && iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) {
 		// health result or damage result
-		if (request % 2 != 0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
-		else iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+		if (request % 2 != 0) {
+			if (fSurvivorHealthBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
+		}
+		else if (fSurvivorDamageBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
 	}
 	//result 7 returns damage shield values. result 8(which is even so no check required) returns damage reduction ability strength.
-	if (zombieclass != 0 && (request % 2 == 0 || request == 7)) {
+	/*if (zombieclass != 0 && (request % 2 == 0 || request == 7)) {
 		new DamageShield = 0;
 		new Float:DamageShieldMult = (IsClientInRangeSpecialAmmo(client, "D") == -2.0) ? IsClientInRangeSpecialAmmo(client, "D", false, _, iResult * 1.0) : 0.0;
 
@@ -2323,7 +2378,7 @@ stock GetCharacterSheetData(client, String:stringRef[], theSize, request, zombie
 			return 0;
 		}
 		iResult -= RoundToCeil(iResult * AbilityMultiplier);
-	}
+	}*/
 
 
 	//if (request % 2 == 0) Format(stringRef, theSize, "%3.3f", fResult);
@@ -2357,7 +2412,7 @@ public Handle:ProfileEditorMenu(client) {
 		GetClientName(thetarget, TheName, sizeof(TheName));
 		decl String:ratingText[64];
 		AddCommasToString(Rating[thetarget], ratingText, sizeof(ratingText));
-		Format(text, sizeof(text), "%s Lv.%d\t\tScore: %s", TheName, PlayerLevel[thetarget], ratingText);
+		Format(text, sizeof(text), "%s\t\tScore: %s", TheName, ratingText);
 	}
 	else {
 
@@ -2415,6 +2470,7 @@ stock DeleteProfile(client, bool:DisplayToClient = true) {
 	decl String:pct[4];
 	Format(pct, sizeof(pct), "%");
 	GetClientAuthString(client, t_Loadout, sizeof(t_Loadout));
+	if (!StrEqual(serverKey, "-1")) Format(t_Loadout, sizeof(t_Loadout), "%s%s", serverKey, t_Loadout);
 	Format(t_Loadout, sizeof(t_Loadout), "%s+%s", t_Loadout, LoadoutName[client]);
 	Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `steam_id` LIKE '%sSavedProfile%s';", TheDBPrefix, t_Loadout, pct, pct, pct);
 	//PrintToChat(client, tquery);
@@ -2503,6 +2559,7 @@ stock SaveProfile(client, SaveType = 0) {	// 1 insert a new save, 2 overwrite an
 	Format(pct, sizeof(pct), "%");
 
 	GetClientAuthString(client, key, sizeof(key));
+	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	Format(key, sizeof(key), "%s+", key);
 	if (SaveType != 0) {
 
@@ -2603,16 +2660,20 @@ stock ReadProfiles(client, String:target[] = "none") {
 	decl String:key[64];
 	if (StrEqual(target, "none", false)) GetClientAuthString(client, key, sizeof(key));
 	else Format(key, sizeof(key), "%s", target);
+	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	Format(key, sizeof(key), "%s+", key);
 	decl String:tquery[128];
 	decl String:pct[4];
 	Format(pct, sizeof(pct), "%");
 
 	new owner = client;
-	if (LoadTarget[owner] != -1 && LoadTarget[owner] != owner && IsSurvivorBot(LoadTarget[owner])) client = LoadTarget[owner]; 
+	if (LoadTarget[owner] != -1 && LoadTarget[owner] != owner && IsSurvivorBot(LoadTarget[owner])) client = LoadTarget[owner];
 
-	if (!StrEqual(target, "all", false)) Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `total upgrades` <= '%d';", TheDBPrefix, key, pct, MaximumPlayerUpgrades(client));
-	else Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s+SavedProfile%s' AND `total upgrades` <= '%d';", TheDBPrefix, pct, PROFILE_VERSION, MaximumPlayerUpgrades(client));
+	// If we want specialty servers that limit the # of upgrades that can be used (like a low level tutorial server)
+	new maxPlayerUpgrades = MaximumPlayerUpgrades(client);
+
+	if (!StrEqual(target, "all", false)) Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `total upgrades` <= '%d';", TheDBPrefix, key, pct, maxPlayerUpgrades);
+	else Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s+SavedProfile%s' AND `total upgrades` <= '%d';", TheDBPrefix, pct, PROFILE_VERSION, maxPlayerUpgrades);
 	//PrintToChat(client, tquery);
 	//decl String:tqueryE[512];
 	//SQL_EscapeString(Handle:hDatabase, tquery, tqueryE, sizeof(tqueryE));
@@ -3073,6 +3134,7 @@ public Handle:TalentInfoScreen(client) {
 
 	decl String:TalentInfo[128];
 	new AbilityType = 0;
+	new bool:bIsAttribute = (GetKeyValueIntAtPos(PurchaseValues[client], IS_ATTRIBUTE) == 1) ? true : false;
 	if (AbilityTalent != 1) {
 
 		if (IsSpecialAmmo != 1) {
@@ -3094,7 +3156,7 @@ public Handle:TalentInfoScreen(client) {
 			AbilityType = GetKeyValueIntAtPos(PurchaseValues[client], ABILITY_TYPE);
 			if (AbilityType < 0) AbilityType = 0;	// if someone forgets to set this, we have to set it to the default value.
 			//if (TalentPointAmount > 0) s_PenaltyPoint = 0.0;
-			if (TalentType <= 0) {
+			if (TalentType <= 0 && !bIsAttribute) {
 				if (TalentPointAmount < 1) {
 					if (AbilityType == 0) Format(text, sizeof(text), "%T", "Ability Info Percent", client, s_TalentPoints * 100.0, pct, s_OtherPointNext * 100.0, pct);
 					else if (AbilityType == 1) Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
@@ -3106,6 +3168,12 @@ public Handle:TalentInfoScreen(client) {
 					else if (AbilityType == 1) Format(text, sizeof(text), "%T", "Ability Info Time Max", client, i_AbilityTime);
 					else if (AbilityType == 2) Format(text, sizeof(text), "%T", "Ability Info Distance Max", client, s_TalentPoints);
 					else if (AbilityType == 3) Format(text, sizeof(text), "%T", "Ability Info Raw Max", client, RoundToCeil(s_TalentPoints));
+				}
+				new Float:rollChance = GetKeyValueFloatAtPos(PurchaseValues[client], TALENT_ROLL_CHANCE);
+				if (rollChance > 0.0) {
+					decl String:rollChanceText[64];
+					Format(rollChanceText, sizeof(rollChanceText), "%T", "Roll Chance Talent Info", client, rollChance * 100.0, pct);
+					Format(text, sizeof(text), "%s\n%s", rollChanceText, text);
 				}
 				DrawPanelText(menu, text);
 				//DrawPanelText(menu, TalentIdCode);
@@ -3164,10 +3232,10 @@ public Handle:TalentInfoScreen(client) {
 	if (TalentType <= 0 || AbilityTalent == 1) {
 
 		if (TalentPointAmount == 0) {
-			new ignoreLayerCount = (GetKeyValueIntAtPos(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 :
-								   (GetKeyValueIntAtPos(PurchaseValues[client], IS_ATTRIBUTE) == 1) ? 1 : 0;
-			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client]) ? true : false;
-			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
+			new ignoreLayerCount = (GetKeyValueIntAtPos(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 : (bIsAttribute) ? 1 : 0;
+			// GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, true) * fUpgradesRequiredPerLayer)
+			new bool:bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
+			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 
 			//decl String:sTalentsRequired[64];
 			decl String:formattedTalentsRequired[64];
@@ -3227,7 +3295,6 @@ public Handle:TalentInfoScreen(client) {
 		//	This variable is pre-determined and calls a translation file in the language of the player.
 		GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation));
 		//Format(TalentInfo, sizeof(TalentInfo), "%s", GetTranslationOfTalentName(client, TalentName));
-		new Float:rollChance = GetKeyValueFloatAtPos(PurchaseValues[client], TALENT_ROLL_CHANCE);
 		new Float:fPercentageHealthRequired = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_MISSING);
 		new Float:fPercentageHealthRequiredBelow = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ);
 		new Float:fCoherencyRange = GetKeyValueFloatAtPos(PurchaseValues[client], COHERENCY_RANGE);
@@ -3236,10 +3303,6 @@ public Handle:TalentInfoScreen(client) {
 		if (fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0 || fTargetRangeRequired > 0.0) {
 			new Float:fPercentageHealthRequiredMax = GetKeyValueFloatAtPos(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_MISSING_MAX);
 			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, fPercentageHealthRequired * 100.0, pct, fPercentageHealthRequiredMax * 100.0, pct, fPercentageHealthRequiredBelow * 100.0, pct, fCoherencyRange, iCoherencyMax, fTargetRangeRequired);
-		}
-		else if (TalentType <= 0 && rollChance > 0.0) {
-			Format(text, sizeof(text), "%3.2f%s", rollChance * 100.0, pct);
-			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, text);
 		}
 		else Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client);
 
@@ -3270,6 +3333,33 @@ public Handle:TalentInfoScreen(client) {
 	}
 	if (IsEffectOverTime) {
 		Format(text, sizeof(text), "%T", "effect over time talent info", client);
+		DrawPanelText(menu, text);
+	}
+	if (bIsAttribute) {
+		// going to list talents on the current layer that this attribute affects.
+		//PlayerCurrentMenuLayer
+		decl String:talentList[64];
+		new count = 0;
+		new size = GetArraySize(a_Menu_Talents);
+		decl String:talentAttribute[64];
+		GetArrayString(PurchaseValues[client], ATTRIBUTE_MULTIPLIER, talentAttribute, sizeof(talentAttribute));
+		for (new i = 0; i < size; i++) {
+			MenuKeys[client]	= GetArrayCell(a_Menu_Talents, i, 0);
+			MenuValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
+			MenuSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
+
+			if (GetKeyValueIntAtPos(MenuValues[client], GET_TALENT_LAYER) != PlayerCurrentMenuLayer[client]) continue;
+			if (GetKeyValueIntAtPos(MenuValues[client], IS_ATTRIBUTE) == 1) continue;
+			GetArrayString(MenuValues[client], GOVERNING_ATTRIBUTE, talentList, sizeof(talentList));
+			if (!StrEqual(talentList, talentAttribute)) continue;
+			GetArrayString(MenuValues[client], GET_TALENT_NAME, talentList, sizeof(talentList));
+			//GetTranslationOfTalentName(client, talentList, talentList, sizeof(talentList), true);
+			Format(talentList, sizeof(talentList), "%T", talentList, client);
+			if (count > 0) Format(text, sizeof(text), "%s\n%s", text, talentList);
+			else Format(text, sizeof(text), "Talents governed by this attribute on this layer:\n \n%s", talentList);
+			count++;
+		}
+		if (count == 0) Format(text, sizeof(text), "No Talents governed by this attribute on this layer.");
 		DrawPanelText(menu, text);
 	}
 	return menu;
@@ -3516,13 +3606,12 @@ public TalentInfoScreen_Init (Handle:topmenu, MenuAction:action, client, param2)
 		new bool:isNodeCostMet = (UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 		new currentLayer = GetKeyValueIntAtPos(PurchaseValues[client], GET_TALENT_LAYER);
 		//new ignoreLayerCount = GetKeyValueInt(PurchaseKeys[client], PurchaseValues[client], "ignore for layer count?");
-		new ignoreLayerCount = (GetKeyValueIntAtPos(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 :
-								   (GetKeyValueIntAtPos(PurchaseValues[client], IS_ATTRIBUTE) == 1) ? 1 : 0;	// attributes both count towards the layer requirements and can be unlocked when the layer requirements are met.
+		new ignoreLayerCount = (GetKeyValueIntAtPos(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 : (GetKeyValueIntAtPos(PurchaseValues[client], IS_ATTRIBUTE) == 1) ? 1 : 0;	// attributes both count towards the layer requirements and can be unlocked when the layer requirements are met.
 
 		new bool:bIsLayerEligible = (TalentStrength > 0) ? true : false;
 		if (!bIsLayerEligible) {
-			bIsLayerEligible = (requiredTalentsRequired < 1 && (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= PlayerCurrentMenuLayer[client])) ? true : false;
-			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < PlayerCurrentMenuLayer[client] + 1) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
+			bIsLayerEligible = (requiredTalentsRequired < 1 && (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer))) ? true : false;
+			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 		}
 		/*if (AbilityTalent == 1 && bActionBarMenuRequest) {
 

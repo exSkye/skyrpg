@@ -45,11 +45,11 @@ bool:VerifyMinimumRating(client, bool:setMinimumRating = false) {
 	if (setMinimumRating || Rating[client] < minimumRating) Rating[client] = minimumRating;
 }
 
-bool:AllowShotgunToTriggerNodes(client) {
-	new bool:isshotgun = IsPlayerUsingShotgun(client);
-	if (!isshotgun || isshotgun && !shotgunCooldown[client]) return true;
-	return false;
-}
+// bool:AllowShotgunToTriggerNodes(client) {
+// 	new bool:isshotgun = IsPlayerUsingShotgun(client);
+// 	if (!isshotgun || isshotgun && !shotgunCooldown[client]) return true;
+// 	return false;
+// }
 
 stock CheckDifficulty() {
 
@@ -118,16 +118,15 @@ public Action:Timer_CheckDifficulty(Handle:timer) {
 }
 
 public Action:Timer_ShowHUD(Handle:timer, any:client) {
-	if (!b_IsActiveRound || !IsLegitimateClient(client) || !bTimersRunning[client]) {
+	if (!b_IsActiveRound || !IsLegitimateClient(client) || !bTimersRunning[client] || !IsPlayerAlive(client) || !bTimersRunning[client] || GetClientTeam(client) != TEAM_SURVIVOR) {
 		return Plugin_Stop;
 	}
 	if (PlayerLevel[client] > iMaxLevel) SetTotalExperienceByLevel(client, iMaxLevel, true);
 	TimePlayed[client]++;
 	//if (TotalHumanSurvivors() < 1) RoundTime++;	// we don't count time towards enrage if there are no human survivors.
-	static String:pct[10];
+	decl String:pct[10];
 	Format(pct, sizeof(pct), "%");
-	static ThisRoundTime = 0;
-	ThisRoundTime = RPGRoundTime();
+	new ThisRoundTime = RPGRoundTime();
 	new mymaxhealth = -1;
 	new Float:healregenamount = 0.0;
 	//decl String:targetSteamID[64];
@@ -138,8 +137,7 @@ public Action:Timer_ShowHUD(Handle:timer, any:client) {
 		}
 	}
 
-	static playerTeam = 0;
-	playerTeam = GetClientTeam(client);
+	new playerTeam = GetClientTeam(client);
 	if (playerTeam == TEAM_SPECTATOR || (playerTeam == TEAM_SURVIVOR || !IsLegitimateClientAlive(client)) && !b_IsLoaded[client]) return Plugin_Continue;
 	if (displayBuffOrDebuff[client] != 1) displayBuffOrDebuff[client] = 1;
 	else displayBuffOrDebuff[client] = 0;
@@ -152,14 +150,15 @@ public Action:Timer_ShowHUD(Handle:timer, any:client) {
 		healregenamount = 0.0;				
 		mymaxhealth = GetMaximumHealth(client);
 		if (ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
-			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h");	// activator, target, trigger ability, effects, zombieclass, damage
+			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
 			if (healregenamount > 0.0) HealPlayer(client, client, healregenamount, 'h', true);
 		}
 		ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
 		if (GetClientHealth(client) > mymaxhealth) SetEntityHealth(client, mymaxhealth);
 	}
 	if (playerTeam != TEAM_SPECTATOR) {
-		GetAbilityStrengthByTrigger(client, client, "p");	// adding support for any type of passive.
+		//GetAbilityStrengthByTrigger(client, client, "p");	// raw passives
+		GetAbilityStrengthByTrigger(client, client, "p", _, _, _, _, _, _, _, 0); // percentage passives
 	}
 	RemoveStoreTime(client);
 	LastPlayLength[client]++;
@@ -229,7 +228,7 @@ stock HumanSurvivors() {
 
 public Action:Timer_TeleportRespawn(Handle:timer, any:client) {
 
-	if (b_IsActiveRound && IsLegitimateClient(client)) {
+	if (b_IsActiveRound && IsLegitimateClient(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
 
 		new target = MyRespawnTarget[client];
 
@@ -307,7 +306,15 @@ stock GetTimePlayed(client, String:s[], size) {
 		minutes++;
 		seconds -= 60;
 	}
-	Format(s, size, "%d Days, %d Hours, %d Minutes, %d Second(s)", days, hours, minutes, seconds);
+	Format(s, size, "Playtime:");
+	if (days > 1) Format(s, size, "%s %d Days,", s, days);
+	else if (days > 0) Format(s, size, "%s %d Day,", s, days);
+	if (hours > 1) Format(s, size, "%s %d Hours,", s, hours);
+	else if (hours > 0) Format(s, size, "%s %d Hour,", s, hours);
+	if (minutes > 1) Format(s, size, "%s %d Minutes,", s, minutes);
+	else if (minutes > 0) Format(s, size, "%s %d Minute,", s, minutes);
+	if (seconds > 1) Format(s, size, "%s %d Seconds", s, seconds);
+	else if (seconds > 0) Format(s, size, "%s %d Second", s, seconds);
 }
 
 /*public Action:Timer_AwardSkyPoints(Handle:timer) {
@@ -558,10 +565,10 @@ public ReadyUp_FwdChangeTeam(client, team) {
 		else if (team != TEAM_SURVIVOR) {
 
 			//LogToFile(LogPathDirectory, "%N is no longer a survivor, unhooking.", client);
-			if (bIsInCombat[client]) {
+			// if (bIsInCombat[client]) {
 
-				IncapacitateOrKill(client, _, _, true, false, true);
-			}
+			// 	IncapacitateOrKill(client, _, _, true, false, true);
+			// }
 			ChangeHook(client);
 		}
 	}
@@ -805,15 +812,17 @@ public Action:Timer_Explode(Handle:timer, Handle:packagey) {
 	}
 	CreateRing(client, flRangeMax, StAuraColour, StAuraPos);
 	CreateExplosion(client);
-	ScreenShake(client);
 	new ReflectDebuff = 0;
 	if (IsClientInRangeSpecialAmmo(client, "d") == -2.0) flStrengthTotal += (flStrengthTotal * IsClientInRangeSpecialAmmo(client, "d", false, _, flStrengthTotal));
 	if (IsClientInRangeSpecialAmmo(client, "E") == -2.0) flStrengthTotal += (flStrengthTotal * IsClientInRangeSpecialAmmo(client, "E", false, _, flStrengthTotal));
 	if (IsClientInRangeSpecialAmmo(client, "D") == -2.0) flStrengthTotal = (flStrengthTotal * (1.0 - IsClientInRangeSpecialAmmo(client, "D", false, _, flStrengthTotal)));
 
 	new DamageValue = RoundToCeil(flStrengthTotal);
-	SetClientTotalHealth(client, DamageValue);
-
+	if (!IsFakeClient(client)) {
+		ScreenShake(client);
+		SetClientTotalHealth(client, DamageValue);
+	}
+	new bool:isTargetClientABot;
 	for (new i = 1; i <= MaxClients; i++) {
 
 		if (!IsLegitimateClientAlive(i) || i == client) continue;
@@ -823,11 +832,12 @@ public Action:Timer_Explode(Handle:timer, Handle:packagey) {
 		if (GetVectorDistance(ClientPosition, TargetPosition) > (flRangeMax / 2)) continue;
 
 		CreateExplosion(i);	// boom boom audio and effect on the location.
-		if (!IsFakeClient(i)) ScreenShake(i);
+		isTargetClientABot = IsFakeClient(i);
+		if (!isTargetClientABot) ScreenShake(i);
 
 		//if (DamageValue > GetClientHealth(i)) IncapacitateOrKill(i);
 		//else SetEntityHealth(i, GetClientHealth(i) - DamageValue);
-		if (GetClientTeam(i) == TEAM_SURVIVOR) {
+		if (GetClientTeam(i) == TEAM_SURVIVOR && !isTargetClientABot) {
 
 			if (IsClientInRangeSpecialAmmo(i, "D") == -2.0) SetClientTotalHealth(i, RoundToCeil(DamageValue * (1.0 - IsClientInRangeSpecialAmmo(i, "D", false, _, DamageValue * 1.0))));
 			else SetClientTotalHealth(i, DamageValue);
@@ -852,51 +862,6 @@ public Action:Timer_Explode(Handle:timer, Handle:packagey) {
 			else AddSpecialInfectedDamage(client, i, DamageValue);
 		}
 	}
-	new ent = -1;
-	new SuperReflect = 0;
-	decl String:AuraEffect[10];
-	new bool:entityIsSpecialCommon;
-	for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
-		ent = GetArrayCell(Handle:CommonInfected, i);
-		if (!IsCommonInfected(ent)) continue;
-		entityIsSpecialCommon = IsSpecialCommon(ent);
-		if (ent == client || entityIsSpecialCommon) continue;
-		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
-		if (GetVectorDistance(ClientPosition, TargetPosition) > (flRangeMax / 2) || IsSpecialCommonInRange(ent, 'd')) continue;
-
-		if (!entityIsSpecialCommon) AddCommonInfectedDamage(client, ent, DamageValue);
-		else {
-			// We check what kind of special common the entity is
-			GetCommonValueAtPos(AuraEffect, sizeof(AuraEffect), ent, SUPER_COMMON_AURA_EFFECT);
-			if (StrContains(AuraEffect, "d", true) == -1 || IsClientInRangeSpecialAmmo(client, "R") == -2.0) {
-				if (IsClientInRangeSpecialAmmo(client, "R") == -2.0) AddSpecialCommonDamage(client, ent, RoundToCeil(DamageValue * IsClientInRangeSpecialAmmo(client, "R", false, _, DamageValue * 1.0)));
-				else AddSpecialCommonDamage(client, ent, DamageValue);
-			}
-			else {	// if a player tries to reflect damage at a reflector, it's moot (ie reflects back to the player) so in this case the player takes double damage, though that's after mitigations.
-				if (IsClientInRangeSpecialAmmo(client, "D") == -2.0) {
-					SuperReflect = RoundToCeil(DamageValue * (1.0 - IsClientInRangeSpecialAmmo(client, "D", false, _, DamageValue * 1.0)));
-					SetClientTotalHealth(client, SuperReflect);
-					ReceiveCommonDamage(client, ent, SuperReflect);
-				}
-				else {
-					SetClientTotalHealth(client, DamageValue);
-					ReceiveCommonDamage(client, ent, DamageValue);
-				}
-			}
-		}
-	}
-	for (new i = 0; i < GetArraySize(Handle:WitchList); i++) {
-
-		ent = GetArrayCell(Handle:WitchList, i);
-		if (ent == client || !IsWitch(ent)) continue;
-		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
-		if (GetVectorDistance(ClientPosition, TargetPosition) > (flRangeMax / 2)) continue;
-		if (!IsSpecialCommonInRange(ent, 'd')) AddWitchDamage(client, ent, DamageValue);
-		else {
-			SetClientTotalHealth(client, DamageValue);
-			ReceiveWitchDamage(client, ent, DamageValue);
-		}
-	}
 	ISEXPLODETIME[client] += flDeathInterval;
 
 	return Plugin_Continue;
@@ -908,15 +873,32 @@ public Action:Timer_IsNotImmune(Handle:timer, any:client) {
 	return Plugin_Stop;
 }
 
+bool:ScenarioEndConditionsMet() {
+	new numberOfLivingHumanSurvivors 	= LivingHumanSurvivors();
+	new numberOfLivingSurvivors	  		= LivingSurvivors();
+	new numberOfHumanSurvivors		  	= TotalHumanSurvivors();
+	// if there are no survivors at all, we let the game run.
+	//if (TotalSurvivors() < 1) return false;
+	// If we end the round when there's no human survivors alive, this will also end rounds if no human survivors exist.
+	if (iEndRoundIfNoLivingHumanSurvivors == 1 && numberOfLivingHumanSurvivors < 1) return true;
+	// Requires all survivors to be completely dead if iEndRoundIfNoHealthySurvivors = 0
+	if (iEndRoundIfNoHealthySurvivors == 0) {
+		// either there are no living human survivors and we require it, or all survivors are dead.
+		if (numberOfLivingSurvivors < 1) return true;
+	}
+	// If all living survivors are dead, or they're all hanging from ledges, or they're all incapped/dead/ledged.
+	else if (numberOfLivingSurvivors < 1 || numberOfLivingSurvivors == LedgedSurvivors() || NoHealthySurvivors()) return true;
+	return false;
+}
+
 public Action:Timer_CheckIfHooked(Handle:timer) {
 
 	if (!b_IsActiveRound) {
 		iSurvivalCounter = 0;
 		return Plugin_Stop;
 	}
+	if (showNumLivingSurvivorsInHostname == 1) SetSurvivorsAliveHostname();
 	static CurRPG = -2;
-	static LivingSerfs = 0;
-	LivingSerfs = LivingSurvivors();
 	static RoundSeconds = 0;
 	RoundSeconds = RPGRoundTime(true);
 	if (IsSurvivalMode) {
@@ -940,17 +922,23 @@ public Action:Timer_CheckIfHooked(Handle:timer) {
 	if (RoundSeconds % HostNameTime == 0) {
 		PrintToChatAll("%t", "playing in server name", orange, blue, Hostname, orange, blue, MenuCommand, orange);
 	}
-	if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
-	if (TotalHumanSurvivors() >= 1 &&
-		(iEndRoundIfNoHealthySurvivors == 1 && (LivingSerfs == LedgedSurvivors() || NoHealthySurvivors())) || LivingSerfs < 1 || NoLivingHumanSurvivors()) {
+	//if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
+	if (ScenarioEndConditionsMet()) {
 		// scenario will not end if there are bots alive because dead players can take control of them.
-		ForceServerCommand("scenario_end");
+		b_IsMissionFailed = true;
 		CallRoundIsOver();
+		if (StrContains(TheCurrentMap, "helms", false) != -1) {
+			PrintToChatAll("\x04Due to VScripts issue, this map must be restarted to prevent a server crash - Restarting in 1 second.");
+			LogMessage("Restarting %s map to avoid VScripts crash.", TheCurrentMap);
+			// need to force-teleport players here on new spawn: 4087.998291 11974.557617 -269.968750
+			CreateTimer(1.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
+		}
+		else ForceServerCommand("scenario_end");
 		return Plugin_Stop;
 	}
 	static String:text[64];
 	new secondsUntilEnrage = GetSecondsUntilEnrage();
-	if (!IsSurvivalMode && iEnrageTime > 0 && RoundSeconds > 0 && RPGRoundTime() < iEnrageTime && (secondsUntilEnrage <= 300 && (secondsUntilEnrage % 60 == 0 || secondsUntilEnrage == 30 || secondsUntilEnrage <= 3) || (RoundSeconds % iEnrageAdvertisement) == 0)) {
+	if (!IsSurvivalMode && iEnrageTime > 0 && RoundSeconds > 0 && RPGRoundTime() < iEnrageTime && (secondsUntilEnrage <= iHideEnrageTimerUntilSecondsLeft && secondsUntilEnrage % 60 == 0 || (RoundSeconds % iEnrageAdvertisement) == 0)) {
 		TimeUntilEnrage(text, sizeof(text));
 		PrintToChatAll("%t", "enrage in...", orange, green, text, orange);
 	}
@@ -961,12 +949,18 @@ public Action:Timer_CheckIfHooked(Handle:timer) {
 			SetEntityRenderMode(i, RENDER_TRANSCOLOR);
 			SetEntityRenderColor(i, 0, 0, 0, 255);
 			SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
-			if (!IsFakeClient(i)) EmitSoundToClient(i, "player/heartbeatloop.wav");
+			if (!IsFakeClient(i) && !bWeaknessAssigned[i]) {
+				EmitSoundToClient(i, "player/heartbeatloop.wav");
+				bWeaknessAssigned[i] = true;
+			}
 		}
 		else {
 			SetEntityRenderMode(i, RENDER_NORMAL);
 			SetEntityRenderColor(i, 255, 255, 255, 255);
-			if (!IsFakeClient(i)) StopSound(i, SNDCHAN_AUTO, "player/heartbeatloop.wav");
+			if (!IsFakeClient(i) && bWeaknessAssigned[i]) {
+				StopSound(i, SNDCHAN_AUTO, "player/heartbeatloop.wav");
+				bWeaknessAssigned[i] = false;
+			}
 			SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 0);
 		}
 	}
@@ -1067,6 +1061,10 @@ public Action:Timer_SettingsCheck(Handle:timer) {
 		SetConVarInt(FindConVar("z_common_limit"), 0);	// no commons unless active round.
 		return Plugin_Stop;
 	}
+	if (RPGRoundTime(true) < iCommonInfectedSpawnDelayOnNewRound) {
+		SetConVarInt(FindConVar("z_common_limit"), 0);
+		return Plugin_Continue;
+	}
 
 	static RaidLevelCounter		= 0;
 	static bool:bIsEnrage = false;
@@ -1088,13 +1086,11 @@ public Action:Timer_SettingsCheck(Handle:timer) {
 	//else RaidLevelCounter = 0;
 	//else RaidLevelCounter = 0;
 
-	if (AllowedPanicInterval - RaidLevelCounter < 60) AllowedPanicInterval = 60;
-
 	bIsEnrage = IsEnrageActive();
 
-	new CommonAllowed = (AllowedCommons + RaidLevelCounter);
 	if (bIsEnrage) RaidLevelCounter = RoundToCeil(fEnrageMultiplier * RaidLevelCounter);
-	if (CommonAllowed <= iCommonsLimitUpper || bIsEnrage) SetConVarInt(FindConVar("z_common_limit"), AllowedCommons + RaidLevelCounter);
+	new CommonAllowed = AllowedCommons + RaidLevelCounter;
+	if (CommonAllowed <= iCommonsLimitUpper) SetConVarInt(FindConVar("z_common_limit"), CommonAllowed);
 	else SetConVarInt(FindConVar("z_common_limit"), iCommonsLimitUpper);
 	if (iTankRush != 1) SetConVarInt(FindConVar("z_reserved_wanderers"), RaidLevelCounter);
 	else {
@@ -1107,8 +1103,6 @@ public Action:Timer_SettingsCheck(Handle:timer) {
 	SetConVarInt(FindConVar("z_mega_mob_size"), AllowedMegaMob + RaidLevelCounter);
 	SetConVarInt(FindConVar("z_mob_spawn_max_size"), AllowedMobSpawn + RaidLevelCounter);
 	SetConVarInt(FindConVar("z_mob_spawn_finale_size"), AllowedMobSpawnFinale + RaidLevelCounter);
-	if (iTankRush != 1 && AllowedPanicInterval - RaidLevelCounter > 60) SetConVarInt(FindConVar("z_mega_mob_spawn_max_interval"), AllowedPanicInterval - RaidLevelCounter);
-	else SetConVarInt(FindConVar("z_mega_mob_spawn_max_interval"), 60);
 
 	return Plugin_Continue;
 }
@@ -1299,11 +1293,13 @@ public Action:Timer_ThreatSystem(Handle:timer) {
 		count = 0;
 		cThreatLevel = 0;
 		iTopThreat = 0;
-		if (cThreatEnt && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
+		// it happens due to ent shifting
+		if (!IsLegitimateClient(cThreatEnt) && cThreatEnt != -1 && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
 		cThreatEnt = -1;
 
 		return Plugin_Stop;
 	}
+	if (IsLegitimateClient(cThreatEnt)) cThreatEnt = -1;
 	iSurvivalCounter++;
 	SortThreatMeter();
 	count++;
@@ -1350,7 +1346,7 @@ public Action:Timer_ThreatSystem(Handle:timer) {
 	if (cThreatOld != cThreatTarget || count >= 20) {
 
 		count = 0;
-		if (cThreatEnt && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
+		if (cThreatEnt != -1 && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
 		cThreatEnt = -1;
 	}
 
@@ -1398,6 +1394,7 @@ public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
 	new iSurvivorBots = TotalSurvivors() - iSurvivors;
 	new LivingSerfs = LivingSurvivorCount();
 	new requiredAlwaysTanks = GetAlwaysTanks(iSurvivors);
+	new currentTime = GetTime();
 	if (iSurvivorBots >= 2) iSurvivorBots /= 2;
 	theClient = FindAnyRandomClient();
 	if (requiredAlwaysTanks >= 1 && iTankCount < requiredAlwaysTanks && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) || iTankRush == 1 && !b_IsFinaleActive && iTankCount < (iSurvivors + iSurvivorBots)) {
@@ -1434,24 +1431,26 @@ public Action:Timer_DirectorPurchaseTimer(Handle:timer) {
 		return Plugin_Stop;
 	}*/
 	if (DirectorHandicap == -1.0) {
-
 		DirectorHandicap = fDirectorThoughtHandicap;
-		DirectorDelay	 = fDirectorThoughtDelay;
+		DirectorDelay	 = fDirectorThoughtDelay - (LivingSerfs * DirectorHandicap);
+		if (DirectorDelay < fDirectorThoughtProcessMinimum) DirectorDelay = fDirectorThoughtProcessMinimum;
 	}
-	if (Counter == -1 || b_IsSurvivalIntermission || LivingSurvivorCount() < 1) {
 
-		Counter = GetTime() + RoundToCeil(DirectorDelay - (LivingHumanSurvivors() * DirectorHandicap));
+	if (Counter == -1 || b_IsSurvivalIntermission || LivingSerfs < 1) {
+
+		Counter = RoundToCeil(currentTime + DirectorDelay);
 		return Plugin_Continue;
 	}
-	else if (Counter > GetTime()) {
+	else if (Counter > currentTime) {
 
 		// We still spawn specials, out of range of players to enforce the active special limit.
 		return Plugin_Continue;
 	}
 	//PrintToChatAll("%t", "Director Think Process", orange, white);
 
-
-	Counter = GetTime() + RoundToCeil(DirectorDelay - (LivingSerfs * DirectorHandicap));
+	DirectorDelay	 = fDirectorThoughtDelay - (LivingSerfs * DirectorHandicap);
+	if (DirectorDelay < fDirectorThoughtProcessMinimum) DirectorDelay = fDirectorThoughtProcessMinimum;
+	Counter = RoundToCeil(currentTime + DirectorDelay);
 
 	new size				=	GetArraySize(a_DirectorActions);
 
@@ -1472,17 +1471,21 @@ stock GetAlwaysTanks(survivors) {
 stock CheckDirectorActionPriority(pos, size) {
 
 	decl String:text[64];
+	decl String:talentName[64];
 	for (new i = 0; i < size; i++) {
 
 		if (i < GetArraySize(a_DirectorActions_Cooldown)) GetArrayString(a_DirectorActions_Cooldown, i, text, sizeof(text));
 		else break;
 		if (StringToInt(text) > 0) continue;			// Purchase still on cooldown.
+		DirectorKeys					=	GetArrayCell(a_DirectorActions, i, 2);
+		GetArrayString(DirectorKeys, 0, talentName, sizeof(talentName));
 		
 		DirectorKeys					=	GetArrayCell(a_DirectorActions, i, 0);
 		DirectorValues					=	GetArrayCell(a_DirectorActions, i, 1);
-
-		if (GetKeyValueInt(DirectorKeys, DirectorValues, "priority?") != pos || !DirectorPurchase_Valid(DirectorKeys, DirectorValues, i)) continue;
-		DirectorPurchase(DirectorKeys, DirectorValues, i);
+		if (GetKeyValueInt(DirectorKeys, DirectorValues, "priority?") != pos) continue;
+		if (!DirectorPurchase_Valid(DirectorKeys, DirectorValues, i)) continue;
+		// lol? if (GetKeyValueInt(DirectorKeys, DirectorValues, "priority?") != pos || !DirectorPurchase_Valid(DirectorKeys, DirectorValues, i)) continue;
+		DirectorPurchase(DirectorKeys, DirectorValues, i, talentName);
 	}
 }
 
@@ -1539,7 +1542,7 @@ stock GetWitchCount() {
 	return count;
 }
 
-stock DirectorPurchase(Handle:Keys, Handle:Values, pos) {
+stock DirectorPurchase(Handle:Keys, Handle:Values, pos, String:TalentName[]) {
 
 	decl String:Command[64];
 	decl String:Parameter[64];
@@ -1556,6 +1559,8 @@ stock DirectorPurchase(Handle:Keys, Handle:Values, pos) {
 	PointCostMin			=	GetKeyValueFloat(Keys, Values, "point cost minimum?") + (GetKeyValueFloat(Keys, Values, "min cost handicap?") * LivingHumanSurvivors());
 	FormatKeyValue(Parameter, sizeof(Parameter), Keys, Values, "parameter?");
 	Count					=	GetKeyValueInt(Keys, Values, "count?");
+	new CountHandicap		=	GetKeyValueInt(Keys, Values, "count handicap?");
+	Count += (CountHandicap * LivingSurvivorCount());
 	FormatKeyValue(Command, sizeof(Command), Keys, Values, "command?");
 	IsPlayerDrop			=	GetKeyValueInt(Keys, Values, "drop?");
 	FormatKeyValue(Model, sizeof(Model), Keys, Values, "model?");
@@ -1599,13 +1604,18 @@ stock DirectorPurchase(Handle:Keys, Handle:Values, pos) {
 
 	new Client				=	FindLivingSurvivor();
 	if (Client < 1) return;
+	decl String:sTalentName[64];
+	Format(sTalentName, sizeof(sTalentName), "%t", TalentName);
+
+	PrintToChatAll("%t", "director purchase announcement", orange, blue, green, sTalentName, orange, green, PointCost, orange);
+
 	Points_Director -= PointCost;
 
 	if (!IsEnrageActive() && MinimumDelay > 0.0) {
 
 		SetArrayString(a_DirectorActions_Cooldown, pos, "1");
 		MinimumDelay = MinimumDelay - (LivingHumanSurvivors() * fDirectorThoughtHandicap) - (GetKeyValueFloat(Keys, Values, "delay handicap?") * LivingHumanSurvivors());
-		if (MinimumDelay < 0.0) MinimumDelay = 0.0;
+		if (MinimumDelay < 0.0) MinimumDelay = 1.0;
 		fDirectorThoughtDelay = fDirectorThoughtDelay - (LivingHumanSurvivors() * fDirectorThoughtHandicap);
 		if (fDirectorThoughtDelay < 0.0) fDirectorThoughtDelay = 0.0;
 		CreateTimer(fDirectorThoughtDelay + MinimumDelay, Timer_DirectorActions_Cooldown, pos, TIMER_FLAG_NO_MAPCHANGE);
@@ -1671,6 +1681,16 @@ stock SpawnCommons(Client, Count, String:Command[], String:Parameter[], String:M
 	}
 }
 
+stock FindAnotherSurvivor(client) {
+	for (new i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i)) continue;
+		if (GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (i == client) continue;
+		return i;
+	}
+	return -1;
+}
+
 stock FindLivingSurvivor() {
 
 
@@ -1681,7 +1701,8 @@ stock FindLivingSurvivor() {
 		if (!IsClientInGame(Client) || !IsClientHuman(Client) || !IsPlayerAlive(Client) || GetClientTeam(Client) != TEAM_SURVIVOR) Client = -1;
 	}
 	return Client;*/
-	for (new i = LastLivingSurvivor; i <= MaxClients && LivingSurvivorCount() > 0; i++) {
+	new livingSurvivors = LivingSurvivorCount();
+	for (new i = LastLivingSurvivor; i <= MaxClients && livingSurvivors > 0; i++) {
 
 		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
 

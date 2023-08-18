@@ -11,6 +11,7 @@ MySQL_Init()
 
 	iServerLevelRequirement		= GetConfigValueInt("server level requirement?");
 	RatingPerLevel				= GetConfigValueInt("rating level multiplier?");
+	RatingPerLevelSurvivorBots	= GetConfigValueInt("rating level multiplier survivor bots?");
 	InfectedTalentLevel			= GetConfigValueInt("talent level multiplier?");
 	fEnrageModifier				= GetConfigValueFloat("enrage modifier?");
 
@@ -20,7 +21,7 @@ MySQL_Init()
 
 			decl String:HostLevels[64];
 			//Format(HostLevels, sizeof(HostLevels), "Lv%s(TruR%s)", AddCommasToString(iServerLevelRequirement), AddCommasToString(iServerLevelRequirement * RatingPerLevel));
-			Format(HostLevels, sizeof(HostLevels), "Lv%d+", iServerLevelRequirement);
+			Format(HostLevels, sizeof(HostLevels), "[%d+]", iServerLevelRequirement);
 			ReplaceString(Hostname, sizeof(Hostname), "{RS}", HostLevels);
 		}
 	}
@@ -40,11 +41,9 @@ MySQL_Init()
 }
 
 stock SetSurvivorsAliveHostname() {
-
 	static String:Newhost[64];
-	Format(Newhost, sizeof(Newhost), "%s", sHostname);
-	if (b_IsActiveRound) Format(Newhost, sizeof(Newhost), "%s - %d alive", sHostname, LivingSurvivors());
-	else Format(Newhost, sizeof(Newhost), "%s - Intermission", sHostname);
+	Format(Newhost, sizeof(Newhost), "%s", Hostname);
+	if (b_IsActiveRound) Format(Newhost, sizeof(Newhost), "%s(%d alive)", Hostname, LivingSurvivors());
 	ServerCommand("hostname %s", Newhost);
 }
 
@@ -143,11 +142,7 @@ public DBConnect(Handle:owner, Handle:hndl, const String:error[], any:data)
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `pri` int(32) NOT NULL DEFAULT '1';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
-		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `tcolour` varchar(32) NOT NULL DEFAULT 'none';", TheDBPrefix);
-		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `tname` varchar(32) NOT NULL DEFAULT 'none';", TheDBPrefix);
-		SQL_TQuery(hDatabase, QueryResults, tquery);
-		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `ccolour` varchar(32) NOT NULL DEFAULT 'none';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		//Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `mapname` varchar(32) NOT NULL DEFAULT 'none';", TheDBPrefix);
 		//SQL_TQuery(hDatabase, QueryResults, tquery);
@@ -319,7 +314,7 @@ public QuerySaveNewPlayer(Handle:owner, Handle:hndl, const String:error[], any:c
 		if (StrContains(error, "Duplicate column name", false) == -1) LogMessage("QuerySaveNewPlayer Error %s", error);
 		return;
 	}
-	if (IsLegitimateClient(client)) SaveAndClear(client, _, true);
+	if (IsLegitimateClient(client)) SavePlayerData(client, _, true);
 }
 
 public QueryResults(Handle:owner, Handle:hndl, const String:error[], any:client) {
@@ -405,15 +400,17 @@ public QueryResults8(Handle:owner, Handle:hndl, const String:error[], any:client
 
 stock LoadLeaderboards(client, count) {
 
-	new listpage = GetConfigValueInt("leaderboard players per page?");
 	if (count == 0) {
 
-		if (TheLeaderboardsPageSize[client] >= listpage) TheLeaderboardsPage[client] -= listpage;
+		if (TheLeaderboardsPageSize[client] >= leaderboardPageCount) {
+			TheLeaderboardsPage[client] -= leaderboardPageCount;
+			if (TheLeaderboardsPage[client] < 0) TheLeaderboardsPage[client] = 0;
+		}
 		else TheLeaderboardsPage[client] = 0;
 	}
-	else if (TheLeaderboardsPageSize[client] >= listpage) {		// if a page didn't load 10 entries, we don't increment. If a page exactly 10 entries, the next page will be empty and only have a return option.
+	else if (TheLeaderboardsPageSize[client] >= leaderboardPageCount) {		// if a page didn't load 10 entries, we don't increment. If a page exactly 10 entries, the next page will be empty and only have a return option.
 
-		TheLeaderboardsPage[client] += listpage;
+		TheLeaderboardsPage[client] += leaderboardPageCount;
 	}
 	decl String:tquery[1024];
 	decl String:Mapname[64];
@@ -425,22 +422,22 @@ stock LoadLeaderboards(client, count) {
 
 public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], any:data)
 {
+	if (!IsLegitimateClient(data)) return;
 	if (hndl == INVALID_HANDLE)
 	{
 		LogMessage("[LoadLeaderboardsQuery] %s", error);
 		return;
 	}
 	new i = 0;
-	new count = 0;
+	//new count = 0;
 	new counter = 0;
-	new listpage = GetConfigValueInt("leaderboard players per page?");
 	new Handle:LeadName = CreateArray(16);
 	new Handle:LeadRating = CreateArray(16);
 
 	if (!bIsMyRanking[data]) {
 
-		ResizeArray(Handle:LeadName, listpage);
-		ResizeArray(Handle:LeadRating, listpage);
+		ResizeArray(Handle:LeadName, leaderboardPageCount);
+		ResizeArray(Handle:LeadRating, leaderboardPageCount);
 	}
 	else {
 
@@ -450,29 +447,31 @@ public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], an
 	decl String:text[64];
 	//decl String:tquery[1024];
 	new Pint = 0;
-	new IgnoreRating = RatingPerLevel;
+	new IgnoreRating = scoreRequiredForLeaderboard;
 	decl String:SteamID[64];
+	//GetClientAuthId(data, AuthId_Steam2, SteamID, sizeof(SteamID));
 	GetClientAuthString(data, SteamID, sizeof(SteamID));
+	if (!StrEqual(serverKey, "-1")) Format(SteamID, sizeof(SteamID), "%s%s", serverKey, SteamID);
 	ClearArray(TheLeaderboards[data]);		// reset the data held when a page is loaded.
 
-	while (i < listpage && SQL_FetchRow(hndl))
-	{
+	while (i < leaderboardPageCount && SQL_FetchRow(hndl))
+	{	// bots don't have STEAM_ in their authIDs, so this will prevent bots from showing on the leaderboard.
 		SQL_FetchString(hndl, 1, text, sizeof(text));
+		if (StrContains(text, "STEAM_", true) == -1) continue;
 		if (bIsMyRanking[data] && !StrEqual(text, SteamID, false)) {
 
 			counter++;
 			continue;
 		}
-		if (StrContains(text, sBotTeam, false) != -1) continue;
 
-		count++;
+		//count++;
 		counter++;
-		if (count < TheLeaderboardsPage[data]) continue;
+		if (counter < TheLeaderboardsPage[data]+1) continue;
 
 		Pint = SQL_FetchInt(hndl, 2);
-		if (Pint <= IgnoreRating) {
+		if (Pint < IgnoreRating || Pint < 2) {
 
-			count--;
+			//count--;
 			counter--;
 			continue;	// players can un-set their name to hide themselves on the leaderboards.
 		}
@@ -573,9 +572,12 @@ stock ClearAndLoad(client, bool:IgnoreLoad = false) {
 	if (hDatabase == INVALID_HANDLE) return;
 	//new client = FindClientWithAuthString(key, true);
 	if (client < 1) return;
+	if (b_IsLoading[client] && !IgnoreLoad) return;
+	b_IsLoading[client] = true;
 
 	decl String:key[64];
 	GetClientAuthString(client, key, sizeof(key));
+	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 
 	//if (StrContains(key, "BOT", false) != -1) {
 	if (IsFakeClient(client)) {
@@ -584,6 +586,7 @@ stock ClearAndLoad(client, bool:IgnoreLoad = false) {
 		GetSurvivorBotName(client, TheName, sizeof(TheName));
 		Format(key, 64, "%s%s", sBotTeam, TheName);
 	}
+	SQL_EscapeString(hDatabase, key, key, sizeof(key));
 
 	new size = GetArraySize(Handle:a_Database_Talents);
 	if (GetArraySize(a_Database_PlayerTalents[client]) != size) {
@@ -600,11 +603,10 @@ stock ClearAndLoad(client, bool:IgnoreLoad = false) {
 	Format(text, sizeof(text), "none");
 	SetArrayString(Handle:hWeaponList[client], 0, text);
 	SetArrayString(Handle:hWeaponList[client], 1, text);
-	if (b_IsLoading[client] && !IgnoreLoad) return;
-	b_IsLoading[client] = true;
 	ResetData(client);
 
 	LoadPos[client] = 0;
+	bIsMeleeCooldown[client] = false;
 
 	if (!b_IsArraysCreated[client]) {
 
@@ -619,26 +621,18 @@ stock ClearAndLoad(client, bool:IgnoreLoad = false) {
 
 		SetArrayString(a_Store_Player[client], i, "0");				// We clear all players arrays for the store.
 	}
-	ResizeArray(Handle:ChatSettings[client], 3);
 	decl String:tquery[2048];
-	Format(tquery, sizeof(tquery), "none");
-	SetArrayString(Handle:ChatSettings[client], 0, tquery);
-	SetArrayString(Handle:ChatSettings[client], 1, tquery);
-	SetArrayString(Handle:ChatSettings[client], 2, tquery);
-
 	//LogMessage("Loading %N data", client);
-
 	decl String:themenu[64];
 	GetConfigValue(themenu, sizeof(themenu), "sky points menu name?");
-
-	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `skylevel`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `restt`,`restexp`, `lpl`, `resr`, `survpoints`, `bec`, `rem`, `pri`, `tcolour`, `tname`, `ccolour`, `xpdebt`, `upav`, `upawarded`, `%s`, `myrating %s`, `ratinghc %s`, `lastserver`, `myseason`, `lvlpaused`, `itrails`, `pistol_xp`, `melee_xp`, `uzi_xp`, `shotgun_xp`, `sniper_xp`, `assault_xp`, `medic_xp`, `grenade_xp` FROM `%s` WHERE (`steam_id` = '%s');", themenu, RatingType, RatingType, RatingType, TheDBPrefix, key);
+	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `skylevel`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `restt`,`restexp`, `lpl`, `resr`, `survpoints`, `bec`, `rem`, `pri`, `xpdebt`, `upav`, `upawarded`, `%s`, `myrating %s`, `ratinghc %s`, `lastserver`, `myseason`, `lvlpaused`, `itrails`, `pistol_xp`, `melee_xp`, `uzi_xp`, `shotgun_xp`, `sniper_xp`, `assault_xp`, `medic_xp`, `grenade_xp` FROM `%s` WHERE (`steam_id` = '%s');", themenu, RatingType, RatingType, RatingType, TheDBPrefix, key);
 // maybe set a value equal to the users steamid integer only, so if steam:0:1:23456, set the value of "client" equal to 23456 and then set the client equal to whatever client's steamid contains 23456?
 	SQL_TQuery(hDatabase, QueryResults_Load, tquery, client);
 }
 
 public Query_CheckIfProfileLimit(Handle:owner, Handle:hndl, const String:error[], any:client) {
 
-	if (hndl == INVALID_HANDLE) {
+	if (hndl == INVALID_HANDLE || !IsClientConnected(client)) {
 
 		LogMessage("Query_CheckIfProfileLimit Error: %s", error);
 		return;
@@ -655,6 +649,7 @@ public Query_CheckIfProfileLimit(Handle:owner, Handle:hndl, const String:error[]
 		if (SQL_FetchInt(hndl, 0) < ProfileCountLimit) {
 
 			GetClientAuthString(client, key, sizeof(key));
+			if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 			Format(key, sizeof(key), "%s%s+%s", key, PROFILE_VERSION, LoadoutName[client]);
 
 			Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
@@ -752,10 +747,7 @@ stock ModifyCartelValue(client, String:thetalent[], thevalue) {
 stock CreateNewPlayerEx(client) {
 
 	decl String:tquery[1024];
-	//decl String:text[64];
-	decl String:TagColour[64];
 	decl String:TagName[64];
-	decl String:ChatColour[64];
 	new size = GetArraySize(Handle:a_Database_Talents);
 
 	decl String:key[512];
@@ -768,21 +760,22 @@ stock CreateNewPlayerEx(client) {
 	else {
 
 		GetClientAuthString(client, key, sizeof(key));
+		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
 
 	LogMessage("No data rows for %N with steamid: %s, could be found, creating new player data.", client, key);
-
-	ResizeArray(Handle:ChatSettings[client], 3);
-
-	Format(tquery, sizeof(tquery), "none");
-	SetArrayString(Handle:ChatSettings[client], 0, tquery);
-	SetArrayString(Handle:ChatSettings[client], 1, tquery);
-	SetArrayString(Handle:ChatSettings[client], 2, tquery);
-
-	if (IsFakeClient(client)) PlayerLevel[client] = iBotPlayerStartingLevel;
-	else PlayerLevel[client]				=	iPlayerStartingLevel;
+	GetClientName(client, baseName[client], 64);
+	if (IsFakeClient(client)) {
+		PlayerLevel[client] = iBotPlayerStartingLevel;
+		Format(baseName[client], sizeof(baseName[]), "[BOT] %s", baseName[client]);
+	}
+	else {
+		PlayerLevel[client]				=	iPlayerStartingLevel;
+		Format(baseName[client], sizeof(baseName[]), "%s", baseName[client]);
+	}
 	SetTotalExperienceByLevel(client, PlayerLevel[client]);
 	ChallengeEverything(client);
+	//FormatPlayerName(client);
 
 	bIsNewPlayer[client]			= true;
 	b_IsLoading[client]				= false;
@@ -810,6 +803,12 @@ stock CreateNewPlayerEx(client) {
 
 	//for (new i = 1; i <= MAXPLAYERS; i++) ResizeArray(PlayerAbilitiesImmune[client][i], size);
 	//ResizeArray(PlayerAbilitiesImmune[client], size);
+	if (GetArraySize(a_Database_PlayerTalents[client]) != size) {
+		ResizeArray(a_Database_PlayerTalents[client], size);
+		ResizeArray(PlayerAbilitiesCooldown[client], size);
+		ResizeArray(a_Database_PlayerTalents_Experience[client], size);
+			//for (new i = 1; i <= MAXPLAYERS; i++) ResizeArray(PlayerAbilitiesImmune[client][i], size);
+	}
 
 	for (new i = 0; i < size; i++) {
 
@@ -833,21 +832,37 @@ stock CreateNewPlayerEx(client) {
 		SetArrayString(a_Store_Player[client], i, "0");				// We clear all players arrays for the store.
 	}
 	BuildMenu(client);
-
-	Format(TagColour, sizeof(TagColour), "none");
-	//Format(TagName, sizeof(TagName), "none");
-	if (!IsSurvivorBot(client)) GetClientName(client, TagName, sizeof(TagName));
-	else GetSurvivorBotName(client, TagName, sizeof(TagName));
-
+	FormatPlayerName(client);
+	Format(TagName, sizeof(TagName), "%s", baseName[client]);
 	SQL_EscapeString(hDatabase, TagName, TagName, sizeof(TagName));
-
-	Format(ChatColour, sizeof(ChatColour), "none");
 	//Format(tquery, sizeof(tquery), "INSERT INTO `%s` (`steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `tcolour`, `tname`, `ccolour`) VALUES ('%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s');", TheDBPrefix, spmn, key, ExperienceLevel[client], ExperienceOverall[client], PlayerLevelUpgrades[client], PlayerLevel[client], SkyPoints[client], TimePlayed[client], TotalTalentPoints[client], PlayerUpgradesTotal[client], FreeUpgrades[client], TagColour, TagName, ChatColour);
-	Format(tquery, sizeof(tquery), "INSERT INTO `%s` (`steam_id`) VALUES ('%s');", TheDBPrefix, key);
+	Format(tquery, sizeof(tquery), "INSERT INTO `%s` (`steam_id`, `tname`) VALUES ('%s', '%s');", TheDBPrefix, key, TagName);
 	//SQL_EscapeString(hDatabase, tquery, tquery, sizeof(tquery));
 	SQL_TQuery(hDatabase, QuerySaveNewPlayer, tquery, client);
 
 	CreateTimer(1.0, Timer_LoggedUsers, client, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Query_FindDataAndApplyChange(Handle:owner, Handle:hndl, const String:error[], any:client) {
+
+	if (hndl == INVALID_HANDLE) {
+
+		LogMessage("Query_FindDataAndApplyChange Error: %s", error);
+		return;
+	}
+	new count	= 0;
+	if (!IsLegitimateClient(client)) return;
+	while (SQL_FetchRow(hndl)) count	= SQL_FetchInt(hndl, 0);
+	if (count < 1) PrintToChat(client, "no data for %s exists.", steamIdSearch[client]);
+	else {
+		new expToSet = GetTotalExperienceByLevel(levelToSet[client]);
+		decl String:sExp[64];
+		AddCommasToString(expToSet, sExp, sizeof(sExp));
+		PrintToChat(client, "data for %s found. setting level to %d and xp to %s", steamIdSearch[client], levelToSet[client], sExp);
+		decl String:tquery[512];
+		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `exp` = '%d', `expov` = '%d', `level` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, expToSet, expToSet, levelToSet[client], steamIdSearch[client]);
+		SQL_TQuery(hDatabase, QueryResults1, tquery, client);
+	}
 }
 
 public Query_CheckIfDataExists(Handle:owner, Handle:hndl, const String:error[], any:client) {
@@ -869,7 +884,9 @@ public Query_CheckIfDataExists(Handle:owner, Handle:hndl, const String:error[], 
 	else {
 
 		GetClientAuthString(client, key, sizeof(key));
+		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
+	LogMessage("Does data exist for %N?", client);
 
 	new size = GetArraySize(Handle:a_Database_Talents);
 
@@ -951,16 +968,22 @@ stock CreateNewPlayer(client) {
 	if (b_IsLoading[client]) return;	// should stop bots (and players) from looping indefinitely.
 	b_IsLoading[client] = true;
 
-	LogMessage("Looking up player %N in Database before creating new data.", client);
 	if (IsSurvivorBot(client)) {
 
 		GetSurvivorBotName(client, TheName, sizeof(TheName));
 		Format(key, sizeof(key), "%s%s", sBotTeam, TheName);
 	}
-	else {
+	else if (IsLegitimateClient(client) && !IsFakeClient(client)) {
 
 		GetClientAuthString(client, key, sizeof(key));
+		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
+	else {
+		//LogMessage("Infected bots do not create unique data (%N)", client);
+		b_IsLoading[client] = false;
+		return;
+	}
+	LogMessage("Looking up player %N (%s) in Database before creating new data.", client, key);
 
 	Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 	SQL_TQuery(hDatabase, Query_CheckIfDataExists, tquery, client);
@@ -978,13 +1001,14 @@ stock SaveInfectedData(client) {
 	//return;
 }
 
-stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = false) {
+stock SavePlayerData(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = false) {
 
 	if (!IsLegitimateClient(client)) return;
 	new bool:IsLoadingData = b_IsLoading[client];
-	if (!IsLoadingData) {
-		LogMessage("Loading of Talents was completed for %N", client);
-		IsLoadingData = bIsTalentTwo[client];
+	if (!IsLoadingData && !IsNewPlayer) {
+		LogMessage("Player Data saved for %N", client);
+		//IsLoadingData = bIsTalentTwo[client];
+		//return;
 	}
 
 	// if the database isn't connected, we don't try to save data, because that'll just throw errors.
@@ -995,8 +1019,7 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 		LogMessage("Database couldn't be found, cannot save for %N", client);
 		return;
 	}
-	//ClearImmunities(client);
-	if (!IsLegitimateClient(client)) return;	// fuck me!!
+	if (!b_IsLoaded[client]) return;
 	//if (GetClientTeam(client) == TEAM_SPECTATOR) return;
 	if (GetClientTeam(client) == TEAM_INFECTED) {
 
@@ -1010,11 +1033,14 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 		// Oh well, now it's not.
 		return;
 	}
+	if (IsNewPlayer) {
+		LogMessage("Saving %N's player data for the first time.", client);
+	}
 	if (b_IsTrueDisconnect) {
-
-		RoundExperienceMultiplier[client] = 0.0;
-		BonusContainer[client] = 0;
-
+		if (b_IsActiveRound) {
+			RoundExperienceMultiplier[client] = 0.0;
+			BonusContainer[client] = 0;
+		}
 		HealImmunity[client] = false;
 		b_IsLoading[client] = false;
 		bIsTalentTwo[client] = false;
@@ -1056,6 +1082,7 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	else {
 
 		GetClientAuthString(client, key, sizeof(key));
+		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
 	/*if (PlayerUpgradesTotal[client] == 0 && FreeUpgrades[client] == 0 && PlayerLevel[client] <= 1) {
 
@@ -1064,13 +1091,13 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 		bSaveData[client] = false;
 		return;
 	}*/
+	if (PlayerLevel[client] < iPlayerStartingLevel) return;
 
 	decl String:sPoints[64];
 	Format(sPoints, sizeof(sPoints), "%3.3f", Points[client]);
 
 	//if (PlayerLevel[client] < 1) return;		// Clearly, their data hasn't loaded, so we don't save.
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `exp` = '%d', `expov` = '%d', `upgrade cost` = '%d', `level` = '%d', `%s` = '%d', `time played` = '%d', `talent points` = '%d', `total upgrades` = '%d', `free upgrades` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, ExperienceLevel[client], ExperienceOverall[client], PlayerLevelUpgrades[client], PlayerLevel[client], thesp, SkyPoints[client], TimePlayed[client], TotalTalentPoints[client], PlayerUpgradesTotal[client], FreeUpgrades[client], key);
-
 	SQL_TQuery(hDatabase, QueryResults1, tquery, client);
 	
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `upav` = '%d', `upawarded` = '%d', `lvlpaused` = '%d', `itrails` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, UpgradesAvailable[client], UpgradesAwarded[client], iIsLevelingPaused[client], iIsBulletTrails[client], key);
@@ -1089,7 +1116,10 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `lastserver` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, text, key);
 	SQL_TQuery(hDatabase, QueryResults1, tquery, client);
 
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `skylevel` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, SkyLevel[client], key);
+	decl String:TagName[64];
+	Format(TagName, sizeof(TagName), "%s", baseName[client]);
+	SQL_EscapeString(hDatabase, TagName, TagName, sizeof(TagName));
+	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `skylevel` = '%d', `tname` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, SkyLevel[client], TagName, key);
 	SQL_TQuery(hDatabase, QueryResults1, tquery, client);
 	//if (!IsFakeClient(client)) LogMessage(tquery);
 
@@ -1101,26 +1131,21 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	SQL_TQuery(hDatabase, QueryResults4, tquery, client);
 
 	for (new i = 0; i < size; i++) {
-
-		TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
+		//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
-
 		if (GetKeyValueIntAtPos(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
-
 		//if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1) continue;	// class roles aren't stored in the database in the same way that talents/CARTEL are.
-
 		GetArrayString(a_Database_Talents, i, text, sizeof(text));
 		talentlevel = GetArrayCell(a_Database_PlayerTalents[client], i);// GetArrayString(a_Database_PlayerTalents[client], i, text2, sizeof(text2));
+		// if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1) {
 
-		/*if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1) {
-
-			talentexperience = GetArrayCell(a_Database_PlayerTalents_Experience[client], i);
-			//GetArrayString(a_Database_PlayerTalents_Experience[client], i, text3, sizeof(text3));
+		// 	talentexperience = GetArrayCell(a_Database_PlayerTalents_Experience[client], i);
+		// 	//GetArrayString(a_Database_PlayerTalents_Experience[client], i, text3, sizeof(text3));
 		
-			Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d', `%s xp` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, text, talentexperience, key);
-			SQL_TQuery(hDatabase, QueryResults5, tquery, client);
-		}
-		else {*/
+		// 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d', `%s xp` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, text, talentexperience, key);
+		// 	SQL_TQuery(hDatabase, QueryResults5, tquery, client);
+		// }
+		// else {
 		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, key);
 		SQL_TQuery(hDatabase, QueryResults6, tquery, client);
 		//}
@@ -1140,34 +1165,42 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 	if (DisplayActionBar[client]) isDisab = 1;
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `disab` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, isDisab, key);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
+	if (GetClientTeam(client) == TEAM_SURVIVOR) {
+		if (GetArraySize(Handle:hWeaponList[client]) < 2) {
+			ResizeArray(hWeaponList[client], 2);
+			new wepid = GetPlayerWeaponSlot(client, 0);
+			if (IsValidEntity(wepid)) {
+				GetEntityClassname(wepid, text, sizeof(text));
+				SetArrayString(hWeaponList[client], 0, text);
+			}
+			else Format(text, sizeof(text), "%s", defaultLoadoutWeaponPrimary);
+			Format(tquery, sizeof(tquery), "UPDATE `%s` SET `primarywep` = '%s'", TheDBPrefix, text);
 
-	if (GetArraySize(Handle:hWeaponList[client]) < 2) {
-		ResizeArray(hWeaponList[client], 2);
-		new wepid = GetPlayerWeaponSlot(client, 0);
-		if (IsValidEntity(wepid)) {
-			GetEntityClassname(wepid, text, sizeof(text));
-			SetArrayString(hWeaponList[client], 0, text);
+			GetMeleeWeapon(client, text, sizeof(text));
+			if (StrEqual(text, "null")) {	// if the secondary is not a melee weapon
+				wepid = GetPlayerWeaponSlot(client, 1);
+				if (IsValidEntity(wepid)) GetEntityClassname(wepid, text, sizeof(text));
+				else Format(text, sizeof(text), "%s", defaultLoadoutWeaponSecondary);
+			}
+			SetArrayString(hWeaponList[client], 1, text);
+			Format(tquery, sizeof(tquery), "%s, `secondwep` = '%s' WHERE (`steam_id` = '%s');", tquery, text, key);
 		}
-		else Format(text, sizeof(text), "%s", defaultLoadoutWeaponPrimary);
-		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `primarywep` = '%s'", TheDBPrefix, text);
+		else {
+			GetArrayString(Handle:hWeaponList[client], 0, text, sizeof(text));
+			Format(tquery, sizeof(tquery), "UPDATE `%s` SET `primarywep` = '%s'", TheDBPrefix, text);
 
-		GetMeleeWeapon(client, text, sizeof(text));
-		if (StrEqual(text, "null")) {	// if the secondary is not a melee weapon
-			wepid = GetPlayerWeaponSlot(client, 1);
-			if (IsValidEntity(wepid)) GetEntityClassname(wepid, text, sizeof(text));
-			else Format(text, sizeof(text), "%s", defaultLoadoutWeaponSecondary);
+			GetArrayString(Handle:hWeaponList[client], 1, text, sizeof(text));
+			Format(tquery, sizeof(tquery), "%s, `secondwep` = '%s' WHERE (`steam_id` = '%s');", tquery, text, key);
 		}
-		SetArrayString(hWeaponList[client], 1, text);
-		Format(tquery, sizeof(tquery), "%s, `secondwep` = '%s' WHERE (`steam_id` = '%s');", tquery, text, key);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
 	}
-	else {
-		GetArrayString(Handle:hWeaponList[client], 0, text, sizeof(text));
-		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `primarywep` = '%s'", TheDBPrefix, text);
-
-		GetArrayString(Handle:hWeaponList[client], 1, text, sizeof(text));
-		Format(tquery, sizeof(tquery), "%s, `secondwep` = '%s' WHERE (`steam_id` = '%s');", tquery, text, key);
+	if (b_IsTrueDisconnect) {
+		SetClientInfo(client, "name", baseName[client]);
+		Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
+		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
+		Format(BuildingStack[client], sizeof(BuildingStack[]), "none");
+		Format(LoadoutName[client], sizeof(LoadoutName[]), "none");
 	}
-	SQL_TQuery(hDatabase, QueryResults, tquery);
 
 	/*size				=	GetArraySize(a_Store);
 
@@ -1179,35 +1212,7 @@ stock SaveAndClear(client, bool:b_IsTrueDisconnect = false, bool:IsNewPlayer = f
 		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, text, text2, key);
 		SQL_TQuery(hDatabase, QueryResults7, tquery, client);
 	}*/
-
-	if (GetArraySize(Handle:ChatSettings[client]) != 3) {
-
-		ResizeArray(Handle:ChatSettings[client], 3);
-
-		Format(tquery, sizeof(tquery), "none");
-		SetArrayString(Handle:ChatSettings[client], 0, tquery);
-		SetArrayString(Handle:ChatSettings[client], 1, tquery);
-		SetArrayString(Handle:ChatSettings[client], 2, tquery);
-	}
-	decl String:TagColour[64];
-	decl String:TagName[64];
-	decl String:ChatColour[64];
-	GetArrayString(Handle:ChatSettings[client], 0, TagColour, sizeof(TagColour));
-	GetArrayString(Handle:ChatSettings[client], 1, TagName, sizeof(TagName));
-	GetArrayString(Handle:ChatSettings[client], 2, ChatColour, sizeof(ChatColour));
-
-	if (StrEqual(TagName, "none")) {
-
-		if (!IsSurvivorBot(client)) GetClientName(client, TagName, sizeof(TagName));
-		else GetSurvivorBotName(client, TagName, sizeof(TagName));
-	}
-	SQL_EscapeString(hDatabase, TagName, TagName, sizeof(TagName));
-
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `tcolour` = '%s', `tname` = '%s', `ccolour` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, TagColour, TagName, ChatColour, key);
-	//SQL_EscapeString(hDatabase, tquery, tquery, sizeof(tquery));// comment this line if it breaks
-	SQL_TQuery(hDatabase, QueryResults8, tquery, client);
 	if (IsNewPlayer) {
-
 		CreateTimer(1.0, Timer_LoadNewPlayer, client, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	//else if (StrContains(key, "BOT", false) != -1 && IsSurvivorBot(client) || StrContains(key, "BOT", false) == -1 && !IsFakeClient(client)) {
@@ -1377,6 +1382,7 @@ stock FindClientWithAuthString(String:key[], bool:MustBeExact = false) {
 			else {
 
 				GetClientAuthString(i, AuthId, sizeof(AuthId));
+				if (!StrEqual(serverKey, "-1")) Format(AuthId, sizeof(AuthId), "%s%s", serverKey, AuthId);
 			}
 			if (MustBeExact && StrEqual(key, AuthId, false) || !MustBeExact && StrContains(key, AuthId, false) != -1) return i;
 		}
@@ -1496,7 +1502,6 @@ public QueryResults_Load(Handle:owner, Handle:hndl, const String:error[], any:cl
 			SQL_FetchString(hndl, 0, key, sizeof(key));
 			//client = FindClientWithAuthString(key, true);
 			if (client == -1) return;
-
 			ExperienceLevel[client]		=	SQL_FetchInt(hndl, 1);
 			ExperienceOverall[client]	=	SQL_FetchInt(hndl, 2);
 			PlayerLevelUpgrades[client]	=	SQL_FetchInt(hndl, 3);
@@ -1514,96 +1519,55 @@ public QueryResults_Load(Handle:owner, Handle:hndl, const String:error[], any:cl
 			SQL_FetchString(hndl, 15, text, sizeof(text));
 			Points[client] = StringToFloat(text);
 			BonusContainer[client] = SQL_FetchInt(hndl, 16);
-
 			SQL_FetchString(hndl, 17, text, sizeof(text));
 			RoundExperienceMultiplier[client] = StringToFloat(text);
-
 			PreviousRoundIncaps[client]	=	SQL_FetchInt(hndl, 18);
-			SQL_FetchString(hndl, 19, text, sizeof(text));
-			SetArrayString(Handle:ChatSettings[client], 0, text);
-			SQL_FetchString(hndl, 20, text, sizeof(text));
-			SetArrayString(Handle:ChatSettings[client], 1, text);
-			SQL_FetchString(hndl, 21, text, sizeof(text));
-			SetArrayString(Handle:ChatSettings[client], 2, text);
-			ExperienceDebt[client]		=	SQL_FetchInt(hndl, 22);
-			UpgradesAvailable[client]	=	SQL_FetchInt(hndl, 23);
-			UpgradesAwarded[client]		=	SQL_FetchInt(hndl, 24);
-			//Format(ActiveSpecialAmmo[client], sizeof(ActiveSpecialAmmo[]), "none");
-			//SQL_FetchString(hndl, 25, ActiveSpecialAmmo[client], sizeof(ActiveSpecialAmmo[]));
-			BestRating[client] =	SQL_FetchInt(hndl, 25);
-			Rating[client] = SQL_FetchInt(hndl, 26);
-			RatingHandicap[client] = SQL_FetchInt(hndl, 27);
-			SQL_FetchString(hndl, 28, t_Hostname, sizeof(t_Hostname));
-			// Rating is now stored individually based on each server, so we don't have to reset it when they switch between servers - it'll remember where they left off, everywhere (Handicap, too!)
-			/*if (!StrEqual(Hostname, t_Hostname)) {
-
-				// Player is on a different server from where they earned their rating.
-				LogMessage("%N LAST SERVER: %s CURRENT SERVER: %s", client, t_Hostname, Hostname);
-				Rating[client] = 0;
-			}*/
-			SQL_FetchString(hndl, 29, CurrentSeason, sizeof(CurrentSeason));
-			iIsLevelingPaused[client]	= SQL_FetchInt(hndl, 30);
-			iIsBulletTrails[client]		= SQL_FetchInt(hndl, 31);
-			//iNoobAssistance[client]		= SQL_FetchInt(hndl, 32);
-
-			pistolXP[client] = SQL_FetchInt(hndl, 32);
-			meleeXP[client] = SQL_FetchInt(hndl, 33);
-			uziXP[client] = SQL_FetchInt(hndl, 34);
-			shotgunXP[client] = SQL_FetchInt(hndl, 35);
-			sniperXP[client] = SQL_FetchInt(hndl, 36);
-			assaultXP[client] = SQL_FetchInt(hndl, 37);
-			medicXP[client] = SQL_FetchInt(hndl, 38);
-			grenadeXP[client] = SQL_FetchInt(hndl, 39);
+			ExperienceDebt[client]		=	SQL_FetchInt(hndl, 19);
+			UpgradesAvailable[client]	=	SQL_FetchInt(hndl, 20);
+			UpgradesAwarded[client]		=	SQL_FetchInt(hndl, 21);
+			BestRating[client] =	SQL_FetchInt(hndl, 22);
+			Rating[client] = SQL_FetchInt(hndl, 23);
+			RatingHandicap[client] = SQL_FetchInt(hndl, 24);
+			SQL_FetchString(hndl, 25, t_Hostname, sizeof(t_Hostname));
+			SQL_FetchString(hndl, 26, CurrentSeason, sizeof(CurrentSeason));
+			iIsLevelingPaused[client]	= SQL_FetchInt(hndl, 27);
+			iIsBulletTrails[client]		= SQL_FetchInt(hndl, 28);
+			pistolXP[client] = SQL_FetchInt(hndl, 29);
+			meleeXP[client] = SQL_FetchInt(hndl, 30);
+			uziXP[client] = SQL_FetchInt(hndl, 31);
+			shotgunXP[client] = SQL_FetchInt(hndl, 32);
+			sniperXP[client] = SQL_FetchInt(hndl, 33);
+			assaultXP[client] = SQL_FetchInt(hndl, 34);
+			medicXP[client] = SQL_FetchInt(hndl, 35);
+			grenadeXP[client] = SQL_FetchInt(hndl, 36);
 		}
 		if (PlayerLevel[client] > 0) {
-
-			if (PlayerLevel[client] >= iHardcoreMode) PrintToChat(client, "%T", "hardcore mode enabled", client, orange, green, PlayerLevel[client], orange, blue);
-
 			if (CurrentMapPosition == 0) {
-
 				BonusContainer[client] = 0;
 				RoundExperienceMultiplier[client] = 0.0;
 				Points[client] = 0.0;
 				LogMessage("%N Bonus multiplier is reset.", client);
 			}
-
-			/*new Minlevel = iPlayerStartingLevel;
-			if (PlayerLevel[client] < Minlevel) {
-
-				SetTotalExperienceByLevel(client, Minlevel);
-				decl String:DefaultProfileName[64];
-				GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
-				if (StrContains(DefaultProfileName, "-1", false) == -1) LoadProfileEx(client, DefaultProfileName);
-			}*/
-
-			/*if (ReadyUp_GetGameMode() == 3) {
-
-				BestRating[client] = MyNewRating;
-				Rating[client] = RatingLevelMultiplier;
-			}
-			else Rating[client] = MyNewRating;*/
-
-			// Don't need to reset rating in this way, since Rating/BestRating is pulled uniquely from each server.
-			/*if (!StrEqual(CurrentSeason, RatingType)) {
-
-				// If the leaderboard record is from a different season, we reset.
-				LogMessage("Season: %s , RatingType: %s", CurrentSeason, RatingType);
-				BestRating[client] = 0;
-				Rating[client] = 0;
-				Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d', `myrating` = '%d', `myseason` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, RatingType, BestRating[client], Rating[client], RatingType, key);
-				SQL_TQuery(hDatabase, QueryResults4, tquery, client);
-			}*/
-
 			if (Rating[client] < 0) Rating[client] = 0;
 			if (!CheckServerLevelRequirements(client)) {
-
 				b_IsLoading[client] = false;
 				bIsTalentTwo[client] = false;
 				ResetData(client);
 				return;	// client was kicked.
 			}
+			// Set player level in accordance with the server experience requirements. Level is set dynamically.
+			// This means you could have a different level on different servers with the same total earned experience.
+			iLevel = GetPlayerLevel(client);
+			if (SkyLevel[client] < 1 && iLevel < iPlayerStartingLevel) iLevel = iPlayerStartingLevel;
+			PlayerLevel[client] = iLevel;
+			// If the player has loaded a profile that is too high of a level for the server.
+			if (IsProfileLevelTooHigh(client)) {
+				b_IsLoading[client] = false;
+				bIsTalentTwo[client] = false;
+				ChallengeEverything(client);
+				return;
+			}
 			if (!IsFakeClient(client)) AwardExperience(client, -1);
-
 			//	"experience start?" can be modified at any time in the config.
 			//	In order to properly adjust player levels, we use this to check.
 
@@ -1636,17 +1600,17 @@ public QueryResults_Load(Handle:owner, Handle:hndl, const String:error[], any:cl
 
 					PrintToChat(client, "%T", "PvP Enabled", client, white, blue);
 				}
-				iLevel = GetPlayerLevel(client);
-				if (SkyLevel[client] < 1 && iLevel < iPlayerStartingLevel) iLevel = iPlayerStartingLevel;
-				if (PlayerLevel[client] != iLevel) SetTotalExperienceByLevel(client, iLevel);
+				//if (PlayerLevel[client] != iLevel) SetTotalExperienceByLevel(client, iLevel);
 			}
 			SetSpeedMultiplierBase(client);
 			LoadPos[client] = 0;
+			b_IsLoadingTrees[client] = false;
 			LoadTalentTrees(client, key);
 		}
 		else {
 
 			ResetData(client);
+			b_IsLoading[client] = false;
 			CreateNewPlayer(client);
 		}
 		if (iRPGMode < 1) {
@@ -1664,7 +1628,8 @@ public QueryResults_Load(Handle:owner, Handle:hndl, const String:error[], any:cl
 	{
 		//decl String:err[64];
 		//GetConfigValue(err, sizeof(err), "database prefix?");
-		SetFailState("Error: %s PREFIX IS: %s", error, TheDBPrefix);
+		//SetFailState("Error: %s PREFIX IS: %s", error, TheDBPrefix);
+		b_IsLoading[client] = false;
 		return;
 	}
 }
@@ -1720,6 +1685,7 @@ public QueryResults_LoadTalentTrees(Handle:owner, Handle:hndl, const String:erro
 			else {
 
 				GetClientAuthString(client, key, sizeof(key));
+				if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 			}
 			if (LoadPos[client] < GetArraySize(a_Database_Talents)) {
 
@@ -1824,7 +1790,7 @@ public QueryResults_LoadTalentTrees(Handle:owner, Handle:hndl, const String:erro
 stock LoadTalentTrees(client, String:key[], bool:IsTalentTwo = false, String:profilekey[] = "none") {
 
 	//client = FindClientWithAuthString(key, true);
-	if (!IsLegitimateClient(client)) return;
+	if (!IsLegitimateClient(client) || b_IsLoadingTrees[client]) return;
 
 	b_IsLoadingTrees[client] = true;
 	new size = GetArraySize(a_Menu_Talents);
@@ -1887,6 +1853,8 @@ stock LoadTalentTrees(client, String:key[], bool:IsTalentTwo = false, String:pro
 	}
 	if (IsTalentTwo) {
 
+		SurvivorStamina[client] = GetPlayerStamina(client);
+
 		new ActionSlots = iActionBarSlots;
 		Format(tquery, sizeof(tquery), "SELECT `steam_id`");
 		for (new i = 0; i < ActionSlots; i++) {
@@ -1915,6 +1883,7 @@ public QueryResults_LoadActionBar(Handle:owner, Handle:hndl, const String:error[
 		if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
 		if (GetArraySize(Handle:ActionBar[client]) != ActionSlots) ResizeArray(Handle:ActionBar[client], ActionSlots);
 
+		if (GetArraySize(Handle:hWeaponList[client]) != 2) ResizeArray(hWeaponList[client], 2);
 		while (SQL_FetchRow(hndl)) {
 
 			SQL_FetchString(hndl, 0, key, sizeof(key));
@@ -1940,9 +1909,19 @@ public QueryResults_LoadActionBar(Handle:owner, Handle:hndl, const String:error[
 			IsFound = true;
 		}
 
-		if (IsFound && !IsFakeClient(client)) PrintToChat(client, "\x04I have loaded your player data successfully."); //PrintToChat(client, "%T", "Action Bar Loaded", client, orange, blue);
+		if (IsFound) {
+			PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
+		}
+		b_IsLoaded[client] = true;
 		b_IsLoading[client] = false;
+		b_IsLoadingTrees[client] = false;
 		bIsTalentTwo[client] = false;
+		FreeUpgrades[client]		=	MaximumPlayerUpgrades(client) - TotalPointsAssigned(client);
+		UpgradesAvailable[client]	=	0;
+		VerifyClientUnlockedTalentEligibility(client);
+		FormatPlayerName(client);
+		SetMaximumHealth(client);
+		GiveMaximumHealth(client);
 	}
 	else {
 		
@@ -1950,6 +1929,31 @@ public QueryResults_LoadActionBar(Handle:owner, Handle:hndl, const String:error[
 		return;
 	}
 }
+
+stock FormatPlayerName(client) {
+	decl String:playerNameFormatted[512];
+	Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
+	SetClientInfo(client, "name", playerNameFormatted);
+}
+
+public Action:TextMsg(UserMsg:msg_id, Handle:bf, const players[], playersNum, bool:reliable, bool:init)
+{
+    BfReadByte(bf); // Skip first parameter
+    BfReadByte(bf); // Skip second parameter
+
+    decl String:buffer[100];
+    buffer[0] = '\0';
+    BfReadString(bf, buffer, sizeof(buffer), false);
+
+
+    // In Cs:s, look file ...orangebox\cstrike\resource\cstrike_english.txt, you found "Cstrike_Name_Change"
+    if(StrContains(buffer, "_Name_Change") != -1)
+    {
+        return Plugin_Handled;
+    }
+
+    return Plugin_Continue;
+} 
 
 stock TotalPointsAssigned(client) {
 
@@ -2067,11 +2071,10 @@ stock LoadStoreData(client, String:key[]) {
 public OnClientDisconnect(client)
 {
 	if (IsClientInGame(client)) {
-		if (IsFakeClient(client)) {
-			//LogMessage("bot removed, setting to not loaded.");
-			b_IsLoaded[client] = false;
-		}
-		bTimersRunning[client] = false;
+		// if (IsFakeClient(client)) {
+		// 	//LogMessage("bot removed, setting to not loaded.");
+		// 	b_IsLoaded[client] = false;
+		// }
 
 		if (ISEXPLODE[client] != INVALID_HANDLE) {
 
@@ -2090,7 +2093,7 @@ public OnClientDisconnect(client)
 
 			AcceptEntityInput(iChaseEnt[client], "Kill");
 		}*/
-		if(iChaseEnt[client] && EntRefToEntIndex(iChaseEnt[client]) != INVALID_ENT_REFERENCE) AcceptEntityInput(iChaseEnt[client], "Kill");
+		if(iChaseEnt[client] > 0 && IsValidEntity(iChaseEnt[client])) AcceptEntityInput(iChaseEnt[client], "Kill");
 		iChaseEnt[client] = -1;
 		//bIsHideThreat[client] = true;
 		iThreatLevel[client] = 0;
@@ -2151,6 +2154,7 @@ stock RUP_IsClientLoaded(client) {
 
 public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
+	ChangeHook(client, true);
 	new Float:teleportIntoSaferoom[3];
 	if (StrEqual(TheCurrentMap, "zerowarn_1r", false)) {
 		teleportIntoSaferoom[0] = 4087.998291;
@@ -2158,7 +2162,12 @@ public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
 		teleportIntoSaferoom[2] = -300.968750;
 		TeleportEntity(client, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 	}
-	if (b_IsLoaded[client]) return Plugin_Stop;
+	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client] && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
+		FormatPlayerName(client);
+		SetMaximumHealth(client);
+		GiveMaximumHealth(client);
+		return Plugin_Stop;
+	}
 	ImmuneToAllDamage[client] = false;
 	//ToggleTank(client, true);
 	//ChangeHook(client);
@@ -2182,7 +2191,6 @@ public Action:Timer_InitializeClientLoad(Handle:timer, any:client) {
 	//IsLoadingClassData[client] = false;
 	Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 	//Format(ClassLoadQueue[client], sizeof(ClassLoadQueue[]), "none");
-	bIsGiveProfileItems[client] = false;
 	ClearArray(Handle:InfectedHealth[client]);
 	ResizeArray(Handle:ActionBar[client], iActionBarSlots);
 	IsClientLoadedEx(client);
@@ -2205,15 +2213,29 @@ stock IsClientLoadedEx(client) {
 	OnClientLoaded(client);
 }
 
+stock bool:IsLoadingClientBaseNameDefault(client) {
+	if (StrContains(baseName[client], "[RPG DISCO]", true) != -1) return true;
+	return false;
+}
+
 stock OnClientLoaded(client, bool:IsHooked = false) {
 
 	//if (!IsClientConnected(client)) return;
-	if (b_IsLoaded[client]) {
-		if (GetClientTeam(client) == TEAM_SURVIVOR) GiveProfileItems(client);
+	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client] && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
 		return;
 	}
 	bTimersRunning[client] = false;
+	GetClientName(client, baseName[client], 64);
+	// we do this because some players roleplay and use bot names, and we need to know when to overrided loaded players here
+	// this will also conveniently tell apart the humans and bots of the same names.
+	if (IsFakeClient(client)) Format(baseName[client], sizeof(baseName[]), "[BOT] %s", baseName[client]);
+	else if (StrContains(baseName[client], "[BOT]", true) != -1) {
+		// if a human player tries to be cheeky and put this special key in their names, we remove it.
+		ReplaceString(baseName[client], sizeof(baseName[]), "[BOT]", "");
+	}
 	b_IsLoaded[client] = true;
+	bIsGiveProfileItems[client] = false;
+
 	IsGroupMemberTime[client] = 0;
 	Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 	/*if (!b_IsHooked[client]) {
@@ -2332,9 +2354,12 @@ public Action:Timer_LoadData(Handle:timer, any:client) {
 			GetSurvivorBotName(client, TheName, sizeof(TheName));
 			Format(key, sizeof(key), "%s%s", sBotTeam, TheName);
 		}
-		else GetClientAuthString(client, key, sizeof(key));
+		else {
+			GetClientAuthString(client, key, sizeof(key));
+			if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+		}
 		LogMessage("Client is loaded, %N of %s", client, key);
-
+		b_IsLoading[client] = false;
 		CreateNewPlayer(client);	// it only creates a new player if one doesn't exist.
 	}
 	else if (IsClientConnected(client)) return Plugin_Continue;
@@ -2415,28 +2440,35 @@ stock FindARespawnTarget(client, sacrifice = -1) {
 	if (!IsPlayerAlive(client)) {
 
 		SDKCall(hRoundRespawn, client);
-		for (new i = 1; i <= MaxClients; i++) {
-			if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || i == client) continue;
-			MyRespawnTarget[client] = i;
-			CreateTimer(1.0, TeleportToMyTarget, client, TIMER_FLAG_NO_MAPCHANGE);
-			break;
+		if (!IsLegitimateClient(sacrifice)) {
+			for (new i = 1; i <= MaxClients; i++) {
+				if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || i == client) continue;
+				MyRespawnTarget[client] = i;
+				break;
+			}
 		}
-		if (IsLegitimateClient(sacrifice)) {
-
+		else {
 			decl String:MyName[64];
 			GetClientName(client, MyName, sizeof(MyName));
 			PrintToChatAll("%t", "sacrificed a bot to respawn", white, blue, MyName, orange);
-			IncapacitateOrKill(sacrifice, _, _, true);
+			MyRespawnTarget[client] = sacrifice+100;
 		}
+		CreateTimer(0.1, TeleportToMyTarget, client, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
 public Action:TeleportToMyTarget(Handle:timer, any:client) {
+	if (!IsLegitimateClientAlive(client)) return Plugin_Stop;
 
-	if (!IsLegitimateClientAlive(client) || !IsLegitimateClientAlive(MyRespawnTarget[client])) return Plugin_Stop;
+	new bool:isSacrifice = false;
+	if (MyRespawnTarget[client] > 100) {	// sacrifice found
+		MyRespawnTarget[client] -= 100;
+		isSacrifice = true;
+	}
+	if (!IsLegitimateClientAlive(MyRespawnTarget[client])) return Plugin_Stop;
 	new Float:TeleportPos[3];
 	GetClientAbsOrigin(MyRespawnTarget[client], TeleportPos);
 	TeleportEntity(client, TeleportPos, NULL_VECTOR, NULL_VECTOR);
-
+	if (isSacrifice) IncapacitateOrKill(MyRespawnTarget[client], _, _, true);
 	return Plugin_Stop;
 }
