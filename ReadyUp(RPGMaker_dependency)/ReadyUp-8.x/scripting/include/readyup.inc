@@ -271,6 +271,14 @@ forward ReadyUp_FwdStatistics(client, type, amount);
 
 /*
  *
+ *	When a survivor player enters the end of map checkpoint.
+ *
+ *	@param client		The client id
+ */
+forward ReadyUp_SurvivorEnteredCheckpoint(client);
+
+/*
+ *
  *	For stat tracking plugins (sending info)
  *
  *	@param client		The client id

@@ -34,10 +34,11 @@ public Plugin:myinfo = {
 new bool:b_IsSaferoomDoorOpened;
 new bool:b_IsReadyUpOver;
 new bool:b_IsReadyUpStart;
-
+new bool:bIsCheckpointRotating;
 new survivorInCheckpoint[MAXPLAYERS+1];
 new DeleteTheDoors;
 new iForceCampaign;
+static Handle:g_SurvivorEnteredCheckpoint			= INVALID_HANDLE;
 static Handle:g_IsGroupMemberStatus					= INVALID_HANDLE;
 static Handle:g_IsSaferoomDoorDestroyed				= INVALID_HANDLE;
 static Handle:g_IsFirstClientLoaded					= INVALID_HANDLE;
@@ -241,6 +242,7 @@ public APLRes:AskPluginLoad2(Handle:g_Me, bool:b_IsLate, String:s_Error[], s_Err
 	g_IsGroupMemberStatus							= CreateGlobalForward("ReadyUp_GroupMemberStatus", ET_Event, Param_Cell, Param_Cell);
 	g_IsEmptyOnDisconnect							= CreateGlobalForward("ReadyUp_IsEmptyOnDisconnect", ET_Ignore);
 	g_EntityStatistics								= CreateGlobalForward("ReadyUp_FwdStatistics", ET_Event, Param_Cell, Param_Cell, Param_Cell);
+	g_SurvivorEnteredCheckpoint						= CreateGlobalForward("ReadyUp_SurvivorEnteredCheckpoint", ET_Event, Param_Cell);
 
 	CreateNative("ReadyUp_IsTeamsFlipped", Native_IsTeamsFlipped);
 	CreateNative("ReadyUp_ParseConfig", Native_ParseConfig);
@@ -271,9 +273,7 @@ public APLRes:AskPluginLoad2(Handle:g_Me, bool:b_IsLate, String:s_Error[], s_Err
 }
 
 stock Now_IsLoadConfigForward() {
-
 	if (b_IsParseConfig) {
-
 		Call_StartForward(g_IsLoadConfig);
 		Call_PushCell(a_KeyConfig);
 		Call_PushCell(a_ValueConfig);
@@ -291,7 +291,6 @@ stock Now_IsLoadConfigForward() {
 		//ClearArray(Handle:a_ValueConfig);
 
 		new a_Size									= GetArraySize(a_PluginLoadQueue);
-
 		if (a_Size > 0) {
 
 			decl String:p_config[PLATFORM_MAX_PATH];
@@ -1447,6 +1446,7 @@ public OnMapStart() {
 
 	SaferoomDoor = -1;
 	EndOfMapDoor = -1;
+	bIsCheckpointRotating = false;
 	/*if (!IsEligibleMap(0)) { //} && i_IsReadyUpIgnored == 0) {
 
 		//SaferoomDoor								= Now_FindAndLockSaferoomDoor();
@@ -1494,7 +1494,7 @@ stock Now_OnReadyUpStart() {
 	b_IsExitedStartArea								= false;
 	b_IsFinaleWon									= false;
 	EndOfMapDoor = -1;
-	if (DeleteTheDoors >= 3) UnlockEndOfMapCheckpointDoor();
+	UnlockEndOfMapCheckpointDoor();
 
 	decl String:theMap[64];
 	GetCurrentMap(theMap, sizeof(theMap));
@@ -1605,6 +1605,7 @@ stock Now_OpenSaferoomDoor() {
 	if (b_IsSaferoomDoorOpened) return;
 	LogMessage("Saferoom door has \"opened\" - Match start.");
 	b_IsSaferoomDoorOpened = true;
+	bIsCheckpointRotating = false;
 
 	b_IsExitedStartArea								= true;
 
@@ -2384,28 +2385,68 @@ bool:IsCommonInfected(entity) {
 	return strcmp(className, "infected") == 0;
 }
 
+stock bool:IsLegitimateClient(client) {
+	if (!IsClientActual(client) || !IsClientInGame(client)) return false;
+	return true;
+}
+
 stock bool:AllSurvivorsInCheckpoint() {
 	for (new i = 1; i <= MaxClients; i++) {
-		if (!IsClientActual(i) || !IsClientInGame(i) || GetClientTeam(i) != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
+		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
 		if (!survivorInCheckpoint[i]) return false;
 	}
-	// Due to a bug with l4d2 pc, sometimes commons will spawn upside down in the ground of the checkpoint when survivors are inside.
-	// Because of this, we want to kill all the common infected on the map when this happens.
-	for (new i = MaxClients + 1; i < 2048; i++) {
-		if (!IsCommonInfected(i)) continue;
-		AcceptEntityInput(i, "Kill");
-	}
+   /* Due to a bug with l4d2 pc, sometimes commons will spawn upside down in the ground of the checkpoint when survivors are inside.
+	* Because of this, we want to kill all the common infected on the map when this happens.
+	* Sometimes special infected are counted as survivors, which means the round won't end when the door closes and all survivors
+	* are inside.
+	*
+	* Because of this, we also need to kill all special infected bots to end the map.
+	* I contemplated not killing tanks, but that could be a problem.
+	*/
+	// for (new i = 1; i <= MaxClients; i++) {
+	// 	if (!IsLegitimateClient(i) || !IsFakeClient(i) || IsSurvivorBot(i)) continue;
+	// 	ForcePlayerSuicide(i);
+	// }
+	// for (new i = MaxClients + 1; i < 2048; i++) {
+	// 	if (!IsCommonInfected(i)) continue;
+	// 	AcceptEntityInput(i, "Kill");
+	// }
 	return true;
+}
+
+stock ForceServerCommand(const String:command[]) {
+	
+	new iFlags = GetCommandFlags(command);
+	SetCommandFlags(command, iFlags & ~(FCVAR_CHEAT|FCVAR_LAUNCHER));
+	ServerCommand("%s", command);
+	ServerExecute();
+	SetCommandFlags(command, iFlags);
+	SetCommandFlags(command, iFlags | FCVAR_CHEAT);
+}
+
+stock bool:IsClientInCheckpoint(client) {
+	new Float:endCheckpointPos[3];
+	if (EndOfMapDoor == -1) return false;
+	GetEntPropVector(EndOfMapDoor, Prop_Send, "m_vecOrigin", endCheckpointPos);
+	new Float:clientPos[3];
+	GetClientAbsOrigin(client, clientPos);
+	if (GetVectorDistance(clientPos, endCheckpointPos) <= 128.0) return true;
+	return false;
 }
 
 public Action:Event_PlayerEnteredCheckpoint(Handle:event, String:event_name[], bool:dontBroadcast) {
 	if (!b_IsRoundOver && b_IsSaferoomDoorOpened) {
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		if (DeleteTheDoors < 3 || !IsClientActual(client) || !IsClientInGame(client) || IsValidZombieClass(client)) return;
+		if (!IsClientActual(client) || !IsClientInGame(client) || IsValidZombieClass(client)) return;
 		if (!survivorInCheckpoint[client]) {
-			survivorInCheckpoint[client] = true;
 			if (AllSurvivorsInCheckpoint()) UnlockEndOfMapCheckpointDoor(true);
 			else UnlockEndOfMapCheckpointDoor();
+			if (IsClientInCheckpoint(client)) {
+				survivorInCheckpoint[client] = true;
+				Call_StartForward(g_SurvivorEnteredCheckpoint);
+				Call_PushCell(client);
+				Call_Finish();
+			}
 		}
 	}
 }
@@ -2413,7 +2454,7 @@ public Action:Event_PlayerEnteredCheckpoint(Handle:event, String:event_name[], b
 public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroadcast) {
 	if (!b_IsRoundOver && b_IsSaferoomDoorOpened) {
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		if (DeleteTheDoors < 3 || !IsClientActual(client) || !IsClientInGame(client) || IsValidZombieClass(client)) return;
+		if (!IsClientActual(client) || !IsClientInGame(client) || IsValidZombieClass(client)) return;
 		if (AllSurvivorsInCheckpoint()) UnlockEndOfMapCheckpointDoor(true);
 		else UnlockEndOfMapCheckpointDoor();
 	}
@@ -2429,7 +2470,7 @@ bool:IsValidZombieClass(client) {	// 9 for survivor
 public Action:Event_PlayerLeftCheckpoint(Handle:event, String:event_name[], bool:dontBroadcast) {
 	if (!b_IsRoundOver && b_IsSaferoomDoorOpened) {
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
-		if (DeleteTheDoors < 3 || !IsClientActual(client) || !IsClientInGame(client) || IsValidZombieClass(client) || !IsPlayerAlive(client)) return;
+		if (!IsClientActual(client) || !IsClientInGame(client) || IsValidZombieClass(client) || !IsPlayerAlive(client)) return;
 		if (survivorInCheckpoint[client] && EndOfMapDoor != -1) {
 			//PrintToChatAll("%N (%d) left the checkpoint.", client, GetEntProp(client, Prop_Send, "m_zombieClass"));
 			// new Float:survPos[3];
@@ -2457,12 +2498,12 @@ stock UnlockEndOfMapCheckpointDoor(bool:unlockDoor = false) {
 			if (GetEntProp(ent, Prop_Send, "m_eDoorState") == CHECKPOINT_DOOR_OPENED) {	// the end of map door is the only checkpoint door that is open.
 				EndOfMapDoor = ent;
 				GetEntPropVector(ent, Prop_Send, "m_vecOrigin", endPos);
-				DispatchKeyValue(EndOfMapDoor, "spawnflags", "32768");
+				if (DeleteTheDoors >= 3) DispatchKeyValue(EndOfMapDoor, "spawnflags", "32768");
 				return;
 			}
 		}
 	}
-	else if (EndOfMapDoor >= 0) {
+	else if (DeleteTheDoors >= 3 && EndOfMapDoor >= 0) {
 		// If the end of map door exists.
 		if (unlockDoor) {
 			DispatchKeyValue(EndOfMapDoor, "spawnflags", "8192");
@@ -2735,4 +2776,27 @@ public Config_End(Handle:parser, bool:halted, bool:failed)
 	{
 		SetFailState("Plugin configuration error");
 	}
-}  
+}
+
+#define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
+#define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
+#define COACH_MODEL				"models/survivors/survivor_coach.mdl"
+#define ELLIS_MODEL				"models/survivors/survivor_mechanic.mdl"
+#define ZOEY_MODEL				"models/survivors/survivor_teenangst.mdl"
+#define FRANCIS_MODEL			"models/survivors/survivor_biker.mdl"
+#define LOUIS_MODEL				"models/survivors/survivor_manager.mdl"
+#define BILL_MODEL				"models/survivors/survivor_namvet.mdl"
+
+stock bool:IsSurvivorBot(client) {
+	decl String:TheModel[64];
+	GetClientModel(client, TheModel, sizeof(TheModel));	// helms deep creates bots that aren't necessarily on the survivor team.
+	if (StrEqual(TheModel, NICK_MODEL) ||
+		StrEqual(TheModel, ROCHELLE_MODEL) ||
+		StrEqual(TheModel, COACH_MODEL) ||
+		StrEqual(TheModel, ELLIS_MODEL) ||
+		StrEqual(TheModel, ZOEY_MODEL) ||
+		StrEqual(TheModel, FRANCIS_MODEL) ||
+		StrEqual(TheModel, LOUIS_MODEL) ||
+		StrEqual(TheModel, BILL_MODEL)) return true;
+	return false;
+}
