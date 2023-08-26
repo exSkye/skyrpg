@@ -382,7 +382,7 @@
 	}
 	"personal settings"
 	{
-		"en"				"Settings\nLoadout Editor\nChat Colours\nBullet Trails"
+		"en"				"Settings\nLoadout Editor\nSpawn Loadout"
 	}
 	"threat menu"
 	{
@@ -506,9 +506,13 @@
 	{
 		"en"				"My Proficiency Levels"
 	}
+	"talent trees"
+	{
+		"en"				"Talent Trees"
+	}
 	"the leaderboards"
 	{
-		"en"				"Server Leaderboard"
+		"en"				"Leaderboard"
 	}
 	"bullet trails (disabled)"
 	{
@@ -547,6 +551,14 @@
 	"respec"
 	{
 		"en"				"Refund Talents"
+	}
+	"lowest layer reached"
+	{
+		"en"					"Lowest Layer reached."
+	}
+	"highest layer reached"
+	{
+		"en"					"Highest Layer reached."
 	}
 	"layer move"
 	{
@@ -1131,7 +1143,7 @@
 	"Menu Header 1 Talents"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:i},{6:s},{7:i}"
-		"en"				"Lv: {1} of {2}\nXP: {3} of {4}\n \nNode Points: {5} ({6})\nPremium Credits: {7}"
+		"en"				"Lv: {1} of {2}\nXP: {3} of {4}\n \nTalent Points: {5} ({6})\nPremium Credits: {7}"
 	}
 	"Menu Header 1 Exp"
 	{
@@ -1141,7 +1153,7 @@
 	"Menu Header 2 Talents"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:i},{6:s},{7:3.3f},{8:i}"
-		"en"				"Lv: {1} of {2}\nXP: {3} of {4}\n \nNode Points: {5} ({6})\nZShop Credits: {7}\nPremium Credits: {8}"
+		"en"				"Lv: {1} of {2}\nXP: {3} of {4}\n \nTalent Points: {5} ({6})\nZShop Credits: {7}\nPremium Credits: {8}"
 	}
 	"Menu Header 2 Exp"
 	{
@@ -1181,7 +1193,7 @@
 	"RPG Header"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		"en"				"{1}\n \nNodes unlocked: {2}/{3}\nNode Points: {4}"
+		"en"				"{1}\n \nTalents unlocked: {2}/{3}\nTalent Points: {4}"
 	}
 	"RPG Layer Eligible"
 	{
@@ -1232,7 +1244,7 @@
 	}
 	"RPG Menu"
 	{
-		"en"				"RPG Menu\nLayer Up/Dn\nTalent Trees\nRefund Talents\nCharacter Sheet"
+		"en"				"Talents"
 	}
 	"Buy Menu Option 1"
 	{

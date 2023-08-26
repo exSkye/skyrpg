@@ -24,7 +24,6 @@
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  */
-
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -40,7 +39,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v1.97.98"
+#define PLUGIN_VERSION				"v1.98.4"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.3"
 #define LOOT_VERSION				"v0.0"
@@ -1109,7 +1108,6 @@ new String:ClientStatusEffects[MAXPLAYERS + 1][2][64];
 new Float:fTankMovementSpeed_Burning;
 new Float:fTankMovementSpeed_Hulk;
 new Float:fTankMovementSpeed_Death;
-new bool:bWeakness[MAXPLAYERS + 1];
 new iResetPlayerLevelOnDeath;
 new iStartingPlayerUpgrades;
 new String:serverKey[64];
@@ -1140,6 +1138,8 @@ new String:baseName[MAXPLAYERS+1][64];
 new Float:fSurvivorBufferBonus;
 new iCommonInfectedSpawnDelayOnNewRound;
 new scoreRequiredForLeaderboard;
+new bool:bIsClientCurrentlyStaggered[MAXPLAYERS +1];
+new String:loadProfileOverrideFlags[64];
 
 public Action:CMD_DropWeapon(client, args) {
 	new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1605,9 +1605,6 @@ stock OnMapStartFunc() {
 			if (GetLayerStrengthKeys[i] == INVALID_HANDLE || !b_FirstLoad) GetLayerStrengthKeys[i] = CreateArray(32);
 			if (GetLayerStrengthValues[i] == INVALID_HANDLE || !b_FirstLoad) GetLayerStrengthValues[i] = CreateArray(32);
 			if (GetLayerStrengthSection[i] == INVALID_HANDLE || !b_FirstLoad) GetLayerStrengthSection[i] = CreateArray(32);
-			/*if (PlayerAbilitiesImmune[i][i] == INVALID_HANDLE || !b_FirstLoad) {	//[i][i] will NEVER be occupied.
-				for (new y = 0; y <= MAXPLAYERS; y++) PlayerAbilitiesImmune[i][y]				= CreateArray(32);
-			}*/
 			if (a_Store_Player[i] == INVALID_HANDLE || !b_FirstLoad) a_Store_Player[i]						= CreateArray(32);
 			if (StoreKeys[i] == INVALID_HANDLE || !b_FirstLoad) StoreKeys[i]							= CreateArray(32);
 			if (StoreValues[i] == INVALID_HANDLE || !b_FirstLoad) StoreValues[i]							= CreateArray(32);
@@ -2146,6 +2143,8 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		CreateTimer(0.5, Timer_EntityOnFire, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// Fire status effect
 		CreateTimer(1.0, Timer_ThreatSystem, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// threat system modulator
 		CreateTimer(fStaggerTickrate, Timer_StaggerTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(fDrawHudInterval, Timer_ShowHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(fSpecialAmmoInterval, Timer_ShowActionBar, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		if (GetConfigValueInt("common affixes?") > 0) {
 			ClearArray(Handle:CommonAffixes);
 			CreateTimer(1.0, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -2787,6 +2786,7 @@ stock CallRoundIsOver() {
 				}
 			}
 		}
+
 		new humanSurvivorsInGame = TotalHumanSurvivors();
 		// only save data on round end if there is at least 1 human on the survivor team.
 		// rounds will constantly loop if the survivor team is all bots.
@@ -2799,15 +2799,17 @@ stock CallRoundIsOver() {
 					if (GetClientTeam(i) == TEAM_SURVIVOR) {
 						RoundExperienceMultiplier[i] = 0.0;
 						// So, the round ends due a failed mission, whether it's coop or survival, and we reset all players ratings.
-						VerifyMinimumRating(i, true);
+						//VerifyMinimumRating(i, true);
+						// reduce player ratings by the amount it would go down if they died, when they lose the round.
+						//Rating[i] = RoundToCeil(Rating[i] * (1.0 - fRatingPercentLostOnDeath)) + 1;
 					}
 					//if(IsValidEntity(iChaseEnt[i]) && iChaseEnt[i] > 0 && EntRefToEntIndex(iChaseEnt[i]) != INVALID_ENT_REFERENCE) AcceptEntityInput(iChaseEnt[i], "Kill");
 					//iChaseEnt[i] = -1;
 				}
-				if (iChaseEnt[i] > 0 && IsValidEntity(iChaseEnt[i])) {
+				/*if (iChaseEnt[i] > 0 && IsValidEntity(iChaseEnt[i])) {
 					AcceptEntityInput(iChaseEnt[i], "Kill");
 					iChaseEnt[i] = -1;
-				}
+				}*/
 				SavePlayerData(i);
 			}
 		}
@@ -3102,6 +3104,7 @@ stock LoadMainConfig() {
 	forceProfileOnNewPlayers			= GetConfigValueInt("Force Profile On New Player?");
 	iShowLockedTalents					= GetConfigValueInt("show locked talents?");
 	iAwardBroadcast						= GetConfigValueInt("award broadcast?");
+	GetConfigValue(loadProfileOverrideFlags, sizeof(loadProfileOverrideFlags), "profile override flags?");
 	GetConfigValue(sSpecialsAllowed, sizeof(sSpecialsAllowed), "special infected classes?");
 	iSpecialsAllowed					= GetConfigValueInt("special infected allowed?");
 	iSpecialInfectedMinimum				= GetConfigValueInt("special infected minimum?");

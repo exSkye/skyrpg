@@ -1423,6 +1423,12 @@ public Action:Timer_StaggerTimer(Handle:timer) {
 		ClearArray(Handle:StaggeredTargets);
 		return Plugin_Stop;
 	}
+	for (new i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i)) continue;
+		//IsStaggered(i);
+		if (SDKCall(g_hIsStaggering, i)) bIsClientCurrentlyStaggered[i] = true;
+		else bIsClientCurrentlyStaggered[i] = false;
+	}
 	static Float:timeRemaining = 0.0;
 	for (new i = 0; i < GetArraySize(StaggeredTargets); i++) {
 		//GetArrayString(StaggeredTargets, i, text, sizeof(text));
@@ -1440,8 +1446,12 @@ public Action:Timer_StaggerTimer(Handle:timer) {
 }
 
 stock EntityWasStaggered(victim, attacker = 0) {
-	if (attacker != 0 && IsLegitimateClient(attacker) && (!IsLegitimateClient(victim) || GetClientTeam(victim) != GetClientTeam(attacker))) GetAbilityStrengthByTrigger(attacker, victim, "didStagger");
-	if (victim != 0 && IsLegitimateClient(victim) && (!IsLegitimateClient(attacker) || GetClientTeam(attacker) != GetClientTeam(victim))) GetAbilityStrengthByTrigger(victim, attacker, "wasStagger");
+	new bool:bIsLegitimateAttacker = IsLegitimateClient(attacker);
+	new bool:bIsLegitimateVictim = IsLegitimateClient(victim);
+	new attackerTeam = (bIsLegitimateAttacker) ? GetClientTeam(attacker) : 0;
+	new victimTeam = (bIsLegitimateVictim) ? GetClientTeam(victim) : 0;
+	if (bIsLegitimateAttacker && (!bIsLegitimateVictim || victimTeam != attackerTeam)) GetAbilityStrengthByTrigger(attacker, victim, "didStagger");
+	if (bIsLegitimateVictim && (!bIsLegitimateAttacker || attackerTeam != victimTeam)) GetAbilityStrengthByTrigger(victim, attacker, "wasStagger");
 }
 
 public Action:Timer_ResetStaggerCooldownOnTriggers(Handle:timer, any:client) {
@@ -1461,6 +1471,7 @@ bool:AllLivingSurvivorsInCheckpoint() {
 public Action:OnPlayerRunCmd(client, &buttons) {
 	new clientFlags = GetEntityFlags(client);
 	new clientTeam = GetClientTeam(client);
+	if (clientTeam != TEAM_SURVIVOR) return Plugin_Continue;
 	new bool:clientIsSurvivor = (clientTeam == TEAM_SURVIVOR) ? true : false;
 	new bool:IsClientIncapacitated = IsIncapacitated(client);
 	new bool:IsClientAlive = IsLegitimateClientAlive(client);
@@ -1993,6 +2004,7 @@ stock Float:CreateBomberExplosion(client, target, String:Effects[], basedamage =
 
 	//if (IsLegitimateClient(target) && !IsPlayerAlive(target)) return;
 	if (!IsLegitimateClientAlive(target)) return;
+	new bIsTargetTeam = GetClientTeam(target);
 
 	/*
 
@@ -2012,98 +2024,96 @@ stock Float:CreateBomberExplosion(client, target, String:Effects[], basedamage =
 	new rawPlayer = GetCommonValueIntAtPos(client, SUPER_COMMON_RAW_PLAYER_STRENGTH);
 
 
-	if (IsSpecialCommon(client) && IsLegitimateClient(target) && GetClientTeam(target) == TEAM_SURVIVOR && PlayerLevel[target] < AfxLevelReq) return;
+	if (IsSpecialCommon(client) && bIsTargetTeam == TEAM_SURVIVOR && PlayerLevel[target] < AfxLevelReq) return;
 
 	new Float:SourcLoc[3];
 	new Float:TargetPosition[3];
 	new t_Strength = 0;
 	new Float:t_Range = 0.0;
 
-	if (target > 0) {
+	GetClientAbsOrigin(target, SourcLoc);
+	//else GetEntPropVector(target, Prop_Send, "m_vecOrigin", SourcLoc);
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", TargetPosition);
 
-		if (IsLegitimateClient(target)) GetClientAbsOrigin(target, SourcLoc);
-		else GetEntPropVector(target, Prop_Send, "m_vecOrigin", SourcLoc);
-		GetEntPropVector(client, Prop_Send, "m_vecOrigin", TargetPosition);
+	if (AfxRange > 0.0) t_Range = AfxRange * (PlayerLevel[target] - AfxLevelReq);
+	else t_Range = AfxRangeMax;
+	if (t_Range + AfxRangeBase > AfxRangeMax) t_Range = AfxRangeMax;
+	else t_Range += AfxRangeBase;
 
-		if (AfxRange > 0.0 && IsLegitimateClientAlive(target)) t_Range = AfxRange * (PlayerLevel[target] - AfxLevelReq);
+	if (bIsTargetTeam == TEAM_SURVIVOR && target != client) {
+
+		if (PlayerLevel[target] < AfxLevelReq) return;
+		if (GetVectorDistance(SourcLoc, TargetPosition) > (t_Range / 2)) return;
+	}
+
+	new NumLivingEntities = 0;
+	new rawStrength = 0;
+	new abilityStrength = 0;
+	if (isRaw == 0) {
+		NumLivingEntities = LivingEntitiesInRange(client, SourcLoc, AfxRangeMax);
+		if (AfxMultiplication == 1) {
+			if (AfxStrengthTarget < 0.0) t_Strength = basedamage + (AfxStrength * NumLivingEntities);
+			else t_Strength = RoundToCeil(basedamage + (AfxStrength * (NumLivingEntities * AfxStrengthTarget)));
+		}
+		else t_Strength = (basedamage + AfxStrength);
+	}
+	else {
+		rawStrength = rawCommon * LivingEntitiesInRange(client, SourcLoc, AfxRangeMax, 1);
+		rawStrength += rawPlayer * LivingEntitiesInRange(client, SourcLoc, AfxRangeMax, 4);
+	}
+
+	for (new i = 1; i <= MaxClients; i++) {
+
+		if (!IsLegitimateClientAlive(i) || PlayerLevel[i] < AfxLevelReq) continue;
+		GetClientAbsOrigin(i, TargetPosition);
+
+		if (AfxRange > 0.0) t_Range = AfxRange * (PlayerLevel[i] - AfxLevelReq);
 		else t_Range = AfxRangeMax;
 		if (t_Range + AfxRangeBase > AfxRangeMax) t_Range = AfxRangeMax;
 		else t_Range += AfxRangeBase;
+		if (GetVectorDistance(SourcLoc, TargetPosition) > (t_Range / 2) || StrContains(clientStatusEffectDisplay[i], "[Fl]", false) != -1) continue;		// player not within blast radius, takes no damage. Or playing is floating.
 
-		if (IsLegitimateClientAlive(target) && GetClientTeam(target) == TEAM_SURVIVOR && target != client) {
-
-			if (PlayerLevel[target] < AfxLevelReq) return;
-			if (GetVectorDistance(SourcLoc, TargetPosition) > (t_Range / 2)) return;
-		}
-
-		new NumLivingEntities = 0;
-		new rawStrength = 0;
-		new abilityStrength = 0;
+		// Because range can fluctuate, we want to get the # of entities within range for EACH player individually.
 		if (isRaw == 0) {
-			NumLivingEntities = LivingEntitiesInRange(client, SourcLoc, AfxRangeMax);
-			if (AfxMultiplication == 1) {
-				if (AfxStrengthTarget < 0.0) t_Strength = basedamage + (AfxStrength * NumLivingEntities);
-				else t_Strength = RoundToCeil(basedamage + (AfxStrength * (NumLivingEntities * AfxStrengthTarget)));
-			}
-			else t_Strength = (basedamage + AfxStrength);
+			abilityStrength = t_Strength;
 		}
 		else {
-			rawStrength = rawCommon * LivingEntitiesInRange(client, SourcLoc, AfxRangeMax, 1);
-			rawStrength += rawPlayer * LivingEntitiesInRange(client, SourcLoc, AfxRangeMax, 4);
+			abilityStrength = rawStrength;
 		}
+		if (AfxStrengthLevel > 0.0) abilityStrength += RoundToCeil(abilityStrength * ((PlayerLevel[i] - AfxLevelReq) * AfxStrengthLevel));
 
-		for (new i = 1; i <= MaxClients; i++) {
+		//if (t_Strength > GetClientHealth(i)) IncapacitateOrKill(i);
+		//else SetEntityHealth(i, GetClientHealth(i) - t_Strength);
+		if (abilityStrength > 0) SetClientTotalHealth(i, abilityStrength);
 
-			if (!IsLegitimateClientAlive(i) || PlayerLevel[i] < AfxLevelReq) continue;
-			GetClientAbsOrigin(i, TargetPosition);
+		if (client == target) {
 
-			if (AfxRange > 0.0) t_Range = AfxRange * (PlayerLevel[i] - AfxLevelReq);
-			else t_Range = AfxRangeMax;
-			if (t_Range + AfxRangeBase > AfxRangeMax) t_Range = AfxRangeMax;
-			else t_Range += AfxRangeBase;
-			if (GetVectorDistance(SourcLoc, TargetPosition) > (t_Range / 2) || StrContains(clientStatusEffectDisplay[i], "[Fl]", false) != -1) continue;		// player not within blast radius, takes no damage. Or playing is floating.
+			// To prevent a never-ending chain reaction, we don't allow it to target the bomber that caused it.
 
-			// Because range can fluctuate, we want to get the # of entities within range for EACH player individually.
-			if (isRaw == 0) {
-				abilityStrength = t_Strength;
-			}
-			else {
-				abilityStrength = rawStrength;
-			}
-			if (AfxStrengthLevel > 0.0) abilityStrength += RoundToCeil(abilityStrength * ((PlayerLevel[i] - AfxLevelReq) * AfxStrengthLevel));
-
-			//if (t_Strength > GetClientHealth(i)) IncapacitateOrKill(i);
-			//else SetEntityHealth(i, GetClientHealth(i) - t_Strength);
-			if (abilityStrength > 0) SetClientTotalHealth(i, abilityStrength);
-
-			if (client == target) {
-
-				// To prevent a never-ending chain reaction, we don't allow it to target the bomber that caused it.
-
-				if (GetClientTeam(i) == TEAM_SURVIVOR && AfxChain == 1) CreateBomberExplosion(client, i, Effects);
-			}
+			if (GetClientTeam(i) == TEAM_SURVIVOR && AfxChain == 1) CreateBomberExplosion(client, i, Effects);
 		}
-		if (StrContains(Effects, "e", true) != -1 || StrContains(Effects, "x", true) != -1) {
+	}
+	if (StrContains(Effects, "e", true) != -1 || StrContains(Effects, "x", true) != -1) {
 
-			CreateExplosion(target);	// boom boom audio and effect on the location.
-			if (IsLegitimateClientAlive(target) && !IsFakeClient(target)) ScreenShake(target);
+		CreateExplosion(target);	// boom boom audio and effect on the location.
+		if (!IsFakeClient(target)) ScreenShake(target);
+	}
+	if (StrContains(Effects, "B", true) != -1) {
+
+		if (!ISBILED[target]) {
+
+			SDKCall(g_hCallVomitOnPlayer, target, client, true);
+			CreateTimer(15.0, Timer_RemoveBileStatus, target, TIMER_FLAG_NO_MAPCHANGE);
+			ISBILED[target] = true;
+			StaggerPlayer(target, client);
 		}
-		if (StrContains(Effects, "B", true) != -1) {
+	}
+	if (StrContains(Effects, "a", true) != -1) {
 
-			if (IsLegitimateClientAlive(target) && !ISBILED[target]) {
+		CreateDamageStatusEffect(client, 4, target, abilityStrength);
+	}
 
-				SDKCall(g_hCallVomitOnPlayer, target, client, true);
-				CreateTimer(15.0, Timer_RemoveBileStatus, target, TIMER_FLAG_NO_MAPCHANGE);
-				ISBILED[target] = true;
-				StaggerPlayer(target, client);
-			}
-		}
-		if (StrContains(Effects, "a", true) != -1) {
-
-			CreateDamageStatusEffect(client, 4, target, abilityStrength);
-		}
-
-		if (client == target) CreateBomberExplosion(client, 0, Effects);
+	if (client == target) CreateBomberExplosion(client, 0, Effects);
 		/*if (client == target) {
 
 			for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
@@ -2120,7 +2130,6 @@ stock Float:CreateBomberExplosion(client, target, String:Effects[], basedamage =
 			}
 			CreateBomberExplosion(client, 0, Effects);
 		}*/
-	}
 	/*else {
 
 		GetEntPropVector(client, Prop_Send, "m_vecOrigin", SourcLoc);

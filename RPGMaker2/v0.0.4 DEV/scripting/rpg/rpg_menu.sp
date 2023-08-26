@@ -562,7 +562,7 @@ public LoadProfileRequestHandle(Handle:menu, MenuAction:action, client, slot) {
 			ProfileEditorMenu(client);
 		}
 	}
-	if (action == MenuAction_End && menu != INVALID_HANDLE) {
+	if (action == MenuAction_End) {// && menu != INVALID_HANDLE) {
 
 		CloseHandle(menu);
 	}
@@ -651,11 +651,7 @@ public TargetSurvivorBotMenuHandle(Handle:menu, MenuAction:action, client, slot)
 			LoadTarget[client] = -1;
 		}
 		else {
-
-			decl String:thetext[64];
-			GetConfigValue(thetext, sizeof(thetext), "profile override flags?");
-
-			if (IsSurvivorBot(target) || HasCommandAccess(client, thetext)) LoadTarget[client] = target;
+			if (IsSurvivorBot(target) || HasCommandAccess(client, loadProfileOverrideFlags)) LoadTarget[client] = target;
 			else {
 
 				LoadProfileEx_Request(client, target);
@@ -1129,13 +1125,13 @@ stock Float:CheckActiveAbility(client, thevalue, eventtype = 0, bool:IsPassive =
 public ActionBarHandle(Handle:menu, MenuAction:action, client, slot) {
 
 	if (action == MenuAction_Select) {
-
 		CastActionEx(client, _, -1, slot);
 	}
 	else if (action == MenuAction_Cancel) {
 
 		if (slot != MenuCancel_ExitBack) {
 		}
+		//DisplayActionBar[client] = false;
 	}
 	if (action == MenuAction_End) {
 
@@ -1322,15 +1318,17 @@ stock BuildMenu(client, String:TheMenuName[] = "none") {
 				Format(text, sizeof(text), "%T", "prestige up available", client, GetPrestigeLevelNodeUnlocks(SkyLevel[client]));
 			}
 			else if (StrEqual(configname, "layerup")) {
-				if (PlayerCurrentMenuLayer[client] <= 1) continue;
-				Format(text, sizeof(text), "%T", "layer move", client, PlayerCurrentMenuLayer[client] - 1);
+				if (PlayerCurrentMenuLayer[client] <= 1) Format(text, sizeof(text), "%T", "lowest layer reached", client);
+				else Format(text, sizeof(text), "%T", "layer move", client, PlayerCurrentMenuLayer[client] - 1);
 			}
 			else if (StrEqual(configname, "layerdown")) {
-				if (PlayerCurrentMenuLayer[client] >= iMaxLayers) continue;
-				strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]);
-				new layerUpgradesRequired = RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer);
-				if (strengthOfCurrentLayer >= layerUpgradesRequired) Format(text, sizeof(text), "%T", "layer move", client, PlayerCurrentMenuLayer[client] + 1);
-				else Format(text, sizeof(text), "%T", "layer move locked", client, PlayerCurrentMenuLayer[client] + 1, PlayerCurrentMenuLayer[client], layerUpgradesRequired - strengthOfCurrentLayer);
+				if (PlayerCurrentMenuLayer[client] >= iMaxLayers) Format(text, sizeof(text), "%T", "highest layer reached", client);
+				else {
+					strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]);
+					new layerUpgradesRequired = RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer);
+					if (strengthOfCurrentLayer >= layerUpgradesRequired) Format(text, sizeof(text), "%T", "layer move", client, PlayerCurrentMenuLayer[client] + 1);
+					else Format(text, sizeof(text), "%T", "layer move locked", client, PlayerCurrentMenuLayer[client] + 1, PlayerCurrentMenuLayer[client], layerUpgradesRequired - strengthOfCurrentLayer);
+				}
 			}
 		}
 		else {
@@ -1868,10 +1866,14 @@ public DisplayTheLeaderboards_Init (Handle:topmenu, MenuAction:action, client, p
 			}
 		}
 	}
-	if (topmenu != INVALID_HANDLE)
-	{
+	if (action == MenuAction_End) {
+
 		CloseHandle(topmenu);
 	}
+	// if (topmenu != INVALID_HANDLE)
+	// {
+	// 	CloseHandle(topmenu);
+	// }
 }
 
 public Handle:SpawnLoadoutEditor(client) {
@@ -2058,6 +2060,10 @@ public ShowThreatMenu_Init (Handle:topmenu, MenuAction:action, client, param2)
 			}
 		}
 	}
+	if (action == MenuAction_End) {
+		CloseHandle(topmenu);
+	}
+	
 	/*if (action == MenuAction_Cancel) {
 
 		//if (action == MenuCancel_ExitBack) {

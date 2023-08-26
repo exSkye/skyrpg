@@ -466,6 +466,7 @@ public LoadLeaderboardsQuery(Handle:owner, Handle:hndl, const String:error[], an
 
 		//count++;
 		counter++;
+		// +1 prevents every nth being a duplicate on the following page
 		if (counter < TheLeaderboardsPage[data]+1) continue;
 
 		Pint = SQL_FetchInt(hndl, 2);

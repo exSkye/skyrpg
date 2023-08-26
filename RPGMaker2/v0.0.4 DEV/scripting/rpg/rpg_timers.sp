@@ -117,74 +117,62 @@ public Action:Timer_CheckDifficulty(Handle:timer) {
 	return Plugin_Continue;
 }
 
-public Action:Timer_ShowHUD(Handle:timer, any:client) {
-	if (!b_IsActiveRound || !IsLegitimateClient(client) || !bTimersRunning[client] || !IsPlayerAlive(client) || !bTimersRunning[client] || GetClientTeam(client) != TEAM_SURVIVOR) {
+public Action:Timer_ShowHUD(Handle:timer) {
+	if (!b_IsActiveRound) {
 		return Plugin_Stop;
 	}
-	if (PlayerLevel[client] > iMaxLevel) SetTotalExperienceByLevel(client, iMaxLevel, true);
-	TimePlayed[client]++;
-	//if (TotalHumanSurvivors() < 1) RoundTime++;	// we don't count time towards enrage if there are no human survivors.
-	decl String:pct[10];
+	static playerTeam = -1;
+	static mymaxhealth = -1;
+	static Float:healregenamount = 0.0;
+	static String:pct[10];
 	Format(pct, sizeof(pct), "%");
 	new ThisRoundTime = RPGRoundTime();
-	new mymaxhealth = -1;
-	new Float:healregenamount = 0.0;
-	//decl String:targetSteamID[64];
-	if (iShowAdvertToNonSteamgroupMembers == 1 && !IsGroupMember[client]) {
-		IsGroupMemberTime[client]++;
-		if (IsGroupMemberTime[client] % iJoinGroupAdvertisement == 0) {
-			PrintToChat(client, "%T", "join group advertisement", client, GroupMemberBonus * 100.0, pct, orange, blue, orange, blue, orange, blue, green, orange);
-		}
-	}
-
-	new playerTeam = GetClientTeam(client);
-	if (playerTeam == TEAM_SPECTATOR || (playerTeam == TEAM_SURVIVOR || !IsLegitimateClientAlive(client)) && !b_IsLoaded[client]) return Plugin_Continue;
-	if (displayBuffOrDebuff[client] != 1) displayBuffOrDebuff[client] = 1;
-	else displayBuffOrDebuff[client] = 0;
-	if (!IsFakeClient(client)) DisplayHUD(client, displayBuffOrDebuff[client]);
-	if (bIsGiveProfileItems[client]) {
-		bIsGiveProfileItems[client] = false;
-		GiveProfileItems(client);
-	}
-	if ((playerTeam == TEAM_SURVIVOR) && CurrentRPGMode >= 1) {
-		healregenamount = 0.0;				
-		mymaxhealth = GetMaximumHealth(client);
-		if (ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
-			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
-			if (healregenamount > 0.0) HealPlayer(client, client, healregenamount, 'h', true);
-		}
-		ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
-		if (GetClientHealth(client) > mymaxhealth) SetEntityHealth(client, mymaxhealth);
-	}
-	if (playerTeam != TEAM_SPECTATOR) {
-		//GetAbilityStrengthByTrigger(client, client, "p");	// raw passives
-		GetAbilityStrengthByTrigger(client, client, "p", _, _, _, _, _, _, _, 0); // percentage passives
-	}
-	RemoveStoreTime(client);
-	LastPlayLength[client]++;
-	if (ReadyUpGameMode != 3 && CurrentRPGMode >= 1 && ThisRoundTime >= iEnrageTime) {
-		if (SurvivorEnrage[client][1] == 0.0) {
-			EnrageBlind(client, 100);
-			SurvivorEnrage[client][1] = 1.0;
-		}
-		else {
-			SurvivorEnrage[client][1] = 0.0;
-		}
-	}
-	/*for (new i = 1; i <= MaxClients; i++) {
-		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_INFECTED && FindZombieClass(i) == ZOMBIECLASS_TANK) {
-			if (IsClientInRangeSpecialAmmo(i, "W") == -2.0) IsDark = true;
-			else IsDark = false;
-			if (IsSpecialCommonInRange(i, 'w')) IsWeak = true;
-			else IsWeak = false;
-			if (IsWeak && IsDark) {
-				ClearArray(Handle:TankState_Array[i]);
-				SetEntityRenderMode(i, RENDER_TRANSCOLOR);
-				SetEntityRenderColor(i, 255, 255, 255, 200);
+	for (new client = 1; client <= MaxClients; client++) {
+		if (!IsLegitimateClient(client) || !IsPlayerAlive(client) || !b_IsLoaded[client]) continue;
+		playerTeam = GetClientTeam(client);
+		if (playerTeam == TEAM_SPECTATOR) continue;
+		if (PlayerLevel[client] > iMaxLevel) SetTotalExperienceByLevel(client, iMaxLevel, true);
+		TimePlayed[client]++;
+		//if (TotalHumanSurvivors() < 1) RoundTime++;	// we don't count time towards enrage if there are no human survivors.
+		//decl String:targetSteamID[64];
+		if (iShowAdvertToNonSteamgroupMembers == 1 && !IsGroupMember[client]) {
+			IsGroupMemberTime[client]++;
+			if (IsGroupMemberTime[client] % iJoinGroupAdvertisement == 0) {
+				PrintToChat(client, "%T", "join group advertisement", client, GroupMemberBonus * 100.0, pct, orange, blue, orange, blue, orange, blue, green, orange);
 			}
 		}
-	}*/
-
+		displayBuffOrDebuff[client] = (displayBuffOrDebuff[client] == 0) ? 1 : 0;
+		if (!IsFakeClient(client)) DisplayHUD(client, displayBuffOrDebuff[client]);
+		if (bIsGiveProfileItems[client]) {
+			bIsGiveProfileItems[client] = false;
+			GiveProfileItems(client);
+		}
+		if ((playerTeam == TEAM_SURVIVOR) && CurrentRPGMode >= 1) {
+			healregenamount = 0.0;				
+			mymaxhealth = GetMaximumHealth(client);
+			if (ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
+				healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
+				if (healregenamount > 0.0) HealPlayer(client, client, healregenamount, 'h', true);
+			}
+			ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
+			if (GetClientHealth(client) > mymaxhealth) SetEntityHealth(client, mymaxhealth);
+		}
+		if (playerTeam != TEAM_SPECTATOR) {
+			//GetAbilityStrengthByTrigger(client, client, "p");	// raw passives
+			GetAbilityStrengthByTrigger(client, client, "p", _, _, _, _, _, _, _, 0); // percentage passives
+		}
+		RemoveStoreTime(client);
+		LastPlayLength[client]++;
+		if (ReadyUpGameMode != 3 && CurrentRPGMode >= 1 && ThisRoundTime >= iEnrageTime) {
+			if (SurvivorEnrage[client][1] == 0.0) {
+				EnrageBlind(client, 100);
+				SurvivorEnrage[client][1] = 1.0;
+			}
+			else {
+				SurvivorEnrage[client][1] = 0.0;
+			}
+		}
+	}
 	return Plugin_Continue;
 }
 
@@ -790,8 +778,9 @@ public Action:Timer_Explode(Handle:timer, Handle:packagey) {
 	new iLevelRequired = ReadPackCell(packagey);
 
 	new NumLivingEntities = LivingEntitiesInRange(client, ClientPosition, flRangeMax);
+	new bool:bIsLegitimateClient = IsLegitimateClient(client);
 
-	if (!b_IsActiveRound || !IsLegitimateClient(client) || IsLegitimateClient(client) && !IsPlayerAlive(client) || ISEXPLODETIME[client] >= flDeathBaseTime && NumLivingEntities < 1 || ISEXPLODETIME[client] >= flDeathMaxTime) {
+	if (!b_IsActiveRound || !bIsLegitimateClient || bIsLegitimateClient && !IsPlayerAlive(client) || ISEXPLODETIME[client] >= flDeathBaseTime && NumLivingEntities < 1 || ISEXPLODETIME[client] >= flDeathMaxTime) {
 
 		ISEXPLODETIME[client] = 0.0;
 		KillTimer(ISEXPLODE[client]);
@@ -945,7 +934,7 @@ public Action:Timer_CheckIfHooked(Handle:timer) {
 	if (CurRPG == -2) CurRPG = iRPGMode;
 	for (new i = 1; i <= MaxClients; i++) {
 		if (CurRPG < 1 || !IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-		if (PlayerHasWeakness(i)) {
+		if (bHasWeakness[i]) {
 			SetEntityRenderMode(i, RENDER_TRANSCOLOR);
 			SetEntityRenderColor(i, 0, 0, 0, 255);
 			SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
@@ -1294,12 +1283,13 @@ public Action:Timer_ThreatSystem(Handle:timer) {
 		cThreatLevel = 0;
 		iTopThreat = 0;
 		// it happens due to ent shifting
-		if (!IsLegitimateClient(cThreatEnt) && cThreatEnt != -1 && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
+		//if (!IsLegitimateClient(cThreatEnt) && cThreatEnt != -1 && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
+		if (!IsLegitimateClient(cThreatEnt) && cThreatEnt > 0) AcceptEntityInput(cThreatEnt, "Kill");
 		cThreatEnt = -1;
 
 		return Plugin_Stop;
 	}
-	if (IsLegitimateClient(cThreatEnt)) cThreatEnt = -1;
+	//if (IsLegitimateClient(cThreatEnt)) cThreatEnt = -1;
 	iSurvivalCounter++;
 	SortThreatMeter();
 	count++;
@@ -1346,7 +1336,7 @@ public Action:Timer_ThreatSystem(Handle:timer) {
 	if (cThreatOld != cThreatTarget || count >= 20) {
 
 		count = 0;
-		if (cThreatEnt != -1 && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
+		if (cThreatEnt > 0) AcceptEntityInput(cThreatEnt, "Kill");
 		cThreatEnt = -1;
 	}
 
