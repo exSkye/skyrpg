@@ -1663,6 +1663,7 @@ public void QueryResults_LoadTalentTrees(Handle owner, Handle hndl, const char[]
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
 	int size = GetArraySize(a_Database_Talents);
+	if (GetArraySize(a_Database_PlayerTalents[client]) != size) ResizeArray(a_Database_PlayerTalents[client], size);
 	if (SQL_FetchRow(hndl)) {
 		SQL_FetchString(hndl, 0, key, sizeof(key));
 		//if (!IsClassLoading(key)) client = FindClientWithAuthString(key, true);

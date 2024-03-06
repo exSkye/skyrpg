@@ -13,7 +13,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v3.4"
+#define PLUGIN_VERSION				"v3.4.2"
 #define CLASS_VERSION				"v1.0"
 #define PROFILE_VERSION				"v1.5"
 #define LOOT_VERSION				"v0.1"
@@ -35,9 +35,13 @@
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
 
 
+
+
 //	================================
 #define DEBUG     					false
 //	================================
+
+
 
 
 #define CVAR_SHOW					FCVAR_NOTIFY

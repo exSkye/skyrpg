@@ -2219,7 +2219,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 	//ResultEffects are so when compounding talents we know which type to pull from.
 	//This is an alternative to GetAbilityStrengthByTrigger for talents that need it, and maybe eventually the whole system.
 	if (targetPlayer == -2) targetPlayer = FindAnyRandomClient();
-	if (targetPlayer < 1) targetPlayer = activator;
+	if (targetPlayer < 1 || !IsLegitimateClient(targetPlayer) && !IsCommonInfected(targetPlayer) && !IsWitch(targetPlayer)) targetPlayer = activator;
 	//int talenttarget = 0;
 	bool isTargetLegitimate = IsLegitimateClient(targetPlayer);
 
@@ -2286,7 +2286,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 	//float fPercentageHealthMissing = 1.0 - fPercentageHealthRemaining;
 	float fPercentageHealthTargetRemaining = GetClientHealthPercentage(activator, targetPlayer, true);
 	//float fPercentageHealthTargetMissing = 1.0 - fPercentageHealthTargetRemaining;
-	float fTargetRange = GetTargetRange(activator, targetPlayer);
+	float fTargetRange = (activator != targetPlayer) ? GetTargetRange(activator, targetPlayer) : -1.0;
 	bool activatorIsOnFire = (GetClientStatusEffect(activator, "burn") > 0) ? true : false;
 	bool activatorIsSufferingAcidBurn = (GetClientStatusEffect(activator, "acid") > 0) ? true : false;
 	int activatorCurrentWeaponSlot = GetWeaponSlot(lastEntityDropped[activator]);
@@ -2347,12 +2347,14 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		if (iWeaponSlotRequired >= 0 && activatorCurrentWeaponSlot != iWeaponSlotRequired) continue;
 		if (!LastHitWasHeadshot[activator] && GetArrayCell(TriggerValues[activator], LAST_KILL_MUST_BE_HEADSHOT) == 1) continue;
 		if (GetArrayCell(TriggerValues[activator], TARGET_AND_LAST_TARGET_CLASS_MATCH) == 1 && targetClassTest != LastTargetClass[activator]) continue;
-		float fTargetRangeRequired = GetArrayCell(TriggerValues[activator], TARGET_RANGE_REQUIRED);
-		if (fTargetRangeRequired > 0.0) {
-			if (activator == target) continue;	// talents requiring a target range can't trigger if the activator is the target.
-			bool bTargetMustBeWithinRange = (GetArrayCell(TriggerValues[activator], TARGET_RANGE_REQUIRED_OUTSIDE) != 1) ? true : false;
-			if (bTargetMustBeWithinRange && fTargetRange > fTargetRangeRequired) continue;
-			if (!bTargetMustBeWithinRange && fTargetRange <= fTargetRangeRequired) continue;
+		if (activator != targetPlayer) {
+			float fTargetRangeRequired = GetArrayCell(TriggerValues[activator], TARGET_RANGE_REQUIRED);
+			if (fTargetRangeRequired > 0.0) {
+				if (activator == target) continue;	// talents requiring a target range can't trigger if the activator is the target.
+				bool bTargetMustBeWithinRange = (GetArrayCell(TriggerValues[activator], TARGET_RANGE_REQUIRED_OUTSIDE) != 1) ? true : false;
+				if (bTargetMustBeWithinRange && fTargetRange > fTargetRangeRequired) continue;
+				if (!bTargetMustBeWithinRange && fTargetRange <= fTargetRangeRequired) continue;
+			}
 		}
 		int iLastTargetResult = GetArrayCell(TriggerValues[activator], TARGET_MUST_BE_LAST_TARGET);
 		if (targetPlayer != lastTarget[activator] && iLastTargetResult == 1 || targetPlayer == lastTarget[activator] && iLastTargetResult == 0) continue;
@@ -4468,12 +4470,12 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 	if (StrEqual(Effects, "d")) return;	// should never happen, but if it does.
 	if (g_TalentStrength > 0.0) {
 		// When a node successfully fires, it can call custom ability triggers.
-		// if (!StrEqual(secondaryTrigger, "-1")) GetAbilityStrengthByTrigger(activator, target, secondaryTrigger);
+		if (!StrEqual(secondaryTrigger, "-1")) GetAbilityStrengthByTrigger(activator, target, secondaryTrigger);
 
-		// // a single node can fire off two effects at maximum. I haven't personally used it to fire off more than one but the option exists.
-		// if (!StrEqual(secondaryEffects, "-1")) {
-		// 	ActivateAbilityEx(activator, target, d_Damage, secondaryEffects, g_TalentStrength, g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, _, _, damagetype);
-		// }
+		// a single node can fire off two effects at maximum. I haven't personally used it to fire off more than one but the option exists.
+		if (!StrEqual(secondaryEffects, "-1")) {
+			ActivateAbilityEx(activator, target, d_Damage, secondaryEffects, g_TalentStrength, g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, _, _, damagetype);
+		}
 		//int activatorTeam = GetClientTeam(activator);
 
 		int iDamage = (isRaw == 1 || d_Damage == 0) ? RoundToCeil(g_TalentStrength) : RoundToCeil(d_Damage * g_TalentStrength);
@@ -8274,7 +8276,7 @@ stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, l
 		if (pos < GetArraySize(CommonList)) RemoveFromArray(CommonList, pos);
 		RemoveCommonAffixes(entity);
 		//OnCommonInfectedCreated(entity, true);
-		AcceptEntityInput(entity, "BecomeRagdoll");
+		if (IsCommonInfected(entity)) AcceptEntityInput(entity, "BecomeRagdoll");
 		//if (iDeleteSupersOnDeath == 1 && IsValidEntity(entity)) AcceptEntityInput(entity, "Kill");
 	}
 	//if (IsValidEntity(entity)) SetInfectedHealth(entity, 1);	// this is so it dies right away.
