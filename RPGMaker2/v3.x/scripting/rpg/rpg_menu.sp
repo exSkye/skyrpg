@@ -85,7 +85,7 @@ stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bo
 	else DrawPanelText(menu, text);
 }
 
-stock bool CheckKillPositions(client, bool b_AddPosition) {
+stock bool CheckKillPositions(client, bool b_AddPosition = false) {
 
 	// If the finale is active, we don't do anything here, and always return false.
 	//if (!b_IsFinaleActive) return false;
@@ -100,9 +100,6 @@ stock bool CheckKillPositions(client, bool b_AddPosition) {
 	float Origin[3];
 	GetClientAbsOrigin(client, Origin);
 	char coords[64];
-
-	float AntiFarmDistance = GetConfigValueFloat("anti farm kill distance?");
-	int AntiFarmMax = GetConfigValueInt("anti farm kill max locations?");
 
 	if (!b_AddPosition) {
 
@@ -119,7 +116,7 @@ stock bool CheckKillPositions(client, bool b_AddPosition) {
 			Last_Origin[2]		= StringToFloat(coords);
 
 			// If the players current position is too close to any stored positions, return true
-			if (GetVectorDistance(Origin, Last_Origin) <= AntiFarmDistance) return true;
+			if (GetVectorDistance(Origin, Last_Origin) <= fAntiFarmDistance) return true;
 		}
 	}
 	else {
@@ -138,8 +135,7 @@ stock bool CheckKillPositions(client, bool b_AddPosition) {
 		Format(coords, sizeof(coords), "%3.4f", Origin[2]);
 		SetArrayString(h_KilledPosition_Z[client], newsize, coords);
 
-		while (GetArraySize(h_KilledPosition_X[client]) > AntiFarmMax) {
-
+		while (GetArraySize(h_KilledPosition_X[client]) > iAntiFarmMax) {
 			RemoveFromArray(h_KilledPosition_X[client], 0);
 			RemoveFromArray(h_KilledPosition_Y[client], 0);
 			RemoveFromArray(h_KilledPosition_Z[client], 0);
@@ -408,8 +404,7 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 				Format(tquery, sizeof(tquery), "%s, `disab`, `primarywep`, `secondwep`", tquery);
 				Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
 				SQL_TQuery(hDatabase, QueryResults_LoadActionBar, tquery, client);
-
-				LoadClientAugments(client, key);
+				LoadClientAugments(client);
 				LoadPos[client] = 0;
 				return;
 			}
@@ -3254,7 +3249,6 @@ public Handle TalentInfoScreen(client) {
 	bool bIsAttribute = (GetArrayCell(PurchaseValues[client], IS_ATTRIBUTE) == 1) ? true : false;
 	int iContributionCategoryRequired = -1;
 	if (AbilityTalent != 1) {
-
 		if (IsSpecialAmmo != 1) {
 			if (f_CooldownNext > 0.0) {
 				if (TalentPointAmount == 0) Format(text, sizeof(text), "%T", "Talent Cooldown Info - No Points", client, f_CooldownNext);
@@ -3522,7 +3516,6 @@ public Handle TalentInfoScreen(client) {
 }
 
 stock GetAbilityText(client, char[] TheString, TheSize, Handle Keys, Handle Values, pos = ABILITY_ACTIVE_EFFECT) {
-
 	char text[512];
 	char text2[512];
 	char tDraft[512];
@@ -3537,30 +3530,27 @@ stock GetAbilityText(client, char[] TheString, TheSize, Handle Keys, Handle Valu
 		Format(TheString, TheSize, "-1");
 		return;
 	}
+	float maxMultiplier = -1.0;
 
 	if (pos == ABILITY_ACTIVE_EFFECT) {
 
 		Format(tDraft, sizeof(tDraft), "%T", "Active Effects", client);
 		Format(AbilityType, sizeof(AbilityType), "Active Ability");
 		TheAbilityMultiplier = GetArrayCell(Values, ABILITY_ACTIVE_STRENGTH);
-
-		Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "active");
+		maxMultiplier = GetArrayCell(Values, ABILITY_MAXIMUM_ACTIVE_MULTIPLIER);//GetArrayString(Values, ABILITY_MAXIMUM_ACTIVE_MULTIPLIER, TheMaximumMultiplier, sizeof(TheMaximumMultiplier));
 	}
 	else if (pos == ABILITY_PASSIVE_EFFECT) {
 
 		Format(tDraft, sizeof(tDraft), "%T", "Passive Effects", client);
 		Format(AbilityType, sizeof(AbilityType), "Passive Ability");
 		TheAbilityMultiplier = GetArrayCell(Values, ABILITY_PASSIVE_STRENGTH);
-
-		Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "passive");
+		maxMultiplier = GetArrayCell(Values, ABILITY_MAXIMUM_PASSIVE_MULTIPLIER);//GetArrayString(Values, ABILITY_MAXIMUM_PASSIVE_MULTIPLIER, TheMaximumMultiplier, sizeof(TheMaximumMultiplier));
 	}
 	else if (pos == ABILITY_COOLDOWN_EFFECT) {
 
 		Format(tDraft, sizeof(tDraft), "%T", "Cooldown Effects", client);
 		Format(AbilityType, sizeof(AbilityType), "Cooldown Ability");
 		TheAbilityMultiplier = GetArrayCell(Values, ABILITY_COOLDOWN_STRENGTH);
-
-		Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "cooldown");
 	}
 	else {
 
@@ -3575,10 +3565,7 @@ stock GetAbilityText(client, char[] TheString, TheSize, Handle Keys, Handle Valu
 	}
 	else {
 		if (StrEqual(text, "C", true)) {
-
-			Format(TheMaximumMultiplier, sizeof(TheMaximumMultiplier), "maximum %s multiplier?", TheMaximumMultiplier);
-			float MaxMult = GetKeyValueFloat(Keys, Values, TheMaximumMultiplier, _, _, TALENT_FIRST_RANDOM_KEY_POSITION);
-			Format(text2, sizeof(text2), "%T", text2, client, TheAbilityMultiplier * 100.0, pct, MaxMult * 100.0, pct);
+			Format(text2, sizeof(text2), "%T", text2, client, TheAbilityMultiplier * 100.0, pct, maxMultiplier * 100.0, pct);
 		}
 		else if (TheAbilityMultiplier > 0.0 || StrEqual(text, "S", true)) {
 
@@ -3678,7 +3665,8 @@ public Handle Augments_Equip(client) {
 	if (GetArraySize(equippedAugmentsCategory[client]) != iNumAugments) ResizeArray(equippedAugmentsCategory[client], iNumAugments);
 	if (GetArraySize(equippedAugmentsActivator[client]) != iNumAugments) ResizeArray(equippedAugmentsActivator[client], iNumAugments);
 	if (GetArraySize(equippedAugmentsTarget[client]) != iNumAugments) ResizeArray(equippedAugmentsTarget[client], iNumAugments);
-
+	Format(text, sizeof(text), "Equipped Augments");
+	SetPanelTitle(menu, text);
 	for (int i = 0; i < iNumAugments; i++) {
 		GetArrayString(equippedAugmentsCategory[client], i, baseMenuText, 64);
 		int len = GetAugmentTranslation(client, baseMenuText, menuText);
@@ -3692,7 +3680,7 @@ public Handle Augments_Equip(client) {
 		GetArrayString(equippedAugmentsActivator[client], i, activatorText, 64);
 		GetArrayString(equippedAugmentsTarget[client], i, targetText, 64);
 		Format(menuText, 64, "%T", menuText, client);
-		int iItemLevel = GetArrayCell(equippedAugments[client], i);
+		int iItemLevel = GetArrayCell(equippedAugments[client], i, 2);
 		AddCommasToString(iItemLevel/iAugmentLevelDivisor, itemLevel, 64);
 
 		int activatorRating = GetArrayCell(equippedAugments[client], i, 4);
@@ -3701,7 +3689,7 @@ public Handle Augments_Equip(client) {
 		if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
 		else if (activatorRating < 1 || targetRating < 1) Format(itemStr, 64, "major");
 		else Format(itemStr, 64, "perfect");
-		Format(text, sizeof(text), "Lv.%s %s %s %s Augment", itemLevel, itemStr, menuText, baseMenuText[len]);
+		Format(text, sizeof(text), "+%3.3f%s %s %s %s", (iItemLevel * fAugmentRatingMultiplier) * 100.0, pct, itemStr, menuText, baseMenuText[len]);
 		DrawPanelItem(menu, text);
 	}
 	
@@ -3712,7 +3700,7 @@ public Handle Augments_Equip(client) {
 
 public Augments_Equip_Init (Handle topmenu, MenuAction action, client, param2) {
 	if (action == MenuAction_Select) {
-		if (param2 > iNumAugments-1) {
+		if (param2 > iNumAugments) {
 			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
 		}
 		else {
@@ -3757,10 +3745,11 @@ public Augments_Equip_Init (Handle topmenu, MenuAction action, client, param2) {
 			SetArrayString(equippedAugmentsTarget[client], param2 - 1, targetText);
 			SetArrayCell(equippedAugments[client], param2 - 1, targetRating, 5);
 
-			int itemRatingStored = GetArrayCell(equippedAugments[client], param2-1, 2);
-			int activatorRatingStored = GetArrayCell(equippedAugments[client], param2-1, 4);
-			int targetRatingStored = GetArrayCell(equippedAugments[client], param2-1, 5);
+			// int itemRatingStored = GetArrayCell(equippedAugments[client], param2-1, 2);
+			// int activatorRatingStored = GetArrayCell(equippedAugments[client], param2-1, 4);
+			// int targetRatingStored = GetArrayCell(equippedAugments[client], param2-1, 5);
 			//PrintToChat(client, "stored item rating: %d, activator rating %d, target: %d", itemRatingStored, activatorRatingStored, targetRatingStored);
+			SetClientTalentStrength(client);	// talent strengths need to be updated when an augment is equipped or unequipped.
 
 			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
 		}
@@ -3804,7 +3793,7 @@ public Handle Inspect_Augment(client, slot) {
 	else Format(itemStr, 64, "perfect");
 	
 	int isEquipped = GetArrayCell(myAugmentInfo[client], slot, 3);
-	Format(text, sizeof(text), "Lv.%s %s %s %s Augment", itemLevel, itemStr, menuText, baseMenuText[len]);
+	Format(text, sizeof(text), "%s %s %s Augment", itemStr, menuText, baseMenuText[len]);
 	int realItemCost = GetArrayCell(myAugmentInfo[client], slot, 1);
 	char itemCost[64];
 	AddCommasToString(realItemCost, itemCost, 64);
@@ -3813,7 +3802,7 @@ public Handle Inspect_Augment(client, slot) {
 		Format(text, sizeof(text), "%s (%s SP)", text, itemCost);
 	}
 	DrawPanelText(menu, text);
-	Format(text, sizeof(text), "\n\t+%3.2f%s to %s tree %s", (iItemLevel * fAugmentRatingMultiplier) * 100.0, pct, menuText, baseMenuText[len]);
+	Format(text, sizeof(text), "\n\t+%3.3f%s to %s tree %s", (iItemLevel * fAugmentRatingMultiplier) * 100.0, pct, menuText, baseMenuText[len]);
 	DrawPanelText(menu, text);
 	
 	if (activatorRating > 0) {
@@ -3886,6 +3875,7 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 
 					SetArrayString(equippedAugmentsTarget[client], isEquipped, "");
 					SetArrayCell(equippedAugments[client], isEquipped, -1, 5);
+					SetClientTalentStrength(client);	// talent strengths need to be updated when an augment is equipped or unequipped.
 
 					SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
 				}
@@ -3930,23 +3920,6 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 	}
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 stock bool UnequipAugment_Confirm(client, char[] augmentID) {
 	int size = GetArraySize(myAugmentIDCodes[client]);
 	char text[64];
@@ -3963,6 +3936,8 @@ stock bool UnequipAugment_Confirm(client, char[] augmentID) {
 //augmentParts
 stock Augments_Inventory(client) {
 	Handle menu = CreateMenu(Augments_Inventory_Handle);
+	char pct[4];
+	Format(pct, 4, "%");
 	char text[512];
 	Format(text, 512, "augment parts: %d", augmentParts[client]);
 	SetMenuTitle(menu, text);
@@ -3980,8 +3955,16 @@ stock Augments_Inventory(client) {
 			AddCommasToString(iItemLevel/iAugmentLevelDivisor, itemLevel, 64);
 			
 			int isEquipped = GetArrayCell(myAugmentInfo[client], i, 3);
-			Format(text, sizeof(text), "Lv.%s %s %s Augment", itemLevel, menuText, baseMenuText[len]);
-			if (isEquipped >= 0) Format(text, sizeof(text), "%s (augment slot %d)", text, isEquipped+1);
+			int activatorRating = GetArrayCell(myAugmentInfo[client], i, 4);
+			int targetRating = GetArrayCell(myAugmentInfo[client], i, 5);
+
+			char itemStr[10];
+			if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
+			else if (activatorRating < 1 || targetRating < 1) Format(itemStr, 64, "major");
+			else Format(itemStr, 64, "perfect");
+
+			Format(text, sizeof(text), "+%3.3f%s %s %s %s", (iItemLevel * fAugmentRatingMultiplier) * 100.0, pct, itemStr, menuText, baseMenuText[len]);
+			if (isEquipped >= 0) Format(text, sizeof(text), "%s (slot %d)", text, isEquipped+1);
 			else if (GetArrayCell(myAugmentInfo[client], i, 2) == 1) {
 				char itemCost[64];
 				AddCommasToString(GetArrayCell(myAugmentInfo[client], i, 1), itemCost, 64);
@@ -4391,12 +4374,13 @@ stock WipeTalentPoints(client) {
 	if (!IsLegitimateClient(client) || IsFakeClient(client)) return;
 	UpgradesAwarded[client] = 0;
 	int size							= GetArraySize(a_Menu_Talents);
+	if (GetArraySize(a_Database_PlayerTalents[client]) != size) ResizeArray(a_Database_PlayerTalents[client], size);
 	int value = 0;
 	for (int i = 0; i < size; i++) {	// We only reset talents a player has points in, so locked talents don't become unlocked.
 		//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		//TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 		value = GetArrayCell(a_Database_PlayerTalents[client], i);
-		if (value > 0)	SetArrayCell(a_Database_PlayerTalents[client], i, 0);
+		if (value > 0) SetArrayCell(a_Database_PlayerTalents[client], i, 0);
 	}
 	ClearArray(possibleLootPool[client]);
 	SetClientTalentStrength(client);

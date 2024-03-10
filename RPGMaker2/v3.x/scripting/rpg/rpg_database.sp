@@ -932,7 +932,6 @@ public Action Timer_LoadDelay(Handle timer, any client) {
 }
 
 stock void CreateNewPlayer(int client) {
-
 	if (hDatabase == INVALID_HANDLE) {
 
 		LogMessage("cannot create data because the database is still loading. %N", client);
@@ -944,17 +943,13 @@ stock void CreateNewPlayer(int client) {
 	char tquery[1024];
 	char key[512];
 	char TheName[64];
-
 	if (b_IsLoading[client]) return;	// should stop bots (and players) from looping indefinitely.
 	b_IsLoading[client] = true;
-
 	if (IsFakeClient(client)) {
-
 		GetSurvivorBotName(client, TheName, sizeof(TheName));
 		Format(key, sizeof(key), "%s%s", sBotTeam, TheName);
 	}
 	else if (IsLegitimateClient(client) && !IsFakeClient(client)) {
-
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
@@ -964,7 +959,6 @@ stock void CreateNewPlayer(int client) {
 		return;
 	}
 	LogMessage("Looking up player %N (%s) in Database before creating new data.", client, key);
-
 	Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 	SQL_TQuery(hDatabase, Query_CheckIfDataExists, tquery, client);
 }
@@ -1093,7 +1087,7 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	SQL_TQuery(hDatabase, QueryResults1, tquery, client);
 
 	SQL_EscapeString(hDatabase, Hostname, text, sizeof(text));
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `lastserver` = '%s', `augmentparts` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, augmentParts[client], key);
+	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `lastserver` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, text, key);
 	SQL_TQuery(hDatabase, QueryResults1, tquery, client);
 
 	char TagName[64];
@@ -1107,7 +1101,7 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	int minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
 	if (Rating[client] < minimumRating) Rating[client] = minimumRating;
 
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `restt` = '%d', `restexp` = '%d', `lpl` = '%d', `resr` = '%d', `pri` = '%d', `survpoints` = '%s', `bec` = '%d', `%s` = '%d', `myrating %s` = '%d', `ratinghc %s` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, GetTime(), RestedExperience[client], LastPlayLength[client], resr[client], PreviousRoundIncaps[client], sPoints, BonusContainer[client], RatingType, BestRating[client], RatingType, Rating[client], RatingType, RatingHandicap[client], key);
+	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `restt` = '%d', `restexp` = '%d', `lpl` = '%d', `resr` = '%d', `pri` = '%d', `survpoints` = '%s', `bec` = '%d', `%s` = '%d', `myrating %s` = '%d', `ratinghc %s` = '%d', `augmentparts` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, GetTime(), RestedExperience[client], LastPlayLength[client], resr[client], PreviousRoundIncaps[client], sPoints, BonusContainer[client], RatingType, BestRating[client], RatingType, Rating[client], RatingType, RatingHandicap[client], augmentParts[client], key);
 	SQL_TQuery(hDatabase, QueryResults4, tquery, client);
 
 	for (int i = 0; i < size; i++) {
@@ -1663,7 +1657,10 @@ public void QueryResults_LoadTalentTrees(Handle owner, Handle hndl, const char[]
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
 	int size = GetArraySize(a_Database_Talents);
-	if (GetArraySize(a_Database_PlayerTalents[client]) != size) ResizeArray(a_Database_PlayerTalents[client], size);
+	if (GetArraySize(a_Database_PlayerTalents[client]) != size) {
+		ResizeArray(a_Database_PlayerTalents[client], size);
+		ResizeArray(a_Database_PlayerTalents_Experience[client], size);
+	}
 	if (SQL_FetchRow(hndl)) {
 		SQL_FetchString(hndl, 0, key, sizeof(key));
 		//if (!IsClassLoading(key)) client = FindClientWithAuthString(key, true);
@@ -1749,28 +1746,21 @@ stock void LoadTalentTrees(client, char[] key, bool IsTalentTwo = false, char[] 
 		}
 		Format(tquery, sizeof(tquery), "%s, `disab`, `primarywep`, `secondwep`", tquery);
 
-		if (StrEqual(profilekey, "none")) {
-			Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
-			LoadClientAugments(client, key);
-		}
-		else {
-			Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, profilekey);
-			LoadClientAugments(client, profilekey);
-		}
+		if (StrEqual(profilekey, "none")) Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
+		else Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, profilekey);
 		SQL_TQuery(hDatabase, QueryResults_LoadActionBar, tquery, client);
+		LoadClientAugments(client);
 		LoadPos[client] = 0;
 	}
 	return;
 }
 
-stock void LoadClientAugments(client, char[] profilekey = "none") {
+stock void LoadClientAugments(client) {
 	char key[64];
 	char tquery[512];
 	GetClientAuthId(client, AuthId_Steam2, key, 64);
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
-	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`");
-	if (StrEqual(profilekey, "none")) Format(tquery, sizeof(tquery), "%s FROM `%s_loot` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
-	else Format(tquery, sizeof(tquery), "%s FROM `%s_loot` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, profilekey);
+	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating` FROM `%s_loot` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 	SQL_TQuery(hDatabase, QueryResults_LoadAugments, tquery, client);
 }
 
@@ -1863,8 +1853,8 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 	PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
 	ChangeHook(client, true);
 
-	b_IsLoaded[client] = true;
-	b_IsLoading[client] = false;
+	// b_IsLoaded[client] = true;
+	// b_IsLoading[client] = false;
 	b_IsLoadingTrees[client] = false;
 	bIsTalentTwo[client] = false;
 	FreeUpgrades[client]		=	MaximumPlayerUpgrades(client) - TotalPointsAssigned(client);
@@ -1909,8 +1899,6 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 			
 		SQL_FetchString(hndl, ActionSlots+3, text, sizeof(text));
 		SetArrayString(hWeaponList[client], 1, text);
-		GiveProfileItems(client);
-
 		// IsFound = true;
 	}
 
@@ -1935,7 +1923,8 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 }
 
 stock SetClientTalentStrength(client) {
-	SetLootDropCategories(client);
+	b_IsLoaded[client] = false;
+	b_IsLoading[client] = true;
 	int ASize = GetArraySize(a_Menu_Talents);
 	ResizeArray(MyTalentStrength[client], ASize);
 	ResizeArray(MyTalentStrengths[client], ASize);
@@ -1959,6 +1948,9 @@ stock SetClientTalentStrength(client) {
 		SetArrayCell(MyTalentStrengths[client], i, f_Cooldown, 2);
 		SetArrayCell(MyTalentStrength[client], i, 1);
 	}
+	SetLootDropCategories(client);
+	b_IsLoaded[client] = true;
+	b_IsLoading[client] = false;
 }
 
 stock FormatPlayerName(client) {
@@ -2109,6 +2101,7 @@ public OnClientDisconnect(client)
 			ZoomcheckDelayer[client] = INVALID_HANDLE;
 		}
 		ChangeHook(client);
+		ClearArray(playerLootOnGround[client]);
 
 		/*if (IsValidEntity(iChaseEnt[client])) {
 

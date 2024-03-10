@@ -362,6 +362,12 @@ native ReadyUp_NtvFriendlyFire(client, victim, amount, victimamount, isfire, bon
 native bool:ReadyUp_IsTeamsFlipped();
 
 /*
+ *  Lets readyup know the round failed due to a restartvote of some sort.
+ *  @noreturn
+ */
+native ReadyUp_RoundRestartedByVote();
+
+/*
  *	Attempts to parse the specified file path.
  *
  *	@param config		The name of the config. .../configs/readyup/ is the base path.

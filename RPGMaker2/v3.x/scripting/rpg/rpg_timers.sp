@@ -62,24 +62,22 @@ stock void CheckDifficulty() {
 }
 
 stock void GiveProfileItems(int client) {
-	LogMessage("Giving first time load items.");
+	LogMessage("Giving first time load items...");
 	if (GetArraySize(hWeaponList[client]) == 2) {
 		char text[64];
 		GetArrayString(hWeaponList[client], 0, text, sizeof(text));
-		LogMessage("giving player %s", text);
-		QuickCommandAccessEx(client, text, _, true);
+		if (!StrEqual(text, "none")) {
+			LogMessage("giving player %s", text);
+			QuickCommandAccessEx(client, text, _, true);
+		}
 
 		GetArrayString(hWeaponList[client], 1, text, sizeof(text));
-		LogMessage("giving player %s", text);
-		QuickCommandAccessEx(client, text, _, true);
+		if (!StrEqual(text, "none")) {
+			LogMessage("giving player %s", text);
+			QuickCommandAccessEx(client, text, _, true);
+		}
 	}
-	else {
-		LogMessage("resizing weapon list and giving them the default items.");
-		ResizeArray(hWeaponList[client], 2);
-		QuickCommandAccessEx(client, defaultLoadoutWeaponPrimary, _, true);
-		QuickCommandAccessEx(client, defaultLoadoutWeaponSecondary, _, true);
-	}
-	LogMessage("Finished giving weapons to player.");
+	LogMessage("If these items exist, they will be logged and given now.");
 }
 
 public Action Timer_GiveLaserBeam(Handle timer, any client) {
@@ -229,9 +227,10 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
 			if (healregenamount > 0.0) {
 				HealPlayer(client, client, healregenamount, 'h', true);
-				float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric");
+				float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", false);
 				if (clericHealPercentage > 0.0) {
 					healregenamount *= clericHealPercentage;
+					if (healregenamount < 1.0) healregenamount = 1.0;
 					new playersInRange = 0;
 					new Float:clientPos[3];
 					GetClientAbsOrigin(client, clientPos);
@@ -1105,7 +1104,11 @@ public Action Timer_CheckIfHooked(Handle timer) {
 			// need to force-teleport players here on new spawn: 4087.998291 11974.557617 -269.968750
 			CreateTimer(1.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
 		}
-		else ForceServerCommand("scenario_end");
+		//else ExecCheatCommand(_, "scenario_end");
+		// else {
+		// 	//L4D_RestartScenarioFromVote(TheCurrentMap);
+		// 	//ReadyUp_RoundRestartedByVote();	// new native to let readyup know the round ended in a different way.
+		// }
 		return Plugin_Stop;
 	}
 	static char text[64];
@@ -1862,7 +1865,7 @@ stock FindAnotherSurvivor(client) {
 	return -1;
 }
 
-stock FindLivingSurvivor() {
+stock FindLivingSurvivor(bool noBOT = false) {
 
 
 	/*new Client = -1;
@@ -1876,6 +1879,7 @@ stock FindLivingSurvivor() {
 	for (int i = LastLivingSurvivor; i <= MaxClients && livingSurvivors > 0; i++) {
 
 		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+			if (noBOT && IsFakeClient(i)) continue;
 
 			LastLivingSurvivor = i;
 			return i;

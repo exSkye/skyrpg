@@ -186,8 +186,6 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 	}
 	if (StrEqual(event_name, "player_incapacitated")) {
 		IncapacitateOrKill(victim, attacker);
-		// if (PlayerHasWeakness(victim)) IncapacitateOrKill(victim, attacker);
-		// else ForceIncapSurvivor(victim, attacker, 1);
 	}
 	if (StrEqual(event_name, "player_spawn")) {
 		if (IsLegitimateClientAttacker) {
@@ -1359,6 +1357,7 @@ stock InventoryItem(client, char[] EntityName = "none", bool bIsPickup = false, 
 		//TeleportEntity(entity, loc, NULL_VECTOR, NULL_VECTOR);
 	}
 }
+
 stock bool IsCommonStaggered(client) {
 	//decl String:clientId[2][64];
 	//decl String:text[64];
@@ -1478,6 +1477,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			// 		return Plugin_Changed;
 			// 	}
 			// }
+		IsPlayerTryingToPickupLoot(client);
 		if (b_IsRoundIsOver && (ReadyUpGameMode == 3 || StrContains(TheCurrentMap, "zerowarn", false) != -1)) {
 			char EName[64];
 			int entity = GetClientAimTarget(client, false);
@@ -2252,61 +2252,70 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		else if (ClientType == 3) SurvivorDamage = GetArrayCell(CommonInfected[i], pos, 2);
 		RatingBonus = GetRatingReward(i, client);
 		if (RatingBonus < 1) continue;
-		if (killerblow != i) GetAbilityStrengthByTrigger(i, client, "assist");
-		RollLoot(i, client);
-		if (!bSomeoneHurtThisInfected) bSomeoneHurtThisInfected = true;
-		if (!IsFakeClient(i) && ClientType >= 0 && ClientType < 3) {
-			if (!survivorsRequiredForBonusRating) {
-				AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
-				PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
+		if (iAntiFarmMax > 0 && !CheckKillPositions(i)) {
+			CheckKillPositions(i, true);
+			if (killerblow != i) GetAbilityStrengthByTrigger(i, client, "assist");
+			RollLoot(i, client);
+			if (!bSomeoneHurtThisInfected) bSomeoneHurtThisInfected = true;
+			if (!IsFakeClient(i) && ClientType >= 0 && ClientType < 3) {
+				if (!survivorsRequiredForBonusRating) {
+					AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
+					PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
+				}
+				else {
+					RatingTeamBonus = RoundToCeil(RatingBonus * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
+					AddCommasToString(RatingBonus+RatingTeamBonus, ratingBonusText, sizeof(ratingBonusText));
+					AddCommasToString(RatingTeamBonus, ratingTeamBonusText, sizeof(ratingTeamBonusText));
+					Rating[i] += RatingTeamBonus;
+					PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
+					//PrintToChat(i, "%T", "team rating increase", i, white, blue, ratingBonusText, orange, white, blue, ratingTeamBonusText, orange, white);
+				}
 			}
-			else {
-				RatingTeamBonus = RoundToCeil(RatingBonus * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-				AddCommasToString(RatingBonus+RatingTeamBonus, ratingBonusText, sizeof(ratingBonusText));
-				AddCommasToString(RatingTeamBonus, ratingTeamBonusText, sizeof(ratingTeamBonusText));
-				Rating[i] += RatingTeamBonus;
-				PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
-				//PrintToChat(i, "%T", "team rating increase", i, white, blue, ratingBonusText, orange, white, blue, ratingTeamBonusText, orange, white);
+			CheckMinimumRate(i);
+			Rating[i] += RatingBonus;
+			bIsSettingsCheck = true;		// whenever rating is earned for anything other than common infected kills, we want to check the settings to see if a boost to commons is necessary.
+			if (i == killerblow) {
+				TheAbilityMultiplier = GetAbilityMultiplier(i, "R");
+				if (TheAbilityMultiplier > 0.0) { // heal because you dealt the killing blow
+					HealPlayer(i, i, TheAbilityMultiplier * RatingBonus, 'h', true);
+				}
 			}
-		}
-		CheckMinimumRate(i);
-		Rating[i] += RatingBonus;
-		bIsSettingsCheck = true;		// whenever rating is earned for anything other than common infected kills, we want to check the settings to see if a boost to commons is necessary.
-		TheAbilityMultiplier = GetAbilityMultiplier(i, "R");
-		if (TheAbilityMultiplier > 0.0) { // heal because you dealt the killing blow
-			HealPlayer(i, i, TheAbilityMultiplier * RatingBonus, 'h', true);
-		}
-		if (SurvivorDamage > 0) {
-			SurvivorExperience = RoundToFloor(SurvivorDamage * ExperienceMultiplier);
-			SurvivorPoints = SurvivorDamage * PointsMultiplier;
-		}
-		i_DamageContribution = CheckTeammateDamages(client, i, true);
-		if (i_DamageContribution > 0.0) {
-			SurvivorExperience = RoundToFloor(SurvivorDamage * ExperienceMultiplier);
-			SurvivorPoints = SurvivorDamage * PointsMultiplier;
-		}
-		if (ClientType != 3) {
-			t_Contribution = CheckTankingDamage(client, i);
-			if (t_Contribution > 0) {
-				t_Contribution = RoundToCeil(t_Contribution * TankingMultiplier);
-				SurvivorPoints += (t_Contribution * (PointsMultiplier * TankingMultiplier));
+			if (SurvivorDamage > 0) {
+				SurvivorExperience = RoundToFloor(SurvivorDamage * ExperienceMultiplier);
+				SurvivorPoints = SurvivorDamage * PointsMultiplier;
 			}
+			i_DamageContribution = CheckTeammateDamages(client, i, true);
+			if (i_DamageContribution > 0.0) {
+				SurvivorExperience = RoundToFloor(SurvivorDamage * ExperienceMultiplier);
+				SurvivorPoints = SurvivorDamage * PointsMultiplier;
+			}
+			if (ClientType != 3) {
+				t_Contribution = CheckTankingDamage(client, i);
+				if (t_Contribution > 0) {
+					t_Contribution = RoundToCeil(t_Contribution * TankingMultiplier);
+					SurvivorPoints += (t_Contribution * (PointsMultiplier * TankingMultiplier));
+				}
+			}
+			//h_Contribution = HealingContribution[i];
+			//HealingContribution[i] = 0;
+			//CreateLootItem(i, i_DamageContribution, CheckTankingDamage(client, i), RoundToCeil(h_Contribution * HealingMultiplier));
+			// if (h_Contribution > 0) {
+			// 	h_Contribution = RoundToCeil(h_Contribution * HealingMultiplier);
+			// 	SurvivorPoints += (h_Contribution * (PointsMultiplier * HealingMultiplier));
+			// }
+			//if (!bIsInCombat[i]) ReceiveInfectedDamageAward(i, client, SurvivorExperience, SurvivorPoints, t_Contribution, h_Contribution, Bu_Contribution, He_Contribution);
+			//HealingContribution[i] += h_Contribution;
+			TankingContribution[i] += t_Contribution;
+			PointsContribution[i] += SurvivorPoints;
+			DamageContribution[i] += SurvivorExperience;
 		}
-		//h_Contribution = HealingContribution[i];
-		//HealingContribution[i] = 0;
-		//CreateLootItem(i, i_DamageContribution, CheckTankingDamage(client, i), RoundToCeil(h_Contribution * HealingMultiplier));
-		// if (h_Contribution > 0) {
-		// 	h_Contribution = RoundToCeil(h_Contribution * HealingMultiplier);
-		// 	SurvivorPoints += (h_Contribution * (PointsMultiplier * HealingMultiplier));
-		// }
-		//if (!bIsInCombat[i]) ReceiveInfectedDamageAward(i, client, SurvivorExperience, SurvivorPoints, t_Contribution, h_Contribution, Bu_Contribution, He_Contribution);
-		//HealingContribution[i] += h_Contribution;
-		TankingContribution[i] += t_Contribution;
-		PointsContribution[i] += SurvivorPoints;
-		DamageContribution[i] += SurvivorExperience;
 		if (ClientType == 0) RemoveFromArray(InfectedHealth[i], pos);
 		else if (ClientType == 1) RemoveFromArray(WitchDamage[i], pos);
-		else if (ClientType == 2) RemoveFromArray(SpecialCommon[i], pos);
+		else if (ClientType == 2) {
+			RemoveFromArray(SpecialCommon[i], pos);
+			pos			= FindListPositionByEntity(client, CommonInfected[i]);
+			if (pos >= 0) RemoveFromArray(CommonInfected[i], pos);
+		}
 		else if (ClientType == 3) RemoveFromArray(CommonInfected[i], pos);
 		//if (!bIsInCombat[i]) AwardExperience(i);
 	}
@@ -2496,7 +2505,6 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, float p_reward, t_r
 		Points[client] += p_reward;
 		if (DisplayType > 0 && (infected == 0 || enemytype > 0)) PrintToChat(client, "%T", "points from damage reward", client, green, white, green, p_reward, blue);
 	}
-	if (!TheRoundHasEnded) CheckKillPositions(client, true);
 }
 
 stock GetBulletOrMeleeHealAmount(healer, target, damage, damagetype, bool isMelee) {

@@ -3,6 +3,21 @@
 
 "Phrases"
 {
+	"player end of map roll award"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:3.3f},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s}"
+		"en"				"{1}{2} {3}received a {4}+{5}{6} {7} {8} {9} {10}augment {11}for surviving."
+	}
+	"player loot award"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:3.3f},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s}"
+		"en"				"{1}{2} {3}found a {4}+{5}{6} {7} {8} {9} {10}augment {11}on an infected corpse."
+	}
+	"end of map augment rolls"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s}"
+		"en"				"{1}Attempting {2}{3} {4}augment rolls for all {5}"
+	}
 	"cleric augment info"
 	{
 		"en"				"Cleric"
@@ -86,6 +101,14 @@
 	"giveaway augment"
 	{
 		"en"				"Put on the marketplace for free"
+	}
+	"cannot equip forsale augment"
+	{
+		"en"				"Equip unavailable (listed on market)"
+	}
+	"remove augment from sale"
+	{
+		"en"				"Remove market listing"
 	}
 	"disassemble augment"
 	{
@@ -2237,7 +2260,7 @@
 	}
 	"player damage to special"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:i},{9:s}"
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s}"
 		"en"				"{1}{2} {3}lands the killing blow on {4}{5} {6}for {7}{8} {9}damage"
 	}
 	"killed special infected"
