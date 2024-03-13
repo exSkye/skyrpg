@@ -3,6 +3,70 @@
 
 "Phrases"
 {
+	"weak damage increase i"
+	{
+		"en"				"Shadow Damage I"
+	}
+	"weak damage increase ii"
+	{
+		"en"				"Shadow Damage II"
+	}
+	"weak damage increase iii"
+	{
+		"en"				"Shadow Damage III"
+	}
+	"weak damage increase"
+	{
+		"en"				"Deal increased damage whilst black and white."
+	}
+	"heal spec i"
+	{
+		"en"				"Healer Proficiency I"
+	}
+	"heal spec ii"
+	{
+		"en"				"Healer Proficiency II"
+	}
+	"heal spec i info"
+	{
+		"en"				"Increases all healing, but also reduces all outgoing damage."
+	}
+	"heal spec ii info"
+	{
+		"en"				"Increases all healing, but also increases all damage taken."
+	}
+	"tank spec i"
+	{
+		"en"				"Tank Proficiency I"
+	}
+	"tank spec ii"
+	{
+		"en"				"Tank Proficiency II"
+	}
+	"tank spec i info"
+	{
+		"en"				"Reduces all damage taken, but also reduces all healing."
+	}
+	"tank spec ii info"
+	{
+		"en"				"Reduces all damage taken, but also reduces all damage dealt."
+	}
+	"damage spec i"
+	{
+		"en"				"DPS Proficiency I"
+	}
+	"damage spec ii"
+	{
+		"en"				"DPS Proficiency II"
+	}
+	"damage spec i info"
+	{
+		"en"				"Increases all damage dealt, but also reduces all healing."
+	}
+	"damage spec ii info"
+	{
+		"en"				"Increases all damage dealt, but also increases all damage taken."
+	}
 	"player end of map roll award"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:3.3f},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s}"
@@ -344,7 +408,7 @@
 	}
 	"talent trees"
 	{
-		"en"				"Talent Trees"
+		"en"				"Node Trees"
 	}
 	"frontline talents"
 	{
@@ -623,7 +687,7 @@
 	}
 	"talent trees"
 	{
-		"en"				"Talent Trees"
+		"en"				"Node Trees"
 	}
 	"the leaderboards"
 	{
@@ -678,17 +742,17 @@
 	"show tree layers"
 	{
 		"#format"			"{1:i},{2:i},{3:i},{4:i}"
-		"en"				"trees {1}({4} talents, {2}/{3} talents required)"
+		"en"				"trees {1}({4} nodes, {2}/{3} nodes req.)"
 	}
 	"show tree layers single (locked)"
 	{
 		"#format"			"{1:i},{2:i},{3:i}"
-		"en"				"trees {1} locked({2} talents, missing {3} talent)"
+		"en"				"trees {1} locked({2} nodes, +{3} node req.)"
 	}
 	"show tree layers (locked)"
 	{
 		"#format"			"{1:i},{2:i},{3:i}"
-		"en"				"trees {1} locked({2} talents, missing {3} talents)"
+		"en"				"trees {1} locked({2} nodes, +{3} nodes req.)"
 	}
 	"layer move"
 	{
@@ -1303,7 +1367,7 @@
 	"Player Level Text"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"{3}xp{4}{5}xp\nLevel {1} / {2}\n \nScore: {6}"
+		"en"				"{3}xp{4}{5}xp\nLevel {1} / {2}\nScore: {6}"
 	}
 	"XP Level Cap"
 	{
@@ -1323,18 +1387,18 @@
 	"RPG Header"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		"en"				"{1}\n \nTalents unlocked: {2}/{3}\nTalent unlocks available: {4}"
+		"en"				"{1}\n \n{2} / {3} unlocked nodes\nYou can unlock {4} nodes"
 	}
 	"RPG Layer Eligible"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		//"en"				"{1}\n \n{3}/{4} required unlocks in Talent Trees {2}."
-		"en"				"{1}\n \nTalent Trees {2}:\n{3}/{4} talents required to unlock\nthe next set of Talent Trees."
+		//"en"				"{1}\n \n{3}/{4} required unlocks in Node Tree {2}."
+		"en"				"{1}\n \nNode Tree {2}:\n{3} / {4} req. nodes."
 	}
 	"RPG Layer Not Eligible"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"{1}\n \nTalent Trees {2} is locked.\nYou can still view the talents in this tree."
+		"en"				"{1}\n \nNode Tree {2} is locked, but you can\nstill view this tree."
 	}
 	"attribute no layer progress"
 	{
@@ -1375,7 +1439,7 @@
 	}
 	"RPG Menu"
 	{
-		"en"				"Talent trees"
+		"en"				"Node trees"
 	}
 	"Buy Menu Option 1"
 	{

@@ -191,6 +191,43 @@ public Action Timer_TickingMine(Handle timer, any entity) {
 	return Plugin_Stop;
 }
 
+stock float GetTalentModifier(int client, int modifierType = MODIFIER_HEALING) {
+	if (modifierType == MODIFIER_HEALING) {
+		float healingBonus = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		healingBonus += GetAbilityStrengthByTrigger(client, _, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		float healingPenalty = GetAbilityStrengthByTrigger(client, _, "lessHealsMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		healingPenalty += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		if (healingBonus - healingPenalty < -0.9) healingBonus = -0.9;
+		else healingBonus -= healingPenalty;
+		return healingBonus;
+	}
+	else if (modifierType == MODIFIER_TANKING) {
+		float tankyBonus = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		tankyBonus += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		float tankyPenalty = GetAbilityStrengthByTrigger(client, _, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		tankyPenalty += GetAbilityStrengthByTrigger(client, _, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		if (tankyBonus - tankyPenalty > 0.9) tankyBonus = 0.9;
+		else tankyBonus -= tankyPenalty;
+		return tankyBonus;
+	}
+	else if (modifierType == MODIFIER_DAMAGE) {	// MODIFIER_DAMAGE
+		float damageBonus = GetAbilityStrengthByTrigger(client, _, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		damageBonus += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		float damagePenalty = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		damagePenalty += GetAbilityStrengthByTrigger(client, _, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		if (damageBonus - damagePenalty < -0.9) damageBonus = -0.9;
+		else damageBonus -= damagePenalty;
+		return damageBonus;
+	}
+	return 0.0;
+}
+
 public Action Timer_ShowHUD(Handle timer, any client) {
 	if (!b_IsActiveRound || !IsLegitimateClient(client)) return Plugin_Stop;
 	if (!IsPlayerAlive(client)) return Plugin_Continue;
@@ -225,12 +262,15 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 		mymaxhealth = GetMaximumHealth(client);
 		if (ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
 			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
+			// float mod = GetTalentModifier(client, MODIFIER_HEALING);
+			// if (mod != 0.0) healregenamount += mod;
 			if (healregenamount > 0.0) {
-				HealPlayer(client, client, healregenamount, 'h', true);
+				//PrintToChat(client, "heal regen for %3.3f", healregenamount);
+				//HealPlayer(client, client, healregenamount, 'h', true);
 				float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", false);
 				if (clericHealPercentage > 0.0) {
 					healregenamount *= clericHealPercentage;
-					if (healregenamount < 1.0) healregenamount = 1.0;
+					if (healregenamount < 1.0) healregenamount = 1.1;
 					new playersInRange = 0;
 					new Float:clientPos[3];
 					GetClientAbsOrigin(client, clientPos);
@@ -239,11 +279,11 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 						if (!IsLegitimateClientAlive(teammate) || GetClientTeam(teammate) != TEAM_SURVIVOR) continue;
 						float teammatePos[3];
 						GetClientAbsOrigin(teammate, teammatePos);
-						if (GetVectorDistance(clientPos, teammatePos) > 384.0 || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
+						if (GetVectorDistance(clientPos, teammatePos) > 256.0 || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
 						playersInRange++;
 						HealPlayer(teammate, client, healregenamount, 'h', true);
 					}
-					if (playersInRange > 0) CreateRing(client, 384.0, "green", "32.0", _, 0.5, _, true);
+					if (playersInRange > 0) CreateRing(client, 256.0, "green", "32.0", false, 0.5);
 				}
 			}
 		}
@@ -1098,12 +1138,12 @@ public Action Timer_CheckIfHooked(Handle timer) {
 		// scenario will not end if there are bots alive because dead players can take control of them.
 		b_IsMissionFailed = true;
 		CallRoundIsOver();
-		if (StrContains(TheCurrentMap, "helms", false) != -1) {
-			PrintToChatAll("\x04Due to VScripts issue, this map must be restarted to prevent a server crash - Restarting in 1 second.");
-			LogMessage("Restarting %s map to avoid VScripts crash.", TheCurrentMap);
-			// need to force-teleport players here on new spawn: 4087.998291 11974.557617 -269.968750
-			CreateTimer(1.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
-		}
+		// if (StrContains(TheCurrentMap, "helms", false) != -1) {
+		// 	PrintToChatAll("\x04Due to VScripts issue, this map must be restarted to prevent a server crash - Restarting in 1 second.");
+		// 	LogMessage("Restarting %s map to avoid VScripts crash.", TheCurrentMap);
+		// 	// need to force-teleport players here on new spawn: 4087.998291 11974.557617 -269.968750
+		// 	CreateTimer(1.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
+		// }
 		//else ExecCheatCommand(_, "scenario_end");
 		// else {
 		// 	//L4D_RestartScenarioFromVote(TheCurrentMap);

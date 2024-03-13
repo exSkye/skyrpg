@@ -14,10 +14,8 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.4.9"
-#define CLASS_VERSION				"v1.0"
+#define PLUGIN_VERSION				"v3.4.5.1"
 #define PROFILE_VERSION				"v1.5"
-#define LOOT_VERSION				"v0.1"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
 #define PLUGIN_NAME					"RPG Construction Set"
@@ -35,6 +33,10 @@
 #define CONFIG_CLASSNAMES			"rpg/classnames.cfg"
 #define LOGFILE						"rum_rpg.txt"
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
+
+#define MODIFIER_HEALING			0
+#define MODIFIER_TANKING			1
+#define MODIFIER_DAMAGE				2	// not really used...
 //	================================
 #define DEBUG     					false
 //	================================
@@ -43,6 +45,27 @@
 
 
 /*
+ Version 3.4.5.1 Rebalance/redesign
+ - Added 6 new ability triggers for new talents designed to stop magetanking (super strong with no drawbacks in all 3 areas) without limiting player agency:
+	lessDamageMoreHeals
+	lessDamageMoreTanky
+	lessTankyMoreHeals
+	lessTankyMoreDamage
+	lessHealsMoreDamage
+	lessHealsMoreTanky
+ - Players with no augments equipped (or new players) will now have the proper levels of 0 applied to empty augment slots.
+ - Fixed talent active time incorrectly being set to 0.0s for any applicable talent; talents in the menu should now also show the correct value for this.
+ - Added wider potential force and potential physics impact ranges to loot bags on spawn.
+ - MoreHeals does not apply to self-health regen
+ - Fixed CLERIC visual effect not showing
+	
+	these talents ignore "activator ability effects?" and "target ability effects?" and "activator / target required?" fields should be set to -1 or omitted.
+ Version 3.4.4.9a hotfix
+ - Fixed an issue where talents reducing incoming damage would reduce the efficacy of talents based on incoming damage, such as thorns.
+ - Added rating multiplier for augment levels to balance augments.
+ - Fixed a bug where common infected receiving fatal damage would not die from that attack if it was from a bullet.
+ - When a client leaves the game, their augment/inventory data is now properly cleared.
+
  Version 3.4.4.9
  - Fixed visual bugs on talent info screen for abilities with consecutive hit multipliers that were showing -100% instead of the correct value previously.
  - physics objects that can be interacted with can now be generated for loot, to give players a sense of loot being 'physical' objects.
@@ -968,6 +991,7 @@ int iHandicapLevelDifference;
 int iWitchHealthBase;
 float fWitchHealthMult;
 int RatingPerLevel;
+int RatingPerAugmentLevel;
 int RatingPerLevelSurvivorBots;
 int iCommonBaseHealth;
 float fCommonLevelHealthMult;
@@ -1253,6 +1277,11 @@ Handle playerLootOnGround[MAXPLAYERS + 1];
 int iExplosionBaseDamagePipe;
 int iExplosionBaseDamage;
 float fProficiencyLevelDamageIncrease;
+int playerCurrentAugmentLevel[MAXPLAYERS + 1];
+Handle possibleLootPoolTarget[MAXPLAYERS + 1];
+Handle possibleLootPoolActivator[MAXPLAYERS + 1];
+int iJetpackEnabled;
+float fJumpTimeToActivateJetpack;
 
 public Action CMD_DropWeapon(int client, int args) {
 	int CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1832,6 +1861,8 @@ stock CreateAllArrays() {
 		if (equippedAugmentsIDCodes[i] == INVALID_HANDLE) equippedAugmentsIDCodes[i] = CreateArray(32);
 		if (lootRollData[i] == INVALID_HANDLE) lootRollData[i] = CreateArray(32);
 		if (playerLootOnGround[i] == INVALID_HANDLE) playerLootOnGround[i] = CreateArray(32);
+		if (possibleLootPoolTarget[i] == INVALID_HANDLE) possibleLootPoolTarget[i] = CreateArray(32);
+		if (possibleLootPoolActivator[i] == INVALID_HANDLE) possibleLootPoolActivator[i] = CreateArray(32);
 	}
 	CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	b_FirstLoad = true;
@@ -2226,23 +2257,23 @@ public ReadyUp_CheckpointDoorStartOpened() {
 					RespawnImmunity[i] = false;
 				}
 			}
-			// decl String:TheCurr[64];
-			// GetCurrentMap(TheCurr, sizeof(TheCurr));
-			// if (StrContains(TheCurr, "helms_deep", false) != -1) {
-			// 	// the bot has to be teleported to the machine gun, because samurai blocks the teleportation in the actual map scripting
-			// 	new Float:TeleportBots[3];
-			// 	TeleportBots[0] = 1572.749146;
-			// 	TeleportBots[1] = -871.468811;
-			// 	TeleportBots[2] = 62.031250;
-			// 	decl String:TheModel[64];
-			// 	for (new i = 1; i <= MaxClients; i++) {
-			// 		if (IsLegitimateClientAlive(i) && IsFakeClient(i)) {
-			// 			GetClientModel(i, TheModel, sizeof(TheModel));
-			// 			if (StrEqual(TheModel, LOUIS_MODEL)) TeleportEntity(i, TeleportBots, NULL_VECTOR, NULL_VECTOR);
-			// 		}
-			// 	}
-			// 	PrintToChatAll("\x04Man the gun, Louis!");
-			// }
+			decl String:TheCurr[64];
+			GetCurrentMap(TheCurr, sizeof(TheCurr));
+			if (StrContains(TheCurr, "helms_deep", false) != -1) {
+				// the bot has to be teleported to the machine gun, because samurai blocks the teleportation in the actual map scripting
+				new Float:TeleportBots[3];
+				TeleportBots[0] = 1572.749146;
+				TeleportBots[1] = -871.468811;
+				TeleportBots[2] = 62.031250;
+				decl String:TheModel[64];
+				for (new i = 1; i <= MaxClients; i++) {
+					if (IsLegitimateClientAlive(i) && IsFakeClient(i)) {
+						GetClientModel(i, TheModel, sizeof(TheModel));
+						if (StrEqual(TheModel, LOUIS_MODEL)) TeleportEntity(i, TeleportBots, NULL_VECTOR, NULL_VECTOR);
+					}
+				}
+				PrintToChatAll("\x04Man the gun, Louis!");
+			}
 		}
 		b_IsCampaignComplete				= false;
 		if (ReadyUpGameMode != 3) b_IsRoundIsOver						= false;
@@ -3017,6 +3048,10 @@ stock CallRoundIsOver() {
 			// need to force-teleport players here on new spawn: 4087.998291 11974.557617 -269.968750
 			CreateTimer(5.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
 		}
+		else if (StrContains(TheCurrentMap, "helms", false) != -1) {
+			PrintToChatAll("\x04Due to VScripts issue, this map must be restarted to prevent a server crash...");
+			CreateTimer(3.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 }
 
@@ -3028,8 +3063,8 @@ stock CallRoundIsOver() {
 // }
 
 public Action Timer_ResetMap(Handle timer) {
-	if (StrContains(TheCurrentMap, "helms", false) != -1) L4D_RestartScenarioFromVote(TheCurrentMap);
-	ServerCommand("changelevel %s", TheCurrentMap);
+	//if (StrContains(TheCurrentMap, "helms", false) != -1) L4D_RestartScenarioFromVote(TheCurrentMap);
+	if (StrContains(TheCurrentMap, "helms", false) != -1) ServerCommand("changelevel %s", TheCurrentMap);
 	return Plugin_Stop;
 }
 
@@ -3522,6 +3557,8 @@ stock LoadMainConfig() {
 	iExplosionBaseDamagePipe			= GetConfigValueInt("base pipebomb damage?", 500);
 	iExplosionBaseDamage				= GetConfigValueInt("base explosion damage for non pipebomb sources?", 500);
 	fProficiencyLevelDamageIncrease		= GetConfigValueFloat("weapon proficiency level bonus damage?", 0.01);
+	iJetpackEnabled						= GetConfigValueInt("jetpack enabled?", 1);
+	fJumpTimeToActivateJetpack			= GetConfigValueFloat("jump press time to activate jetpack?", 0.4);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
@@ -3555,7 +3592,7 @@ stock EndOfMapRollLoot() {
 
 			// int min = (Rating[i] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[i];
 			// int max = (BestRating[i] > min) ? BestRating[i] : min+1;
-			GenerateAndGivePlayerAugment(i, BestRating[i]);
+			GenerateAndGivePlayerAugment(i);
 		}
 	}
 }
@@ -3577,7 +3614,7 @@ stock RollLoot(client, enemyClient) {
 		if (iLootBagsAreGenerated != 1) GenerateAndGivePlayerAugment(client);
 		else {
 			int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
-			int max = (BestRating[client] > min) ? BestRating[client] : min+1;
+			int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
 			PushArrayCell(playerLootOnGround[client], GetRandomInt(min,max));
 			CreateItemDrop(client, enemyClient);
 		}
@@ -3599,7 +3636,7 @@ stock RollLoot(client, enemyClient) {
 stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, bool isALootBag = false) {
 	if (IsFakeClient(client)) return;
 	int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
-	int max = (BestRating[client] > min) ? BestRating[client] : min+1;
+	int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
 	int potentialItemRatingOverride = (forceAugmentItemLevel > 0) ? forceAugmentItemLevel : GetRandomInt(min, max);
 	//if (potentialItemRatingOverride == 0 && Rating[client] < iRatingRequiredForAugmentLootDrops) return;
 	int size = GetArraySize(myAugmentIDCodes[client]);
@@ -3638,7 +3675,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	int lootrolls[3];
 	int roll = GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating);
 	potentialItemRating -= roll;
-	potentialItemRating -= iRatingRequiredForAugmentLootDrops;
+	//potentialItemRating -= iRatingRequiredForAugmentLootDrops;
 	thisAugmentRatingRequiredForNextTier /= 2;
 	lootrolls[0] = roll;
 	int lootsize = 0;
@@ -3646,7 +3683,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		if (lootsize == 0) lootsize++;
 		roll = GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating);
 		potentialItemRating -= roll;
-		potentialItemRating -= iRatingRequiredForAugmentLootDrops;
+		//potentialItemRating -= iRatingRequiredForAugmentLootDrops;
 		thisAugmentRatingRequiredForNextTier /= 2;
 		lootrolls[lootsize] = roll;
 		if (lootsize < 2 && thisAugmentRatingRequiredForNextTier > iRatingRequiredForAugmentLootDrops && potentialItemRating > thisAugmentRatingRequiredForNextTier) lootsize++;
@@ -3668,7 +3705,8 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	char targetEffects[64];
 
 	if (type == 1 && lootsize > 0) {
-		pos = GetRandomInt(0, lootSize-1);
+		pos = GetRandomInt(0, GetArraySize(possibleLootPoolActivator[client]));
+		//pos = GetArrayCell(possibleLootPoolActivator[client], pos);
 		GetArrayString(myLootDropActivatorEffectsAllowed[client], pos, activatorEffects, 64);
 		SetArrayString(myAugmentActivatorEffects[client], size, activatorEffects);
 		if (!StrEqual(activatorEffects, "-1")) {
@@ -3685,7 +3723,8 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	SetArrayCell(myAugmentInfo[client], size, augmentActivatorRating, 4);
 	type = GetRandomInt(1, possibilities);
 	if (type == 1 && lootsize > 1) {
-		pos = GetRandomInt(0, lootSize-1);
+		pos = GetRandomInt(0, GetArraySize(possibleLootPoolTarget[client]));
+		//pos = GetArrayCell(possibleLootPoolTarget[client], pos);
 		GetArrayString(myLootDropTargetEffectsAllowed[client], pos, targetEffects, 64);
 		SetArrayString(myAugmentTargetEffects[client], size, targetEffects);
 		if (!StrEqual(targetEffects, "-1")) augmentTargetRating = lootrolls[1];
@@ -3710,7 +3749,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	else Format(augmentStrengthText, 10, "perfect");
 	Format(text, sizeof(text), "{B}%s {N}found a {B}+{OG}%3.3f{B}PCT {O}%s {B}%s %s {O}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
 	if (forceAugmentItemLevel < 1) Format(text, sizeof(text), "%s {N}on a corpse.", text);
-	else if (isALootBag) Format(text, sizeof(text), "%s {N}searching a bag.", text);
+	else if (isALootBag) Format(text, sizeof(text), "%s {N}in the bag.", text);
 	else {
 		if (iAllPlayersEndMapLootRolls != 1) Format(text, sizeof(text), "%s {N}in the safe room.", text);
 		else Format(text, sizeof(text), "%s {N}as a participation reward.", text);
@@ -3742,6 +3781,8 @@ stock void GetUniqueAugmentLootDropItemCode(char[] sTime) {
 
 stock void SetLootDropCategories(client) {
 	ClearArray(possibleLootPool[client]);
+	ClearArray(possibleLootPoolActivator[client]);
+	ClearArray(possibleLootPoolTarget[client]);
 	ClearArray(myLootDropCategoriesAllowed[client]);
 	ClearArray(myLootDropTargetEffectsAllowed[client]);
 	ClearArray(myLootDropActivatorEffectsAllowed[client]);
@@ -3770,9 +3811,16 @@ stock void SetLootDropCategories(client) {
 		GetArrayString(LootDropCategoryToBuffValues[client], TALENT_TREE_CATEGORY, talentName, sizeof(talentName));
 		PushArrayString(myLootDropCategoriesAllowed[client], talentName);
 		GetArrayString(LootDropCategoryToBuffValues[client], ACTIVATOR_ABILITY_EFFECTS, talentName, sizeof(talentName));
-		PushArrayString(myLootDropActivatorEffectsAllowed[client], talentName);
+		if (!StrEqual(talentName, "-1") && !StrEqual(talentName, "0")) {
+			PushArrayString(myLootDropActivatorEffectsAllowed[client], talentName);
+			PushArrayCell(possibleLootPoolActivator[client], i);
+		}
+
 		GetArrayString(LootDropCategoryToBuffValues[client], TARGET_ABILITY_EFFECTS, talentName, sizeof(talentName));
-		PushArrayString(myLootDropTargetEffectsAllowed[client], talentName);
+		if (!StrEqual(talentName, "-1") && !StrEqual(talentName, "0")) {
+			PushArrayString(myLootDropTargetEffectsAllowed[client], talentName);
+			PushArrayCell(possibleLootPoolTarget[client], i);
+		}
 	}
 }
 

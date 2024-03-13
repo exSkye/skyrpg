@@ -15,6 +15,7 @@ void MySQL_Init()
 
 	iServerLevelRequirement		= GetConfigValueInt("server level requirement?");
 	RatingPerLevel				= GetConfigValueInt("rating level multiplier?");
+	RatingPerAugmentLevel		= GetConfigValueInt("rating per augment level multiplier?", 1);
 	RatingPerLevelSurvivorBots	= GetConfigValueInt("rating level multiplier survivor bots?");
 	InfectedTalentLevel			= GetConfigValueInt("talent level multiplier?");
 	fEnrageModifier				= GetConfigValueFloat("enrage modifier?");
@@ -1135,7 +1136,6 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `aslot%d` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, i+1, ActionBarText, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 	}
-	if (GetArraySize(equippedAugments[client]) != iNumAugments) ResizeArray(equippedAugments[client], iNumAugments);
 	int numAugmentsClientOwns = GetArraySize(myAugmentIDCodes[client]);
 	for (int i = 0; i < numAugmentsClientOwns; i++) {
 		char itemCode[64];
@@ -1186,6 +1186,9 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 		Format(BuildingStack[client], sizeof(BuildingStack[]), "none");
 		Format(LoadoutName[client], sizeof(LoadoutName[]), "none");
+
+		ClearEquippedAugmentData(client);
+		ClearLocalClientAugmentData(client);
 	}
 
 	/*size				=	GetArraySize(a_Store);
@@ -1393,22 +1396,6 @@ stock bool HasCommandAccess(client, char[] accessflags) {
 	}
 	// Old Method -> if (HasCommandAccess(client, "z") || HasCommandAccess(client, "a")) return true;
 	return false;
-}
-
-public LoadInventory_Generate(Handle owner, Handle hndl, const char[] error, any client) {
-
-	if (hndl != INVALID_HANDLE) {
-
-		char text[128];
-
-		while (SQL_FetchRow(hndl)) {
-
-			SQL_FetchString(hndl, 0, text, sizeof(text));
-			PushArrayString(PlayerInventory[client], text);
-			if (SQL_MoreRows(hndl)) SQL_FetchMoreResults(hndl);
-		}
-		LoadInventoryEx(client);
-	}
 }
 
 public ReadProfiles_Generate(Handle owner, Handle hndl, const char[] error, any client) {
@@ -1773,28 +1760,41 @@ stock void ClearLocalClientAugmentData(client) {
 	ClearArray(myAugmentTargetEffects[client]);
 }
 
+stock ClearEquippedAugmentData(int client) {
+	// clear
+	ClearArray(equippedAugments[client]);
+	ClearArray(equippedAugmentsCategory[client]);
+	ClearArray(equippedAugmentsActivator[client]);
+	ClearArray(equippedAugmentsTarget[client]);
+	ClearArray(equippedAugmentsIDCodes[client]);
+	// reset
+	ResizeArray(equippedAugments[client], iNumAugments);
+	ResizeArray(equippedAugmentsCategory[client], iNumAugments);
+	ResizeArray(equippedAugmentsActivator[client], iNumAugments);
+	ResizeArray(equippedAugmentsTarget[client], iNumAugments);
+	ResizeArray(equippedAugmentsIDCodes[client], iNumAugments);
+	// fill
+	for (int i = 0; i < iNumAugments; i++) {
+		SetArrayString(equippedAugmentsCategory[client], i, "none");
+		SetArrayString(equippedAugmentsActivator[client], i, "none");
+		SetArrayString(equippedAugmentsTarget[client], i, "none");
+		SetArrayString(equippedAugmentsIDCodes[client], i, "none");
+		SetArrayCell(equippedAugments[client], i, 0);
+		SetArrayCell(equippedAugments[client], i, 0, 1);
+		SetArrayCell(equippedAugments[client], i, 0, 2);
+		SetArrayCell(equippedAugments[client], i, 0, 3);
+		SetArrayCell(equippedAugments[client], i, 0, 4);
+		SetArrayCell(equippedAugments[client], i, 0, 5);
+	}
+}
+
 public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] error, any client) {
 	if (hndl != null) {
 		char text[512];
 		char key[64];
 
 		if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
-		ClearArray(equippedAugments[client]);
-		ClearArray(equippedAugmentsCategory[client]);
-		ClearArray(equippedAugmentsActivator[client]);
-		ClearArray(equippedAugmentsTarget[client]);
-		ClearArray(equippedAugmentsIDCodes[client]);
-
-		ResizeArray(equippedAugments[client], iNumAugments);
-		ResizeArray(equippedAugmentsCategory[client], iNumAugments);
-		ResizeArray(equippedAugmentsActivator[client], iNumAugments);
-		ResizeArray(equippedAugmentsTarget[client], iNumAugments);
-		ResizeArray(equippedAugmentsIDCodes[client], iNumAugments);
-
-		for (int i = 0; i < iNumAugments; i++) {
-			SetArrayString(equippedAugmentsCategory[client], i, "none");
-		}
-
+		ClearEquippedAugmentData(client);
 		ClearLocalClientAugmentData(client);
 		while (SQL_FetchRow(hndl)) {
 			SQL_FetchString(hndl, 0, key, sizeof(key));
@@ -1948,6 +1948,12 @@ stock SetClientTalentStrength(client) {
 		SetArrayCell(MyTalentStrengths[client], i, f_Cooldown, 2);
 		SetArrayCell(MyTalentStrength[client], i, 1);
 	}
+	int iCurrentAugmentLevel = 0;
+	for (int i = 0; i < iNumAugments; i++) {
+		int iCur = GetArrayCell(equippedAugments[client], i, 2);
+		if (iCur > 0) iCurrentAugmentLevel += iCur;
+	}
+	playerCurrentAugmentLevel[client] = (iCurrentAugmentLevel / iAugmentLevelDivisor);
 	SetLootDropCategories(client);
 	b_IsLoaded[client] = true;
 	b_IsLoading[client] = false;
@@ -2259,6 +2265,8 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 		b_IsHooked[client] = true;
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	}*/
+	ClearEquippedAugmentData(client);
+	ClearLocalClientAugmentData(client);
 	ClearArray(ApplyDebuffCooldowns[client]);
 	if (ISFROZEN[client] != INVALID_HANDLE) {
 		KillTimer(ISFROZEN[client]);

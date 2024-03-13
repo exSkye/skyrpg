@@ -1610,10 +1610,6 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 			Format(MenuSelection[client], sizeof(MenuSelection[]), "%s", config);
 			BuildPointsMenu(client, menuname, config);
 		}
-		else if (StrEqual(config, "inventory", false)) {
-
-			LoadInventory(client);
-		}
 		else if (StrEqual(config, "proficiency", false)) {
 			LoadProficiencyData(client);
 		}
@@ -1711,19 +1707,6 @@ stock UpgradesUsed(client, char[] text, size) {
 	Format(text, size, "(%s: %d / %d)", text, PlayerUpgradesTotal[client], MaximumPlayerUpgrades(client));
 }
 
-stock LoadInventory(client) {
-
-	if (hDatabase == INVALID_HANDLE) return;
-	char key[64];
-	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
-	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
-	Format(key, sizeof(key), "%s%s", key, LOOT_VERSION);
-	char tquery[128];
-	Format(tquery, sizeof(tquery), "SELECT `owner_id` FROM `%s_loot` WHERE (`owner_id` = '%s');", TheDBPrefix, key);
-	ClearArray(PlayerInventory[client]);
-	SQL_TQuery(hDatabase, LoadInventory_Generate, tquery, client);
-}
-
 stock LoadProficiencyData(client) {
 	Handle menu = CreateMenu(LoadProficiencyMenuHandle);
 	ClearArray(RPGMenuPosition[client]);
@@ -1768,58 +1751,6 @@ public LoadProficiencyMenuHandle(Handle menu, MenuAction action, client, slot) {
 		if (slot == MenuCancel_ExitBack) BuildMenu(client);
 	}
 	if (action == MenuAction_End) CloseHandle(menu);
-}
-
-stock LoadInventoryEx(client) {
-
-	Handle menu = CreateMenu(LoadInventoryMenuHandle);
-	ClearArray(RPGMenuPosition[client]);
-
-	char text[64];
-	char pos[10];
-	char result[3][64];
-
-	Format(text, sizeof(text), "%T", "Inventory", client);
-	SetMenuTitle(menu, text);
-
-	int size = GetArraySize(PlayerInventory[client]);
-	if (size < 1) {
-
-		Format(text, sizeof(text), "%T", "inventory empty", client);
-		AddMenuItem(menu, text, text);
-	}
-	else {
-
-		for (int i = 0; i < size; i++) {
-
-			GetArrayString(PlayerInventory[client], i, text, sizeof(text));
-			ExplodeString(text, "+", result, 3, 64);
-			AddMenuItem(menu, result[1], result[1]);
-
-			Format(pos, sizeof(pos), "%d", i);
-			PushArrayString(RPGMenuPosition[client], pos);
-		}
-	}
-	SetMenuExitBackButton(menu, true);
-	DisplayMenu(menu, client, 0);
-}
-
-public LoadInventoryMenuHandle(Handle menu, MenuAction action, client, slot) {
-
-	if (action == MenuAction_Select) {
-
-	}
-	else if (action == MenuAction_Cancel) {
-
-		if (slot == MenuCancel_ExitBack) {
-
-			BuildMenu(client);
-		}
-	}
-	if (action == MenuAction_End) {
-
-		CloseHandle(menu);
-	}
 }
 
 public Handle DisplayTheLeaderboards(client) {
@@ -2309,7 +2240,8 @@ public void CharacterSheetMenu(client) {
 			ReplaceString(text, sizeof(text), "{DR}", weaponDamage);
 		}
 		if (StrContains(text, "{HPRGN}", true) != -1) {
-			Format(weaponDamage, sizeof(weaponDamage), "%d", RoundToCeil(GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, true, 0, _, _, _, 1)));
+			int healRegen = RoundToCeil(GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, true, 0, _, _, _, 1));
+			Format(weaponDamage, sizeof(weaponDamage), "%d", healRegen);
 			ReplaceString(text, sizeof(text), "{HPRGN}", weaponDamage);
 		}
 		if (!IsMeleeAttacker(client)) {
@@ -2430,6 +2362,18 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 			if (fSurvivorHealthBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
 		}
 		else if (fSurvivorDamageBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+	}
+	if (request != 7 && request % 2 == 0) {
+		// show the damage increase/decrease if the player has associated talents doing so.
+		float TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		float TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		TheAbilityMultiplier += TheAbilityMultiplierAlt;
+		iResult -= RoundToCeil(TheAbilityMultiplier);
+
+		TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		TheAbilityMultiplier += TheAbilityMultiplierAlt;
+		iResult += RoundToCeil(TheAbilityMultiplier);
 	}
 	//result 7 returns damage shield values. result 8(which is even so no check required) returns damage reduction ability strength.
 	/*if (zombieclass != 0 && (request % 2 == 0 || request == 7)) {
@@ -3098,10 +3042,9 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	//we want to add support for a "type" of talent.
 	char sTalentStrengthType[64];
 	if (infotype == 0 || infotype == 1) GetArrayString(Values, TALENT_UPGRADE_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
-	else if (infotype == 2) GetArrayString(Values, TALENT_ACTIVE_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
 	else if (infotype == 3) GetArrayString(Values, TALENT_COOLDOWN_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
 	int istrength = RoundToCeil(f_Strength);
-	float f_StrengthIncrement = StringToFloat(sTalentStrengthType);
+	float f_StrengthIncrement = (infotype == 2) ? GetArrayCell(Values, TALENT_ACTIVE_STRENGTH_VALUE) : StringToFloat(sTalentStrengthType);
 	if (istrength < 1) return 0.0;
 	f_StrengthPoint = f_StrengthIncrement;
 

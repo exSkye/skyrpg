@@ -1723,7 +1723,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 									if (bJetpack[client]) ToggleJetpack(client, true);
 								}
 							}
-							if (!bIsSurvivorFatigue[client] && !bJetpack[client] && (isClientHoldingJump && (JumpTime[client] >= 0.2)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && MyAttacker == -1) ToggleJetpack(client);
+							if (!bIsSurvivorFatigue[client] && !bJetpack[client] && (isClientHoldingJump && (JumpTime[client] >= fJumpTimeToActivateJetpack)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && MyAttacker == -1) ToggleJetpack(client);
 							if (!bJetpack[client]) MovementSpeed[client] = fSprintSpeed;
 						}
 						buttons &= ~IN_SPEED;
@@ -1784,6 +1784,7 @@ stock float HeightDifference(float clientZ, float tankZ) {
 }
 
 stock ToggleJetpack(client, DisableJetpack = false) {
+	if (iJetpackEnabled != 1) return;
 
 	float ClientPos[3];
 	GetClientAbsOrigin(client, ClientPos);
@@ -2521,10 +2522,8 @@ stock GetBulletOrMeleeHealAmount(healer, target, damage, damagetype, bool isMele
 		if (IsLegitimateClientAlive(target)) {
 			float TheAbilityMultiplier = GetAbilityMultiplier(target, "expo");
 			if (TheAbilityMultiplier > 0.0) iHealerAmount += RoundToCeil(iHealerAmount * TheAbilityMultiplier);
-			TheAbilityMultiplier = GetAbilityStrengthByTrigger(healer, target, "lessDamageMoreHeals", _, iHealerAmount, _, _, "d", 2, true, _, _, _, damagetype);
-			if (TheAbilityMultiplier > 0.0) iHealerAmount += RoundToCeil(iHealerAmount * TheAbilityMultiplier);
-			TheAbilityMultiplier = GetAbilityStrengthByTrigger(healer, target, "lessTankyMoreHeals", _, iHealerAmount, _, _, "d", 2, true, _, _, _, damagetype);
-			if (TheAbilityMultiplier > 0.0) iHealerAmount += RoundToCeil(iHealerAmount * TheAbilityMultiplier);
+			float healingBonus = GetTalentModifier(healer, MODIFIER_HEALING);
+			if (healingBonus > 0.0) iHealerAmount += RoundToCeil(iHealerAmount * healingBonus);
 		}
 	}
 	return iHealerAmount;
