@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.1"
+#define PLUGIN_VERSION				"v3.4.5.2"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -45,6 +45,18 @@
 
 
 /*
+ Version 3.4.5.2
+ - Added the option to specify how many roll attempts are made per player on kills. Note on common kills only the player who killed it gets the rolls.
+	"roll attempts on common kill?"
+	"roll attempts on supers kill?"
+	"roll attempts on specials kill?"
+	"roll attempts on witch kill?"
+	"roll attempts on tank kill?"
+
+	- These all default to 1, so specify in the config.cfg what the values should be.
+	- Added a check when picking up bags to see if it's the same player looting multiple bags in succession. If it is, it'll only display the "x is searching a bag..." notice once every 3 seconds.
+	- Refactored the GetBulletOrMeleeHealAmount(healer, target, damage, damagetype, bool isMelee) function in events.sp
+
  Version 3.4.5.1 Rebalance/redesign
  - Added 6 new ability triggers for new talents designed to stop magetanking (super strong with no drawbacks in all 3 areas) without limiting player agency:
 	lessDamageMoreHeals
@@ -1282,6 +1294,9 @@ Handle possibleLootPoolTarget[MAXPLAYERS + 1];
 Handle possibleLootPoolActivator[MAXPLAYERS + 1];
 int iJetpackEnabled;
 float fJumpTimeToActivateJetpack;
+int iNumLootDropChancesPerPlayer[5];
+int lastItemTime;
+char lastPlayerGrab[64];
 
 public Action CMD_DropWeapon(int client, int args) {
 	int CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -3559,6 +3574,11 @@ stock LoadMainConfig() {
 	fProficiencyLevelDamageIncrease		= GetConfigValueFloat("weapon proficiency level bonus damage?", 0.01);
 	iJetpackEnabled						= GetConfigValueInt("jetpack enabled?", 1);
 	fJumpTimeToActivateJetpack			= GetConfigValueFloat("jump press time to activate jetpack?", 0.4);
+	iNumLootDropChancesPerPlayer[0]		= GetConfigValueInt("roll attempts on common kill?", 1);
+	iNumLootDropChancesPerPlayer[1]		= GetConfigValueInt("roll attempts on supers kill?", 1);
+	iNumLootDropChancesPerPlayer[2]		= GetConfigValueInt("roll attempts on specials kill?", 1);
+	iNumLootDropChancesPerPlayer[3]		= GetConfigValueInt("roll attempts on witch kill?", 1);
+	iNumLootDropChancesPerPlayer[4]		= GetConfigValueInt("roll attempts on tank kill?", 1);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
@@ -3609,15 +3629,24 @@ stock RollLoot(client, enemyClient) {
 						(zombieclass == 8) ? fLootChanceTank :						// tank
 						(zombieclass > 0) ? fLootChanceSpecials : 0.0;				// special infected
 	if (fLootChance == 0.0) return;
-	int roll = GetRandomInt(1, RoundToCeil(1.0 / fLootChance));
-	if (roll == 1) {
-		if (iLootBagsAreGenerated != 1) GenerateAndGivePlayerAugment(client);
-		else {
-			int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
-			int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
-			PushArrayCell(playerLootOnGround[client], GetRandomInt(min,max));
-			CreateItemDrop(client, enemyClient);
+	// in borderlands you have a low chance of getting loot, so they throw a ton of roll attempts at you.
+	// sometimes you get an overwhelming amount, sometimes you get one item, sometimes you get nothing.
+	int numOfRollsToAttempt = (zombieclass == 10) ? iNumLootDropChancesPerPlayer[0] :
+							  (zombieclass == 9) ? iNumLootDropChancesPerPlayer[1] :
+							  (zombieclass == 7) ? iNumLootDropChancesPerPlayer[3] :
+							  (zombieclass == 8) ? iNumLootDropChancesPerPlayer[4] : iNumLootDropChancesPerPlayer[2];
+	while (numOfRollsToAttempt > 0) {
+		int roll = GetRandomInt(1, RoundToCeil(1.0 / fLootChance));
+		if (roll == 1) {
+			if (iLootBagsAreGenerated != 1) GenerateAndGivePlayerAugment(client);
+			else {
+				int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
+				int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
+				PushArrayCell(playerLootOnGround[client], GetRandomInt(min,max));
+				CreateItemDrop(client, enemyClient);
+			}
 		}
+		numOfRollsToAttempt--;
 	}
 	// int talentSelectedPos = GetArrayCell(possibleLootPool[client], GetRandomInt(0, lootPoolSize-1), 0);
 	// char text[128];

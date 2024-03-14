@@ -11653,8 +11653,13 @@ stock bool IsPlayerTryingToPickupLoot(client) {
 
 	char name[64];
 	GetClientName(client, name, sizeof(name));
+	int currentGameTime = GetTime();
 	char text[512];
-	Format(text, sizeof(text), "{B}%s {N}is searching a {O}bag...", name);
+	if (lastItemTime + 3 < currentGameTime || !StrEqual(name, lastPlayerGrab)) {
+		Format(text, sizeof(text), "{B}%s {N}is searching a {O}bag...", name);
+	}
+	lastItemTime = currentGameTime;
+	GetClientName(client, lastPlayerGrab, sizeof(lastPlayerGrab));
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
 		Client_PrintToChat(i, true, text);

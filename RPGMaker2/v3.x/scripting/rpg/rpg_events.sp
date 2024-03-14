@@ -2509,24 +2509,26 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, float p_reward, t_r
 }
 
 stock GetBulletOrMeleeHealAmount(healer, target, damage, damagetype, bool isMelee) {
-	int iHealerAmount = damage;
+	float healPercentage = 0.0;
 	if (damagetype & DMG_BULLET || damagetype & DMG_SLASH || damagetype & DMG_CLUB) {
 		if (!isMelee) {
-			iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "d", 2, true, _, _, _, damagetype));
-			iHealerAmount += RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hB", _, iHealerAmount, _, _, "healshot", 2, true, _, _, _, damagetype));
+			healPercentage = GetAbilityStrengthByTrigger(healer, target, "hB", _, 0, _, _, "d", 2, true, _, _, _, damagetype);
+			healPercentage += GetAbilityStrengthByTrigger(healer, target, "hB", _, 0, _, _, "healshot", 2, true, _, _, _, damagetype);
 		}
 		else {
-			iHealerAmount = RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "d", 2, true, _, _, _, damagetype));
-			iHealerAmount += RoundToCeil(GetAbilityStrengthByTrigger(healer, target, "hM", _, iHealerAmount, _, _, "healmelee", 2, true, _, _, _, damagetype));
+			healPercentage = GetAbilityStrengthByTrigger(healer, target, "hM", _, 0, _, _, "d", 2, true, _, _, _, damagetype);
+			healPercentage += GetAbilityStrengthByTrigger(healer, target, "hM", _, 0, _, _, "healmelee", 2, true, _, _, _, damagetype);
 		}
+		int iHealerAmount = RoundToCeil(damage * healPercentage);
 		if (IsLegitimateClientAlive(target)) {
 			float TheAbilityMultiplier = GetAbilityMultiplier(target, "expo");
 			if (TheAbilityMultiplier > 0.0) iHealerAmount += RoundToCeil(iHealerAmount * TheAbilityMultiplier);
 			float healingBonus = GetTalentModifier(healer, MODIFIER_HEALING);
 			if (healingBonus > 0.0) iHealerAmount += RoundToCeil(iHealerAmount * healingBonus);
 		}
+		return iHealerAmount;
 	}
-	return iHealerAmount;
+	return 0;
 }
 
 // Curious RPG System option?
