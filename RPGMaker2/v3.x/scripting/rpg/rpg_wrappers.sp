@@ -6832,6 +6832,7 @@ public Action Timer_AmmoActiveTimer(Handle timer, any client) {
 		bTimersRunning[client] = false;
 		ClearArray(PlayerActiveAmmo[client]);
 		ClearArray(PlayActiveAbilities[client]);
+		ClearArray(playerLootOnGround[client]);
 		return Plugin_Stop;
 	}
 	if (GetClientTeam(client) != TEAM_SURVIVOR) return Plugin_Continue; 
@@ -8331,7 +8332,7 @@ stock GetCommonBaseHealth(client = 0) {
 
 stock OnCommonInfectedCreated(entity, bool bIsDestroyed = false, finalkillclient=0, bool IsIgnite = false) {
 	if (!b_IsActiveRound) {
-		if (IsCommonInfected(entity)) AcceptEntityInput(entity, "Kill");
+		//if (IsCommonInfected(entity)) AcceptEntityInput(entity, "Kill");
 		return;
 	}
 	if (IsSpecialCommon(entity) || iDontStoreInfectedInArray == 1) return;
@@ -11671,8 +11672,8 @@ stock bool IsPlayerTryingToPickupLoot(client) {
 		if (StrContains(entityClassname, key) == -1) continue;
 		int size = GetArraySize(playerLootOnGround[i]);
 		if (size > 0) {
-			GenerateAndGivePlayerAugment(i, GetArrayCell(playerLootOnGround[i], size-1), true);
-			RemoveFromArray(playerLootOnGround[i], size-1);	// we remove the oldest loot drop stored for this player from their "queue"
+			GenerateAndGivePlayerAugment(i, GetArrayCell(playerLootOnGround[i], GetArraySize(playerLootOnGround[i])-1), true);
+			RemoveFromArray(playerLootOnGround[i], GetArraySize(playerLootOnGround[i])-1);	// we remove the oldest loot drop stored for this player from their "queue"
 			AcceptEntityInput(entity, "Kill");
 			return true;
 		}
@@ -11682,19 +11683,21 @@ stock bool IsPlayerTryingToPickupLoot(client) {
 }
 
 public Action Timer_DeleteLootBag(Handle timer, any entity) {
-	if (!IsValidEntity(entity)) return Plugin_Stop;
+	if (!b_IsActiveRound) return Plugin_Stop;
 	char text[512];
-	GetEntPropString(entity, Prop_Data, "m_iName", text, sizeof(text));
-	if (StrContains(text, "loot") == -1) return Plugin_Stop;
-	AcceptEntityInput(entity, "Kill");	// delete the loot bag.
-	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
-		char key[64];
-		GetClientAuthId(i, AuthId_Steam2, key, 64);
-		if (StrContains(text, key) == -1) continue;
-		int size = GetArraySize(playerLootOnGround[i]);
-		if (size > 0) RemoveFromArray(playerLootOnGround[i], size-1);	// we remove the oldest loot drop stored for this player from their "queue"
-		break;
+	if (IsValidEntity(entity)) {
+		GetEntPropString(entity, Prop_Data, "m_iName", text, sizeof(text));
+		if (StrContains(text, "loot") == -1) return Plugin_Stop;
+		AcceptEntityInput(entity, "Kill");	// delete the loot bag.
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+			char key[64];
+			GetClientAuthId(i, AuthId_Steam2, key, 64);
+			if (StrContains(text, key) == -1) continue;
+			int size = GetArraySize(playerLootOnGround[i]);
+			if (size > 0) RemoveFromArray(playerLootOnGround[i], size-1);	// we remove the oldest loot drop stored for this player from their "queue"
+			break;
+		}
 	}
 	return Plugin_Stop;
 }

@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.2"
+#define PLUGIN_VERSION				"v3.4.5.3"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -45,6 +45,11 @@
 
 
 /*
+ Version 3.4.5.3
+ - Fixed a bug in Timer_DeleteLootBag in rpg_wrappers.sp that could occasionally cause a server crash.
+ - Common infected will no longer be deleted in OnCommonInfectedCreated (also in rpg_wrappers.sp) during inactive rounds, as this could also occasionally cause a server crash.
+ - Fixed a bug that could cause a crash when generating new loot for a player.
+
  Version 3.4.5.2
  - Added the option to specify how many roll attempts are made per player on kills. Note on common kills only the player who killed it gets the rolls.
 	"roll attempts on common kill?"
