@@ -7918,7 +7918,7 @@ stock AddCommonInfectedDamageNoArray(client, entity, playerDamage, hitgroup, dam
 	return;
 }
 
-stock AddCommonInfectedDamage(client, entity, playerDamage, bool IsStatusDamage = false, damagetype = -1, ammotype = -1, hitgroup = -1) {
+stock AddCommonInfectedDamage(client, entity, playerDamage = 0, bool IsStatusDamage = false, damagetype = -1, ammotype = -1, hitgroup = -1) {
 	if (iDontStoreInfectedInArray == 1) {
 		AddCommonInfectedDamageNoArray(client, entity, playerDamage, hitgroup, damagetype);
 		return 1;
@@ -8355,6 +8355,14 @@ stock OnCommonInfectedCreated(entity, bool bIsDestroyed = false, finalkillclient
 	else if (iDontStoreInfectedInArray == 1) {
 		int infectedHP = GetCommonBaseHealth();
 		SetInfectedHealth(entity, infectedHP);
+	}
+	else {
+		// Add this common infected to every survivors data pool.
+		// This ensures that if the infected touches, say fire for example, before being damaged by a survivor, it takes damage from it.
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClient(i)) continue;
+			AddCommonInfectedDamage(i, entity);	// with 0 damage, it will only insert the common into the players data pool, and only if it's not already inserted.
+		}
 	}
 }
 

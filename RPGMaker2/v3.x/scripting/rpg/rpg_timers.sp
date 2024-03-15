@@ -1070,6 +1070,15 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 			else AddSpecialInfectedDamage(client, i, DamageValue);
 		}
 	}
+	float cpos[3];
+	flRangeMax /= 2;
+	for (int i = 0; i < GetArraySize(CommonInfected[client]); i++) {
+		int common = GetArrayCell(CommonInfected[client], i);
+		if (!IsCommonInfected(common) || IsSpecialCommon(common)) continue;
+		GetEntPropVector(common, Prop_Send, "m_vecOrigin", cpos);
+		if (GetVectorDistance(ClientPosition, cpos) > flRangeMax) continue;
+		AddCommonInfectedDamage(client, common, DamageValue);
+	}
 	ISEXPLODETIME[client] += flDeathInterval;
 
 	return Plugin_Continue;

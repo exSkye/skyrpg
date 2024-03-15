@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.3"
+#define PLUGIN_VERSION				"v3.4.5.3b"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -45,6 +45,11 @@
 
 
 /*
+ Version 3.4.5.3b
+ - Fixed a logic error in OnCommonInfectedCreated which didn't initialize common infected into players data pools on spawn
+		causing common infected to not take environmental damage until either damaging a survivor or being damaged by a survivor.
+ - Bomber explosion debuff will now affect common infected caught in the blast for both the super common death and when players explode.
+
  Version 3.4.5.3
  - Fixed a bug in Timer_DeleteLootBag in rpg_wrappers.sp that could occasionally cause a server crash.
  - Common infected will no longer be deleted in OnCommonInfectedCreated (also in rpg_wrappers.sp) during inactive rounds, as this could also occasionally cause a server crash.
