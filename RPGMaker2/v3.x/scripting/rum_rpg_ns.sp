@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.3b"
+#define PLUGIN_VERSION				"v3.4.5.3c"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -41,10 +41,12 @@
 #define DEBUG     					false
 //	================================
 
-
-
-
 /*
+ Version 3.4.5.3c
+ - Added additional guard statements and checks to ensure that all players and infected are hooked; unhooked players/infected cannot deal/receive damage.
+ - Players who are hit by or suffering from bomber explosions [Ex] debuff will be now placed in combat.
+ - Refactored the RollLoot method and associated functions.
+
  Version 3.4.5.3b
  - Fixed a logic error in OnCommonInfectedCreated which didn't initialize common infected into players data pools on spawn
 		causing common infected to not take environmental damage until either damaging a survivor or being damaged by a survivor.
@@ -1548,24 +1550,6 @@ public int ReadyUp_TrueDisconnect(int client) {
 	// 	CallRoundIsOver();
 	// }
 }
-/*public ReadyUp_FwdChangeTeam(client, team) {
-
-	if (team == TEAM_SPECTATOR) {
-
-		if (bIsInCombat[client]) {
-
-			IncapacitateOrKill(client, _, _, true, true);
-		}
-
-		b_IsHooked[client] = false;
-		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-	}
-	else if (team == TEAM_SURVIVOR && !b_IsHooked[client]) {
-
-		b_IsHooked[client] = true;
-		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-	}
-}*/
 
 //stock LoadConfigValues() {
 //}
@@ -2223,7 +2207,8 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		b_IsFinaleTanks = false;
 
 		for (int i = 1; i <= MaxClients; i++) {
-			if (IsLegitimateClient(i) && IsFakeClient(i) && GetClientTeam(i) == TEAM_INFECTED) ForcePlayerSuicide(i);
+			if (!IsLegitimateClient(i) || GetClientTeam(i) == TEAM_SPECTATOR) continue;
+			ChangeHook(i, true);
 		}
 		ClearArray(persistentCirculation);
 		ClearArray(CoveredInVomit);
@@ -3631,7 +3616,6 @@ stock RollLoot(client, enemyClient) {
 	if (iLootEnabled == 0 || IsFakeClient(client)) return;
 	int lootPoolSize = GetArraySize(possibleLootPool[client]);
 	if (lootPoolSize < iUpgradesRequiredForLoot) return;
-
 	int zombieclass = FindZombieClass(enemyClient);
 	float fLootChance = (zombieclass == 10) ? fLootChanceCommons :					// common
 						(zombieclass == 9) ? fLootChanceSupers :					// super
@@ -3645,18 +3629,16 @@ stock RollLoot(client, enemyClient) {
 							  (zombieclass == 9) ? iNumLootDropChancesPerPlayer[1] :
 							  (zombieclass == 7) ? iNumLootDropChancesPerPlayer[3] :
 							  (zombieclass == 8) ? iNumLootDropChancesPerPlayer[4] : iNumLootDropChancesPerPlayer[2];
-	while (numOfRollsToAttempt > 0) {
+	for (int i = numOfRollsToAttempt; i > 0; i--) {
 		int roll = GetRandomInt(1, RoundToCeil(1.0 / fLootChance));
-		if (roll == 1) {
-			if (iLootBagsAreGenerated != 1) GenerateAndGivePlayerAugment(client);
-			else {
-				int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
-				int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
-				PushArrayCell(playerLootOnGround[client], GetRandomInt(min,max));
-				CreateItemDrop(client, enemyClient);
-			}
+		if (roll != 1) continue;
+		if (iLootBagsAreGenerated != 1) GenerateAndGivePlayerAugment(client);
+		else {
+			int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
+			int max = (min + iRatingRequiredForAugmentLootDrops > BestRating[client]) ? min + iRatingRequiredForAugmentLootDrops : BestRating[client];
+			PushArrayCell(playerLootOnGround[client], GetRandomInt(min,max));
+			CreateItemDrop(client, enemyClient);
 		}
-		numOfRollsToAttempt--;
 	}
 	// int talentSelectedPos = GetArrayCell(possibleLootPool[client], GetRandomInt(0, lootPoolSize-1), 0);
 	// char text[128];

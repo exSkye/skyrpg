@@ -1727,7 +1727,7 @@ stock InitInfectedHealthForSurvivors(client) {
 	}
 }
 
-stock AddSpecialInfectedDamage(client, target, TotalDamage, bool IsTankingInstead = false, damagevariant = -1, ammotype = -1, hitgroup = -1) {
+stock AddSpecialInfectedDamage(client, target, TotalDamage = 0, bool IsTankingInstead = false, damagevariant = -1, ammotype = -1, hitgroup = -1) {
 
 	int isEntityPos = FindListPositionByEntity(target, InfectedHealth[client]);
 	//new f 0;
@@ -11680,8 +11680,8 @@ stock bool IsPlayerTryingToPickupLoot(client) {
 		if (StrContains(entityClassname, key) == -1) continue;
 		int size = GetArraySize(playerLootOnGround[i]);
 		if (size > 0) {
-			GenerateAndGivePlayerAugment(i, GetArrayCell(playerLootOnGround[i], GetArraySize(playerLootOnGround[i])-1), true);
-			RemoveFromArray(playerLootOnGround[i], GetArraySize(playerLootOnGround[i])-1);	// we remove the oldest loot drop stored for this player from their "queue"
+			GenerateAndGivePlayerAugment(i, GetArrayCell(playerLootOnGround[i], size-1), true);
+			RemoveFromArray(playerLootOnGround[i], size-1);	// we remove the oldest loot drop stored for this player from their "queue"
 			AcceptEntityInput(entity, "Kill");
 			return true;
 		}

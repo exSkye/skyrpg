@@ -427,6 +427,7 @@ stock HumanSurvivors() {
 public Action Timer_TeleportRespawn(Handle timer, any client) {
 
 	if (b_IsActiveRound && IsLegitimateClient(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
+		ChangeHook(client, true);
 
 		int target = MyRespawnTarget[client];
 
@@ -752,25 +753,39 @@ public Action Timer_Freezer(Handle timer, any client) {
 	return Plugin_Continue;
 }
 
+// public ReadyUp_FwdChangeTeam(client, team) {
+
+// 	if (IsLegitimateClient(client)) {
+
+// 		if (team == TEAM_SURVIVOR) {
+
+// 			ChangeHook(client, true);
+// 			if (!b_IsLoading[client] && !b_IsLoaded[client]) OnClientLoaded(client);
+// 		}
+// 		else if (team != TEAM_SURVIVOR) {
+
+// 			//LogToFile(LogPathDirectory, "%N is no longer a survivor, unhooking.", client);
+// 			// if (bIsInCombat[client]) {
+
+// 			// 	IncapacitateOrKill(client, _, _, true, false, true);
+// 			// }
+// 			ChangeHook(client);
+// 		}
+// 	}
+// }
+
 public ReadyUp_FwdChangeTeam(client, team) {
+	CreateTimer(0.2, Timer_ChangeTeamCheck, client, TIMER_FLAG_NO_MAPCHANGE);
+}
 
-	if (IsLegitimateClient(client)) {
-
-		if (team == TEAM_SURVIVOR) {
-
-			ChangeHook(client, true);
-			if (!b_IsLoading[client] && !b_IsLoaded[client]) OnClientLoaded(client);
-		}
-		else if (team != TEAM_SURVIVOR) {
-
-			//LogToFile(LogPathDirectory, "%N is no longer a survivor, unhooking.", client);
-			// if (bIsInCombat[client]) {
-
-			// 	IncapacitateOrKill(client, _, _, true, false, true);
-			// }
-			ChangeHook(client);
-		}
+public Action Timer_ChangeTeamCheck(Handle timer, any client) {
+	if (!IsLegitimateClient(client)) return Plugin_Stop;
+	if (GetClientTeam(client) == TEAM_SURVIVOR) {
+		ChangeHook(client, true);
+		if (!b_IsLoading[client] && !b_IsLoaded[client]) OnClientLoaded(client);
 	}
+	else ChangeHook(client);
+	return Plugin_Stop;
 }
 
 stock void ChangeHook(client, bool bHook = false) {
@@ -976,6 +991,8 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 		//CloseHandle(packagey);
 		return Plugin_Stop;
 	}
+	CombatTime[client] = GetEngineTime() + fOutOfCombatTime;
+	bIsInCombat[client] = true;
 
 	float ClientPosition[3];
 	GetClientAbsOrigin(client, ClientPosition);
@@ -1037,6 +1054,8 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 
 		GetClientAbsOrigin(i, TargetPosition);
 		if (GetVectorDistance(ClientPosition, TargetPosition) > (flRangeMax / 2)) continue;
+		CombatTime[i] = GetEngineTime() + fOutOfCombatTime;
+		bIsInCombat[i] = true;
 
 		CreateExplosion(i);	// boom boom audio and effect on the location.
 		isTargetClientABot = IsFakeClient(i);

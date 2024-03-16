@@ -3885,6 +3885,7 @@ stock Augments_Inventory(client) {
 	Format(text, 512, "augment parts: %d", augmentParts[client]);
 	SetMenuTitle(menu, text);
 	int size = GetArraySize(myAugmentIDCodes[client]);
+	//SortADTArray(myAugmentInfo[client], Sort_Ascending, Sort_Integer);
 	if (size > 0) {
 		for (int i = 0; i < size; i++) {
 			char baseMenuText[64];
