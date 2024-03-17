@@ -1191,7 +1191,7 @@ public Action Timer_CheckIfHooked(Handle timer) {
 		if (bHasWeakness[i]) {
 			SetEntityRenderMode(i, RENDER_TRANSCOLOR);
 			SetEntityRenderColor(i, 0, 0, 0, 255);
-			SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
+			SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 0);
 			if (!IsFakeClient(i) && !bWeaknessAssigned[i]) {
 				EmitSoundToClient(i, "player/heartbeatloop.wav");
 				bWeaknessAssigned[i] = true;

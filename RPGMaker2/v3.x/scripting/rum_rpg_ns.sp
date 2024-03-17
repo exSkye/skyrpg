@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.3c"
+#define PLUGIN_VERSION				"v3.4.5.4"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -41,7 +41,28 @@
 #define DEBUG     					false
 //	================================
 
+
+
+
 /*
+ Version 3.4.5.4
+ - Added the "claw" ability trigger, which fires when a special infected hurts a survivor but does not currently have an ensnare victim.
+ - Added the "poisonclaw" activator/target effect.
+ - Also added the "burnclaw" trigger effect.
+		poisonclaw adds a stack of acid burn [Ab] based on the talent strength.
+		burnclaw adds a stack of burn [Bu] based on the talent strength.
+ - Ability Trigger "v" now fires when a human infected player presses their primary mouse key.
+ - "activator class required?" in talentmenu.cfg is no longer deprecated, though omitting the key or setting it to < 0 will ignore it.
+		0 (survivor) 1 - smoker 2 - boomer 3 - hunter - 4 spitter - 5 jockey - 6 charger - 7 witch - 8 tank 9 common infected
+        Support is added back for this key in preparation of adding special infected talents
+ - reminder to swap bool IsClassAllowed(int zombieclass, int classesAllowed) to bitwise in a later update; Should be fast enough for now; this method was quick (and is still relatively fast)
+
+ Version 3.4.5.3d
+ - As there is not limitless memory, unlimited inventory space has caused... items to disappear into the ether when server memory is reached.
+		- I've added a new kv, "max persistent loot inventory size?" with a default of 50. This should also keep the overall database size down, saving $$$
+ - Updated the Central HUD (bottom, black semi-transparent background) text to not display a players level twice when looking at them.
+ - Fixed a OOB logic error that could cause a crash when generating major or perfect augments.
+
  Version 3.4.5.3c
  - Added additional guard statements and checks to ensure that all players and infected are hooked; unhooked players/infected cannot deal/receive damage.
  - Players who are hit by or suffering from bomber explosions [Ex] debuff will be now placed in combat.
@@ -1309,6 +1330,7 @@ float fJumpTimeToActivateJetpack;
 int iNumLootDropChancesPerPlayer[5];
 int lastItemTime;
 char lastPlayerGrab[64];
+int iInventoryLimit;
 
 public Action CMD_DropWeapon(int client, int args) {
 	int CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1853,10 +1875,10 @@ stock CreateAllArrays() {
 		if (playerContributionTracker[i] == INVALID_HANDLE) playerContributionTracker[i] = CreateArray(8);
 		if (myLootDropCategoriesAllowed[i] == INVALID_HANDLE) myLootDropCategoriesAllowed[i] = CreateArray(32);
 		if (LootDropCategoryToBuffValues[i] == INVALID_HANDLE) LootDropCategoryToBuffValues[i] = CreateArray(32);
-		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(32);
-		if (myAugmentCategories[i] == INVALID_HANDLE) myAugmentCategories[i] = CreateArray(32);
-		if (myAugmentOwners[i] == INVALID_HANDLE) myAugmentOwners[i] = CreateArray(32);
-		if (myAugmentInfo[i] == INVALID_HANDLE) myAugmentInfo[i] = CreateArray(32);
+		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(64);
+		if (myAugmentCategories[i] == INVALID_HANDLE) myAugmentCategories[i] = CreateArray(64);
+		if (myAugmentOwners[i] == INVALID_HANDLE) myAugmentOwners[i] = CreateArray(64);
+		if (myAugmentInfo[i] == INVALID_HANDLE) myAugmentInfo[i] = CreateArray(64);
 		if (equippedAugments[i] == INVALID_HANDLE) equippedAugments[i] = CreateArray(32);
 		if (equippedAugmentsCategory[i] == INVALID_HANDLE) equippedAugmentsCategory[i] = CreateArray(32);
 		if (GetAugmentTranslationKeys[i] == INVALID_HANDLE) GetAugmentTranslationKeys[i] = CreateArray(32);
@@ -3574,6 +3596,7 @@ stock LoadMainConfig() {
 	iNumLootDropChancesPerPlayer[2]		= GetConfigValueInt("roll attempts on specials kill?", 1);
 	iNumLootDropChancesPerPlayer[3]		= GetConfigValueInt("roll attempts on witch kill?", 1);
 	iNumLootDropChancesPerPlayer[4]		= GetConfigValueInt("roll attempts on tank kill?", 1);
+	iInventoryLimit						= GetConfigValueInt("max persistent loot inventory size?", 50);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
@@ -3726,7 +3749,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	char targetEffects[64];
 
 	if (type == 1 && lootsize > 0) {
-		pos = GetRandomInt(0, GetArraySize(possibleLootPoolActivator[client]));
+		pos = GetRandomInt(0, GetArraySize(possibleLootPoolActivator[client])-1);
 		//pos = GetArrayCell(possibleLootPoolActivator[client], pos);
 		GetArrayString(myLootDropActivatorEffectsAllowed[client], pos, activatorEffects, 64);
 		SetArrayString(myAugmentActivatorEffects[client], size, activatorEffects);
@@ -3744,7 +3767,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	SetArrayCell(myAugmentInfo[client], size, augmentActivatorRating, 4);
 	type = GetRandomInt(1, possibilities);
 	if (type == 1 && lootsize > 1) {
-		pos = GetRandomInt(0, GetArraySize(possibleLootPoolTarget[client]));
+		pos = GetRandomInt(0, GetArraySize(possibleLootPoolTarget[client])-1);
 		//pos = GetArrayCell(possibleLootPoolTarget[client], pos);
 		GetArrayString(myLootDropTargetEffectsAllowed[client], pos, targetEffects, 64);
 		SetArrayString(myAugmentTargetEffects[client], size, targetEffects);

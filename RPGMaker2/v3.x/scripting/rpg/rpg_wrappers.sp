@@ -1483,7 +1483,9 @@ stock int IfInfectedIsAttackerDoStuff(attacker, victim) {
 	char weapon[64];
 	FindPlayerWeapon(attacker, weapon, sizeof(weapon));
 	if (StrEqual(weapon, "insect_swarm")) bIsInfectedSwarm = true;
-	if (L4D2_GetSurvivorVictim(attacker) != -1) GetAbilityStrengthByTrigger(attacker, victim, "v", _, totalIncomingDamage);
+	int grabbedVictim = L4D2_GetSurvivorVictim(attacker);
+	if (grabbedVictim != -1 && IsFakeClient(attacker)) GetAbilityStrengthByTrigger(attacker, grabbedVictim, "v", _, totalIncomingDamage);
+	if (grabbedVictim == -1) GetAbilityStrengthByTrigger(attacker, victim, "claw", _, totalIncomingDamage);
 	if (bIsInfectedSwarm) GetAbilityStrengthByTrigger(attacker, victim, "T", _, totalIncomingDamage);
 	GetAbilityStrengthByTrigger(victim, attacker, "L", _, totalIncomingDamage + ((damageReduction > 0) ? damageReduction : 0));
 	GetAbilityStrengthByTrigger(attacker, victim, "D", _, totalIncomingDamage);
@@ -1739,8 +1741,8 @@ stock AddSpecialInfectedDamage(client, target, TotalDamage = 0, bool IsTankingIn
 		isEntityPos = -1;
 	}
 
-	int myzombieclass = FindZombieClass(target, true);
-	if (myzombieclass < 1 || myzombieclass > 8) return 0;
+	int myzombieclass = FindZombieClass(target);
+	if (myzombieclass < 1 || myzombieclass > 6 && myzombieclass != 8) return 0;
 
 	if (isEntityPos < 0) {
 
@@ -2198,6 +2200,17 @@ stock GetTranslationOfTalentName(client, char[] nameOfTalent, char[] translation
 // }
 // datatimers DO NOT run asynchronously as there are no threads /sadface
 
+// should probably convert to bitwise at some point but this is quick and fast to code and should do the trick for now
+bool IsClassAllowed(int zombieclass, int classesAllowed) {
+	int result = classesAllowed;
+	while (classesAllowed > 0) {
+		if (zombieclass == result % 10) return true;
+		result /= 10;
+	}
+	if (zombieclass == 0) return true;
+	return false;
+}
+
 stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] AbilityT, zombieclass = 0, damagevalue = 0,
 										bool IsOverdriveStacks = false, bool IsCleanse = false, char[] ResultEffects = "none",
 										ResultType = 0, bool bDontActuallyActivate = false, typeOfValuesToRetrieve = 1,
@@ -2301,12 +2314,15 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 	bool activatorIsOnFire = (GetClientStatusEffect(activator, "burn") > 0) ? true : false;
 	bool activatorIsSufferingAcidBurn = (GetClientStatusEffect(activator, "acid") > 0) ? true : false;
 	int activatorCurrentWeaponSlot = GetWeaponSlot(lastEntityDropped[activator]);
+	int myzombieclass = FindZombieClass(activator);
+	bool attackerIsInfectedBot = (!activatorIsSurvivor && IsFakeClient(activator)) ? true : false;
 
 	//if (IsFakeClient(activator)) return 0.0;
 	for (int i = 0; i < ASize; i++) {
 		TriggerSection[activator]	= GetArrayCell(a_Menu_Talents, i, 2);
 		GetArrayString(TriggerSection[activator], 0, TalentName, sizeof(TalentName));
-		int TheTalentStrength = GetArrayCell(MyTalentStrength[activator], i);
+		// infected bots always have a point in every talent.
+		int TheTalentStrength = (!attackerIsInfectedBot) ? GetArrayCell(MyTalentStrength[activator], i) : 1;
 		if (TheTalentStrength < 1) continue;
 		//if (IsFakeClient(activator)) PrintToChatAll("Talent: %s, strength: %d", TalentName, TheTalentStrength);
 		TheTalentStrength = 1;//continue;//{	// Infected bot controllers only
@@ -2317,6 +2333,9 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		//}
 		TriggerKeys[activator]		= GetArrayCell(a_Menu_Talents, i, 0);
 		TriggerValues[activator]	= GetArrayCell(a_Menu_Talents, i, 1);
+		
+		int activatorClassesAllowed = GetArrayCell(TriggerValues[activator], ACTIVATOR_CLASS_REQ);
+		if (activatorClassesAllowed > -1 && !IsClassAllowed(myzombieclass, activatorClassesAllowed)) continue;
 		// We need to check if this is an effect over time first because active effects have to skip the trigger check to be always active.
 		bool bIsEffectOverTime = (GetArrayCell(TriggerValues[activator], TALENT_IS_EFFECT_OVER_TIME) == 1) ? true : false;
 		bool isEffectOverTimeActive = (!bIsEffectOverTime || !EffectOverTimeActive(activator, i)) ? false : true;
@@ -4177,15 +4196,13 @@ stock SetMaximumHealth(client) {
 	return DefaultHealth[client];
 }
 
-stock FindZombieClass(client, bool SIOnly = false)
-{
-	if (!SIOnly) {
-
-		if (IsWitch(client)) return 7;
-		if (IsCommonInfected(client)) return 9;
+stock FindZombieClass(client) {
+	if (IsLegitimateClient(client)) {
 		if (GetClientTeam(client) == TEAM_SURVIVOR) return 0;
+		return GetEntProp(client, Prop_Send, "m_zombieClass");
 	}
-	if (IsLegitimateClient(client)) return GetEntProp(client, Prop_Send, "m_zombieClass");
+	if (IsWitch(client)) return 7;
+	if (IsCommonInfected(client)) return 9;
 	return -1;
 }
 
@@ -4555,6 +4572,14 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 		}
 		else if (StrEqual(Effects, "noffexplode")) {
 			CreatePlayerExplosion(activator, 384.0, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength));
+		}
+		else if (StrEqual(Effects, "poisonclaw")) {
+			int acid = RoundToFloor(iDamage * (GetDifficultyRating(victim) * fAcidDamagePlayerLevel));
+			CreateAndAttachFlame(victim, acid * (GetClientStatusEffect(victim, "acid") + 1), 10.0, 0.5, FindInfectedClient(true), "acid");
+		}
+		else if (StrEqual(Effects, "burnclaw")) {
+			int burn = RoundToFloor(iDamage * (GetDifficultyRating(victim) * fBurnPercentage));
+			CreateAndAttachFlame(victim, burn * (GetClientStatusEffect(victim, "burn") + 1), 10.0, 0.5, FindInfectedClient(true), "burn");
 		}
 		else if (StrEqual(Effects, "maghalfempty")) {
 			// this goes up here and we're gonna recursively call for "d"
@@ -9424,11 +9449,6 @@ stock DisplayHUD(client, statusType) {
 			if (myClassLevel < 0) myClassLevel = 0;
 
 			Format(TheClass, sizeof(TheClass), "%T", "Vanilla", client);
-
-
-			char classLevelText[64];
-			AddCommasToString(myClassLevel, classLevelText, sizeof(classLevelText));
-			Format(EnemyName, sizeof(EnemyName), "[%s] %s", classLevelText, EnemyName);
 			//}
 			//Format(EnemyName, sizeof(EnemyName), "%s %s Lv.%d", TheClass, EnemyName, PlayerLevel[enemycombatant]);
 			//if (IsPvP[enemycombatant] != 0) Format(EnemyName, sizeof(EnemyName), "%s[PvP]", EnemyName);
@@ -11653,6 +11673,23 @@ stock bool IsPlayerTryingToPickupLoot(client) {
 	GetEntPropString(entity, Prop_Data, "m_iName", entityClassname, sizeof(entityClassname));
 	if (StrContains(entityClassname, "loot") == -1) return false;		// not specifically loot (we will change this to allow types later, maybe)
 
+	char text[512];
+	int invSize = GetArraySize(myAugmentIDCodes[client]);
+	/*
+		The inventory limit update was added AFTER players had already started obtaining augments.
+		To prevent bugs or other unwanted/unforseen effects, I've set this check to >= as it's
+		very likely there will be players OVER the limit.
+
+		You can still sell/equip/disassemble when over the limit.
+
+		The only thing you CAN'T do is obtain more augments.
+	*/
+	if (invSize >= iInventoryLimit){
+		Format(text, sizeof(text), "{O}YOUR INVENTORY IS FULL; %d of %d", invSize, iInventoryLimit);
+		Client_PrintToChat(client, true, text);
+		return false;
+	}
+
 	// okay, so it's a loot object. Is the player close enough to pick it up?
 	float myPos[3];
 	GetClientAbsOrigin(client, myPos);
@@ -11663,7 +11700,6 @@ stock bool IsPlayerTryingToPickupLoot(client) {
 	char name[64];
 	GetClientName(client, name, sizeof(name));
 	int currentGameTime = GetTime();
-	char text[512];
 	if (lastItemTime + 3 < currentGameTime || !StrEqual(name, lastPlayerGrab)) {
 		Format(text, sizeof(text), "{B}%s {N}is searching a {O}bag...", name);
 	}

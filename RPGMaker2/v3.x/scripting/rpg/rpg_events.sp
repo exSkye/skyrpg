@@ -1454,6 +1454,12 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			RemoveAllDebuffs(client, "acid");
 		}
 	}
+	else if (buttons & IN_ATTACK) {
+		if (FindZombieClass(client) == ZOMBIECLASS_SMOKER) {
+			int victim = L4D2_GetSurvivorVictim(client);
+			if (victim != -1) GetAbilityStrengthByTrigger(client, victim, "v", _, 0);
+		}
+	}
 	if ((buttons & IN_ZOOM) && ZoomcheckDelayer[client] == INVALID_HANDLE) ZoomcheckDelayer[client] = CreateTimer(0.1, Timer_ZoomcheckDelayer, client, TIMER_FLAG_NO_MAPCHANGE);
 	if (IsHoldingPrimaryFire) {
 		int bulletsRemaining = 0;

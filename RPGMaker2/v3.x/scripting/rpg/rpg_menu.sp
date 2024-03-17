@@ -3881,10 +3881,10 @@ stock Augments_Inventory(client) {
 	Handle menu = CreateMenu(Augments_Inventory_Handle);
 	char pct[4];
 	Format(pct, 4, "%");
-	char text[512];
-	Format(text, 512, "augment parts: %d", augmentParts[client]);
-	SetMenuTitle(menu, text);
 	int size = GetArraySize(myAugmentIDCodes[client]);
+	char text[512];
+	Format(text, 512, "Inventory space:\t%d/%d\nScrap parts:\t%d", size, iInventoryLimit, augmentParts[client]);
+	SetMenuTitle(menu, text);
 	//SortADTArray(myAugmentInfo[client], Sort_Ascending, Sort_Integer);
 	if (size > 0) {
 		for (int i = 0; i < size; i++) {
