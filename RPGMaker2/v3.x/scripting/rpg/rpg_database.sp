@@ -1136,16 +1136,18 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `aslot%d` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, i+1, ActionBarText, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 	}
-	int numAugmentsClientOwns = GetArraySize(myAugmentIDCodes[client]);
-	for (int i = 0; i < numAugmentsClientOwns; i++) {
-		char itemCode[64];
-		GetArrayString(myAugmentIDCodes[client], i, itemCode, 64);
-		int itemCost = GetArrayCell(myAugmentInfo[client], i, 1);
-		int bSelling = GetArrayCell(myAugmentInfo[client], i, 2);
-		int equipped = GetArrayCell(myAugmentInfo[client], i, 3);
+	if (!IsFakeClient(client)) {
+		int numAugmentsClientOwns = GetArraySize(myAugmentIDCodes[client]);
+		for (int i = 0; i < numAugmentsClientOwns; i++) {
+			char itemCode[64];
+			GetArrayString(myAugmentIDCodes[client], i, itemCode, 64);
+			int itemCost = GetArrayCell(myAugmentInfo[client], i, 1);
+			int bSelling = GetArrayCell(myAugmentInfo[client], i, 2);
+			int equipped = GetArrayCell(myAugmentInfo[client], i, 3);
 
-		Format(tquery, sizeof(tquery), "UPDATE `%s_loot` SET `price` = '%d', `steam_id` = '%s', `isequipped` = '%d', `isforsale` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, itemCost, key, equipped, bSelling, itemCode);
-		SQL_TQuery(hDatabase, QueryResults, tquery);
+			Format(tquery, sizeof(tquery), "UPDATE `%s_loot` SET `price` = '%d', `steam_id` = '%s', `isequipped` = '%d', `isforsale` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, itemCost, key, equipped, bSelling, itemCode);
+			SQL_TQuery(hDatabase, QueryResults, tquery);
+		}
 	}
 	int isDisab = 0;
 	if (DisplayActionBar[client]) isDisab = 1;
@@ -1851,7 +1853,7 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 	SetClientTalentStrength(client);
 	LogMessage("Loaded data for %N", client);
 	PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
-	ChangeHook(client, true);
+	//ChangeHook(client, true);
 
 	// b_IsLoaded[client] = true;
 	// b_IsLoading[client] = false;
@@ -1922,7 +1924,7 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 	return;
 }
 
-stock SetClientTalentStrength(client) {
+stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 	b_IsLoaded[client] = false;
 	b_IsLoading[client] = true;
 	int ASize = GetArraySize(a_Menu_Talents);
@@ -1932,7 +1934,7 @@ stock SetClientTalentStrength(client) {
 	for (int i = 0; i < ASize; i++) {
 		PreloadTalentSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
 		GetArrayString(PreloadTalentSection[client], 0, TalentName, sizeof(TalentName));
-		if (GetTalentStrength(client, TalentName) < 1) {
+		if (!giveAccessToAllTalents && GetTalentStrength(client, TalentName) < 1) {
 			SetArrayCell(MyTalentStrengths[client], i, 0.0);
 			SetArrayCell(MyTalentStrengths[client], i, 0.0, 1);
 			SetArrayCell(MyTalentStrengths[client], i, 0.0, 2);
@@ -1949,12 +1951,15 @@ stock SetClientTalentStrength(client) {
 		SetArrayCell(MyTalentStrength[client], i, 1);
 	}
 	int iCurrentAugmentLevel = 0;
-	for (int i = 0; i < iNumAugments; i++) {
-		int iCur = GetArrayCell(equippedAugments[client], i, 2);
-		if (iCur > 0) iCurrentAugmentLevel += iCur;
+	if (GetArraySize(equippedAugments[client]) != iNumAugments) ClearEquippedAugmentData(client);
+	else {
+		for (int i = 0; i < iNumAugments; i++) {
+			int iCur = GetArrayCell(equippedAugments[client], i, 2);
+			if (iCur > 0) iCurrentAugmentLevel += iCur;
+		}
+		playerCurrentAugmentLevel[client] = (iCurrentAugmentLevel / iAugmentLevelDivisor);
+		SetLootDropCategories(client);
 	}
-	playerCurrentAugmentLevel[client] = (iCurrentAugmentLevel / iAugmentLevelDivisor);
-	SetLootDropCategories(client);
 	b_IsLoaded[client] = true;
 	b_IsLoading[client] = false;
 }
@@ -2368,7 +2373,7 @@ public Action Timer_LoadData(Handle timer, any client) {
 		char key[512];
 		char TheName[64];
 
-		ChangeHook(client, true);
+		//ChangeHook(client, true);
 
 		if (IsFakeClient(client)) {
 

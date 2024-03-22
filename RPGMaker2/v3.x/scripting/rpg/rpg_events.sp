@@ -190,15 +190,13 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 	if (StrEqual(event_name, "player_spawn")) {
 		if (IsLegitimateClientAttacker) {
 			ClearArray(ActiveStatuses[attacker]);
+			if (GetClientTeam(attacker) != TEAM_SPECTATOR && !b_IsHooked[attacker]) ChangeHook(attacker, true);
 			if (attackerTeam == TEAM_SURVIVOR) {
-				ChangeHook(attacker, true);
 				RefreshSurvivor(attacker);
 				RaidInfectedBotLimit();
 				ResetContributionTracker(attacker);
 			}
 			else {
-				//PrintToChatAll("Spawning %N", attacker);
-				if (!b_IsHooked[attacker]) ChangeHook(attacker, true);
 				DamageContribution[attacker] = 0;
 				//SetInfectedHealth(attacker, 99999);
 				if (!IsFakeClientAttacker) PlayerSpawnAbilityTrigger(attacker);
@@ -337,20 +335,20 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			}
 		}
 	}
-	if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
-		if (IsLegitimateClientAttacker) {
-			if (!CheckIfHeadshot(attacker, victim, event, healthvalue))	CheckIfLimbDamage(attacker, victim, event, healthvalue);
-			/*if (IsPlayerUsingShotgun(attacker)) {
-				if (shotgunCooldown[attacker]) return 0;
-				shotgunCooldown[attacker] = true;
-				CreateTimer(0.1, Timer_ResetShotgunCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
-			}*/
-		}
-		if (victimType == 2 && !b_IsHooked[victim]) ChangeHook(victim, true);
-		//if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !b_IsHooked[victim]) ChangeHook(victim, true);
-		//if (IsLegitimateClientAttacker && IsFakeClientAttacker && attackerTeam == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
-		//if (victimTeam == TEAM_SURVIVOR && IsFakeClientVictim && !b_IsLoaded[victim]) IsClientLoadedEx(victim);
-	}
+	// if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
+	// 	if (IsLegitimateClientAttacker) {
+	// 		if (!CheckIfHeadshot(attacker, victim, event, healthvalue))	CheckIfLimbDamage(attacker, victim, event, healthvalue);
+	// 		/*if (IsPlayerUsingShotgun(attacker)) {
+	// 			if (shotgunCooldown[attacker]) return 0;
+	// 			shotgunCooldown[attacker] = true;
+	// 			CreateTimer(0.1, Timer_ResetShotgunCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
+	// 		}*/
+	// 	}
+	// 	//if (victimType == 2 && !b_IsHooked[victim]) ChangeHook(victim, true);
+	// 	//if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !b_IsHooked[victim]) ChangeHook(victim, true);
+	// 	//if (IsLegitimateClientAttacker && IsFakeClientAttacker && attackerTeam == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
+	// 	//if (victimTeam == TEAM_SURVIVOR && IsFakeClientVictim && !b_IsLoaded[victim]) IsClientLoadedEx(victim);
+	// }
 	// if (victimTeam == TEAM_INFECTED) {
 	// 	SetEntityHealth(victim, 400000);
 	// }
@@ -393,6 +391,7 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			if (iSpecialsAllowed == 0 && attackerZombieClass != ZOMBIECLASS_TANK) {
 				ForcePlayerSuicide(attacker);
 			}
+			else SetClientTalentStrength(attacker, true);
 			if (iSpecialsAllowed == 1 && !StrEqual(sSpecialsAllowed, "-1")) {
 				char myClass[5];
 				Format(myClass, sizeof(myClass), "%d", attackerZombieClass);
@@ -508,17 +507,20 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 				}
 			}
 			if (originvalue == 2 || distancevalue == 2) {
+				int ensnareVictim = L4D2_GetSurvivorVictim(attacker);
 				fTalentStrength = GetAbilityStrengthByTrigger(attacker, _, "q", _, 0);
 				if (CheckActiveStatuses(attacker, "lunge", false, true) == 0) {
 					SetEntityRenderMode(attacker, RENDER_NORMAL);
 					SetEntityRenderColor(attacker, 255, 255, 255, 255);
 					fTalentStrength += GetAbilityStrengthByTrigger(attacker, _, "A", _, 0);
+					if (ensnareVictim != -1) GetAbilityStrengthByTrigger(attacker, ensnareVictim, "pounced", _, lastHealthDamage[ensnareVictim][attacker]);
 				}
 				GetClientAbsOrigin(attacker, f_OriginEnd[attacker]);
 				if (victimType == 2 && victimTeam == TEAM_SURVIVOR) {
 					Distance = GetVectorDistance(f_OriginStart[attacker], f_OriginEnd[attacker]);
 					if (fTalentStrength > 0.0) Distance += (Distance * fTalentStrength);
 					//SetClientTotalHealth(victim, RoundToCeil(Distance), _, true);
+					if (ensnareVictim != -1) GetAbilityStrengthByTrigger(attacker, ensnareVictim, "distance", _, RoundToCeil(Distance));
 				}
 			}
 			if (attackerZombieClass == ZOMBIECLASS_JOCKEY || (distancevalue == 2 && t_Distance[attacker] > 0)) {
@@ -1954,7 +1956,7 @@ stock ExplosiveAmmo(client, damage, TalentClient) {
 	else if (IsSpecialCommon(client)) AddSpecialCommonDamage(TalentClient, client, damage);
 	else if (IsLegitimateClientAlive(client)) {
 		if (GetClientTeam(client) == TEAM_INFECTED) AddSpecialInfectedDamage(TalentClient, client, damage);
-		else SetClientTotalHealth(client, damage);	// survivor teammates don't reward players with experience or damage bonus, but they'll take damage from it.
+		else SetClientTotalHealth(TalentClient, client, damage);	// survivor teammates don't reward players with experience or damage bonus, but they'll take damage from it.
 	}
 }
 
@@ -1968,7 +1970,7 @@ stock LeechAmmo(client, damage, TalentClient) {
 	else if (IsSpecialCommon(client)) AddSpecialCommonDamage(TalentClient, client, damage);
 	else if (IsLegitimateClientAlive(client)) {
 		if (GetClientTeam(client) == TEAM_INFECTED) AddSpecialInfectedDamage(TalentClient, client, damage);
-		else SetClientTotalHealth(client, damage);
+		else SetClientTotalHealth(TalentClient, client, damage);
 	}
 	if (IsLegitimateClientAlive(TalentClient) && GetClientTeam(TalentClient) == TEAM_SURVIVOR) {
 		//if (IsCritical || !IsCriticalHit(client, healing, TalentClient))	// maybe add this to leech? that would be cool.!
@@ -2060,7 +2062,7 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0) {
 
 		//if (t_Strength > GetClientHealth(i)) IncapacitateOrKill(i);
 		//else SetEntityHealth(i, GetClientHealth(i) - t_Strength);
-		if (abilityStrength > 0) SetClientTotalHealth(i, abilityStrength);
+		if (abilityStrength > 0) SetClientTotalHealth(client, i, abilityStrength);
 
 		if (client == target) {
 

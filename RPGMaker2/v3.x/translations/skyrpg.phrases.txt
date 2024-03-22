@@ -3,6 +3,126 @@
 
 "Phrases"
 {
+	"cleric perfect surname"
+	{
+		"en"				"Clerics"
+	}
+	"H perfect surname"
+	{
+		"en"				"Healthy"
+	}
+	"rrbullet perfect surname"
+	{
+		"en"				"Efficient"
+	}
+	"noffexplode perfect surname"
+	{
+		"en"				"Explosive"
+	}
+	"ammoreserve perfect surname"
+	{
+		"en"				"Reservist"
+	}
+	"rpbullet perfect surname"
+	{
+		"en"				"Efficient"
+	}
+	"o perfect surname"
+	{
+		"en"				"Tanky"
+	}
+	"h perfect surname"
+	{
+		"en"				"Regen"
+	}
+	"d perfect surname"
+	{
+		"en"				"Fighters"
+	}
+	"aoeheal perfect surname"
+	{
+		"en"				"Healers"
+	}
+	"stamina perfect surname"
+	{
+		"en"				"Scouts"
+	}
+	"giveitem perfect surname"
+	{
+		"en"				"Magical"
+	}
+	"vampire perfect surname"
+	{
+		"en"				"Vampiric"
+	}
+	"speed perfect surname"
+	{
+		"en"				"Swift"
+	}
+	"maghalfempty perfect surname"
+	{
+		"en"				"Optimist"
+	}
+	"cleric major surname"
+	{
+		"en"				"Clerics"
+	}
+	"H major surname"
+	{
+		"en"				"Healthy"
+	}
+	"rrbullet major surname"
+	{
+		"en"				"Efficient"
+	}
+	"noffexplode major surname"
+	{
+		"en"				"Explosive"
+	}
+	"ammoreserve major surname"
+	{
+		"en"				"Reservist"
+	}
+	"rpbullet major surname"
+	{
+		"en"				"Efficient"
+	}
+	"o major surname"
+	{
+		"en"				"Tanky"
+	}
+	"h major surname"
+	{
+		"en"				"Regen"
+	}
+	"d major surname"
+	{
+		"en"				"Fighters"
+	}
+	"aoeheal major surname"
+	{
+		"en"				"Healers"
+	}
+	"stamina major surname"
+	{
+		"en"				"Scouts"
+	}
+	"giveitem major surname"
+	{
+		"en"				"Magical"
+	}
+	"vampire major surname"
+	{
+		"en"				"Vampiric"
+	}
+	"speed major surname"
+	{
+		"en"				"Swift"
+	}
+	"maghalfempty major surname"
+	{
+		"en"				"Optimist"
+	}
 	"weak damage increase i"
 	{
 		"en"				"Shadow Damage I"
@@ -429,6 +549,30 @@
 	"attribute talents"
 	{
 		"en"				"Attributes"
+	}
+	"hunter talents"
+	{
+		"en"				"Hunter"
+	}
+	"jockey talents"
+	{
+		"en"				"Jockey"	
+	}
+	"spitter talents"
+	{
+		"en"				"Spitter"
+	}
+	"charger talents"
+	{
+		"en"				"Charger"	
+	}
+	"tank talents"
+	{
+		"en"				"Tank"
+	}
+	"smoker talents"
+	{
+		"en"				"Smoker"
 	}
 	"support talents"
 	{

@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.4"
+#define PLUGIN_VERSION				"v3.4.5.5"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -42,9 +42,23 @@
 //	================================
 
 
-
-
 /*
+ Version 3.4.5.5
+ - Talents in talentmenu.cfg now hide/display to users based on whether a survivor or infected class can activate the talent via the "activator class required?" key.
+		This should make it so that talents for both infected and survivor can be added to the different categories in each tree, but will only show to eligible players.
+ - Fixed a bug that was consistently causing server crash when the start of map checkpoint door opened.
+ - Todo: add a new key designed specifically for infected bots for score threshold requirements to activate layered talents.
+ - Fixed a memory stack space exceeded error
+ - Yay fixed the error that was crashing the server consistently; due to the way saving data works, we cannot do it on round end.
+ - Augment equipped positions are saved whenever an augment is unequipped or equipped.
+ - Added support for "give augment command?" key, so players can give their augments to other players (does not support selling at the moment)
+ - Added Surname support for augments so they aren't bland "minor", "major" and "perfect" augments without souls any longer.
+ - Added support for GetInfectedAbilityStrengthByTrigger in rpg_wrappers.sp for laying the ground work for infected talents.
+ - Removed a GetAbilityStrengthByTrigger call that shouldn't exist.
+ - Added support for hunter and jockey talents.
+ - Added the "distance" and "pounced" ability triggers. Distance affects smoker/jockey/charger/hunter.
+ - Patched CreatePlayerExplosion in rpg_wrappers.sp and fixed a logic error that caused all special infected/survivors to always get hit by certain explosions even when they were outside of range.
+
  Version 3.4.5.4
  - Added the "claw" ability trigger, which fires when a special infected hurts a survivor but does not currently have an ensnare victim.
  - Added the "poisonclaw" activator/target effect.
@@ -210,7 +224,6 @@ public Plugin myinfo = {
 #define WEAPONINFO_AMMO						2
 #define WEAPONINFO_RANGE					3
 #define WEAPONINFO_RANGE_REQUIRED			4
-
 // for the talentmenu.cfg
 #define ABILITY_TYPE						0
 #define COMPOUNDING_TALENT					1
@@ -456,6 +469,7 @@ public Plugin myinfo = {
 #define EVENT_IS_BULLET_IMPACT				17
 #define EVENT_ENTERED_SAFEROOM				18
 
+int lastHealthDamage[MAXPLAYERS + 1][MAXPLAYERS + 1];
 int iClientTypeToDisplayOnKill;
 char MyCurrentWeapon[MAXPLAYERS + 1][64];
 int takeDamageEvent[MAXPLAYERS + 1][2];
@@ -1331,6 +1345,7 @@ int iNumLootDropChancesPerPlayer[5];
 int lastItemTime;
 char lastPlayerGrab[64];
 int iInventoryLimit;
+char sDeleteBotFlags[64];
 
 public Action CMD_DropWeapon(int client, int args) {
 	int CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1544,7 +1559,6 @@ stock void UnhookAll() {
 public int ReadyUp_TrueDisconnect(int client) {
 	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
 	bTimersRunning[client] = false;
-	//ChangeHook(client);
 	staggerCooldownOnTriggers[client] = false;
 	ISBILED[client] = false;
 	DisplayActionBar[client] = false;
@@ -1875,10 +1889,10 @@ stock CreateAllArrays() {
 		if (playerContributionTracker[i] == INVALID_HANDLE) playerContributionTracker[i] = CreateArray(8);
 		if (myLootDropCategoriesAllowed[i] == INVALID_HANDLE) myLootDropCategoriesAllowed[i] = CreateArray(32);
 		if (LootDropCategoryToBuffValues[i] == INVALID_HANDLE) LootDropCategoryToBuffValues[i] = CreateArray(32);
-		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(64);
-		if (myAugmentCategories[i] == INVALID_HANDLE) myAugmentCategories[i] = CreateArray(64);
-		if (myAugmentOwners[i] == INVALID_HANDLE) myAugmentOwners[i] = CreateArray(64);
-		if (myAugmentInfo[i] == INVALID_HANDLE) myAugmentInfo[i] = CreateArray(64);
+		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(32);
+		if (myAugmentCategories[i] == INVALID_HANDLE) myAugmentCategories[i] = CreateArray(32);
+		if (myAugmentOwners[i] == INVALID_HANDLE) myAugmentOwners[i] = CreateArray(32);
+		if (myAugmentInfo[i] == INVALID_HANDLE) myAugmentInfo[i] = CreateArray(32);
 		if (equippedAugments[i] == INVALID_HANDLE) equippedAugments[i] = CreateArray(32);
 		if (equippedAugmentsCategory[i] == INVALID_HANDLE) equippedAugmentsCategory[i] = CreateArray(32);
 		if (GetAugmentTranslationKeys[i] == INVALID_HANDLE) GetAugmentTranslationKeys[i] = CreateArray(32);
@@ -1894,6 +1908,7 @@ stock CreateAllArrays() {
 		if (playerLootOnGround[i] == INVALID_HANDLE) playerLootOnGround[i] = CreateArray(32);
 		if (possibleLootPoolTarget[i] == INVALID_HANDLE) possibleLootPoolTarget[i] = CreateArray(32);
 		if (possibleLootPoolActivator[i] == INVALID_HANDLE) possibleLootPoolActivator[i] = CreateArray(32);
+
 	}
 	CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	b_FirstLoad = true;
@@ -2228,16 +2243,11 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		IsEnrageNotified = false;
 		b_IsFinaleTanks = false;
 
-		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsLegitimateClient(i) || GetClientTeam(i) == TEAM_SPECTATOR) continue;
-			ChangeHook(i, true);
-		}
 		ClearArray(persistentCirculation);
 		ClearArray(CoveredInVomit);
 		ClearArray(RoundStatistics);
 		ResizeArray(RoundStatistics, 5);
 		for (int i = 0; i < 5; i++) {
-
 			SetArrayCell(RoundStatistics, i, 0);
 			if (CurrentMapPosition == 0) SetArrayCell(RoundStatistics, i, 0, 1);	// first map of campaign, reset the total.
 		}
@@ -2249,28 +2259,27 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		int survivorCounter = TotalHumanSurvivors();
 		bool AnyBotsOnSurvivorTeam = BotsOnSurvivorTeam();
 		for (int i = 1; i <= MaxClients; i++) {
-			if (IsLegitimateClient(i)) {
-				bIsMeleeCooldown[i] = false;
-				if (!IsFakeClient(i)) {
-					if (iTankRush == 1) RatingHandicap[i] = RatingPerLevel;
-					else {
-						iMaxHandicap = GetMaxHandicap(i);
-						if (RatingHandicap[i] < iMinHandicap) RatingHandicap[i] = iMinHandicap;
-						else if (RatingHandicap[i] > iMaxHandicap) RatingHandicap[i] = iMaxHandicap;
-					}
-					if (GroupMemberBonus > 0.0) {
-						if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
-						else PrintToChat(i, "%T", "group member benefit", i, orange, blue, GroupMemberBonus * 100.0, pct, green, blue);
-					}
-					if (!AnyBotsOnSurvivorTeam && fSurvivorBotsNoneBonus > 0.0 && survivorCounter <= iSurvivorBotsBonusLimit) {
-						PrintToChat(i, "%T", "group no survivor bots bonus", i, blue, fSurvivorBotsNoneBonus * 100.0, pct, green, orange);
-					}
-					if (RoundExperienceMultiplier[i] > 0.0) {
-						PrintToChat(i, "%T", "survivalist bonus experience", i, blue, orange, green, RoundExperienceMultiplier[i] * 100.0, white, pct);
-					}
+			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+			bIsMeleeCooldown[i] = false;
+			if (!IsFakeClient(i)) {
+				if (iTankRush == 1) RatingHandicap[i] = RatingPerLevel;
+				else {
+					iMaxHandicap = GetMaxHandicap(i);
+					if (RatingHandicap[i] < iMinHandicap) RatingHandicap[i] = iMinHandicap;
+					else if (RatingHandicap[i] > iMaxHandicap) RatingHandicap[i] = iMaxHandicap;
 				}
-				else SetBotHandicap(i);
+				if (GroupMemberBonus > 0.0) {
+					if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
+					else PrintToChat(i, "%T", "group member benefit", i, orange, blue, GroupMemberBonus * 100.0, pct, green, blue);
+				}
+				if (!AnyBotsOnSurvivorTeam && fSurvivorBotsNoneBonus > 0.0 && survivorCounter <= iSurvivorBotsBonusLimit) {
+					PrintToChat(i, "%T", "group no survivor bots bonus", i, blue, fSurvivorBotsNoneBonus * 100.0, pct, green, orange);
+				}
+				if (RoundExperienceMultiplier[i] > 0.0) {
+					PrintToChat(i, "%T", "survivalist bonus experience", i, blue, orange, green, RoundExperienceMultiplier[i] * 100.0, white, pct);
+				}
 			}
+			else SetBotHandicap(i);
 		}
 		if (CurrentMapPosition != 0 || ReadyUpGameMode == 3) CheckDifficulty();
 		RoundTime					=	GetTime();
@@ -2852,6 +2861,78 @@ public Action CMD_ActionBar(client, args) {
 	return Plugin_Handled;
 }
 
+public Action CMD_GiveInventoryItem(client, args) {
+	if (args < 2) {
+		PrintToChat(client, "\x04!giveaugment <name> <augment id>");
+		return Plugin_Handled;
+	}
+
+	char arg[MAX_NAME_LENGTH];
+	char arg2[4];
+	GetCmdArg(1, arg, sizeof(arg));
+	GetCmdArg(2, arg2, sizeof(arg2));
+	int targetclient = FindTargetClient(client, arg);
+	if (IsFakeClient(targetclient)) return Plugin_Handled;
+	char Name[MAX_NAME_LENGTH];
+	GetClientName(targetclient, Name, sizeof(Name));
+	int pos = StringToInt(arg2);
+
+	if (GetArrayCell(myAugmentInfo[client], pos, 3) >= 0) {
+		PrintToChat(client, "\x04Ownership of equipped augments cannot be transferred.");
+		return Plugin_Handled;
+	}
+
+	char key[64];
+	GetClientAuthId(targetclient, AuthId_Steam2, key, sizeof(key));
+	char itemCode[64];
+	GetArrayString(myAugmentIDCodes[client], pos, itemCode, 64);
+	char category[64];
+	GetArrayString(myAugmentCategories[client], pos, category, sizeof(category));
+	int itemRating = GetArrayCell(myAugmentInfo[client], pos);
+	char activatorEffects[64];
+	int activatorEffectRating = GetArrayCell(myAugmentInfo[client], pos, 4);
+	GetArrayString(myAugmentActivatorEffects[client], pos, activatorEffects, sizeof(activatorEffects));
+	char targetEffects[64];
+	int targetEffectRating = GetArrayCell(myAugmentInfo[client], pos, 5);
+	GetArrayString(myAugmentTargetEffects[client], pos, targetEffects, sizeof(targetEffects));
+	char originalOwner[64];
+	GetArrayString(myAugmentOwners[client], pos, originalOwner, sizeof(originalOwner));
+
+	RemoveFromArray(myAugmentIDCodes[client], pos);
+	RemoveFromArray(myAugmentCategories[client], pos);
+	RemoveFromArray(myAugmentOwners[client], pos);
+	RemoveFromArray(myAugmentInfo[client], pos);
+	RemoveFromArray(myAugmentActivatorEffects[client], pos);
+	RemoveFromArray(myAugmentTargetEffects[client], pos);
+	
+	int size = GetArraySize(myAugmentIDCodes[targetclient]);
+	ResizeArray(myAugmentIDCodes[targetclient], size+1);
+	ResizeArray(myAugmentCategories[targetclient], size+1);
+	ResizeArray(myAugmentOwners[targetclient], size+1);
+	ResizeArray(myAugmentInfo[targetclient], size+1);
+	ResizeArray(myAugmentActivatorEffects[targetclient], size+1);
+	ResizeArray(myAugmentTargetEffects[targetclient], size+1);
+
+	SetArrayCell(myAugmentInfo[targetclient], size, itemRating);
+	SetArrayCell(myAugmentInfo[targetclient], size, 0, 1);	// item cost
+	SetArrayCell(myAugmentInfo[targetclient], size, 0, 2);	// not for sale
+	SetArrayCell(myAugmentInfo[targetclient], size, -1, 3); // not equipped
+	SetArrayCell(myAugmentInfo[targetclient], size, activatorEffectRating, 4);
+	SetArrayCell(myAugmentInfo[targetclient], size, targetEffectRating, 5);
+	SetArrayString(myAugmentOwners[targetclient], size, originalOwner);
+	SetArrayString(myAugmentCategories[targetclient], size, category);
+	SetArrayString(myAugmentIDCodes[targetclient], size, itemCode);
+	SetArrayString(myAugmentActivatorEffects[targetclient], size, activatorEffects);
+	SetArrayString(myAugmentTargetEffects[targetclient], size, targetEffects);
+	char sql[512];
+	Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `steam_id` = '%s' WHERE (`itemid` = '%s');", TheDBPrefix, key, itemCode);
+	SQL_TQuery(hDatabase, QueryResults, sql);
+
+	PrintToChat(client, "You gave %N an augment.", targetclient);
+	PrintToChat(targetclient, "%N gave you an augment... Check it out.", client);
+	return Plugin_Handled;
+}
+
 public Action CMD_GiveStorePoints(client, args) {
 	char thetext[64];
 	GetConfigValue(thetext, sizeof(thetext), "give store points flags?");
@@ -3054,7 +3135,7 @@ stock CallRoundIsOver() {
 					AcceptEntityInput(iChaseEnt[i], "Kill");
 					iChaseEnt[i] = -1;
 				}*/
-				SavePlayerData(i);
+				//SavePlayerData(i);
 			}
 		}
 		//CreateTimer(1.0, Timer_SaveAndClear, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -3145,6 +3226,8 @@ stock RegisterConsoleCommands() {
 		RegConsoleCmd(thetext, CMD_DataEraseBot);
 		//GetConfigValue(thetext, sizeof(thetext), "give store points command?");
 		//RegConsoleCmd(thetext, CMD_GiveStorePoints);
+		GetConfigValue(thetext, sizeof(thetext), "give augment command?");
+		RegConsoleCmd(thetext, CMD_GiveInventoryItem);
 		GetConfigValue(thetext, sizeof(thetext), "give level command?");
 		RegConsoleCmd(thetext, CMD_GiveLevel);
 		GetConfigValue(thetext, sizeof(thetext), "share points command?");
@@ -3327,6 +3410,7 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 stock LoadMainConfig() {
 	GetConfigValue(sServerDifficulty, sizeof(sServerDifficulty), "server difficulty?");
 	CheckDifficulty();
+	GetConfigValue(sDeleteBotFlags, sizeof(sDeleteBotFlags), "delete bot flags?");
 	iClientTypeToDisplayOnKill			= GetConfigValueInt("infected kill messages to display?", 0);
 	fProficiencyExperienceMultiplier 	= GetConfigValueFloat("proficiency requirement multiplier?");
 	fProficiencyExperienceEarned 		= GetConfigValueFloat("experience multiplier proficiency?");
@@ -3683,6 +3767,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
 	int potentialItemRatingOverride = (forceAugmentItemLevel > 0) ? forceAugmentItemLevel : GetRandomInt(min, max);
 	//if (potentialItemRatingOverride == 0 && Rating[client] < iRatingRequiredForAugmentLootDrops) return;
+
 	int size = GetArraySize(myAugmentIDCodes[client]);
 	char buffedCategory[64];
 	int lootSize = GetArraySize(myLootDropCategoriesAllowed[client]);
@@ -3779,18 +3864,29 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		SetArrayString(myAugmentTargetEffects[client], size, "-1");
 		SetArrayCell(myAugmentInfo[client], size, -1, 5);
 	}
-	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
 
+
+	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
 	char key[64];
 	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	char tquery[512];
 	Format(tquery, sizeof(tquery), "INSERT INTO `%s_loot` (`steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`) VALUES ('%s', '%s', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%d');", TheDBPrefix, key, sItemCode, lootrolls[0], buffedCategory, 0, 0, -1, activatorEffects, augmentActivatorRating, targetEffects, augmentTargetRating);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
-
 	if (augmentActivatorRating == -1 && augmentTargetRating == -1) Format(augmentStrengthText, 10, "minor");
-	else if (augmentActivatorRating == -1 || augmentTargetRating == -1) Format(augmentStrengthText, 10, "major");
-	else Format(augmentStrengthText, 10, "perfect");
+	else {
+		char majorname[64];
+		char perfectname[64];
+		GetAugmentSurname(client, size, majorname, sizeof(majorname), perfectname, sizeof(perfectname), false);
+		if (!StrEqual(majorname, "-1")) Format(majorname, sizeof(majorname), "%t", majorname);
+		if (!StrEqual(perfectname, "-1")) Format(perfectname, sizeof(perfectname), "%t", perfectname);
+		if (!StrEqual(majorname, "-1") && !StrEqual(perfectname, "-1")) Format(augmentStrengthText, 64, "%s, %s", perfectname, majorname);
+		else if (!StrEqual(majorname, "-1")) Format(augmentStrengthText, 64, "%s", majorname);
+		else Format(augmentStrengthText, 64, "%s", perfectname);
+	}
+	// if (augmentActivatorRating == -1 && augmentTargetRating == -1) Format(augmentStrengthText, 10, "minor");
+	// else if (augmentActivatorRating == -1 || augmentTargetRating == -1) Format(augmentStrengthText, 10, "major");
+	// else Format(augmentStrengthText, 10, "perfect");
 	Format(text, sizeof(text), "{B}%s {N}found a {B}+{OG}%3.3f{B}PCT {O}%s {B}%s %s {O}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
 	if (forceAugmentItemLevel < 1) Format(text, sizeof(text), "%s {N}on a corpse.", text);
 	else if (isALootBag) Format(text, sizeof(text), "%s {N}in the bag.", text);
@@ -3878,9 +3974,7 @@ public Action CMD_BuyMenu(client, args) {
 
 public Action CMD_DataErase(client, args) {
 	char arg[MAX_NAME_LENGTH];
-	char thetext[64];
-	GetConfigValue(thetext, sizeof(thetext), "delete bot flags?");
-	if (args > 0 && HasCommandAccess(client, thetext)) {
+	if (args > 0 && HasCommandAccess(client, sDeleteBotFlags)) {
 		GetCmdArg(1, arg, sizeof(arg));
 		int targetclient = FindTargetClient(client, arg);
 		if (IsLegitimateClient(targetclient) && GetClientTeam(targetclient) != TEAM_INFECTED) DeleteAndCreateNewData(targetclient);
@@ -3897,7 +3991,6 @@ public Action CMD_DataEraseBot(client, args) {
 stock DeleteAndCreateNewData(client, bool IsBot = false) {
 	char key[64];
 	char tquery[1024];
-	char text[64];
 	char pct[4];
 	Format(pct, sizeof(pct), "%");
 	if (!IsBot) {
@@ -3910,8 +4003,7 @@ stock DeleteAndCreateNewData(client, bool IsBot = false) {
 		PrintToChat(client, "data erased, new data created.");	// not bothering with a translation here, since it's a debugging command.
 	}
 	else {
-		GetConfigValue(text, sizeof(text), "delete bot flags?");
-		if (HasCommandAccess(client, text)) {
+		if (HasCommandAccess(client, sDeleteBotFlags)) {
 			for (int i = 1; i <= MaxClients; i++) {
 				if (IsLegitimateClient(i) && IsFakeClient(i)) KickClient(i);
 			}
@@ -4892,7 +4984,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos++;
 		}
 		for (int i = 0; i < sortSize; i++) {
-			if (i == TALENT_IS_EFFECT_OVER_TIME || i == TARGET_CLASS_REQ || i == ABILITY_TYPE ||
+			if (i == TALENT_IS_EFFECT_OVER_TIME || i == ACTIVATOR_CLASS_REQ || i == TARGET_CLASS_REQ || i == ABILITY_TYPE ||
 			i == IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES || i == COMBAT_STATE_REQ || i == CONTRIBUTION_TYPE_CATEGORY ||
 			i == CONTRIBUTION_COST || i == TALENT_WEAPON_SLOT_REQUIRED || i == LAST_KILL_MUST_BE_HEADSHOT ||
 			i == TARGET_AND_LAST_TARGET_CLASS_MATCH || i == TARGET_RANGE_REQUIRED || i == TARGET_RANGE_REQUIRED_OUTSIDE ||

@@ -1330,8 +1330,9 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 			else if (StrEqual(configname, "showtreelayers")) {
 				int[] upgradesRequiredToUnlockThisLayer = new int[iMaxLayers+1];
 				for (int currentLayer = 1; currentLayer <= iMaxLayers; currentLayer++) {
-					strengthOfCurrentLayer = GetLayerUpgradeStrength(client, currentLayer);
 					int totalNodesThisLayer = GetLayerUpgradeStrength(client, currentLayer, _, _, _, true);
+					if (totalNodesThisLayer < 1) continue;
+					strengthOfCurrentLayer = GetLayerUpgradeStrength(client, currentLayer);
 					int totalUpgradesRequiredToUnlockNextLayer = RoundToCeil(totalNodesThisLayer * fUpgradesRequiredPerLayer);
 					upgradesRequiredToUnlockThisLayer[currentLayer] = (totalUpgradesRequiredToUnlockNextLayer > strengthOfCurrentLayer)
 														? totalUpgradesRequiredToUnlockNextLayer - strengthOfCurrentLayer
@@ -2752,9 +2753,19 @@ stock BuildSubMenu(client, char[] MenuName, char[] ConfigName, char[] ReturnMenu
 	// these keys/values/section names match their talentmenu.cfg notations.
 	int requiredTalentsRequiredToUnlock = 0;
 	int requiredCopy = 0;
+	bool isClientSurvivor = (GetClientTeam(client) == TEAM_SURVIVOR) ? true : false;
+	bool isClientInfected = (GetClientTeam(client) == TEAM_INFECTED) ? true : false;
 	for (int i = 0; i < size; i++) {
-		MenuKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		MenuValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
+		int activatorClassesAllowed = GetArrayCell(MenuValues[client], ACTIVATOR_CLASS_REQ);
+		if (activatorClassesAllowed > -1) {
+			bool isSurvivorTalent		= (clientClassIsAllowed(client, activatorClassesAllowed, 1)) ? true : false;
+			bool isInfectedTalent		= (activatorClassesAllowed > 1) ? true : false;
+			if (!isSurvivorTalent && isClientSurvivor) continue;
+			if (!isInfectedTalent && isClientInfected) continue;
+		}
+
+		MenuKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		MenuSection[client]			= GetArrayCell(a_Menu_Talents, i, 2);
 
 		GetArrayString(MenuSection[client], 0, TalentName, sizeof(TalentName));
@@ -2928,11 +2939,19 @@ public BuildSubMenuHandle(Handle menu, MenuAction action, client, slot)
 
 		//if (StrEqual(ConfigName, CONFIG_MENUSURVIVOR)) size			=	GetArraySize(a_Menu_Talents_Survivor);
 		//else if (StrEqual(ConfigName, CONFIG_MENUINFECTED)) size	=	GetArraySize(a_Menu_Talents_Infected);
-
+		bool isClientSurvivor = (GetClientTeam(client) == TEAM_SURVIVOR) ? true : false;
+		bool isClientInfected = (GetClientTeam(client) == TEAM_INFECTED) ? true : false;
 		for (int i = 0; i < size; i++) {
+			MenuValues[client]				= GetArrayCell(a_Menu_Talents, i, 1);
+			int activatorClassesAllowed = GetArrayCell(MenuValues[client], ACTIVATOR_CLASS_REQ);
+			if (activatorClassesAllowed > -1) {
+				bool isSurvivorTalent		= (clientClassIsAllowed(client, activatorClassesAllowed, 1)) ? true : false;
+				bool isInfectedTalent		= (activatorClassesAllowed > 1) ? true : false;
+				if (!isSurvivorTalent && isClientSurvivor) continue;
+				if (!isInfectedTalent && isClientInfected) continue;
+			}
 
 			MenuKeys[client]				= GetArrayCell(a_Menu_Talents, i, 0);
-			MenuValues[client]				= GetArrayCell(a_Menu_Talents, i, 1);
 			MenuSection[client]				= GetArrayCell(a_Menu_Talents, i, 2);
 
 			GetArrayString(MenuSection[client], 0, TalentName, sizeof(TalentName));
@@ -3594,6 +3613,17 @@ stock int GetAugmentTranslation(client, char[] augmentCategory, char[] returnval
 	return -1;
 }
 
+public int GetAugmentPos(client, char[] itemCode) {
+	int size = GetArraySize(myAugmentIDCodes[client]);
+	char code[64];
+	for (int i = 0; i < size; i++) {
+		GetArrayString(myAugmentIDCodes[client], i, code, 64);
+		if (!StrEqual(itemCode, code)) continue;
+		return i;
+	}
+	return -1;
+}
+
 public Handle Augments_Equip(client) {
 	Handle menu = CreatePanel();
 	char text[512];
@@ -3605,6 +3635,7 @@ public Handle Augments_Equip(client) {
 	char targetText[64];
 	char itemLevel[64];
 	char itemStr[64];
+	char itemCode[64];
 	if (GetArraySize(equippedAugmentsCategory[client]) != iNumAugments) ResizeArray(equippedAugmentsCategory[client], iNumAugments);
 	if (GetArraySize(equippedAugmentsActivator[client]) != iNumAugments) ResizeArray(equippedAugmentsActivator[client], iNumAugments);
 	if (GetArraySize(equippedAugmentsTarget[client]) != iNumAugments) ResizeArray(equippedAugmentsTarget[client], iNumAugments);
@@ -3629,9 +3660,13 @@ public Handle Augments_Equip(client) {
 		int activatorRating = GetArrayCell(equippedAugments[client], i, 4);
 		int targetRating = GetArrayCell(equippedAugments[client], i, 5);
 
+		GetArrayString(equippedAugmentsIDCodes[client], i, itemCode, 64);
+		GetAugmentSurname(client, GetAugmentPos(client, itemCode), activatorText, 64, targetText, 64);
 		if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
-		else if (activatorRating < 1 || targetRating < 1) Format(itemStr, 64, "major");
-		else Format(itemStr, 64, "perfect");
+		else if (!StrEqual(activatorText, "-1") && !StrEqual(targetText, "-1")) Format(itemStr, 64, "%s, %s", targetText, activatorText);
+		else if (!StrEqual(activatorText, "-1")) Format(itemStr, 64, "%s", activatorText);
+		else Format(itemStr, 64, "%s", targetText);
+
 		Format(text, sizeof(text), "+%3.3f%s %s %s %s", (iItemLevel * fAugmentRatingMultiplier) * 100.0, pct, itemStr, menuText, baseMenuText[len]);
 		DrawPanelItem(menu, text);
 	}
@@ -3677,6 +3712,10 @@ public Augments_Equip_Init (Handle topmenu, MenuAction action, client, param2) {
 
 			//PrintToChat(client, "item rating: %d, activator rating: %d, target rating: %d", itemRating, activatorRating, targetRating);
 			SetArrayString(equippedAugmentsIDCodes[client], param2 - 1, itemCode);
+			char sql[512];
+			Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, param2 - 1, itemCode);
+			SQL_TQuery(hDatabase, QueryResults, sql);
+
 			SetArrayCell(equippedAugments[client], param2 - 1, iItemLevel);
 			SetArrayCell(equippedAugments[client], param2 - 1, itemCost, 1);
 			SetArrayCell(equippedAugments[client], param2 - 1, itemRating, 2);
@@ -3701,6 +3740,19 @@ public Augments_Equip_Init (Handle topmenu, MenuAction action, client, param2) {
 	if (action == MenuAction_End) {
 
 		CloseHandle(topmenu);
+	}
+}
+
+stock void GetAugmentSurname(int client, int pos, char[] surname, int surnameSize, char[] surname2, int surname2Size, bool:bFormatTranslation = true) {
+	GetArrayString(myAugmentActivatorEffects[client], pos, surname, surnameSize);
+	if (!StrEqual(surname, "-1")) {
+		Format(surname, surnameSize, "%s major surname", surname);
+		if (bFormatTranslation) Format(surname, surnameSize, "%T", surname, client);
+	}
+	GetArrayString(myAugmentTargetEffects[client], pos, surname2, surname2Size);
+	if (!StrEqual(surname2, "-1")) {
+		Format(surname2, surname2Size, "%s perfect surname", surname2);
+		if (bFormatTranslation) Format(surname2, surname2Size, "%T", surname2, client);
 	}
 }
 
@@ -3732,8 +3784,17 @@ public Handle Inspect_Augment(client, slot) {
 
 	char itemStr[64];
 	if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
-	else if (activatorRating < 1 || targetRating < 1) Format(itemStr, 64, "major");
-	else Format(itemStr, 64, "perfect");
+	// else if (activatorRating < 1 || targetRating < 1) Format(itemStr, 64, "major");
+	// else Format(itemStr, 64, "perfect");
+
+	char actText[64];
+	char tarText[64];
+	GetAugmentSurname(client, slot, actText, 64, tarText, 64);
+
+	if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
+	else if (!StrEqual(actText, "-1") && !StrEqual(tarText, "-1")) Format(itemStr, 64, "%s, %s", tarText, actText);
+	else if (!StrEqual(actText, "-1")) Format(itemStr, 64, "%s", actText);
+	else Format(itemStr, 64, "%s", tarText);
 	
 	int isEquipped = GetArrayCell(myAugmentInfo[client], slot, 3);
 	Format(text, sizeof(text), "%s %s %s Augment", itemStr, menuText, baseMenuText[len]);
@@ -3805,6 +3866,10 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 				//open equip screen
 				//Augments_Equip(client);
 				if (isEquipped >= 0) {
+					char sql[512];
+					Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '-1' WHERE (`itemid` = '%s');", TheDBPrefix, itemCode);
+					SQL_TQuery(hDatabase, QueryResults, sql);
+
 					SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -1, 3);
 					
 					SetArrayString(equippedAugmentsIDCodes[client], isEquipped, "");
@@ -3870,10 +3935,27 @@ stock bool UnequipAugment_Confirm(client, char[] augmentID) {
 		GetArrayString(myAugmentIDCodes[client], i, text, 64);
 		if (!StrEqual(text, augmentID)) continue;
 		SetArrayCell(myAugmentInfo[client], i, -1, 3);
+
+		char sql[512];
+		Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '-1' WHERE (`itemid` = '%s');", TheDBPrefix, augmentID);
+ 		SQL_TQuery(hDatabase, QueryResults, sql);
+
 		return true;
 	}
 	return false;
 }
+
+// int numAugmentsClientOwns = GetArraySize(myAugmentIDCodes[client]);
+// 		for (int i = 0; i < numAugmentsClientOwns; i++) {
+// 			char itemCode[64];
+// 			GetArrayString(myAugmentIDCodes[client], i, itemCode, 64);
+// 			int itemCost = GetArrayCell(myAugmentInfo[client], i, 1);
+// 			int bSelling = GetArrayCell(myAugmentInfo[client], i, 2);
+// 			int equipped = GetArrayCell(myAugmentInfo[client], i, 3);
+
+// 			Format(tquery, sizeof(tquery), "UPDATE `%s_loot` SET `price` = '%d', `steam_id` = '%s', `isequipped` = '%d', `isforsale` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, itemCost, key, equipped, bSelling, itemCode);
+// 			SQL_TQuery(hDatabase, QueryResults, tquery);
+// 		}
 
 
 //augmentParts
@@ -3903,9 +3985,20 @@ stock Augments_Inventory(client) {
 			int targetRating = GetArrayCell(myAugmentInfo[client], i, 5);
 
 			char itemStr[10];
+			// if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
+			// else if (activatorRating < 1 || targetRating < 1) Format(itemStr, 64, "major");
+			// else Format(itemStr, 64, "perfect");
+
+			char activatorText[64];
+			GetArrayString(myAugmentActivatorEffects[client], i, activatorText, 64);
+			char targetText[64];
+			GetArrayString(myAugmentTargetEffects[client], i, targetText, 64);
+			GetAugmentSurname(client, i, activatorText, 64, targetText, 64);
+
 			if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
-			else if (activatorRating < 1 || targetRating < 1) Format(itemStr, 64, "major");
-			else Format(itemStr, 64, "perfect");
+			else if (!StrEqual(activatorText, "-1") && !StrEqual(targetText, "-1")) Format(itemStr, 64, "%s, %s", targetText, activatorText);
+			else if (!StrEqual(activatorText, "-1")) Format(itemStr, 64, "%s", activatorText);
+			else Format(itemStr, 64, "%s", targetText);
 
 			Format(text, sizeof(text), "+%3.3f%s %s %s %s", (iItemLevel * fAugmentRatingMultiplier) * 100.0, pct, itemStr, menuText, baseMenuText[len]);
 			if (isEquipped >= 0) Format(text, sizeof(text), "%s (slot %d)", text, isEquipped+1);

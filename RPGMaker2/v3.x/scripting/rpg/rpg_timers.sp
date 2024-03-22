@@ -427,7 +427,7 @@ stock HumanSurvivors() {
 public Action Timer_TeleportRespawn(Handle timer, any client) {
 
 	if (b_IsActiveRound && IsLegitimateClient(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
-		ChangeHook(client, true);
+		//ChangeHook(client, true);
 
 		int target = MyRespawnTarget[client];
 
@@ -781,10 +781,10 @@ public ReadyUp_FwdChangeTeam(client, team) {
 public Action Timer_ChangeTeamCheck(Handle timer, any client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
 	if (GetClientTeam(client) == TEAM_SURVIVOR) {
-		ChangeHook(client, true);
+		//ChangeHook(client, true);
 		if (!b_IsLoading[client] && !b_IsLoaded[client]) OnClientLoaded(client);
 	}
-	else ChangeHook(client);
+	//else ChangeHook(client);
 	return Plugin_Stop;
 }
 
@@ -967,13 +967,15 @@ public Action Timer_Slow(Handle timer, any client) {
 	if (!b_IsActiveRound || !IsPlayerAlive(client) || ISSLOW[client] == INVALID_HANDLE) {
 		SetSpeedMultiplierBase(client);
 		fSlowSpeed[client] = 1.0;
-		KillTimer(ISSLOW[client]);
+		//KillTimer(ISSLOW[client]);
 		ISSLOW[client] = INVALID_HANDLE;
 		return Plugin_Stop;
 	}
 	//SetEntityMoveType(client, MOVETYPE_WALK);
 	SetSpeedMultiplierBase(client);
 	fSlowSpeed[client] = 1.0;
+	//KillTimer(ISSLOW[client]);
+	ISSLOW[client] = INVALID_HANDLE;
 	return Plugin_Stop;
 }
 
@@ -1043,7 +1045,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 	int DamageValue = RoundToCeil(flStrengthTotal);
 	if (!IsFakeClient(client)) {
 		ScreenShake(client);
-		SetClientTotalHealth(client, DamageValue);
+		SetClientTotalHealth(_, client, DamageValue);
 	}
 	bool isTargetClientABot;
 	float ammoStr = 0.0;
@@ -1065,13 +1067,13 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 		//else SetEntityHealth(i, GetClientHealth(i) - DamageValue);
 		if (GetClientTeam(i) == TEAM_SURVIVOR && !isTargetClientABot) {
 			ammoStr = IsClientInRangeSpecialAmmo(i, "D", false, _, DamageValue * 1.0);
-			if (ammoStr > 0.0) SetClientTotalHealth(i, RoundToCeil(DamageValue * (1.0 - ammoStr)));
-			else SetClientTotalHealth(i, DamageValue);
+			if (ammoStr > 0.0) SetClientTotalHealth(client, i, RoundToCeil(DamageValue * (1.0 - ammoStr)));
+			else SetClientTotalHealth(client, i, DamageValue);
 			ammoStr = IsClientInRangeSpecialAmmo(i, "R", false, _, DamageValue * 1.0);
 			if (ammoStr > 0.0) {
 
 				ReflectDebuff = RoundToCeil(DamageValue * ammoStr);
-				SetClientTotalHealth(client, ReflectDebuff);
+				SetClientTotalHealth(i, client, ReflectDebuff);
 				CreateAndAttachFlame(i, ReflectDebuff, 3.0, 0.5, i, "reflect");
 			}
 		}
