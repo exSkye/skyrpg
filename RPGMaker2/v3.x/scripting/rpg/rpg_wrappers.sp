@@ -7747,6 +7747,7 @@ public Action Timer_RemoveCooldown(Handle timer, Handle packi) {
 	if (StrEqual(StackType, "none", false)) {
 
 		if (IsLegitimateClient(client)) {
+			if (GetArraySize(PlayerAbilitiesCooldown[client]) < pos) ResizeArray(PlayerAbilitiesCooldown[client], pos + 1);
 			SetArrayString(PlayerAbilitiesCooldown[client], pos, "0");
 		}
 	}

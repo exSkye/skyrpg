@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.6"
+#define PLUGIN_VERSION				"v3.4.5.7"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -44,6 +44,18 @@
 
 
 /*
+ Version 3.4.5.7
+ - Added !autodismantle feature. Using the command provides the syntax as a response in chat.
+		!autodismantle minor - toggles on/off auto dismantling of minor augments.
+		!autodismantle <score> - toggles the auto dismantling of ANY augment that rolls below this score value.
+ - Rewrote !giveaugment to support both two methods of giving augments away.
+		!giveaugment aim <augment id no.> - gives the augment to the survivor player you're aiming at.
+		!giveaugment <name> <augment id no.> - gives the augment to the first survivor found whose name contains the substring provided.
+
+		When a player gives another player an augment, it now will automatically try to re-open the gifters augment inventory.
+ - Fixed a bug where the timer for talent cooldowns was not checking that the cooldown array size matched the # of talents, which could happen
+   if a player disconnected after the cooldown was created, and that same client ID is replaced by another client before the cooldown finished.
+
  Version 3.4.5.6
  - Added config.cfg key "level required to earn score?" so new players can get accustomed to the mod for a few levels before difficulty starts to increase.
  - Handicaps, which can be set in handicap.cfg are now fully-integrated into the mod.
@@ -482,6 +494,7 @@ public Plugin myinfo = {
 #define HANDICAP_LOOTFIND					3
 #define HANDICAP_SCORE_REQUIRED				4
 
+int iplayerDismantleMinorAugments[MAXPLAYERS + 1];
 int iplayerSettingAutoDismantleScore[MAXPLAYERS + 1];
 Handle SetHandicapValues[MAXPLAYERS + 1];
 Handle HandicapSelectedValues[MAXPLAYERS + 1];
@@ -2813,20 +2826,23 @@ public Action CMD_GiveInventoryItem(client, args) {
 	GetCmdArg(1, arg, sizeof(arg));
 	GetCmdArg(2, arg2, sizeof(arg2));
 	int targetclient = 0;
-	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || IsFakeClient(i) || i == client) continue;
-		char playerName[64];
-		GetClientName(i, playerName, 64);
-		if (StrContains(playerName, arg, false) == -1) continue;
-		targetclient = i;
-		break;
+	if (StrEqual(arg, "aim", false)) targetclient = GetClientAimTarget(client, true);
+	else {
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClient(i) || IsFakeClient(i) || i == client) continue;
+			char playerName[64];
+			GetClientName(i, playerName, 64);
+			if (StrContains(playerName, arg, false) == -1) continue;
+			targetclient = i;
+			break;
+		}
 	}
-	if (!IsLegitimateClient(targetclient) || IsFakeClient(targetclient)) return Plugin_Handled;
+	if (!IsLegitimateClient(targetclient) || GetClientTeam(targetclient) != TEAM_SURVIVOR || IsFakeClient(targetclient)) return Plugin_Handled;
 	char Name[MAX_NAME_LENGTH];
 	GetClientName(targetclient, Name, sizeof(Name));
 	int pos = StringToInt(arg2);
-
-	if (GetArrayCell(myAugmentInfo[client], pos, 3) >= 0) {
+	int eq = GetArrayCell(myAugmentInfo[client], pos, 3);
+	if (eq >= 0 && eq < iNumAugments) {
 		PrintToChat(client, "\x04Ownership of equipped augments cannot be transferred.");
 		return Plugin_Handled;
 	}
@@ -2879,6 +2895,7 @@ public Action CMD_GiveInventoryItem(client, args) {
 
 	PrintToChat(client, "You gave %N an augment.", targetclient);
 	PrintToChat(targetclient, "%N gave you an augment... Check it out.", client);
+	Augments_Inventory(client);
 	return Plugin_Handled;
 }
 
@@ -3647,11 +3664,23 @@ public Action CMD_AutoDismantle(client, args) {
 	int lootFindBonus = 0;
 	if (handicapLevel[client] > 0) lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
 	if (args < 1) {
-		PrintToChat(client, "\x04!autodismantle <score> - \x03augments that roll under this score will be auto-dismantled.\n\x04limit: \x03%d", BestRating[client] + lootFindBonus);
+		PrintToChat(client, "\x04!autodismantle <score>\n\x03augments that roll under this score will be auto-dismantled. \x04limit: \x03%d", BestRating[client] + lootFindBonus);
+		PrintToChat(client, "\x04!autodismantle minor - \x03toggle auto dismantle of minor augments on/off");
 		return Plugin_Handled;
 	}
 	char arg[64];
 	GetCmdArg(1, arg, 64);
+	if (StrEqual(arg, "minor", false)) {
+		if (iplayerDismantleMinorAugments[client] == 0) {
+			iplayerDismantleMinorAugments[client] = 1;
+			PrintToChat(client, "\x04minor augment \x03auto-dismantle \x05Enabled");
+		}
+		else {
+			iplayerDismantleMinorAugments[client] = 0;
+			PrintToChat(client, "\x04minor augment \x03auto-dismantle \x05Disabled");
+		}
+		return Plugin_Handled;
+	}
 	int auto = StringToInt(arg);
 	if (auto > 0 && auto <= BestRating[client] + lootFindBonus) {
 		iplayerSettingAutoDismantleScore[client] = auto;
@@ -3743,9 +3772,9 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		}
 	}
 	int potentialItemRatingOverride = (forceAugmentItemLevel > 0) ? forceAugmentItemLevel : GetRandomInt(min, max+lootFindBonus);
+	char text[512];
 	if (potentialItemRatingOverride < iplayerSettingAutoDismantleScore[client]) {
 		augmentParts[client]++;
-		char text[64];
 		Format(text, 64, "{G}+1 {O}augment parts");
 		Client_PrintToChat(client, true, text);
 		return;
@@ -3754,30 +3783,8 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 
 	int size = GetArraySize(myAugmentIDCodes[client]);
 	char buffedCategory[64];
-	int lootSize = GetArraySize(myLootDropCategoriesAllowed[client]);
-	if (lootSize < 1) return;
-	ResizeArray(myAugmentIDCodes[client], size+1);
-	ResizeArray(myAugmentCategories[client], size+1);
-	ResizeArray(myAugmentOwners[client], size+1);
-	ResizeArray(myAugmentInfo[client], size+1);
-	ResizeArray(myAugmentActivatorEffects[client], size+1);
-	ResizeArray(myAugmentTargetEffects[client], size+1);
-
-	char sItemCode[64];
-	FormatTime(sItemCode, 64, "%y%m%d%H%M%S", GetTime());
-	lootDropCounter++;
-	Format(sItemCode, 64, "%d%s%d", iUniqueServerCode, sItemCode, lootDropCounter);
-	SetArrayString(myAugmentIDCodes[client], size, sItemCode);
-
-	int pos = GetRandomInt(0, lootSize-1);
-	GetArrayString(myLootDropCategoriesAllowed[client], pos, buffedCategory, 64);
-
-	char menuText[64];
-	int len = GetAugmentTranslation(client, buffedCategory, menuText);
-
-	char name[64];
-	char text[512];
-	GetClientName(client, name, sizeof(name));
+	int lootPool = GetArraySize(myLootDropCategoriesAllowed[client]);
+	if (lootPool < 1) return;
 
 	int potentialItemRating = (potentialItemRatingOverride == 0) ? Rating[client] : potentialItemRatingOverride;
 	int count = 1;
@@ -3802,6 +3809,34 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		if (lootsize < 2 && thisAugmentRatingRequiredForNextTier > iRatingRequiredForAugmentLootDrops && potentialItemRating > thisAugmentRatingRequiredForNextTier) lootsize++;
 		else break;
 	}
+	if (iplayerDismantleMinorAugments[client] == 1 && lootsize < 1) {
+		augmentParts[client]++;
+		Format(text, 64, "{G}+1 {O}augment parts");
+		Client_PrintToChat(client, true, text);
+		return;
+	}
+	ResizeArray(myAugmentIDCodes[client], size+1);
+	ResizeArray(myAugmentCategories[client], size+1);
+	ResizeArray(myAugmentOwners[client], size+1);
+	ResizeArray(myAugmentInfo[client], size+1);
+	ResizeArray(myAugmentActivatorEffects[client], size+1);
+	ResizeArray(myAugmentTargetEffects[client], size+1);
+
+	char sItemCode[64];
+	FormatTime(sItemCode, 64, "%y%m%d%H%M%S", GetTime());
+	lootDropCounter++;
+	Format(sItemCode, 64, "%d%s%d", iUniqueServerCode, sItemCode, lootDropCounter);
+	SetArrayString(myAugmentIDCodes[client], size, sItemCode);
+
+	int pos = GetRandomInt(0, lootPool-1);
+	GetArrayString(myLootDropCategoriesAllowed[client], pos, buffedCategory, 64);
+
+	char menuText[64];
+	int len = GetAugmentTranslation(client, buffedCategory, menuText);
+
+	char name[64];
+	GetClientName(client, name, sizeof(name));
+
 	SetArrayString(myAugmentCategories[client], size, buffedCategory);
 	SetArrayString(myAugmentOwners[client], size, baseName[client]);
 	SetArrayCell(myAugmentInfo[client], size, lootrolls[0]);	// item rating
