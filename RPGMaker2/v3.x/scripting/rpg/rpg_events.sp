@@ -261,14 +261,8 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			//new RatingMult = GetConfigValueInt("rating level multiplier?");
 			int InfectedLevelType = iBotLevelType;
 			for (int i = 1; i <= MaxClients; i++) {
-				if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
-					if (InfectedLevelType == 0) Rating[i] += (RaidLevMult / TheLiving);
-					else {
-						if (!bIsSoloHandicap) Rating[i] += (TheInfectedLevel / TheHumans);
-						else Rating[i] += RaidLevMult;
-					}
-					RoundExperienceMultiplier[i] += FinSurvBon;
-				}
+				if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+				RoundExperienceMultiplier[i] += FinSurvBon;
 			}
 		}
 		//PrintToChatAll("%t", "Experience Gains Disabled", orange, white, orange, white, blue);
@@ -1545,9 +1539,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			if (!IsSurvivalMode) AwardExperience(client);
 		}
 		else if (CombatTime[client] > TheTime || EnrageActivity || b_IsFinaleActive) {
-
 			bIsInCombat[client] = true;
-			if (!bIsHandicapLocked[client]) bIsHandicapLocked[client] = true;
 		}
 		//if (GetClientTeam(client) == TEAM_INFECTED) SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
 		// if (clientTeam == TEAM_SURVIVOR) {
@@ -2266,7 +2258,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 			if (killerblow != i) GetAbilityStrengthByTrigger(i, client, "assist");
 			RollLoot(i, client);
 			if (!bSomeoneHurtThisInfected) bSomeoneHurtThisInfected = true;
-			if (!IsFakeClient(i) && ClientType >= 0 && ClientType < 3) {
+			if (!IsFakeClient(i) && ClientType >= 0 && ClientType < 3 && PlayerLevel[i] >= iLevelRequiredToEarnScore) {
 				if (!survivorsRequiredForBonusRating) {
 					AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
 					PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
@@ -2281,7 +2273,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 				}
 			}
 			CheckMinimumRate(i);
-			Rating[i] += RatingBonus;
+			if (PlayerLevel[i] >= iLevelRequiredToEarnScore) Rating[i] += RatingBonus;
 			bIsSettingsCheck = true;		// whenever rating is earned for anything other than common infected kills, we want to check the settings to see if a boost to commons is necessary.
 			if (i == killerblow) {
 				TheAbilityMultiplier = GetAbilityMultiplier(i, "R");
@@ -2520,12 +2512,12 @@ stock GetBulletOrMeleeHealAmount(healer, target, damage, damagetype, bool isMele
 	float healPercentage = 0.0;
 	if (damagetype & DMG_BULLET || damagetype & DMG_SLASH || damagetype & DMG_CLUB) {
 		if (!isMelee) {
-			healPercentage = GetAbilityStrengthByTrigger(healer, target, "hB", _, 0, _, _, "d", 2, true, _, _, _, damagetype);
-			healPercentage += GetAbilityStrengthByTrigger(healer, target, "hB", _, 0, _, _, "healshot", 2, true, _, _, _, damagetype);
+			healPercentage = GetAbilityStrengthByTrigger(healer, target, "hB", _, 0, _, _, "d", 2, true);
+			healPercentage += GetAbilityStrengthByTrigger(healer, target, "hB", _, 0, _, _, "healshot", 2, true);
 		}
 		else {
-			healPercentage = GetAbilityStrengthByTrigger(healer, target, "hM", _, 0, _, _, "d", 2, true, _, _, _, damagetype);
-			healPercentage += GetAbilityStrengthByTrigger(healer, target, "hM", _, 0, _, _, "healmelee", 2, true, _, _, _, damagetype);
+			healPercentage = GetAbilityStrengthByTrigger(healer, target, "hM", _, 0, _, _, "d", 2, true);
+			healPercentage += GetAbilityStrengthByTrigger(healer, target, "hM", _, 0, _, _, "healmelee", 2, true);
 		}
 		int iHealerAmount = RoundToCeil(damage * healPercentage);
 		if (IsLegitimateClientAlive(target)) {

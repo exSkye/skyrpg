@@ -109,6 +109,8 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `augmentparts` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `dismantlescore` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
 
 		GetConfigValue(text, sizeof(text), "sky points menu name?");
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
@@ -147,7 +149,7 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		}
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `myrating %s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, RatingType);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
-		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `ratinghc %s` int(32) NOT NULL DEFAULT'0';", TheDBPrefix, RatingType);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `handicaplevel %s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, RatingType);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `pri` int(32) NOT NULL DEFAULT '1';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
@@ -625,7 +627,7 @@ stock void ClearAndLoad(int client, bool IgnoreLoad = false) {
 	//LogMessage("Loading %N data", client);
 	char themenu[64];
 	GetConfigValue(themenu, sizeof(themenu), "sky points menu name?");
-	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `skylevel`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `restt`,`restexp`, `lpl`, `resr`, `survpoints`, `bec`, `rem`, `pri`, `xpdebt`, `upav`, `upawarded`, `%s`, `myrating %s`, `ratinghc %s`, `lastserver`, `myseason`, `lvlpaused`, `itrails`, `pistol_xp`, `melee_xp`, `uzi_xp`, `shotgun_xp`, `sniper_xp`, `assault_xp`, `medic_xp`, `grenade_xp`, `augmentparts` FROM `%s` WHERE (`steam_id` = '%s');", themenu, RatingType, RatingType, RatingType, TheDBPrefix, key);
+	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `skylevel`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `restt`, `restexp`, `lpl`, `resr`, `survpoints`, `bec`, `rem`, `pri`, `xpdebt`, `upav`, `upawarded`, `%s`, `myrating %s`, `handicaplevel %s`, `lastserver`, `myseason`, `lvlpaused`, `itrails`, `pistol_xp`, `melee_xp`, `uzi_xp`, `shotgun_xp`, `sniper_xp`, `assault_xp`, `medic_xp`, `grenade_xp`, `augmentparts`, `dismantlescore` FROM `%s` WHERE (`steam_id` = '%s');", themenu, RatingType, RatingType, RatingType, TheDBPrefix, key);
 	// maybe set a value equal to the users steamid integer only, so if steam:0:1:23456, set the value of "client" equal to 23456 and then set the client equal to whatever client's steamid contains 23456?
 	SQL_TQuery(hDatabase, QueryResults_Load, tquery, client);
 }
@@ -1102,7 +1104,7 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	int minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
 	if (Rating[client] < minimumRating) Rating[client] = minimumRating;
 
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `restt` = '%d', `restexp` = '%d', `lpl` = '%d', `resr` = '%d', `pri` = '%d', `survpoints` = '%s', `bec` = '%d', `%s` = '%d', `myrating %s` = '%d', `ratinghc %s` = '%d', `augmentparts` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, GetTime(), RestedExperience[client], LastPlayLength[client], resr[client], PreviousRoundIncaps[client], sPoints, BonusContainer[client], RatingType, BestRating[client], RatingType, Rating[client], RatingType, RatingHandicap[client], augmentParts[client], key);
+	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `restt` = '%d', `restexp` = '%d', `lpl` = '%d', `resr` = '%d', `pri` = '%d', `survpoints` = '%s', `bec` = '%d', `%s` = '%d', `myrating %s` = '%d', `handicaplevel %s` = '%d', `augmentparts` = '%d', `dismantlescore` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, GetTime(), RestedExperience[client], LastPlayLength[client], resr[client], PreviousRoundIncaps[client], sPoints, BonusContainer[client], RatingType, BestRating[client], RatingType, Rating[client], RatingType, handicapLevel[client], augmentParts[client], iplayerSettingAutoDismantleScore[client], key);
 	SQL_TQuery(hDatabase, QueryResults4, tquery, client);
 
 	for (int i = 0; i < size; i++) {
@@ -1452,14 +1454,11 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 		char text[64];
 		//decl String:tquery[512];
 		char t_Hostname[64];
-
 		char CurrentSeason[64];
 		int RestedTime		= 0;
 		int iLevel = 0;
 		//decl String:t_Class[64];
-
 		if (!IsLegitimateClient(client)) {
-
 			if (client > 0) b_IsLoading[client] = false;
 			return;
 		}
@@ -1493,7 +1492,7 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 			UpgradesAwarded[client]		=	SQL_FetchInt(hndl, 21);
 			BestRating[client] =	SQL_FetchInt(hndl, 22);
 			Rating[client] = SQL_FetchInt(hndl, 23);
-			RatingHandicap[client] = SQL_FetchInt(hndl, 24);
+			handicapLevel[client] = SQL_FetchInt(hndl, 24);
 			SQL_FetchString(hndl, 25, t_Hostname, sizeof(t_Hostname));
 			SQL_FetchString(hndl, 26, CurrentSeason, sizeof(CurrentSeason));
 			iIsLevelingPaused[client]	= SQL_FetchInt(hndl, 27);
@@ -1507,7 +1506,9 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 			medicXP[client] = SQL_FetchInt(hndl, 35);
 			grenadeXP[client] = SQL_FetchInt(hndl, 36);
 			augmentParts[client] = SQL_FetchInt(hndl, 37);
+			iplayerSettingAutoDismantleScore[client] = SQL_FetchInt(hndl, 38);
 		}
+		LogMessage("%N has finished loading.", client);
 		if (PlayerLevel[client] > 0) {
 			if (CurrentMapPosition == 0) {
 				BonusContainer[client] = 0;
@@ -1569,6 +1570,7 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 				}
 				//if (PlayerLevel[client] != iLevel) SetTotalExperienceByLevel(client, iLevel);
 			}
+			SetClientHandicapValues(client);
 			SetSpeedMultiplierBase(client);
 			LoadPos[client] = 0;
 			b_IsLoadingTrees[client] = false;
@@ -2113,40 +2115,21 @@ public OnClientDisconnect(client)
 		}
 		ChangeHook(client);
 		ClearArray(playerLootOnGround[client]);
-
-		/*if (IsValidEntity(iChaseEnt[client])) {
-
-			AcceptEntityInput(iChaseEnt[client], "Kill");
-		}*/
 		if(iChaseEnt[client] > 0 && IsValidEntity(iChaseEnt[client])) AcceptEntityInput(iChaseEnt[client], "Kill");
 		iChaseEnt[client] = -1;
-		//bIsHideThreat[client] = true;
 		iThreatLevel[client] = 0;
-		//IsLoadingClassData[client] = false;
 		bRushingNotified[client] = false;
 		ClientActiveStance[client] = 0;
-		//ExperienceLevel[client] = 0;
-		//ExperienceOverall[client] = 0;
-		//bIsNewClass[client] = false;
 		b_IsLoadingTrees[client] = false;
 		b_IsLoadingStore[client] = false;
 		b_IsLoading[client] = false;
 		bIsTalentTwo[client] = false;
 		bTimersRunning[client] = false;
-		//b_IsLoaded[client] = false;
 		bIsMeleeCooldown[client] = false;
 		shotgunCooldown[client] = false;
 		b_IsInSaferoom[client] = false;
 		bIsInCheckpoint[client] = false;
-		//b_IsArraysCreated[client] = false;
 		ResetData(client);
-		//PlayerLevel[client] = 0;
-		//Rating[client] = 0;
-		//RatingHandicap[client] = 0;
-		//bIsHandicapLocked[client] = false;
-		//BestRating[client] = 0;
-		//DisplayActionBar[client] = false;
-		//MyBirthday[client] = 0;
 		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 		//Format(ClassLoadQueue[client], sizeof(ClassLoadQueue[]), "none");
 		//IsGroupMember[client] = false;
@@ -2210,8 +2193,6 @@ public Action Timer_InitializeClientLoad(Handle timer, any client) {
 	b_IsLoadingStore[client] = false;
 	b_IsLoading[client] = false;
 	bIsInCombat[client] = false;
-	RatingHandicap[client] = 0;
-	bIsHandicapLocked[client] = false;
 	DisplayActionBar[client] = false;
 	bRushingNotified[client] = false;
 	MyBirthday[client] = 0;
@@ -2248,7 +2229,7 @@ stock bool IsLoadingClientBaseNameDefault(client) {
 stock OnClientLoaded(client, bool IsHooked = false) {
 
 	//if (!IsClientConnected(client)) return;
-	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client] && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
+	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client]) {//&& (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
 		return;
 	}
 	bTimersRunning[client] = false;
@@ -2286,8 +2267,6 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 	ExperienceOverall[client] = 0;
 	iIsLevelingPaused[client] = 0;
 	iIsBulletTrails[client] = 0;
-
-	RatingHandicap[client] = 0;
 	Rating[client] = 0;
 	BestRating[client] = 0;
 	bIsDisconnecting[client] = false;
@@ -2295,7 +2274,6 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 	bEquipSpells[client] = false;
 	IsPvP[client] = 0;
 	//ToggleTank(client, true);
-
 	//bIsClassAbilities[client] = false;
 	LoadTarget[client] = -1;
 	bIsTalentTwo[client] = false;

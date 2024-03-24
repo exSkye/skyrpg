@@ -359,9 +359,13 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 	char skey[64];
 
 	if (!IsLegitimateClient(client)) return;
+	int dbsize = GetArraySize(a_Database_Talents);
+	if (GetArraySize(a_Database_PlayerTalents[client]) != dbsize) {
+		ResizeArray(a_Database_PlayerTalents[client], dbsize);
+	}
 	while (SQL_FetchRow(hndl)) {
 		SQL_FetchString(hndl, 0, key, sizeof(key));
-		if (LoadPos[client] >= 0 && LoadPos[client] < GetArraySize(a_Database_Talents)) {
+		if (LoadPos[client] >= 0 && LoadPos[client] < dbsize) {
 
 			talentlevel = SQL_FetchInt(hndl, 1);
 			//SetArrayString(TempTalents[client], LoadPos[client], text);
@@ -1279,6 +1283,7 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 		if (StrEqual(configname, "level up") && PlayerLevel[client] == iMaxLevel) continue;
 		if (StrEqual(configname, "autolevel toggle") && iAllowPauseLeveling != 1) continue;
 		if (StrEqual(configname, "prestige") && (SkyLevel[client] >= iSkyLevelMax || PlayerLevel[client] < iMaxLevel)) continue;
+		// if (StrEqual(configname, "handicap") && PlayerLevel[client] < iLevelRequiredToEarnScore) continue;
 		//if (StrEqual(configname, "respec", false) && bIsInCombat[client] && b_IsActiveRound) continue;
 
 		// If director talent menu options is enabled by an admin, only specific options should show. We determine this here.
@@ -1568,6 +1573,9 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 		else if (StrEqual(config, "readallprofiles", false)) {
 
 			ReadProfiles(client, "all");
+		}
+		else if (StrEqual(config, "handicap", false)) {
+			HandicapMenu(client);
 		}
 		else if (StrEqual(config, "leaderboards", false)) {
 
@@ -2359,10 +2367,23 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 	}// even requests are for damage.
 	if (request != 7 && iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) {
 		// health result or damage result
+		float handicapLevelBonus = 0.0;
 		if (request % 2 != 0) {
 			if (fSurvivorHealthBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
+			if (handicapLevel[client] > 0) {
+				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 1);
+				int healthBonus = RoundToCeil(iResult * handicapLevelBonus);
+				if (healthBonus > 0) iResult += healthBonus;
+			}
 		}
-		else if (fSurvivorDamageBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+		else {
+			if (fSurvivorDamageBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+			if (handicapLevel[client] > 0) {
+				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 0);
+				int damageBonus = RoundToCeil(iResult * handicapLevelBonus);
+				if (damageBonus > 0) iResult += damageBonus;
+			}
+		}
 	}
 	if (request != 7 && request % 2 == 0) {
 		// show the damage increase/decrease if the player has associated talents doing so.
@@ -2759,10 +2780,10 @@ stock BuildSubMenu(client, char[] MenuName, char[] ConfigName, char[] ReturnMenu
 		MenuValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
 		int activatorClassesAllowed = GetArrayCell(MenuValues[client], ACTIVATOR_CLASS_REQ);
 		if (activatorClassesAllowed > -1) {
-			bool isSurvivorTalent		= (clientClassIsAllowed(client, activatorClassesAllowed, 1)) ? true : false;
+			bool isSurvivorTalent		= (activatorClassesAllowed % 2 == 1) ? true : false;
 			bool isInfectedTalent		= (activatorClassesAllowed > 1) ? true : false;
-			if (!isSurvivorTalent && isClientSurvivor) continue;
-			if (!isInfectedTalent && isClientInfected) continue;
+			if (isSurvivorTalent && !isClientSurvivor) continue;
+			if (isInfectedTalent && !isClientInfected) continue;
 		}
 
 		MenuKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
@@ -2945,10 +2966,10 @@ public BuildSubMenuHandle(Handle menu, MenuAction action, client, slot)
 			MenuValues[client]				= GetArrayCell(a_Menu_Talents, i, 1);
 			int activatorClassesAllowed = GetArrayCell(MenuValues[client], ACTIVATOR_CLASS_REQ);
 			if (activatorClassesAllowed > -1) {
-				bool isSurvivorTalent		= (clientClassIsAllowed(client, activatorClassesAllowed, 1)) ? true : false;
+				bool isSurvivorTalent		= (activatorClassesAllowed % 2 == 1) ? true : false;
 				bool isInfectedTalent		= (activatorClassesAllowed > 1) ? true : false;
-				if (!isSurvivorTalent && isClientSurvivor) continue;
-				if (!isInfectedTalent && isClientInfected) continue;
+				if (isSurvivorTalent && !isClientSurvivor) continue;
+				if (isInfectedTalent && !isClientInfected) continue;
 			}
 
 			MenuKeys[client]				= GetArrayCell(a_Menu_Talents, i, 0);
@@ -3956,7 +3977,69 @@ stock bool UnequipAugment_Confirm(client, char[] augmentID) {
 // 			Format(tquery, sizeof(tquery), "UPDATE `%s_loot` SET `price` = '%d', `steam_id` = '%s', `isequipped` = '%d', `isforsale` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, itemCost, key, equipped, bSelling, itemCode);
 // 			SQL_TQuery(hDatabase, QueryResults, tquery);
 // 		}
+stock HandicapMenu(client) {
+	Handle menu = CreateMenu(HandicapMenu_Handle);
+	char pct[4];
+	Format(pct, 4, "%");
+	int size = GetArraySize(a_HandicapLevels);
+	char text[512];
+	if (handicapLevel[client] > 0) Format(text, 512, "Handicap Level: %d", handicapLevel[client]);
+	else Format(text, 512, "Handicap Disabed");
+	SetMenuTitle(menu, text);
+	for (int i = 0; i < size; i++) {
+		HandicapValues[client]	= GetArrayCell(a_HandicapLevels, i, 1);
+		char menuName[64];
+		GetArrayString(HandicapValues[client], HANDICAP_TRANSLATION, menuName, 64);
+		float handicapDamage = GetArrayCell(HandicapValues[client], HANDICAP_DAMAGE);
+		float handicapHealth = GetArrayCell(HandicapValues[client], HANDICAP_HEALTH);
+		int lootFindBonus	 = GetArrayCell(HandicapValues[client], HANDICAP_LOOTFIND);
+		int scoreRequired	 = GetArrayCell(HandicapValues[client], HANDICAP_SCORE_REQUIRED);
+		int scoreMissing	 = (BestRating[client] >= scoreRequired) ? 0 : scoreRequired - Rating[client];
+		if (scoreMissing == 0) Format(text, sizeof(text), "%T", "handicap level unlocked", client, menuName, RoundToCeil(handicapDamage * 100.0), pct, RoundToCeil(handicapHealth * 100.0), pct, RoundToCeil((lootFindBonus * fAugmentRatingMultiplier) * 100.0), pct, pct);
+		else {
+			AddCommasToString(scoreMissing, text, sizeof(text));
+			Format(text, sizeof(text), "%T", "handicap level locked", client, menuName, RoundToCeil(handicapDamage * 100.0), pct, RoundToCeil(handicapHealth * 100.0), pct, RoundToCeil((lootFindBonus * fAugmentRatingMultiplier) * 100.0), pct, text, pct);
+		}
+		AddMenuItem(menu, text, text);
+	}
+	SetMenuExitBackButton(menu, true);
+	DisplayMenu(menu, client, 0);
+}
 
+stock void SetClientHandicapValues(client) {
+	if (handicapLevel[client] < 1) {
+		if (GetArraySize(HandicapSelectedValues[client]) != 3) ResizeArray(HandicapSelectedValues[client], 3);
+		SetArrayCell(HandicapSelectedValues[client], 0, 0.0);
+		SetArrayCell(HandicapSelectedValues[client], 1, 0.0);
+		SetArrayCell(HandicapSelectedValues[client], 2, 0);
+		return;
+	}
+	SetHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
+	if (GetArraySize(HandicapSelectedValues[client]) != 3) ResizeArray(HandicapSelectedValues[client], 3);
+	float handicapDamage = GetArrayCell(SetHandicapValues[client], HANDICAP_DAMAGE);
+	float handicapHealth = GetArrayCell(SetHandicapValues[client], HANDICAP_HEALTH);
+	int lootFindBonus	 = GetArrayCell(SetHandicapValues[client], HANDICAP_LOOTFIND);
+
+	SetArrayCell(HandicapSelectedValues[client], 0, handicapDamage);
+	SetArrayCell(HandicapSelectedValues[client], 1, handicapHealth);
+	SetArrayCell(HandicapSelectedValues[client], 2, lootFindBonus);
+}
+
+public HandicapMenu_Handle(Handle menu, MenuAction action, client, slot) {
+	if (action == MenuAction_Select) {
+		HandicapValues[client]	= GetArrayCell(a_HandicapLevels, slot, 1);
+		int scoreRequired	 = GetArrayCell(HandicapValues[client], HANDICAP_SCORE_REQUIRED);
+		if (BestRating[client] >= scoreRequired && (handicapLevel[client] > slot+1 || !b_IsActiveRound)) {
+			handicapLevel[client] = slot+1;
+			SetClientHandicapValues(client);
+		}
+		HandicapMenu(client);
+	}
+	else if (action == MenuAction_Cancel) {
+		if (slot == MenuCancel_ExitBack) BuildMenu(client);
+	}
+	if (action == MenuAction_End) CloseHandle(menu);
+}
 
 //augmentParts
 stock Augments_Inventory(client) {

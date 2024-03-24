@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.5"
+#define PLUGIN_VERSION				"v3.4.5.6"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -31,6 +31,7 @@
 #define CONFIG_WEAPONS				"rpg/weapondamages.cfg"
 #define CONFIG_COMMONAFFIXES		"rpg/commonaffixes.cfg"
 #define CONFIG_CLASSNAMES			"rpg/classnames.cfg"
+#define CONFIG_HANDICAP				"rpg/handicap.cfg"
 #define LOGFILE						"rum_rpg.txt"
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
 
@@ -43,6 +44,11 @@
 
 
 /*
+ Version 3.4.5.6
+ - Added config.cfg key "level required to earn score?" so new players can get accustomed to the mod for a few levels before difficulty starts to increase.
+ - Handicaps, which can be set in handicap.cfg are now fully-integrated into the mod.
+ - Added support for players setting a minimum required score for augments or they are auto-dismantled; !autodismantle <score>
+
  Version 3.4.5.5
  - Talents in talentmenu.cfg now hide/display to users based on whether a survivor or infected class can activate the talent via the "activator class required?" key.
 		This should make it so that talents for both infected and survivor can be added to the different categories in each tree, but will only show to eligible players.
@@ -469,6 +475,19 @@ public Plugin myinfo = {
 #define EVENT_IS_BULLET_IMPACT				17
 #define EVENT_ENTERED_SAFEROOM				18
 
+// for handicap.cfg
+#define HANDICAP_TRANSLATION				0
+#define HANDICAP_DAMAGE						1
+#define HANDICAP_HEALTH						2
+#define HANDICAP_LOOTFIND					3
+#define HANDICAP_SCORE_REQUIRED				4
+
+int iplayerSettingAutoDismantleScore[MAXPLAYERS + 1];
+Handle SetHandicapValues[MAXPLAYERS + 1];
+Handle HandicapSelectedValues[MAXPLAYERS + 1];
+Handle HandicapValues[MAXPLAYERS + 1];
+int iLevelRequiredToEarnScore;
+int handicapLevel[MAXPLAYERS + 1];
 int lastHealthDamage[MAXPLAYERS + 1][MAXPLAYERS + 1];
 int iClientTypeToDisplayOnKill;
 char MyCurrentWeapon[MAXPLAYERS + 1][64];
@@ -514,7 +533,6 @@ float fOnFireDebuff[MAXPLAYERS + 1];
 int iSkyLevelMax;
 int SkyLevel[MAXPLAYERS + 1];
 int iIsSpecialFire;
-int iIsRatingEnabled;
 Handle hThreatSort;
 bool bIsHideThreat[MAXPLAYERS + 1];
 //new Float:fTankThreatBonus;
@@ -682,6 +700,7 @@ Handle h_CAValues;
 Handle CommonList;
 Handle CommonAffixes;// the array holding the common entity id and the affix associated with the common infected. If multiple affixes, multiple keyvalues for the entity id will be created instead of multiple entries.
 Handle a_CommonAffixes;			// the array holding the config data
+Handle a_HandicapLevels;		// handicap levels so we can customize them at any time in a config file and nothing has to be hard-coded.
 int UpgradesAwarded[MAXPLAYERS + 1];
 int UpgradesAvailable[MAXPLAYERS + 1];
 Handle InfectedAuraKeys[MAXPLAYERS + 1];
@@ -722,8 +741,6 @@ int RoundIncaps[MAXPLAYERS + 1];
 char CONFIG_MAIN[64];
 bool b_IsCampaignComplete;
 bool b_IsRoundIsOver;
-int RatingHandicap[MAXPLAYERS + 1];
-bool bIsHandicapLocked[MAXPLAYERS + 1];
 bool b_IsCheckpointDoorStartOpened;
 int resr[MAXPLAYERS + 1];
 int LastPlayLength[MAXPLAYERS + 1];
@@ -918,7 +935,6 @@ Handle CCAValues;
 int LastWeaponDamage[MAXPLAYERS + 1];
 float UseItemTime[MAXPLAYERS + 1];
 Handle NewUsersRound;
-bool bIsSoloHandicap;
 Handle MenuStructure[MAXPLAYERS + 1];
 Handle TankState_Array[MAXPLAYERS + 1];
 bool bIsGiveIncapHealth[MAXPLAYERS + 1];
@@ -1046,7 +1062,6 @@ int AllowedMobSpawnFinale;
 int RespawnQueue;
 int MaximumPriority;
 float fUpgradeExpCost;
-int iHandicapLevelDifference;
 int iWitchHealthBase;
 float fWitchHealthMult;
 int RatingPerLevel;
@@ -1079,7 +1094,6 @@ int iRatingSpecialsRequired;
 int iRatingTanksRequired;
 char sDbLeaderboards[64];
 int iIsLifelink;
-int RatingPerHandicap;
 Handle ItemDropArray;
 char sItemModel[512];
 int iSurvivorGroupMinimum;
@@ -1436,6 +1450,7 @@ public void OnPluginStart() {
 	RegAdminCmd("origin", Cmd_GetOrigin, ADMFLAG_KICK);
 	RegAdminCmd("deleteprofiles", CMD_DeleteProfiles, ADMFLAG_ROOT);
 	// These are mandatory because of quick commands, so I hardcode the entries.
+	RegConsoleCmd("autodismantle", CMD_AutoDismantle);
 	RegConsoleCmd("rollloot", CMD_RollLoot);
 	RegConsoleCmd("loaddata", CMD_LoadData);
 	RegConsoleCmd("price", CMD_SetAugmentPrice);
@@ -1450,7 +1465,6 @@ public void OnPluginStart() {
 	RegConsoleCmd("ff", CMD_TogglePvP);
 	//RegConsoleCmd("revive", CMD_RespawnYumYum);
 	//RegConsoleCmd("abar", CMD_ActionBar);
-	RegConsoleCmd("handicap", CMD_Handicap);
 	RegAdminCmd("firesword", CMD_FireSword, ADMFLAG_KICK);
 	RegAdminCmd("fbegin", CMD_FBEGIN, ADMFLAG_KICK);
 	RegAdminCmd("witches", CMD_WITCHESCOUNT, ADMFLAG_KICK);
@@ -1541,8 +1555,8 @@ public int ReadyUp_SetSurvivorMinimum(int minSurvs) {
 }
 
 public void ReadyUp_GetMaxSurvivorCount(int count) {
-	if (count <= 1) bIsSoloHandicap = true;
-	else bIsSoloHandicap = false;
+	// if (count <= 1) bIsSoloHandicap = true;
+	// else bIsSoloHandicap = false;
 }
 
 stock void UnhookAll() {
@@ -1654,6 +1668,7 @@ stock CreateAllArrays() {
 	if (Give_Store_Section == INVALID_HANDLE) Give_Store_Section							= CreateArray(32);
 	if (a_WeaponDamages == INVALID_HANDLE) a_WeaponDamages = CreateArray(32);
 	if (a_CommonAffixes == INVALID_HANDLE) a_CommonAffixes = CreateArray(32);
+	if (a_HandicapLevels == INVALID_HANDLE) a_HandicapLevels = CreateArray(32);
 	if (CommonList == INVALID_HANDLE) CommonList = CreateArray(32);
 	if (WitchList == INVALID_HANDLE) WitchList				= CreateArray(32);
 	if (CommonAffixes == INVALID_HANDLE) CommonAffixes	= CreateArray(32);
@@ -1908,7 +1923,9 @@ stock CreateAllArrays() {
 		if (playerLootOnGround[i] == INVALID_HANDLE) playerLootOnGround[i] = CreateArray(32);
 		if (possibleLootPoolTarget[i] == INVALID_HANDLE) possibleLootPoolTarget[i] = CreateArray(32);
 		if (possibleLootPoolActivator[i] == INVALID_HANDLE) possibleLootPoolActivator[i] = CreateArray(32);
-
+		if (HandicapValues[i] == INVALID_HANDLE) HandicapValues[i] = CreateArray(32);
+		if (HandicapSelectedValues[i] == INVALID_HANDLE) HandicapSelectedValues[i] = CreateArray(32);
+		if (SetHandicapValues[i] == INVALID_HANDLE) SetHandicapValues[i] = CreateArray(32);
 	}
 	CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	b_FirstLoad = true;
@@ -2031,6 +2048,7 @@ public Action Timer_ExecuteConfig(Handle timer) {
 		ReadyUp_ParseConfig(CONFIG_WEAPONS);
 		ReadyUp_ParseConfig(CONFIG_PETS);
 		ReadyUp_ParseConfig(CONFIG_COMMONAFFIXES);
+		ReadyUp_ParseConfig(CONFIG_HANDICAP);
 		//ReadyUp_ParseConfig(CONFIG_CLASSNAMES);
 		return Plugin_Stop;
 	}
@@ -2166,7 +2184,6 @@ public ReadyUpEnd_Complete() {
 					HexingContribution[i] = 0;
 					BuffingContribution[i] = 0;
 					b_IsFloating[i] = false;
-					bIsHandicapLocked[i] = false;
 				}
 			}
 		}
@@ -2253,33 +2270,18 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		}
 		char pct[4];
 		Format(pct, sizeof(pct), "%");
-		int iMaxHandicap = 0;
-		int iMinHandicap = RatingPerLevel;
 		char text[64];
 		int survivorCounter = TotalHumanSurvivors();
 		bool AnyBotsOnSurvivorTeam = BotsOnSurvivorTeam();
 		for (int i = 1; i <= MaxClients; i++) {
 			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
 			bIsMeleeCooldown[i] = false;
-			if (!IsFakeClient(i)) {
-				if (iTankRush == 1) RatingHandicap[i] = RatingPerLevel;
-				else {
-					iMaxHandicap = GetMaxHandicap(i);
-					if (RatingHandicap[i] < iMinHandicap) RatingHandicap[i] = iMinHandicap;
-					else if (RatingHandicap[i] > iMaxHandicap) RatingHandicap[i] = iMaxHandicap;
-				}
-				if (GroupMemberBonus > 0.0) {
-					if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
-					else PrintToChat(i, "%T", "group member benefit", i, orange, blue, GroupMemberBonus * 100.0, pct, green, blue);
-				}
-				if (!AnyBotsOnSurvivorTeam && fSurvivorBotsNoneBonus > 0.0 && survivorCounter <= iSurvivorBotsBonusLimit) {
-					PrintToChat(i, "%T", "group no survivor bots bonus", i, blue, fSurvivorBotsNoneBonus * 100.0, pct, green, orange);
-				}
-				if (RoundExperienceMultiplier[i] > 0.0) {
-					PrintToChat(i, "%T", "survivalist bonus experience", i, blue, orange, green, RoundExperienceMultiplier[i] * 100.0, white, pct);
-				}
+			if (GroupMemberBonus > 0.0) {
+				if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
+				else PrintToChat(i, "%T", "group member benefit", i, orange, blue, GroupMemberBonus * 100.0, pct, green, blue);
 			}
-			else SetBotHandicap(i);
+			if (!AnyBotsOnSurvivorTeam && fSurvivorBotsNoneBonus > 0.0 && survivorCounter <= iSurvivorBotsBonusLimit) PrintToChat(i, "%T", "group no survivor bots bonus", i, blue, fSurvivorBotsNoneBonus * 100.0, pct, green, orange);
+			if (RoundExperienceMultiplier[i] > 0.0) PrintToChat(i, "%T", "survivalist bonus experience", i, blue, orange, green, RoundExperienceMultiplier[i] * 100.0, white, pct);
 		}
 		if (CurrentMapPosition != 0 || ReadyUpGameMode == 3) CheckDifficulty();
 		RoundTime					=	GetTime();
@@ -2349,7 +2351,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		ResetCDImmunity(-1);
 		DoomTimer = 0;
 		if (ReadyUpGameMode != 2 && fDirectorThoughtDelay > 0.0) CreateTimer(1.0, Timer_DirectorPurchaseTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		if (!bIsSoloHandicap && RespawnQueue > 0) CreateTimer(1.0, Timer_RespawnQueue, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		if (RespawnQueue > 0) CreateTimer(1.0, Timer_RespawnQueue, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		RaidInfectedBotLimit();
 		CreateTimer(1.0, Timer_StartPlayerTimers, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(1.0, Timer_CheckIfHooked, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -2787,67 +2789,6 @@ public Action CMD_SharePoints(client, args) {
 	return Plugin_Handled;
 }
 
-stock GetMaxHandicap(client) {
-
-	int iMaxHandicap = RatingPerHandicap;
-	iMaxHandicap *= CartelLevel(client);
-	iMaxHandicap += RatingPerLevel;
-
-	return iMaxHandicap;
-}
-
-stock VerifyHandicap(client) {
-
-	int iMaxHandicap = GetMaxHandicap(client);
-	int iMinHandicap = RatingPerLevel;
-
-	if (RatingHandicap[client] < iMinHandicap) RatingHandicap[client] = iMinHandicap;
-	if (RatingHandicap[client] > iMaxHandicap) RatingHandicap[client] = iMaxHandicap;
-}
-
-public Action CMD_Handicap(client, args) {
-
-	if (iIsRatingEnabled != 1) return Plugin_Handled;
-	int iMaxHandicap = GetMaxHandicap(client);
-	int iMinHandicap = RatingPerLevel;
-	if (RatingHandicap[client] < iMinHandicap) RatingHandicap[client] = iMinHandicap;
-	if (RatingHandicap[client] > iMaxHandicap) RatingHandicap[client] = iMaxHandicap;
-	if (args < 1) {
-
-		PrintToChat(client, "%T", "handicap range", client, white, orange, iMinHandicap, white, orange, iMaxHandicap);
-	}
-	else {
-		if (!bIsHandicapLocked[client]) {
-			char arg[10];
-			GetCmdArg(1, arg, sizeof(arg));
-			int iSetHandicap = StringToInt(arg);
-			if (iSetHandicap >= iMinHandicap && iSetHandicap <= iMaxHandicap) {
-				RatingHandicap[client] = iSetHandicap;
-			}
-			else if (iSetHandicap < iMinHandicap) RatingHandicap[client] = iMinHandicap;
-			else if (iSetHandicap > iMaxHandicap) RatingHandicap[client] = iMaxHandicap;
-		}
-		else {
-			PrintToChat(client, "%T", "player handicap locked", client, orange);
-		}
-	}
-
-	PrintToChat(client, "%T", "player handicap", client, blue, orange, green, RatingHandicap[client]);
-	return Plugin_Handled;
-}
-
-stock SetBotHandicap(client) {
-	if (IsLegitimateClient(client) && IsFakeClient(client)) {
-		int iLowHandicap = RatingPerLevelSurvivorBots;
-		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-			if (RatingHandicap[i] > iLowHandicap) iLowHandicap = RatingHandicap[i];
-		}
-		RatingHandicap[client] = iLowHandicap;
-	}
-	return RatingHandicap[client];
-}
-
 public Action CMD_ActionBar(client, args) {
 	if (!DisplayActionBar[client]) {
 		PrintToChat(client, "%T", "action bar displayed", client, white, blue);
@@ -2871,8 +2812,16 @@ public Action CMD_GiveInventoryItem(client, args) {
 	char arg2[4];
 	GetCmdArg(1, arg, sizeof(arg));
 	GetCmdArg(2, arg2, sizeof(arg2));
-	int targetclient = FindTargetClient(client, arg);
-	if (IsFakeClient(targetclient)) return Plugin_Handled;
+	int targetclient = 0;
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || IsFakeClient(i) || i == client) continue;
+		char playerName[64];
+		GetClientName(i, playerName, 64);
+		if (StrContains(playerName, arg, false) == -1) continue;
+		targetclient = i;
+		break;
+	}
+	if (!IsLegitimateClient(targetclient) || IsFakeClient(targetclient)) return Plugin_Handled;
 	char Name[MAX_NAME_LENGTH];
 	GetClientName(targetclient, Name, sizeof(Name));
 	int pos = StringToInt(arg2);
@@ -3135,7 +3084,7 @@ stock CallRoundIsOver() {
 					AcceptEntityInput(iChaseEnt[i], "Kill");
 					iChaseEnt[i] = -1;
 				}*/
-				//SavePlayerData(i);
+				SavePlayerData(i);
 			}
 		}
 		//CreateTimer(1.0, Timer_SaveAndClear, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -3197,7 +3146,8 @@ public ReadyUp_ParseConfigFailed(char[] config, char[] error) {
 		StrEqual(config, CONFIG_TRAILS) ||
 		StrEqual(config, CONFIG_WEAPONS) ||
 		StrEqual(config, CONFIG_PETS) ||
-		StrEqual(config, CONFIG_COMMONAFFIXES)) {// ||
+		StrEqual(config, CONFIG_COMMONAFFIXES) ||
+		StrEqual(config, CONFIG_HANDICAP)) {// ||
 		//StrEqual(config, CONFIG_CLASSNAMES)) {
 
 		SetFailState("%s , %s", config, error);
@@ -3264,7 +3214,8 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		!StrEqual(configname, CONFIG_TRAILS) &&
 		!StrEqual(configname, CONFIG_WEAPONS) &&
 		!StrEqual(configname, CONFIG_PETS) &&
-		!StrEqual(configname, CONFIG_COMMONAFFIXES)) return;// &&
+		!StrEqual(configname, CONFIG_COMMONAFFIXES) &&
+		!StrEqual(configname, CONFIG_HANDICAP)) return;// &&
 		//!StrEqual(configname, CONFIG_CLASSNAMES)) return;
 	char s_key[64];
 	char s_value[64];
@@ -3301,6 +3252,7 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		else if (StrEqual(configname, CONFIG_TRAILS)) ResizeArray(a_Trails, keyCount);
 		else if (StrEqual(configname, CONFIG_WEAPONS)) ResizeArray(a_WeaponDamages, keyCount);
 		else if (StrEqual(configname, CONFIG_COMMONAFFIXES)) ResizeArray(a_CommonAffixes, keyCount);
+		else if (StrEqual(configname, CONFIG_HANDICAP)) ResizeArray(a_HandicapLevels, keyCount);
 		//else if (StrEqual(configname, CONFIG_CLASSNAMES)) ResizeArray(a_Classnames, keyCount);
 	}
 	int a_Size						= GetArraySize(key);
@@ -3324,6 +3276,7 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 			else if (StrEqual(configname, CONFIG_TRAILS)) SetConfigArrays(configname, a_Trails, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Trails), lastPosition - counter);
 			else if (StrEqual(configname, CONFIG_WEAPONS)) SetConfigArrays(configname, a_WeaponDamages, TalentKeys, TalentValues, TalentSection, GetArraySize(a_WeaponDamages), lastPosition - counter);
 			else if (StrEqual(configname, CONFIG_COMMONAFFIXES)) SetConfigArrays(configname, a_CommonAffixes, TalentKeys, TalentValues, TalentSection, GetArraySize(a_CommonAffixes), lastPosition - counter);
+			else if (StrEqual(configname, CONFIG_HANDICAP)) SetConfigArrays(configname, a_HandicapLevels, TalentKeys, TalentValues, TalentSection, GetArraySize(a_HandicapLevels), lastPosition - counter);
 			//else if (StrEqual(configname, CONFIG_CLASSNAMES)) SetConfigArrays(configname, a_Classnames, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Classnames), lastPosition - counter);
 			
 			lastPosition = i + 1;
@@ -3421,7 +3374,6 @@ stock LoadMainConfig() {
 	fTeamRatingBonus					= GetConfigValueFloat("team player rating bonus?");
 	iTanksPreset						= GetConfigValueInt("preset tank type on spawn?");
 	iSurvivorRespawnRestrict			= GetConfigValueInt("respawn queue players ignored?");
-	iIsRatingEnabled					= GetConfigValueInt("handicap enabled?");
 	iIsSpecialFire						= GetConfigValueInt("special infected fire?");
 	iSkyLevelMax						= GetConfigValueInt("max sky level?");
 	//iOnFireDebuffLimit				= GetConfigValueInt("standing in fire debuff limit?");
@@ -3554,7 +3506,6 @@ stock LoadMainConfig() {
 	RespawnQueue						= GetConfigValueInt("survivor respawn queue?");
 	MaximumPriority						= GetConfigValueInt("director priority maximum?");
 	fUpgradeExpCost						= GetConfigValueFloat("upgrade experience cost?");
-	iHandicapLevelDifference			= GetConfigValueInt("handicap level difference required?");
 	iWitchHealthBase					= GetConfigValueInt("base witch health?");
 	fWitchHealthMult					= GetConfigValueFloat("level witch multiplier?");
 	iCommonBaseHealth					= GetConfigValueInt("common base health?");
@@ -3579,7 +3530,6 @@ stock LoadMainConfig() {
 	iRatingTanksRequired				= GetConfigValueInt("tank rating required?");
 	GetConfigValue(sDbLeaderboards, sizeof(sDbLeaderboards), "db record?");
 	iIsLifelink							= GetConfigValueInt("lifelink enabled?");
-	RatingPerHandicap					= GetConfigValueInt("rating level handicap?");
 	GetConfigValue(sItemModel, sizeof(sItemModel), "item drop model?");
 	iRarityMax							= GetConfigValueInt("item rarity max?");
 	iEnrageAdvertisement				= GetConfigValueInt("enrage advertise time?");
@@ -3681,7 +3631,7 @@ stock LoadMainConfig() {
 	iNumLootDropChancesPerPlayer[3]		= GetConfigValueInt("roll attempts on witch kill?", 1);
 	iNumLootDropChancesPerPlayer[4]		= GetConfigValueInt("roll attempts on tank kill?", 1);
 	iInventoryLimit						= GetConfigValueInt("max persistent loot inventory size?", 50);
-
+	iLevelRequiredToEarnScore			= GetConfigValueInt("level required to earn score?", 10);
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
@@ -3691,6 +3641,23 @@ stock LoadMainConfig() {
 	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
 	GetConfigValue(serverKey, sizeof(serverKey), "server steam key?");
 	LogMessage("Main Config Loaded.");
+}
+
+public Action CMD_AutoDismantle(client, args) {
+	int lootFindBonus = 0;
+	if (handicapLevel[client] > 0) lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
+	if (args < 1) {
+		PrintToChat(client, "\x04!autodismantle <score> - \x03augments that roll under this score will be auto-dismantled.\n\x04limit: \x03%d", BestRating[client] + lootFindBonus);
+		return Plugin_Handled;
+	}
+	char arg[64];
+	GetCmdArg(1, arg, 64);
+	int auto = StringToInt(arg);
+	if (auto > 0 && auto <= BestRating[client] + lootFindBonus) {
+		iplayerSettingAutoDismantleScore[client] = auto;
+		PrintToChat(client, "\x04I will auto dismantle any augments of \x03%d \x04score or lower.", iplayerSettingAutoDismantleScore[client]);
+	}
+	return Plugin_Handled;
 }
 
 public Action CMD_RollLoot(client, args) {
@@ -3736,6 +3703,10 @@ stock RollLoot(client, enemyClient) {
 							  (zombieclass == 9) ? iNumLootDropChancesPerPlayer[1] :
 							  (zombieclass == 7) ? iNumLootDropChancesPerPlayer[3] :
 							  (zombieclass == 8) ? iNumLootDropChancesPerPlayer[4] : iNumLootDropChancesPerPlayer[2];
+	int lootFindBonus = 0;
+	if (handicapLevel[client] > 0) {
+		lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
+	}
 	for (int i = numOfRollsToAttempt; i > 0; i--) {
 		int roll = GetRandomInt(1, RoundToCeil(1.0 / fLootChance));
 		if (roll != 1) continue;
@@ -3743,7 +3714,7 @@ stock RollLoot(client, enemyClient) {
 		else {
 			int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
 			int max = (min + iRatingRequiredForAugmentLootDrops > BestRating[client]) ? min + iRatingRequiredForAugmentLootDrops : BestRating[client];
-			PushArrayCell(playerLootOnGround[client], GetRandomInt(min,max));
+			PushArrayCell(playerLootOnGround[client], GetRandomInt(min,max+lootFindBonus));
 			CreateItemDrop(client, enemyClient);
 		}
 	}
@@ -3765,7 +3736,20 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	if (IsFakeClient(client)) return;
 	int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
 	int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
-	int potentialItemRatingOverride = (forceAugmentItemLevel > 0) ? forceAugmentItemLevel : GetRandomInt(min, max);
+	int lootFindBonus = 0;
+	if (forceAugmentItemLevel == 0) {
+		if (handicapLevel[client] > 0) {
+			lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
+		}
+	}
+	int potentialItemRatingOverride = (forceAugmentItemLevel > 0) ? forceAugmentItemLevel : GetRandomInt(min, max+lootFindBonus);
+	if (potentialItemRatingOverride < iplayerSettingAutoDismantleScore[client]) {
+		augmentParts[client]++;
+		char text[64];
+		Format(text, 64, "{G}+1 {O}augment parts");
+		Client_PrintToChat(client, true, text);
+		return;
+	}
 	//if (potentialItemRatingOverride == 0 && Rating[client] < iRatingRequiredForAugmentLootDrops) return;
 
 	int size = GetArraySize(myAugmentIDCodes[client]);
@@ -3818,7 +3802,6 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		if (lootsize < 2 && thisAugmentRatingRequiredForNextTier > iRatingRequiredForAugmentLootDrops && potentialItemRating > thisAugmentRatingRequiredForNextTier) lootsize++;
 		else break;
 	}
-
 	SetArrayString(myAugmentCategories[client], size, buffedCategory);
 	SetArrayString(myAugmentOwners[client], size, baseName[client]);
 	SetArrayCell(myAugmentInfo[client], size, lootrolls[0]);	// item rating
@@ -3864,8 +3847,6 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		SetArrayString(myAugmentTargetEffects[client], size, "-1");
 		SetArrayCell(myAugmentInfo[client], size, -1, 5);
 	}
-
-
 	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
 	char key[64];
 	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
@@ -3884,9 +3865,6 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		else if (!StrEqual(majorname, "-1")) Format(augmentStrengthText, 64, "%s", majorname);
 		else Format(augmentStrengthText, 64, "%s", perfectname);
 	}
-	// if (augmentActivatorRating == -1 && augmentTargetRating == -1) Format(augmentStrengthText, 10, "minor");
-	// else if (augmentActivatorRating == -1 || augmentTargetRating == -1) Format(augmentStrengthText, 10, "major");
-	// else Format(augmentStrengthText, 10, "perfect");
 	Format(text, sizeof(text), "{B}%s {N}found a {B}+{OG}%3.3f{B}PCT {O}%s {B}%s %s {O}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
 	if (forceAugmentItemLevel < 1) Format(text, sizeof(text), "%s {N}on a corpse.", text);
 	else if (isALootBag) Format(text, sizeof(text), "%s {N}in the bag.", text);
@@ -5398,6 +5376,56 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 			}
+		}
+	}
+	else if (StrEqual(Config, CONFIG_HANDICAP)) {
+		if (FindStringInArray(TalentKey, "translation?") == -1) {
+			PushArrayString(TalentKey, "translation?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "damage bonus?") == -1) {
+			PushArrayString(TalentKey, "damage bonus?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "health bonus?") == -1) {
+			PushArrayString(TalentKey, "health bonus?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "loot find?") == -1) {
+			PushArrayString(TalentKey, "loot find?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "score required?") == -1) {
+			PushArrayString(TalentKey, "score required?");
+			PushArrayString(TalentValue, "-1");
+		}
+		sortSize = GetArraySize(TalentKey);
+		pos = 0;
+		while (pos < sortSize) {
+			GetArrayString(TalentKey, pos, text, sizeof(text));
+			if (
+			pos == 0 && !StrEqual(text, "translation?") ||
+			pos == 1 && !StrEqual(text, "damage bonus?") ||
+			pos == 2 && !StrEqual(text, "health bonus?") ||
+			pos == 3 && !StrEqual(text, "loot find?") ||
+			pos == 4 && !StrEqual(text, "score required?")) {
+				ResizeArray(TalentKey, sortSize+1);
+				ResizeArray(TalentValue, sortSize+1);
+				SetArrayString(TalentKey, sortSize, text);
+				GetArrayString(TalentValue, pos, text, sizeof(text));
+				SetArrayString(TalentValue, sortSize, text);
+				RemoveFromArray(TalentKey, pos);
+				RemoveFromArray(TalentValue, pos);
+				continue;
+			}
+			pos++;
+		}
+		for (int i = 0; i < sortSize; i++) {
+			GetArrayString(TalentValue, i, text, sizeof(text));
+			if (StrEqual(text, "EOM")) continue;
+			if (i == HANDICAP_TRANSLATION) continue;
+			if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
+			else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 		}
 	}
 	else if (StrEqual(Config, CONFIG_WEAPONS)) {

@@ -1039,7 +1039,7 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 				if (StrContains(classname, "pipe_bomb") == -1) baseWeaponDamage = iExplosionBaseDamage;
 				else baseWeaponDamage = iExplosionBaseDamagePipe;
 				baseWeaponDamage += RoundToCeil(GetAbilityStrengthByTrigger(attacker, victim, "S", _, baseWeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
-			}	// //VerifyHandicap(attacker);	//GetBaseWeaponDamage(client, target, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET, _, true);
+			}
 			else if (baseWeaponDamage == 0) baseWeaponDamage = GetBaseWeaponDamage(attacker, victim, _, _, _, damagetype);
 
 			if (bAutoRevive[attacker] && !IsIncapacitated(attacker)) bAutoRevive[attacker] = false;
@@ -1127,6 +1127,11 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 				}
 				else if (attackerType == 2) {
 					int i_WitchDamage = iWitchDamageInitial;
+					if (handicapLevel[victim] > 0) {
+						float handicapLevelDamage = GetArrayCell(HandicapSelectedValues[victim], 0);
+						int handicapDamageBonus = RoundToCeil(i_WitchDamage * handicapLevelDamage);
+						if (handicapDamageBonus > 0) i_WitchDamage += handicapDamageBonus;
+					}
 					if (IsSpecialCommonInRange(attacker, 'b')) i_WitchDamage *= 2;//i_WitchDamage += GetSpecialCommonDamage(i_WitchDamage, attacker, 'b', victim);
 					if (fWitchDamageScaleLevel > 0.0 && iRPGMode >= 1) {
 						if (iBotLevelType == 0) i_WitchDamage += RoundToCeil(fWitchDamageScaleLevel * GetDifficultyRating(victim));
@@ -1308,6 +1313,11 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 stock int IfCommonInfectedIsAttackerDoStuff(attacker, victim, damagetype, survivorCount) {
 	float CommonDamageScaleLevel = fCommonDamageLevel;
 	int CommonsDamage = iCommonInfectedBaseDamage;
+	if (handicapLevel[victim] > 0) {
+		float handicapLevelDamage = GetArrayCell(HandicapSelectedValues[victim], 0);
+		int handicapDamageBonus = RoundToCeil(CommonsDamage * handicapLevelDamage);
+		if (handicapDamageBonus > 0) CommonsDamage += handicapDamageBonus;
+	}
 	float ammoStr = 0.0;
 	if (IsSpecialCommonInRange(attacker, 'b')) CommonsDamage *= 2;//CommonsDamage += GetSpecialCommonDamage(CommonsDamage, attacker, 'b', victim);
 	if (!(damagetype & DMG_DIRECT)) {
@@ -1401,8 +1411,6 @@ stock int IfInfectedIsAttackerDoStuff(attacker, victim) {
 	int myzombieclass = FindZombieClass(attacker);
 	int totalIncomingDamage = (myzombieclass != ZOMBIECLASS_TANK) ? iBaseSpecialDamage[myzombieclass - 1] : iBaseSpecialDamage[myzombieclass - 2];
 	if (IsSpecialCommonInRange(attacker, 'b')) totalIncomingDamage *= 2; //totalIncomingDamage += GetSpecialCommonDamage(totalIncomingDamage, attacker, 'b', victim);
-
-	//Incoming Damage is calculated a very specific way, so that handicap is always the final calculation.
 	if (iRPGMode >= 1) {
 		if (iBotLevelType == 1) {
 			if (myzombieclass != ZOMBIECLASS_TANK) totalIncomingDamage += RoundToFloor(totalIncomingDamage * (SurvivorLevels() * fDamagePlayerLevel[myzombieclass - 1]));
@@ -1412,6 +1420,11 @@ stock int IfInfectedIsAttackerDoStuff(attacker, victim) {
 			if (myzombieclass != ZOMBIECLASS_TANK) totalIncomingDamage += RoundToFloor(totalIncomingDamage * (GetDifficultyRating(victim) * fDamagePlayerLevel[myzombieclass - 1]));
 			else totalIncomingDamage += RoundToFloor(totalIncomingDamage * (GetDifficultyRating(victim) * fDamagePlayerLevel[myzombieclass - 2]));
 		}
+	}
+	if (handicapLevel[victim] > 0) {
+		float handicapLevelDamage = GetArrayCell(HandicapSelectedValues[victim], 0);
+		int handicapDamageBonus = RoundToCeil(totalIncomingDamage * handicapLevelDamage);
+		if (handicapDamageBonus > 0) totalIncomingDamage += handicapDamageBonus;
 	}
 	int totalIncomingTemp = 0;
 	float ammoStr = IsClientInRangeSpecialAmmo(victim, "E", false, _, totalIncomingDamage * 1.0);
@@ -1768,7 +1781,7 @@ stock AddSpecialInfectedDamage(client, target, TotalDamage = 0, bool IsTankingIn
 
 			DefaultHealth[target] = SetMaximumHealth(target);
 		}
-		else OverHealth[target] = 0;
+		OverHealth[target] = 0;
 
 		if (iBotLevelType == 1) {
 
@@ -1779,6 +1792,11 @@ stock AddSpecialInfectedDamage(client, target, TotalDamage = 0, bool IsTankingIn
 
 			if (myzombieclass != ZOMBIECLASS_TANK) t_InfectedHealth += RoundToCeil(t_InfectedHealth * (GetDifficultyRating(client) * fHealthPlayerLevel[myzombieclass - 1]));
 			else t_InfectedHealth += RoundToCeil(t_InfectedHealth * (GetDifficultyRating(client) * fHealthPlayerLevel[myzombieclass - 2]));
+		}
+		if (handicapLevel[client] > 0) {
+			float handicapLevelHealth = GetArrayCell(HandicapSelectedValues[client], 1);
+			int handicapHealthBonus = RoundToCeil(t_InfectedHealth * handicapLevelHealth);
+			if (handicapHealthBonus > 0) t_InfectedHealth += handicapHealthBonus;
 		}
 
 		// only add raid health if > 4 survivors.
@@ -1875,6 +1893,12 @@ stock AddSpecialCommonDamage(client, entity, playerDamage, bool IsStatusDamage =
 		int CommonHealth = GetCommonValueIntAtPos(entity, SUPER_COMMON_BASE_HEALTH);
 		if (iBotLevelType == 1) CommonHealth += RoundToCeil(CommonHealth * (SurvivorLevels() * GetCommonValueFloatAtPos(entity, SUPER_COMMON_HEALTH_PER_LEVEL)));
 		else CommonHealth += RoundToCeil(CommonHealth * (GetDifficultyRating(client) * GetCommonValueFloatAtPos(entity, SUPER_COMMON_HEALTH_PER_LEVEL)));
+
+		if (handicapLevel[client] > 0) {
+			float handicapLevelHealth = GetArrayCell(HandicapSelectedValues[client], 1);
+			int handicapHealthBonus = RoundToCeil(CommonHealth * handicapLevelHealth);
+			if (handicapHealthBonus > 0) CommonHealth += handicapHealthBonus;
+		}
 		// only add raid health if > 4 survivors.
 		int theCount = LivingSurvivorCount();
 		if (iSurvivorModifierRequired > 0 && fSurvivorHealthBonus > 0.0 && theCount >= iSurvivorModifierRequired) CommonHealth += RoundToCeil(CommonHealth * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
@@ -3157,15 +3181,22 @@ stock int GetLayerUpgradeStrength(client, layer = 1, bool bIsCheckEligibility = 
 	int clientTeam = GetClientTeam(client);
 	char TalentName[64];
 	//new nodeUnlockCost = 0;
+	Handle Section = CreateArray(16);
 	for (int i = 0; i < size; i++) {										// loop through this talents keyfile.
 		GetLayerStrengthKeys[client] = GetArrayCell(a_Menu_Talents, i, 0);	// "keys"
 		GetLayerStrengthValues[client] = GetArrayCell(a_Menu_Talents, i, 1);// "values"
+		Section = GetArrayCell(a_Menu_Talents, i, 2);
+		char mytalentname[64];
+		GetArrayString(Section, 0, mytalentname, 64);
+		//PrintToChat(client, "Talent name: %s", mytalentname);
 		int activatorClassesAllowed = GetArrayCell(GetLayerStrengthValues[client], ACTIVATOR_CLASS_REQ);
+		//PrintToChat(client, "classes allowed: %d", activatorClassesAllowed);
 		if (activatorClassesAllowed > -1) {
-			bool isSurvivorTalent		= (clientClassIsAllowed(client, activatorClassesAllowed, 1)) ? true : false;
-			bool isInfectedTalent		= (activatorClassesAllowed > 1) ? true : false;
-			if (!isSurvivorTalent && clientTeam == TEAM_SURVIVOR) continue;
-			if (!isInfectedTalent && clientTeam == TEAM_INFECTED) continue;
+			int isSurvivorTalent		= (activatorClassesAllowed % 2 == 1) ? 1 : 0;
+			int isInfectedTalent		= (activatorClassesAllowed > 1) ? 1 : 0;
+			//PrintToChat(client, "%s, %d, %d %d", mytalentname, activatorClassesAllowed, isSurvivorTalent, isInfectedTalent);
+			if (isSurvivorTalent == 1 && clientTeam != TEAM_SURVIVOR) continue;
+			if (isInfectedTalent == 1 && clientTeam != TEAM_INFECTED) continue;
 		}
 
 		GetLayerStrengthSection[client] = GetArrayCell(a_Menu_Talents, i, 2);	// Array holding the "name" of the talent.
@@ -3174,6 +3205,7 @@ stock int GetLayerUpgradeStrength(client, layer = 1, bool bIsCheckEligibility = 
 		if (GetArrayCell(GetLayerStrengthValues[client], GET_TALENT_LAYER) != layer) continue;
 		if (ignoreAttributes && GetArrayCell(GetLayerStrengthValues[client], IS_ATTRIBUTE) == 1) continue;
 		if (getAllLayerNodes) {	// we just want to get how many nodes are on this layer, even the ones that we ignore for layer count.
+			//PrintToChat(client, "talent name: %s", mytalentname);
 			count++;
 			continue;
 		}
@@ -5694,9 +5726,7 @@ stock WipeDebuffs(bool IsEndOfCampaign = false, client = -1, bool IsDisconnect =
 		BuffingContribution[client] = 0;
 		CleansingContribution[client] = 0;
 		ResetContributionTracker(client);
-		//if (HandicapLevel[client] < 1) HandicapLevel[client] = -1;
 		if (PlayerHasWeakness(client)) bHasWeakness[client] = false;
-		bIsHandicapLocked[client] = false;
 		WipeDamageContribution(client);
 	}
 }
@@ -7871,15 +7901,6 @@ stock LivingInfected(bool KillAll=false) {
 	return countt;
 }
 
-/*stock bool:SurvivorsHaveHandicap() {
-
-	for (new i = 1; i <= MaxClients; i++) {
-
-		if (IsLegitimateClientAlive(i) && !IsFakeClient(i) && GetClientTeam(i) == TEAM_SURVIVOR && HandicapLevel[i] != -1) return true;
-	}
-	return false;
-}*/
-
 stock LivingSurvivors() {
 
 	int count = 0;
@@ -8030,30 +8051,6 @@ stock AddCommasToString(value, char[] theString, theSize)
 	Format(theString, theSize, "%d%s", value, buffer);
 }
 
-stock HandicapDifference(client, target) {
-
-	if (IsLegitimateClientAlive(client) && IsLegitimateClientAlive(target)) {
-
-		int clientLevel = 0;
-		int targetLevel = 0;
-
-		if (GetClientTeam(client) == TEAM_SURVIVOR) clientLevel = PlayerLevel[client];
-		else clientLevel = PlayerLevel_Bots;
-
-		if (GetClientTeam(client) == TEAM_SURVIVOR) targetLevel = PlayerLevel[target];
-		else targetLevel = PlayerLevel_Bots;
-
-		if (targetLevel < clientLevel) {
-		
-			int dif = clientLevel - targetLevel;
-			int han = iHandicapLevelDifference;
-
-			if (dif > han) return (dif - han);
-		}
-	}
-	return 0;
-}
-
 stock ReceiveCommonDamage(client, entity, playerDamageTaken) {
 
 	/*new pos = -1;
@@ -8144,7 +8141,7 @@ stock AddCommonInfectedDamageNoArray(client, entity, playerDamage, hitgroup, dam
 	int healthRemaining = GetInfectedHealth(entity);
 	bool isFireDamage = (damagetype & DMG_BURN) ? true : false;
 	if (isFireDamage) {
-		Rating[client] += RoundToCeil(fRatingMultCommons * 100.0);
+		if (PlayerLevel[client] >= iLevelRequiredToEarnScore) Rating[client] += RoundToCeil(fRatingMultCommons * 100.0);
 		SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
 		AcceptEntityInput(entity, "BecomeRagdoll");
 		//OnCommonInfectedCreated(entity, true, client);
@@ -8160,7 +8157,7 @@ stock AddCommonInfectedDamageNoArray(client, entity, playerDamage, hitgroup, dam
 		playerDamage = healthRemaining;
 		GetAbilityStrengthByTrigger(client, entity, "C", _, playerDamage, _, _, _, _, _, _, hitgroup);
 		//CalculateInfectedDamageAward(target, client);
-		Rating[client] += RoundToCeil(fRatingMultCommons * 100.0);
+		if (PlayerLevel[client] >= iLevelRequiredToEarnScore) Rating[client] += RoundToCeil(fRatingMultCommons * 100.0);
 
 		RollLoot(client, entity);
 		SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
@@ -8252,6 +8249,11 @@ stock AddWitchDamage(client, entity, playerDamageToWitch, bool IsStatusDamage = 
 	if (my_pos < 0) {
 		int WitchHealth = iWitchHealthBase;
 		WitchHealth += RoundToCeil(WitchHealth * (GetDifficultyRating(client) * fWitchHealthMult));
+		if (handicapLevel[client] > 0) {
+			float handicapLevelHealth = GetArrayCell(HandicapSelectedValues[client], 1);
+			int handicapHealthBonus = RoundToCeil(WitchHealth * handicapLevelHealth);
+			if (handicapHealthBonus > 0) WitchHealth += handicapHealthBonus;
+		}
 		//WItchHealth += RoundToCeil(WitchHealth * fSurvivorHealthBonus);
 
 		if (fSurvivorHealthBonus > 0.0) {
@@ -8567,7 +8569,7 @@ stock GetTeamRatingAverage(teamToGatherRatingOf = 2) {	// 2 == survivors
 	int rating = 0;
 	int count = 0;
 	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || GetClientTeam(i) != teamToGatherRatingOf) continue;
+		if (!IsLegitimateClient(i) || GetClientTeam(i) != teamToGatherRatingOf || PlayerLevel[i] < iLevelRequiredToEarnScore) continue;
 		rating += Rating[i];
 		if (!IsFakeClient(i)) count++;
 	}
@@ -10710,7 +10712,6 @@ stock InfectedBotSpawn(client) {
 stock TruRating(client) {
 
 	int TrueRating = (IsFakeClient(client)) ? RatingPerLevelSurvivorBots : RatingPerLevel;
-	if (RatingHandicap[client] > TrueRating) TrueRating = RatingHandicap[client];
 	//TrueRating *= PlayerLevel[client];
 	TrueRating *= CartelLevel(client);
 	TrueRating += Rating[client];
@@ -11019,20 +11020,11 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool bIsFalling 
 					if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) IncapacitateOrKill(i, _, _, true, true);		// second true prevents this loop from being triggered by the function.
 				}
 			}
-
-			//if (!bIsFalling) b_HasDeathLocation[client] = true;
-			//else b_HasDeathLocation[client] = false;
 			if (!ForceKill) {
 
 				GetClientAbsOrigin(client, DeathLocation[client]);
 				b_HasDeathLocation[client] = true;
 			}
-			/*LogMessage("%N HAS DIED!!!", client);
-			if (GetArraySize(Handle:InfectedHealth[client]) > 0 && IsSurvivorInAGroup(client)) {
-
-				ClearArray(Handle:InfectedHealth[client]);	// infected get their health back when a player dies and the player gets no XP for their contributions.
-				PenalizeGroupmates(client);
-			}*/
 			if (iResetPlayerLevelOnDeath == 1) {
 				if (!IsFakeClient(client)) PlayerLevel[client] = iPlayerStartingLevel;
 				else PlayerLevel[client] = iBotPlayerStartingLevel;
@@ -11046,19 +11038,8 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool bIsFalling 
 			MyBirthday[client] = 0;
 			bIsInCombat[client] = false;
 			MyRespawnTarget[client] = client;
-			//CreateTimer(1.0, Timer_CheckForExperienceDebt, client, TIMER_FLAG_NO_MAPCHANGE);
-			//ToggleTank(client, true);
-			//IsCoveredInVomit(client, _, true);
-			if (!IsFakeClient(client) && RatingHandicap[client] > RatingPerLevel ||
-				IsFakeClient(client) && RatingHandicap[client] > RatingPerLevelSurvivorBots) {
-				RatingHandicap[client] = (IsFakeClient(client)) ? RatingPerLevelSurvivorBots : RatingPerLevel;
-				PrintToChat(client, "%T", "player handicap", client, blue, orange, green, RatingHandicap[client]);
-			}
 
 			RefreshSurvivor(client);
-			//AutoAdjustHandicap(client, 1);
-			//if (ReadyUp_GetGameMode() == 3 && Rating[client] > PlayerLevel[client]) Rating[client] = PlayerLevel[client];		// death in survival resets the handicap.
-			//WipeDamageContribution(client);
 
 			GetAbilityStrengthByTrigger(client, attacker, "E", _, 0);
 			if (attacker > 0) GetAbilityStrengthByTrigger(attacker, client, "e", _, healthvalue);
@@ -11081,29 +11062,12 @@ public ForceIncapSurvivor(client, attacker, healthvalue) {
 
 	SetEntProp(client, Prop_Send, "m_isIncapacitated", 1);
 	iThreatLevel[client] /= 2;
-	//bIsGiveIncapHealth[client] = true;	// because we do it here
-	//ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", FindZombieClass(client), 0, _, _, "H"), 0.0);
 	bIsGiveIncapHealth[client] = true;
 	SetMaximumHealth(client);
-	
-	//GiveMaximumHealth(client);
-	
-	//GiveMaximumHealth(client);
 	b_HasDeathLocation[client] = false;
-	//SetTempHealth(client, client, GetMaximumHealth(client) * 1.0);
-
-	// After setting initial temp health we can set a different one if they have the talent
 	if (attacker != 0 && IsLegitimateClient(attacker)) GetAbilityStrengthByTrigger(client, attacker, "N", _, healthvalue);
 	else GetAbilityStrengthByTrigger(client, attacker, "n", _, healthvalue);
-	/*new Float:IncapHealthStrength = GetAbilityStrengthByTrigger(client, client, 'p', FindZombieClass(client), 0, _, _, "H");
-	if (IncapHealthStrength < 1.0) IncapHealthStrength = (iSurvivorBaseHealth * 1.0) / 100.0;	// 100 health if nothing.
-	if (iRPGMode >= 1) ModifyHealth(client, IncapHealthStrength, 0.0);
-	else ModifyHealth(client, iSurvivorBaseHealth * 4.0, 0.0);*/
-	//SetEntityHealth(client, RoundToCeil(GetMaximumHealth(client) * StringToFloat(GetConfigValue("survivor incap health?"))));
-	//SetClientTotalHealth(client, GetMaximumHealth(client), true);
-	//SetClientTempHealth(client);
 	RoundIncaps[client]++;
-	//if (ReadyUp_GetGameMode() != 3) AutoAdjustHandicap(client, 0);
 	int infectedAttacker = L4D2_GetInfectedAttacker(client);
 
 	if (infectedAttacker == -1) GetAbilityStrengthByTrigger(client, attacker, "n", _, healthvalue);
@@ -11673,7 +11637,6 @@ stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStre
 
 			SetEntityHealth(client, PlayerHealth + HealAmount);
 			if (PlayerHealth_Temp > 0.0) {
-
 				SetEntPropFloat(client, Prop_Send, "m_healthBuffer", PlayerHealth_Temp);
 				SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
 			}
@@ -11886,10 +11849,10 @@ stock void CreateItemDrop(owner, client) {
 	new entity = CreateEntityByName("prop_physics_override");
 	DispatchKeyValue(entity, "targetname", text);
 	DispatchKeyValue(entity, "spawnflags", "1");
-	DispatchKeyValue(entity, "glowstate", "3");
-	DispatchKeyValue(entity, "glowrange", "512");
+	//DispatchKeyValue(entity, "glowstate", "3");
+	//DispatchKeyValue(entity, "glowrange", "512");
 
-	DispatchKeyValue(entity, "glowcolor", "255 255 255 255");
+	//DispatchKeyValue(entity, "glowcolor", "255 255 255 255");
 	DispatchKeyValue(entity, "solid", "6");
 	DispatchKeyValue(entity, "model", sItemModel);
 	DispatchSpawn(entity);

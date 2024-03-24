@@ -3,6 +3,16 @@
 
 "Phrases"
 {
+	"handicap level unlocked"
+	{
+		"#format"			"{1:s},{2:i},{3:s},{4:i},{5:s},{6:i},{7:s},{8:s}"
+		"en"				"+{2}{3}DMG/+{4}{5}HP, +{6}{7} loot{8}"
+	}
+	"handicap level locked"
+	{
+		"#format"			"{1:s},{2:i},{3:s},{4:i},{5:s},{6:i},{7:s},{8:s},{9:s}"
+		"en"				"+{2}{3}DMG/+{4}{5}HP, +{6}{7} loot{9} (locked; {8} score req.)"
+	}
 	"cleric perfect surname"
 	{
 		"en"				"Clerics"
@@ -1994,6 +2004,10 @@
 	"Character Sheet"
 	{
 		"en"				"Level/Enemy Info"
+	}
+	"Handicap Sheet"
+	{
+		"en"				"Handicap (Difficulty Modifiers)"
 	}
 	"Character Sheet (Survivor Page)"
 	{
