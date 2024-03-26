@@ -255,6 +255,7 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 		// When the vehicle arrives, the finale is no longer active, but no experience can be earned. This stops farming.
 		if (b_IsFinaleActive) {
 			b_IsFinaleActive = false;
+			b_IsRescueVehicleArrived = true;
 			int TheInfectedLevel = HumanSurvivorLevels();
 			int TheHumans = HumanPlayersInGame();
 			int TheLiving = LivingSurvivorCount();
@@ -1706,8 +1707,8 @@ public Action OnPlayerRunCmd(client, &buttons) {
 						ToggleJetpack(client, true);
 					}
 					if ((bJetpack[client] || !bJetpack[client] && !isClientOnSolidGround) || isClientHoldingJump &&
-						SurvivorStamina[client] >= ConsumptionInt && !bIsSurvivorFatigue[client] && ISSLOW[client] == INVALID_HANDLE && ISFROZEN[client] == INVALID_HANDLE) {
-						if (MyAttacker == -1 && ISSLOW[client] == INVALID_HANDLE && ISFROZEN[client] == INVALID_HANDLE) {
+						SurvivorStamina[client] >= ConsumptionInt && !bIsSurvivorFatigue[client] && !ISSLOW[client] && ISFROZEN[client] == INVALID_HANDLE) {
+						if (MyAttacker == -1 && !ISSLOW[client] && ISFROZEN[client] == INVALID_HANDLE) {
 							if (SurvivorConsumptionTime[client] <= TheTime && isClientHoldingJump) {
 								if (bJetpack[client]) {
 									float nextSprintInterval = GetAbilityStrengthByTrigger(client, client, "jetpack", _, 0, _, _, "flightcost", _, _, 2);
@@ -1737,7 +1738,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 						}
 						// if (!bIsSurvivorFatigue[client]) MovementSpeed[client] = fBaseMovementSpeed;
 						// else MovementSpeed[client] = fFatigueMovementSpeed;
-						if (ISSLOW[client] != INVALID_HANDLE) MovementSpeed[client] *= fSlowSpeed[client];
+						if (ISSLOW[client]) MovementSpeed[client] *= fSlowSpeed[client];
 						if (SurvivorStamina[client] >= PlayerMaxStamina) {
 							bIsSurvivorFatigue[client] = false;
 							SurvivorStamina[client] = PlayerMaxStamina;

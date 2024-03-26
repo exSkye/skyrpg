@@ -253,7 +253,7 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 	}
 	displayBuffOrDebuff[client] = (displayBuffOrDebuff[client] == 0) ? 1 : 0;
 	if (!IsFakeClient(client)) DisplayHUD(client, displayBuffOrDebuff[client]);
-	if (bIsGiveProfileItems[client]) {
+	if (ReadyUpGameMode != 3 && bIsGiveProfileItems[client]) {
 		bIsGiveProfileItems[client] = false;
 		GiveProfileItems(client);
 	}
@@ -964,18 +964,18 @@ stock ResetCDImmunity(client) {
 
 public Action Timer_Slow(Handle timer, any client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
-	if (!b_IsActiveRound || !IsPlayerAlive(client) || ISSLOW[client] == INVALID_HANDLE) {
+	if (!b_IsActiveRound || !IsPlayerAlive(client) || !ISSLOW[client]) {
 		SetSpeedMultiplierBase(client);
 		fSlowSpeed[client] = 1.0;
 		//KillTimer(ISSLOW[client]);
-		ISSLOW[client] = INVALID_HANDLE;
+		ISSLOW[client] = false;
 		return Plugin_Stop;
 	}
 	//SetEntityMoveType(client, MOVETYPE_WALK);
 	SetSpeedMultiplierBase(client);
 	fSlowSpeed[client] = 1.0;
 	//KillTimer(ISSLOW[client]);
-	ISSLOW[client] = INVALID_HANDLE;
+	ISSLOW[client] = false;
 	return Plugin_Stop;
 }
 

@@ -275,7 +275,8 @@ stock bool IsMeleeWeapon(int client) {
 stock int DataScreenTargetName(int client, char[] stringRef, int size) {
 	//char text[64];
 	float TargetPos[3];
-	int target = GetAimTargetPosition(client, TargetPos);
+	char hitgroup[4];
+	int target = GetAimTargetPosition(client, TargetPos, hitgroup, 4);
 	//GetClientAimTargetEx(client, text, sizeof(text), true);
 	//new target = StringToInt(text);
 	if (target == -1) return -1;
@@ -301,18 +302,11 @@ stock int DataScreenTargetName(int client, char[] stringRef, int size) {
 
 stock int DataScreenWeaponDamage(int client) {
 	float TargetPos[3];
-	int target = GetAimTargetPosition(client, TargetPos);
-	//if (!IsCommonInfected(target) && !IsSpecialCommon(target) && !IsLegitimateClient(target)) return 0;
-	//char text[64];
-	//GetClientAimTargetEx(client, text, sizeof(text), true);
-	//new target = StringToInt(text);
-	//new Float:
-	//if (target == -1) GetAimTargetPosition(client, TargetPos);
-	//if (target == -1) GetClientAimTargetEx(client, text, sizeof(text));
-
-	//char aimtarget[3][64];
-	//ExplodeString(text, " ", aimtarget, 3, 64);
-	return GetBaseWeaponDamage(client, target, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET, _, true);
+	int hitgroup = -1;
+	char hitspot[4];
+	int target = GetAimTargetPosition(client, TargetPos, hitspot, 4);
+	if (strlen(hitspot) > 0) hitgroup = StringToInt(hitspot);
+	return GetBaseWeaponDamage(client, target, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET, _, true, hitgroup);
 }
 
 stock int GetWeaponProficiencyType(int client) {
@@ -378,7 +372,7 @@ stock int GetWeaponResult(int client, int result = 0, int amountToAdd = 0) {
 	return -1;
 }
 
-stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float impactY = 0.0, float impactZ = 0.0, int damagetype, bool bGetBaseDamage = false, bool IsDataSheet = false) {
+stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float impactY = 0.0, float impactZ = 0.0, int damagetype, bool bGetBaseDamage = false, bool IsDataSheet = false, int hitgroup = -1) {
 	// bool targetIsCommonInfected = (IsCommonInfected(target) && !IsSpecialCommon(target));
 	// if (targetIsCommonInfected && IsCommonInfected(lastTarget[client])) return lastBaseDamage[client];
 	char WeaponName[512];
@@ -425,8 +419,8 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 		WeaponDamage = GetArrayCell(DamageValues[client], WEAPONINFO_DAMAGE);
  		baseWeaponTemp = WeaponDamage;
 		// if (IsDataSheet) // we don't need this if statement anymore since the dontActivateTalentCooldown boolean is set based on the variable.
-		if (IsDataSheet) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "D", _, WeaponDamage, _, _, "d", 2, true, _, _, _, damagetype, 0));	// cooldowns will NOT trigger
-		else baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "D", _, WeaponDamage, _, _, "d", 2, true, _, _, _, damagetype, 0, true));	// cooldowns will trigger
+		if (IsDataSheet) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "D", _, WeaponDamage, _, _, "d", 2, true, _, hitgroup, _, damagetype, 0));	// cooldowns will NOT trigger
+		else baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "D", _, WeaponDamage, _, _, "d", 2, true, _, hitgroup, _, damagetype, 0, true));	// cooldowns will trigger
 		// if ((clientFlags & IN_DUCK)) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "crouch", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype, dontActivateTalentCooldown));
  		// if ((clientFlags & FL_INWATER)) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "wtr", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype, dontActivateTalentCooldown));
  		// else if (!(clientFlags & FL_ONGROUND)) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "grnd", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype, dontActivateTalentCooldown));
@@ -454,20 +448,20 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 
 		//if (!IsMelee && (damagetype & DMG_BULLET)) {
 		if (!IsMelee) {
-			WeaponRange += GetAbilityStrengthByTrigger(client, target, "gunRNG", _, rangeRounded, _, _, "d", 2, true, _, _, _, damagetype, dontActivateTalentCooldown);
-			baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "gunDMG", _, WeaponDamage, _, _, "d", 2, true, _, _, _, damagetype, dontActivateTalentCooldown));
+			WeaponRange += GetAbilityStrengthByTrigger(client, target, "gunRNG", _, rangeRounded, _, _, "d", 2, true, _, hitgroup, _, damagetype, dontActivateTalentCooldown);
+			baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "gunDMG", _, WeaponDamage, _, _, "d", 2, true, _, hitgroup, _, damagetype, dontActivateTalentCooldown));
 
 			if (bIsInCombat[client]) {
 				WeaponRange += GetAbilityStrengthByTrigger(client, target, "ICwRNG", _, rangeRounded, _, _, "d", 2, true, _, _, _, damagetype, dontActivateTalentCooldown);
-				baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "ICwDMG", _, WeaponDamage, _, _, "d", 2, true, _, _, _, damagetype, dontActivateTalentCooldown));
+				baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "ICwDMG", _, WeaponDamage, _, _, "d", 2, true, _, hitgroup, _, damagetype, dontActivateTalentCooldown));
 			}
 			else {
 				WeaponRange += GetAbilityStrengthByTrigger(client, target, "OCwRNG", _, rangeRounded, _, _, "d", 2, true, _, _, _, damagetype, dontActivateTalentCooldown);
-				baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "OCwDMG", _, WeaponDamage, _, _, "d", 2, true, _, _, _, damagetype, dontActivateTalentCooldown));
+				baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "OCwDMG", _, WeaponDamage, _, _, "d", 2, true, _, hitgroup, _, damagetype, dontActivateTalentCooldown));
 			}
 		}
 		else {
-			baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "mDMG", _, WeaponDamage, _, _, "d", 2, true, _, _, _, damagetype, dontActivateTalentCooldown));
+			baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "mDMG", _, WeaponDamage, _, _, "d", 2, true, _, hitgroup, _, damagetype, dontActivateTalentCooldown));
 		}
 		if (baseWeaponTemp > 0) WeaponDamage = baseWeaponTemp;
 
@@ -1033,6 +1027,8 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		LastAttackTime[attacker] = GetEngineTime();
 		if (!HasSeenCombat[attacker]) HasSeenCombat[attacker] = true;
 		if (attackerTeam == TEAM_SURVIVOR) {
+			survivorAmmotype = takeDamageEvent[attacker][0];
+			survivorHitgroup = takeDamageEvent[attacker][1];
 			if (inflictor > MaxClients && (damagetype & DMG_BLAST|DMG_BLAST_SURFACE|DMG_NERVEGAS)) {
 				char classname[64];
 				GetEdictClassname(inflictor, classname, sizeof(classname));
@@ -1040,7 +1036,7 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 				else baseWeaponDamage = iExplosionBaseDamagePipe;
 				baseWeaponDamage += RoundToCeil(GetAbilityStrengthByTrigger(attacker, victim, "S", _, baseWeaponDamage, _, _, "d", 1, true, _, _, _, damagetype));
 			}
-			else if (baseWeaponDamage == 0) baseWeaponDamage = GetBaseWeaponDamage(attacker, victim, _, _, _, damagetype);
+			else if (baseWeaponDamage == 0) baseWeaponDamage = GetBaseWeaponDamage(attacker, victim, _, _, _, damagetype, _, _, survivorHitgroup);
 
 			if (bAutoRevive[attacker] && !IsIncapacitated(attacker)) bAutoRevive[attacker] = false;
 			victimType = (IsSpecialCommon(victim)) ? 0 :
@@ -1049,8 +1045,6 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 							   (IsLegitimateClientVictim && victimTeam != TEAM_SURVIVOR) ? 3 :
 							   (IsLegitimateClientVictim && victimTeam == TEAM_SURVIVOR) ? 4 : 5;
 			
-			survivorAmmotype = takeDamageEvent[attacker][0];
-			survivorHitgroup = takeDamageEvent[attacker][1];
 			
 			CallTriggerByHitgroup(attacker, victim, survivorHitgroup, survivorAmmotype, baseWeaponDamage);
 
@@ -2343,7 +2337,7 @@ stock float GetInfectedAbilityStrengthByTrigger(activator, targetPlayer = 0, cha
 		if (GetArrayCell(TriggerValues[activator], ACTIVATOR_STATUS_EFFECT_REQUIRED) == 1) {
 			if (!activatorIsOnFire && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_ON_FIRE) == 1) continue;
 			if (ISEXPLODE[activator] == INVALID_HANDLE && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_EXPLODING) == 1) continue;
-			if (ISSLOW[activator] == INVALID_HANDLE && !playerInSlowAmmo[activator] && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_SLOW) == 1) continue;
+			if (!ISSLOW[activator] && !playerInSlowAmmo[activator] && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_SLOW) == 1) continue;
 			if (ISFROZEN[activator] == INVALID_HANDLE && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_FROZEN) == 1) continue;
 			if (!(activatorFlags & FL_INWATER) && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_DROWNING) == 1) continue;
 		}
@@ -2660,7 +2654,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 			if (!activatorIsOnFire && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_ON_FIRE) == 1) continue;
 			if (!activatorIsSufferingAcidBurn && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_SUFFER_ACID_BURN) == 1) continue;
 			if (ISEXPLODE[activator] == INVALID_HANDLE && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_EXPLODING) == 1) continue;
-			if (ISSLOW[activator] == INVALID_HANDLE && !playerInSlowAmmo[activator] && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_SLOW) == 1) continue;
+			if (!ISSLOW[activator] && !playerInSlowAmmo[activator] && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_SLOW) == 1) continue;
 			if (ISFROZEN[activator] == INVALID_HANDLE && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_FROZEN) == 1) continue;
 			if ((!activatorIsOnFire || !activatorIsSufferingAcidBurn) && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_SCORCHED) == 1) continue;
 			if ((!activatorIsOnFire || ISFROZEN[activator] == INVALID_HANDLE) && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_STEAMING) == 1) continue;
@@ -2724,8 +2718,8 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		if (!StrEqual(TheString, "-1")) continue;	// passive abilities from classes don't trigger here, they have specific points of trigger!
 
 		if (!isEffectOverTimeActive || GetArrayCell(TriggerValues[activator], IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS) != 1) {
-			if (GetArrayCell(TriggerValues[activator], REQUIRES_HEADSHOT) == 1 && hitgroupType != 1) continue;
-			if (GetArrayCell(TriggerValues[activator], REQUIRES_LIMBSHOT) == 1 && hitgroupType != 2) continue;
+			if (GetArrayCell(TriggerValues[activator], REQUIRES_HEADSHOT) == 1 && hitgroupType != HITGROUP_HEAD) continue;
+			if (GetArrayCell(TriggerValues[activator], REQUIRES_LIMBSHOT) == 1 && hitgroupType != HITGROUP_LIMB) continue;
 		}
 		if (!(activatorButtons & IN_DUCK) && GetArrayCell(TriggerValues[activator], REQUIRES_CROUCHING) == 1) continue;
 		if (!bIsClientCurrentlyStaggered[activator] && GetArrayCell(TriggerValues[activator], ACTIVATOR_STAGGER_REQ) == 1) continue;
@@ -3782,7 +3776,7 @@ stock ZeroGravity(client, victim, float g_TalentStrength, float g_TalentTime) {
 
 stock SlowPlayer(client, float g_TalentStrength, float g_TalentTime) {
 
-	if (IsLegitimateClientAlive(client) && ISSLOW[client] == INVALID_HANDLE) {
+	if (IsLegitimateClientAlive(client) && !ISSLOW[client]) {
 
 		//if (SlowMultiplierTimer[client] != INVALID_HANDLE) {
 
@@ -3790,7 +3784,8 @@ stock SlowPlayer(client, float g_TalentStrength, float g_TalentTime) {
 		//	SlowMultiplierTimer[client] = INVALID_HANDLE;
 		//}
 		//SlowMultiplierTimer[client] = 
-		ISSLOW[client] = CreateTimer(g_TalentTime, Timer_Slow, client, TIMER_FLAG_NO_MAPCHANGE);
+		ISSLOW[client] = true;
+		CreateTimer(g_TalentTime, Timer_Slow, client, TIMER_FLAG_NO_MAPCHANGE);
 		fSlowSpeed[client] = g_TalentStrength;
 	}
 }
@@ -6637,7 +6632,7 @@ stock RemoveImmunities(client) {
 	}
 }*/
 
-stock GetAimTargetPosition(client, float TargetPos[3]) {
+stock GetAimTargetPosition(client, float TargetPos[3], char[] hitgroup, int size) {
 	float ClientEyeAngles[3];
 	float ClientEyePosition[3];
 	GetClientEyeAngles(client, ClientEyeAngles);
@@ -6649,6 +6644,7 @@ stock GetAimTargetPosition(client, float TargetPos[3]) {
 		aimTarget = TR_GetEntityIndex(trace);
 		if (IsCommonInfected(aimTarget) || IsWitch(aimTarget) || IsLegitimateClient(aimTarget)) {
 			GetEntPropVector(aimTarget, Prop_Send, "m_vecOrigin", TargetPos);
+			Format(hitgroup, size, "%d", TR_GetHitGroup(trace));
 		}
 		else {
 			aimTarget = -1;
@@ -7437,7 +7433,8 @@ stock float GetAbilityMultiplier(client, char[] abilityT, override = 0, char[] T
 		}
 		else {
 			GetArrayString(ActionBar[client], i, TalentName, sizeof(TalentName));
-			pos = GetMenuPosition(client, TalentName);
+			//pos = GetMenuPosition(client, TalentName);
+			pos = GetArrayCell(ActionBarMenuPos[client], i);
 		}
 		if (pos < 0) continue;
 		if (StrEqual(TalentName_t, "none")) {
@@ -8540,11 +8537,12 @@ stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, l
 				}
 				if (StrContains(CommonEntityEffect, "s", true) != -1 && IsSpecialCommonInRange(y, 's', entity, false)) {
 
-					if (ISSLOW[y] == INVALID_HANDLE) {
+					if (!ISSLOW[y]) {
 
 						SetSpeedMultiplierBase(y, GetCommonValueFloatAtPos(entity, SUPER_COMMON_DEATH_MULTIPLIER));
 						SetEntityMoveType(y, MOVETYPE_WALK);
-						ISSLOW[y] = CreateTimer(GetCommonValueFloatAtPos(entity, SUPER_COMMON_DEATH_BASE_TIME), Timer_Slow, y, TIMER_FLAG_NO_MAPCHANGE);
+						ISSLOW[y] = true;
+						CreateTimer(GetCommonValueFloatAtPos(entity, SUPER_COMMON_DEATH_BASE_TIME), Timer_Slow, y, TIMER_FLAG_NO_MAPCHANGE);
 					}
 				}
 				if (StrContains(CommonEntityEffect, "f", true) != -1) {
@@ -9362,14 +9360,11 @@ stock GetStatusEffects(client, EffectType = 0, char[] theStringToStoreItIn, theS
 			iNumStatusEffects++;
 		}
 		float isSlowSpeed = IsClientInRangeSpecialAmmo(client, "s");
-		if (ISSLOW[client] != INVALID_HANDLE || isSlowSpeed > 0.0) {
+		if (ISSLOW[client] || isSlowSpeed > 0.0) {
 			if (isSlowSpeed > 0.0) playerInSlowAmmo[client] = true;
 			else playerInSlowAmmo[client] = false;
 			if (fSlowSpeed[client] == 1.0) {
-				if (ISSLOW[client] != INVALID_HANDLE) {
-					KillTimer(ISSLOW[client]);
-					ISSLOW[client] = INVALID_HANDLE;
-				}
+				if (ISSLOW[client]) ISSLOW[client] = false;
 			}
 			else {
 				if (fSlowSpeed[client] < 1.0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Sl]", theStringToStoreItIn);
@@ -9646,7 +9641,8 @@ stock DisplayHUD(client, statusType) {
 		char testelim[1];
 		char EnemyName[64];
 		float TargetPos[3];
-		int enemycombatant = GetAimTargetPosition(client, TargetPos);
+		char hitgroup[4];
+		int enemycombatant = GetAimTargetPosition(client, TargetPos, hitgroup, 4);
 		int enemytype = -1;
 		//GetClientAimTargetEx(client, EnemyName, sizeof(EnemyName), true);
 		//new enemycombatant = LastAttackedUser[client];
@@ -10126,7 +10122,10 @@ public bool ChatTrigger(client, args, bool teamOnly) {
 	Format(LastSpoken[client], sizeof(LastSpoken[]), "%s", sBuffer);
 	int clientTeam = GetClientTeam(client);
 	if (iRPGMode > 0) {
-		if (clientTeam == TEAM_SURVIVOR) Format(Message, MAX_CHAT_LENGTH, "{B}[{G}%d{B}] %s {N}-> {B}%s", PlayerLevel[client], baseName[client], sBuffer);
+		if (clientTeam == TEAM_SURVIVOR) {
+			if (handicapLevel[client] > 0) Format(Message, MAX_CHAT_LENGTH, "{B}[{G}%d{B}] [{G}%d{B}] %s {N}-> {B}%s", handicapLevel[client], PlayerLevel[client], baseName[client], sBuffer);
+			else Format(Message, MAX_CHAT_LENGTH, "{B}[{G}%d{B}] %s {N}-> {B}%s", PlayerLevel[client], baseName[client], sBuffer);
+		}
 		else if (clientTeam == TEAM_INFECTED) Format(Message, MAX_CHAT_LENGTH, "{R}[{G}%d{R}] %s {N}-> {R}%s", PlayerLevel[client], baseName[client], sBuffer);
 		else if (clientTeam == TEAM_SPECTATOR) Format(Message, MAX_CHAT_LENGTH, "{GRA}[{G}%d{GRA}] %s {N}-> {GRA}%s", PlayerLevel[client], baseName[client], sBuffer);
 		if (SkyLevel[client] >= 1) Format(Message, MAX_CHAT_LENGTH, "{N}Prestige{G}%d %s", SkyLevel[client], Message);
@@ -11098,10 +11097,11 @@ public Action Timer_RemoveDamageImmunity(Handle timer, any client) {
 	#define HITGROUP_RIGHTLEG    7
 	#define HITGROUP_GEAR        10            // alerts NPC, but doesn't do damage or bleed (1/100th damage)
 	*/
+
 stock GetHitgroupType(hitgroup) {
-	if (hitgroup >= 4 && hitgroup <= 7) return 2;	// limb
-	if (hitgroup == 1) return 1;					// headshot
-	return 0;										// not a limb
+	if (hitgroup >= 4 && hitgroup <= 7) return HITGROUP_LIMB;	// limb
+	if (hitgroup == 1) return HITGROUP_HEAD;					// headshot
+	return HITGROUP_OTHER;										// not a limb
 }
 
 // stock bool CheckIfLimbDamage(attacker, victim, Handle event, damage) {
@@ -11118,8 +11118,8 @@ stock GetHitgroupType(hitgroup) {
 
 void CallTriggerByHitgroup(int attacker, int victim, int hitgroup, int ammotype, int damage) {
 	int type = GetHitgroupType(hitgroup);
-	if (type == 2) GetAbilityStrengthByTrigger(attacker, victim, "limbshot", _, damage, _, _, _, _, _, _, hitgroup, _, ammotype);
-	if (type == 1) {
+	if (type == HITGROUP_LIMB) GetAbilityStrengthByTrigger(attacker, victim, "limbshot", _, damage, _, _, _, _, _, _, hitgroup, _, ammotype);
+	if (type == HITGROUP_HEAD) {
 		GetAbilityStrengthByTrigger(attacker, victim, "headshot", _, damage, _, _, _, _, _, _, hitgroup, _, ammotype);
 		if (IsCommonInfected(victim) && !IsSpecialCommon(victim)) AddCommonInfectedDamage(attacker, victim, GetCommonBaseHealth(attacker));	// if someone shoots a common infected in the head, we want to auto-kill it.
 	}

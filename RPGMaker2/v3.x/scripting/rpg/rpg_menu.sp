@@ -912,6 +912,7 @@ stock bool VerifyActionBar(client, char[] TalentName, pos) {
 		char none[64];
 		Format(none, sizeof(none), "none");
 		SetArrayString(ActionBar[client], pos, none);
+		SetArrayCell(ActionBarMenuPos[client], pos, -1);
 		return false;
 	}
 	return true;
@@ -2185,7 +2186,8 @@ public void CharacterSheetMenu(client) {
 	else { // Survivor Sheet!
 		char targetName[64];
 		float TargetPos[3];
-		int target = GetAimTargetPosition(client, TargetPos);
+		char hitgroup[4];
+		int target = GetAimTargetPosition(client, TargetPos, hitgroup, 4);
 		if (target == -1) {
 			target = FindAnotherSurvivor(client);
 			if (target == -1) target = client;
@@ -3563,24 +3565,24 @@ stock GetAbilityText(client, char[] TheString, TheSize, Handle Keys, Handle Valu
 	Format(tDraft, sizeof(tDraft), "%s\n%s", tDraft, text2);
 	if (pos == ABILITY_ACTIVE_EFFECT) {
 
-		GetArrayString(Values, ABILITY_COOLDOWN, text, sizeof(text));
+		float fAbilityCooldown = GetArrayCell(Values, ABILITY_COOLDOWN);
 
 		TheAbilityMultiplier = GetAbilityMultiplier(client, "L");
 		if (TheAbilityMultiplier != -1.0) {
 
 			if (TheAbilityMultiplier < 0.0) TheAbilityMultiplier = 0.1;
 			else if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
-
-				Format(text, sizeof(text), "%3.0f", StringToFloat(text) - (StringToFloat(text) * TheAbilityMultiplier));
+				fAbilityCooldown -= (fAbilityCooldown * TheAbilityMultiplier);
+				//Format(text, sizeof(text), "%3.0f", StringToFloat(text) - (StringToFloat(text) * TheAbilityMultiplier));
 			}
 		}
 
 		//Format(text, sizeof(text), "%3.3f", StringToFloat(text))
-		if (!StrEqual(text, "-1")) Format(text, sizeof(text), "%T", "Ability Cooldown", client, text);
+		if (!StrEqual(text, "-1")) Format(text, sizeof(text), "%T", "Ability Cooldown", client, fAbilityCooldown);
 		else Format(text, sizeof(text), "%T", "No Ability Cooldown", client);
 
-		GetArrayString(Values, ABILITY_ACTIVE_TIME, text2, sizeof(text2));
-		if (!StrEqual(text2, "-1")) Format(text2, sizeof(text2), "%T", "Ability Active Time", client, text2);
+		float fActiveTime = GetArrayCell(Values, ABILITY_ACTIVE_TIME);
+		if (!StrEqual(text2, "-1")) Format(text2, sizeof(text2), "%T", "Ability Active Time", client, fActiveTime);
 		else Format(text2, sizeof(text2), "%T", "Instant Ability", client);
 
 		Format(TheString, TheSize, "%s\n%s\n%s", text, text2, tDraft);
@@ -4323,7 +4325,10 @@ public TalentInfoScreen_Special_Init (Handle topmenu, MenuAction action, client,
 			if (!SwapActions(client, PurchaseTalentName[client], param2 - 1)) {
 				//	Prevent an ability (or spell) on cooldown from being removed from the action bar
 				//	Abilities now require an upgrade point in their node in order to be used.
-				if (!IsAmmoActive(client, currentlyEquippedAction) && GetTalentStrength(client, PurchaseTalentName[client]) > 0) SetArrayString(ActionBar[client], param2 - 1, PurchaseTalentName[client]);
+				if (!IsAmmoActive(client, currentlyEquippedAction) && GetTalentStrength(client, PurchaseTalentName[client]) > 0) {
+					SetArrayString(ActionBar[client], param2 - 1, PurchaseTalentName[client]);
+					SetArrayCell(ActionBarMenuPos[client], param2 - 1, GetMenuPosition(client, PurchaseTalentName[client]));
+				}
 			}
 			SendPanelToClientAndClose(TalentInfoScreen_Special(client), client, TalentInfoScreen_Special_Init, MENU_TIME_FOREVER);
 		}
@@ -4344,9 +4349,11 @@ bool SwapActions(client, char[] TalentName, slot) {
 		GetArrayString(ActionBar[client], i, text, sizeof(text));
 		if (!StrEqual(TalentName, text)) continue;
 		GetArrayString(ActionBar[client], slot, text2, sizeof(text2));
-		SetArrayString(ActionBar[client], i, text2);
-		SetArrayString(ActionBar[client], slot, text);
 
+		SetArrayString(ActionBar[client], i, text2);
+		SetArrayCell(ActionBarMenuPos[client], i, GetMenuPosition(client, text2));
+		SetArrayString(ActionBar[client], slot, text);
+		SetArrayCell(ActionBarMenuPos[client], slot, GetMenuPosition(client, text));
 		return true;
 	}
 	return false;

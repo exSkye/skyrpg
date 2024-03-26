@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.7"
+#define PLUGIN_VERSION				"v3.4.5.7a"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -44,6 +44,17 @@
 
 
 /*
+ Version 3.4.5.7a
+ - Fixed a bug with slow effect and killtimer.
+ - Fixed a bug wherein sometimes players would load without a name.
+ - Fixed a crash where survivor bots would save endlessly.
+ - ISSLOW variable changed from Handle to bool.
+ - Datascreen now reflects which limb a player is aiming at when calculating/showing damage.
+ - Fixed a visual error in the menu where ability cooldown and active times were not displaying.
+ - Handicap level (if applicable) now shows in chat and as part of player names; eg. [handicap] [level] name
+ - Added static definitions for HITGROUP types.
+ - Added Handle ActionBarMenuPos[] to memoize menu position of talents assigned to action bars.
+
  Version 3.4.5.7
  - Added !autodismantle feature. Using the command provides the syntax as a response in chat.
 		!autodismantle minor - toggles on/off auto dismantling of minor augments.
@@ -494,6 +505,13 @@ public Plugin myinfo = {
 #define HANDICAP_LOOTFIND					3
 #define HANDICAP_SCORE_REQUIRED				4
 
+// for easier tracking of hitgroups and insurance against inverting values while coding
+#define HITGROUP_LIMB		2
+#define HITGROUP_HEAD		1
+#define HITGROUP_OTHER		0
+
+
+bool b_isWaiting[MAXPLAYERS + 1];
 int iplayerDismantleMinorAugments[MAXPLAYERS + 1];
 int iplayerSettingAutoDismantleScore[MAXPLAYERS + 1];
 Handle SetHandicapValues[MAXPLAYERS + 1];
@@ -603,6 +621,7 @@ Handle CastKeys[MAXPLAYERS + 1];
 Handle CastValues[MAXPLAYERS + 1];
 Handle CastSection[MAXPLAYERS + 1];
 int ActionBarSlot[MAXPLAYERS + 1];
+Handle ActionBarMenuPos[MAXPLAYERS + 1];
 Handle ActionBar[MAXPLAYERS + 1];
 bool DisplayActionBar[MAXPLAYERS + 1];
 int ConsecutiveHits[MAXPLAYERS + 1];
@@ -634,6 +653,7 @@ float RoundExperienceMultiplier[MAXPLAYERS + 1];
 int BonusContainer[MAXPLAYERS + 1];
 int CurrentMapPosition;
 int DoomTimer;
+bool b_IsRescueVehicleArrived;
 int CleanseStack[MAXPLAYERS + 1];
 float CounterStack[MAXPLAYERS + 1];
 int MultiplierStack[MAXPLAYERS + 1];
@@ -695,7 +715,7 @@ bool bIsSurvivorFatigue[MAXPLAYERS + 1];
 int SurvivorStamina[MAXPLAYERS + 1];
 float SurvivorConsumptionTime[MAXPLAYERS + 1];
 float SurvivorStaminaTime[MAXPLAYERS + 1];
-Handle ISSLOW[MAXPLAYERS + 1];
+bool ISSLOW[MAXPLAYERS + 1];
 float fSlowSpeed[MAXPLAYERS + 1];
 Handle ISFROZEN[MAXPLAYERS + 1];
 float ISEXPLODETIME[MAXPLAYERS + 1];
@@ -1764,6 +1784,7 @@ stock CreateAllArrays() {
 		if (CastValues[i] == INVALID_HANDLE) CastValues[i] = CreateArray(32);
 		if (CastSection[i] == INVALID_HANDLE) CastSection[i] = CreateArray(32);
 		if (ActionBar[i] == INVALID_HANDLE) ActionBar[i] = CreateArray(32);
+		if (ActionBarMenuPos[i] == INVALID_HANDLE) ActionBarMenuPos[i] = CreateArray(32);
 		if (TalentsAssignedKeys[i] == INVALID_HANDLE) TalentsAssignedKeys[i] = CreateArray(32);
 		if (TalentsAssignedValues[i] == INVALID_HANDLE) TalentsAssignedValues[i] = CreateArray(32);
 		if (CartelValueKeys[i] == INVALID_HANDLE) CartelValueKeys[i] = CreateArray(32);
@@ -2111,7 +2132,7 @@ public ReadyUp_ReadyUpStart() {
 	}
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsLegitimateClient(i)) {
-			if (CurrentMapPosition == 0 && b_IsLoaded[i] && GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
+			if (CurrentMapPosition == 0 && b_IsLoaded[i] && GetClientTeam(i) == TEAM_SURVIVOR && ReadyUpGameMode != 3) GiveProfileItems(i);
 			//if (GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
 			if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 			//if (GetClientTeam(i) == TEAM_SURVIVOR && !b_IsLoaded[i]) IsClientLoadedEx(i);
@@ -2221,6 +2242,7 @@ stock TimeUntilEnrage(char[] TheText, TheSize) {
 			else Format(TheText, TheSize, "%d minute, %d seconds", Minutes, Seconds);
 		}
 	}
+
 	else Format(TheText, TheSize, "ACTIVE");
 }
 
@@ -2268,6 +2290,7 @@ stock bool PlayerHasWeakness(client) {
 public ReadyUp_CheckpointDoorStartOpened() {
 	if (!b_IsCheckpointDoorStartOpened) {
 		b_IsCheckpointDoorStartOpened		= true;
+		b_IsRescueVehicleArrived = false;
 		b_IsActiveRound = true;
 		bIsSettingsCheck = true;
 		IsEnrageNotified = false;
@@ -2304,32 +2327,46 @@ public ReadyUp_CheckpointDoorStartOpened() {
 				// Some maps, like Hard Rain pre-spawn a ton of witches - we want to add them to the witch table.
 				OnWitchCreated(ent);
 			}
+			char thetext[64];
+			GetConfigValue(thetext, sizeof(thetext), "path setting?");
+			if (ReadyUpGameMode != 3 && !StrEqual(thetext, "none")) {
+				if (!StrEqual(thetext, "random")) ServerCommand("sm_forcepath %s", thetext);
+				else {
+					if (StrEqual(PathSetting, "none")) {
+						int random = GetRandomInt(1, 100);
+						if (random <= 33) Format(PathSetting, sizeof(PathSetting), "easy");
+						else if (random <= 66) Format(PathSetting, sizeof(PathSetting), "medium");
+						else Format(PathSetting, sizeof(PathSetting), "hard");
+					}
+					ServerCommand("sm_forcepath %s", PathSetting);
+				}
+			}
 		}
 		else {
 			IsSurvivalMode = true;
-			for (int i = 1; i <= MaxClients; i++) {
-				if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
-					VerifyMinimumRating(i, true);
-					RespawnImmunity[i] = false;
-				}
-			}
-			decl String:TheCurr[64];
-			GetCurrentMap(TheCurr, sizeof(TheCurr));
-			if (StrContains(TheCurr, "helms_deep", false) != -1) {
-				// the bot has to be teleported to the machine gun, because samurai blocks the teleportation in the actual map scripting
-				new Float:TeleportBots[3];
-				TeleportBots[0] = 1572.749146;
-				TeleportBots[1] = -871.468811;
-				TeleportBots[2] = 62.031250;
-				decl String:TheModel[64];
-				for (new i = 1; i <= MaxClients; i++) {
-					if (IsLegitimateClientAlive(i) && IsFakeClient(i)) {
-						GetClientModel(i, TheModel, sizeof(TheModel));
-						if (StrEqual(TheModel, LOUIS_MODEL)) TeleportEntity(i, TeleportBots, NULL_VECTOR, NULL_VECTOR);
-					}
-				}
-				PrintToChatAll("\x04Man the gun, Louis!");
-			}
+			// for (int i = 1; i <= MaxClients; i++) {
+			// 	if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+			// 		VerifyMinimumRating(i, true);
+			// 		RespawnImmunity[i] = false;
+			// 	}
+			// }
+			// decl String:TheCurr[64];
+			// GetCurrentMap(TheCurr, sizeof(TheCurr));
+			// if (StrContains(TheCurr, "helms_deep", false) != -1) {
+			// 	// the bot has to be teleported to the machine gun, because samurai blocks the teleportation in the actual map scripting
+			// 	new Float:TeleportBots[3];
+			// 	TeleportBots[0] = 1572.749146;
+			// 	TeleportBots[1] = -871.468811;
+			// 	TeleportBots[2] = 62.031250;
+			// 	decl String:TheModel[64];
+			// 	for (new i = 1; i <= MaxClients; i++) {
+			// 		if (IsLegitimateClientAlive(i) && IsFakeClient(i)) {
+			// 			GetClientModel(i, TheModel, sizeof(TheModel));
+			// 			if (StrEqual(TheModel, LOUIS_MODEL)) TeleportEntity(i, TeleportBots, NULL_VECTOR, NULL_VECTOR);
+			// 		}
+			// 	}
+			// 	PrintToChatAll("\x04Man the gun, Louis!");
+			// }
 		}
 		b_IsCampaignComplete				= false;
 		if (ReadyUpGameMode != 3) b_IsRoundIsOver						= false;
@@ -2337,20 +2374,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		SpecialsKilled				=	0;
 		//RoundDamageTotal			=	0;
 		b_IsFinaleActive			=	false;
-		char thetext[64];
-		GetConfigValue(thetext, sizeof(thetext), "path setting?");
-		if (ReadyUpGameMode != 3 && !StrEqual(thetext, "none")) {
-			if (!StrEqual(thetext, "random")) ServerCommand("sm_forcepath %s", thetext);
-			else {
-				if (StrEqual(PathSetting, "none")) {
-					int random = GetRandomInt(1, 100);
-					if (random <= 33) Format(PathSetting, sizeof(PathSetting), "easy");
-					else if (random <= 66) Format(PathSetting, sizeof(PathSetting), "medium");
-					else Format(PathSetting, sizeof(PathSetting), "hard");
-				}
-				ServerCommand("sm_forcepath %s", PathSetting);
-			}
-		}
 		for (int i = 1; i <= MaxClients; i++) {
 			if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
 				if (!IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
@@ -2457,6 +2480,7 @@ stock CastActionEx(client, char[] t_actionpos = "none", TheSize, pos = -1) {
 			float TargetPos[3];
 			char TalentName[64];
 			float visualDelayTime = 0.0;
+			char hitgroup[4];
 			for (int i = 0; i < size; i++) {
 				CastKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 				CastValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
@@ -2478,14 +2502,14 @@ stock CastActionEx(client, char[] t_actionpos = "none", TheSize, pos = -1) {
 					if (visualDelayTime < 1.0) visualDelayTime = 1.0;
 					if (RequiresTarget > 0) {
 						//GetClientAimTargetEx(client, actionpos, TheSize, true);
-						RequiresTarget = GetAimTargetPosition(client, TargetPos);//StringToInt(actionpos);
+						RequiresTarget = GetAimTargetPosition(client, TargetPos, hitgroup, 4);//StringToInt(actionpos);
 						if (IsLegitimateClientAlive(RequiresTarget)) {
 							if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos, visualDelayTime);
 							else UseAbility(client, RequiresTarget, TalentName, CastKeys[client], CastValues[client], TargetPos);
 						}
 					}
 					else {
-						GetAimTargetPosition(client, TargetPos);
+						GetAimTargetPosition(client, TargetPos, hitgroup, 4);
 						/*GetClientAimTargetEx(client, actionpos, TheSize);
 						ExplodeString(actionpos, " ", tTargetPos, 3, 64);
 						TargetPos[0] = StringToFloat(tTargetPos[0]);
@@ -3101,7 +3125,7 @@ stock CallRoundIsOver() {
 					AcceptEntityInput(iChaseEnt[i], "Kill");
 					iChaseEnt[i] = -1;
 				}*/
-				SavePlayerData(i);
+				if (b_IsMissionFailed && CurrentMapPosition != 1 || !IsFakeClient(i)) SavePlayerData(i);
 			}
 		}
 		//CreateTimer(1.0, Timer_SaveAndClear, _, TIMER_FLAG_NO_MAPCHANGE);

@@ -577,17 +577,37 @@ stock void ResetData(int client) {
 	StrugglePower[client] = 0;
 }
 
+public Action Timer_TryToLoad(Handle timer, any client) {
+	if (!IsLegitimateClient(client)) {
+		b_isWaiting[client] = false;
+		return Plugin_Stop;
+	}
+	char key[64];
+	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+	if (StrEqual(key, "STEAM_ID_STOP_IGNORING_RETVALS")) return Plugin_Continue;
+	b_isWaiting[client] = false;
+	ClearAndLoad(client);
+	return Plugin_Stop;
+}
+
 stock void ClearAndLoad(int client, bool IgnoreLoad = false) {
 
 	if (hDatabase == INVALID_HANDLE) return;
 	//new client = FindClientWithAuthString(key, true);
 	if (client < 1) return;
-	if (b_IsLoading[client] && !IgnoreLoad) return;
+	if (b_isWaiting[client] || b_IsLoading[client] && !IgnoreLoad) return;
 	ClearArray(possibleLootPool[client]);
 	b_IsLoading[client] = true;
 
 	char key[64];
 	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+	if (StrEqual(key, "STEAM_ID_STOP_IGNORING_RETVALS")) {
+		// client has not loaded in fully and for some reason this can get called before OnClientAuthorized in SM1.11+
+		// if this happens, we do a loop that checks for their actual steam id, and if so call this again.
+		b_isWaiting[client] = true;
+		CreateTimer(1.0, Timer_TryToLoad, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		return;
+	}
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 
 	//if (StrContains(key, "BOT", false) != -1) {
@@ -950,13 +970,15 @@ stock void CreateNewPlayer(int client) {
 	char TheName[64];
 	if (b_IsLoading[client]) return;	// should stop bots (and players) from looping indefinitely.
 	b_IsLoading[client] = true;
-	if (IsFakeClient(client)) {
-		GetSurvivorBotName(client, TheName, sizeof(TheName));
-		Format(key, sizeof(key), "%s%s", sBotTeam, TheName);
-	}
-	else if (IsLegitimateClient(client) && !IsFakeClient(client)) {
-		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
-		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+	if (IsLegitimateClient(client)) {
+		if (IsFakeClient(client)) {
+			GetSurvivorBotName(client, TheName, sizeof(TheName));
+			Format(key, sizeof(key), "%s%s", sBotTeam, TheName);
+		}
+		else {
+			GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+			if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+		}
 	}
 	else {
 		//LogMessage("Infected bots do not create unique data (%N)", client);
@@ -1854,7 +1876,7 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 			//if (client == -1 || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
 		}
 	}
-	GiveProfileItems(client);
+	if (ReadyUpGameMode != 3) GiveProfileItems(client);
 	SetClientTalentStrength(client);
 	LogMessage("Loaded data for %N", client);
 	PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
@@ -1887,6 +1909,7 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 
 	if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
 	if (GetArraySize(ActionBar[client]) != ActionSlots) ResizeArray(ActionBar[client], ActionSlots);
+	if (GetArraySize(ActionBarMenuPos[client]) != ActionSlots) ResizeArray(ActionBarMenuPos[client], ActionSlots);
 
 	if (GetArraySize(hWeaponList[client]) != 2) ResizeArray(hWeaponList[client], 2);
 	while (SQL_FetchRow(hndl)) {
@@ -1896,6 +1919,7 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 		for (int i = 0; i < ActionSlots; i++) {
 			SQL_FetchString(hndl, i+1, text, sizeof(text));
 			SetArrayString(ActionBar[client], i, text);
+			SetArrayCell(ActionBarMenuPos[client], i, GetMenuPosition(client, text));
 		}
 		IsDisab = SQL_FetchInt(hndl, ActionSlots+1);
 		if (IsDisab == 0) DisplayActionBar[client] = false;
@@ -1971,7 +1995,8 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 
 stock FormatPlayerName(client) {
 	char playerNameFormatted[512];
-	Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
+	if (IsFakeClient(client) || handicapLevel[client] < 1) Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
+	else Format(playerNameFormatted, 512, "[%d] [%d] %s", handicapLevel[client], PlayerLevel[client], baseName[client]);
 	SetClientInfo(client, "name", playerNameFormatted);
 }
 
@@ -2230,9 +2255,8 @@ stock bool IsLoadingClientBaseNameDefault(client) {
 }
 
 stock OnClientLoaded(client, bool IsHooked = false) {
-
 	//if (!IsClientConnected(client)) return;
-	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client]) {//&& (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
+	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client] && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
 		return;
 	}
 	bTimersRunning[client] = false;
@@ -2240,10 +2264,10 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 	// we do this because some players roleplay and use bot names, and we need to know when to overrided loaded players here
 	// this will also conveniently tell apart the humans and bots of the same names.
 	if (IsFakeClient(client)) Format(baseName[client], sizeof(baseName[]), "[BOT] %s", baseName[client]);
-	else if (StrContains(baseName[client], "[BOT]", true) != -1) {
-		// if a human player tries to be cheeky and put this special key in their names, we remove it.
-		ReplaceString(baseName[client], sizeof(baseName[]), "[BOT]", "");
-	}
+	// else if (StrContains(baseName[client], "[BOT]", true) != -1) {
+	// 	// if a human player tries to be cheeky and put this special key in their names, we remove it.
+	// 	ReplaceString(baseName[client], sizeof(baseName[]), "[BOT]", "");
+	// }
 	b_IsLoaded[client] = true;
 	bIsGiveProfileItems[client] = false;
 
@@ -2258,7 +2282,6 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 	ClearLocalClientAugmentData(client);
 	ClearArray(ApplyDebuffCooldowns[client]);
 	if (ISFROZEN[client] != INVALID_HANDLE) {
-		KillTimer(ISFROZEN[client]);
 		ISFROZEN[client] = INVALID_HANDLE;
 	}
 	FreeUpgrades[client] = 0;

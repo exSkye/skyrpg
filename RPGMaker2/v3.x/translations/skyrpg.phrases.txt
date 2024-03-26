@@ -6944,7 +6944,7 @@
 	}
 	"Ability Cooldown"
 	{
-		"#format"			"{1:s}"
+		"#format"			"{1:3.1f}"
 		"en"				"Cooldown: {1}s"
 	}
 	"No Ability Cooldown"
@@ -6953,7 +6953,7 @@
 	}
 	"Ability Active Time"
 	{
-		"#format"			"{1:s}"
+		"#format"			"{1:3.1f}"
 		"en"				"Active: {1}s"
 	}
 	"Instant Ability"
