@@ -909,6 +909,7 @@ stock bool VerifyActionBar(client, char[] TalentName, pos) {
 	//if (defaultTalentStrength == -1) defaultTalentStrength = GetTalentStrength(client, TalentName);
 	if (StrEqual(TalentName, "none", false)) return false;
 	if (!IsTalentExists(TalentName) || GetTalentStrength(client, TalentName) < 1) {
+		if (GetArraySize(ActionBarMenuPos[client]) != iActionBarSlots) ResizeArray(ActionBarMenuPos[client], iActionBarSlots);
 		char none[64];
 		Format(none, sizeof(none), "none");
 		SetArrayString(ActionBar[client], pos, none);
@@ -4034,6 +4035,7 @@ public HandicapMenu_Handle(Handle menu, MenuAction action, client, slot) {
 		if (BestRating[client] >= scoreRequired && (handicapLevel[client] > slot+1 || !b_IsActiveRound)) {
 			handicapLevel[client] = slot+1;
 			SetClientHandicapValues(client);
+			FormatPlayerName(client);
 		}
 		HandicapMenu(client);
 	}

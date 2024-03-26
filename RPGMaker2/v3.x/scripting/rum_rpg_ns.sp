@@ -14,7 +14,7 @@
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
 
-#define PLUGIN_VERSION				"v3.4.5.7a"
+#define PLUGIN_VERSION				"v3.4.5.7b"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 
@@ -43,7 +43,14 @@
 //	================================
 
 
+
+
 /*
+ Version 3.4.5.7b
+ - Patched a bug I created while memoizing action bar talent menu positions =)
+ - Refactored/optimized several methods/calls related to the action bar.
+ - Changed handicap level in player name to orange text... maybe let SO's customize this?
+
  Version 3.4.5.7a
  - Fixed a bug with slow effect and killtimer.
  - Fixed a bug wherein sometimes players would load without a name.

@@ -7386,6 +7386,8 @@ bool AbilityIsInactiveAndOnCooldown(client, char[] TalentName, float fCooldownRe
 
 // by default this function does not handle instants, so we use an override to force it.
 stock float GetAbilityMultiplier(client, char[] abilityT, override = 0, char[] TalentName_t = "none") { // we need the option to force certain results in the menus (1) active (2) passive
+	if (GetArraySize(ActionBarMenuPos[client]) != iActionBarSlots ||
+		GetArraySize(MyTalentStrength[client]) != GetArraySize(a_Menu_Talents)) return -1.0;
 	//new Handle:Keys		= GetAbilityKeys[client];
 	Handle Values	= GetAbilityValues[client];
 	Handle Section	= GetAbilitySection[client];
@@ -7426,19 +7428,22 @@ stock float GetAbilityMultiplier(client, char[] abilityT, override = 0, char[] T
 	int pos = -1;
 	bool talentPassiveIsActive = false;
 	for (int i = 0; i < size; i++) {
+		bool isActionBar = false;
 		if (override != 0) {
 			pos = i;
 			Section				= GetArrayCell(a_Menu_Talents, pos, 2);
 			GetArrayString(Section, 0, TalentName, sizeof(TalentName));
 		}
 		else {
+			isActionBar = true;
 			GetArrayString(ActionBar[client], i, TalentName, sizeof(TalentName));
 			//pos = GetMenuPosition(client, TalentName);
 			pos = GetArrayCell(ActionBarMenuPos[client], i);
 		}
 		if (pos < 0) continue;
 		if (StrEqual(TalentName_t, "none")) {
-			if (!IsAbilityEquipped(client, TalentName, pos)) continue;
+			if (isActionBar && GetArrayCell(MyTalentStrength[client], pos) <= 0) continue;
+			//if (!IsAbilityEquipped(client, TalentName, pos)) continue;
 		}
 		else if (!StrEqual(TalentName, TalentName_t)) continue;
 
@@ -7528,6 +7533,11 @@ stock bool IsAbilityEquipped(client, char[] TalentName, int pos) {
 
 	int size = iActionBarSlots;
 	if (GetArraySize(ActionBar[client]) != size) ResizeArray(ActionBar[client], size);
+	int menSize = GetArraySize(a_Menu_Talents);
+	if (GetArraySize(MyTalentStrength[client]) != menSize) {
+		ResizeArray(MyTalentStrength[client], menSize);
+		return false;
+	}
 	for (int i = 0; i < size; i++) {
 		GetArrayString(ActionBar[client], i, text, sizeof(text));
 		if (!StrEqual(text, TalentName)) continue;
@@ -10123,7 +10133,7 @@ public bool ChatTrigger(client, args, bool teamOnly) {
 	int clientTeam = GetClientTeam(client);
 	if (iRPGMode > 0) {
 		if (clientTeam == TEAM_SURVIVOR) {
-			if (handicapLevel[client] > 0) Format(Message, MAX_CHAT_LENGTH, "{B}[{G}%d{B}] [{G}%d{B}] %s {N}-> {B}%s", handicapLevel[client], PlayerLevel[client], baseName[client], sBuffer);
+			if (handicapLevel[client] > 0) Format(Message, MAX_CHAT_LENGTH, "{B}[{O}%d{B}] [{G}%d{B}] %s {N}-> {B}%s", handicapLevel[client], PlayerLevel[client], baseName[client], sBuffer);
 			else Format(Message, MAX_CHAT_LENGTH, "{B}[{G}%d{B}] %s {N}-> {B}%s", PlayerLevel[client], baseName[client], sBuffer);
 		}
 		else if (clientTeam == TEAM_INFECTED) Format(Message, MAX_CHAT_LENGTH, "{R}[{G}%d{R}] %s {N}-> {R}%s", PlayerLevel[client], baseName[client], sBuffer);

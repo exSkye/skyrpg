@@ -784,6 +784,12 @@ stock void CreateNewPlayerEx(int client) {
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
+	ResizeArray(ActionBar[client], iActionBarSlots);
+	ResizeArray(ActionBarMenuPos[client], iActionBarSlots);
+	for (int i = 0; i < iActionBarSlots; i++) {
+		SetArrayString(ActionBar[client], i, "none");
+		SetArrayCell(ActionBarMenuPos[client], i, -1);
+	}
 
 	LogMessage("No data rows for %N with steamid: %s, could be found, creating new player data.", client, key);
 	char oldName[64];
@@ -1754,7 +1760,6 @@ stock void LoadTalentTrees(client, char[] key, bool IsTalentTwo = false, char[] 
 		}
 	}
 	else {
-		SurvivorStamina[client] = GetPlayerStamina(client);
 		int ActionSlots = iActionBarSlots;
 		Format(tquery, sizeof(tquery), "SELECT `steam_id`");
 		for (int i = 0; i < ActionSlots; i++) {
@@ -1932,24 +1937,6 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 		SetArrayString(hWeaponList[client], 1, text);
 		// IsFound = true;
 	}
-
-	// if (IsFound) {
-		// SetMaximumHealth(client);
-		// GiveMaximumHealth(client);
-		// LogMessage("Loaded data for %N", client);
-		// PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
-	// }
-	// b_IsLoaded[client] = true;
-	// b_IsLoading[client] = false;
-	// b_IsLoadingTrees[client] = false;
-	// bIsTalentTwo[client] = false;
-	// FreeUpgrades[client]		=	MaximumPlayerUpgrades(client) - TotalPointsAssigned(client);
-	// UpgradesAvailable[client]	=	0;
-	// VerifyClientUnlockedTalentEligibility(client);
-	// SetClientTalentStrength(client);
-	// FormatPlayerName(client);
-	// SetMaximumHealth(client);
-	// GiveMaximumHealth(client);
 	return;
 }
 
@@ -1991,6 +1978,7 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 	}
 	b_IsLoaded[client] = true;
 	b_IsLoading[client] = false;
+	SurvivorStamina[client] = GetPlayerStamina(client);
 }
 
 stock FormatPlayerName(client) {
