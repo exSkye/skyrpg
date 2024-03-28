@@ -777,6 +777,7 @@ stock VerifyAllActionBars(client) {
 	if (!IsLegitimateClient(client)) return;
 	int ActionSlots = iActionBarSlots;
 	if (GetArraySize(ActionBar[client]) != ActionSlots) ResizeArray(ActionBar[client], ActionSlots);
+	if (GetArraySize(ActionBarMenuPos[client]) != iActionBarSlots) ResizeArray(ActionBarMenuPos[client], iActionBarSlots);
 
 	// If the user doesn't meet the requirements or have the item it'll be unequipped here
 
@@ -1012,6 +1013,7 @@ stock float CheckActiveAbility(client, thevalue, eventtype = 0, bool IsPassive =
 	//if (IsSurvivorBot(client) && !IsDrawEffect) return 0.0;
 	int ActionBarSize = iActionBarSlots;	// having your own extensive api really helps.
 	if (GetArraySize(ActionBar[client]) != ActionBarSize) ResizeArray(ActionBar[client], ActionBarSize);
+	if (GetArraySize(ActionBarMenuPos[client]) != iActionBarSlots) ResizeArray(ActionBarMenuPos[client], iActionBarSlots);
 	char text[64];// free guesses on what this one is for.
 	char Effects[64];
 	char none[64];
@@ -2334,7 +2336,8 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 	// common infected health
 	if (request == 1) {	// odd requests return integers
 						// equal requests return floats
-		iResult = (iDontStoreInfectedInArray == 1) ? GetCommonBaseHealth() : GetCommonBaseHealth(client);
+		//iResult = (iDontStoreInfectedInArray == 1) ? GetCommonBaseHealth() : GetCommonBaseHealth(client);
+		iResult = GetCommonBaseHealth(client);
 	}
 	// common infected damage
 	if (request == 2) {
@@ -2427,6 +2430,82 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 	AddCommasToString(iResult, stringRef, theSize);
 	//Format(stringRef, theSize, "%s", AddCommasToString(iResult));
 	return 0;
+}
+
+stock int GetInfectedData(client, target, bool bGetDamage = false) {
+	//new Float:fResult;
+	int iResult;
+	float fMultiplier;
+	//new Float:AbilityMultiplier = (request % 2 == 0) ? GetAbilityMultiplier(client, "X", 4) : 0.0;
+	int theCount = LivingSurvivorCount();
+	int myCurrentDifficulty = GetDifficultyRating(client);
+	// common infected health
+	if (IsCommonInfected(target)) {
+		if (!bGetDamage) iResult = GetCommonBaseHealth(client);
+		else {
+			fMultiplier = fCommonDamageLevel;
+			iResult = iCommonInfectedBaseDamage + RoundToCeil(iCommonInfectedBaseDamage * (myCurrentDifficulty * fMultiplier));
+		}
+	}
+	else if (IsWitch(target)) {
+		if (!bGetDamage) {
+			fMultiplier = fWitchHealthMult;
+			iResult = iWitchHealthBase + RoundToCeil(iWitchHealthBase * (myCurrentDifficulty * fWitchHealthMult));
+		}
+		else {
+			fMultiplier = fWitchDamageScaleLevel;
+			iResult = iWitchDamageInitial + RoundToCeil(iWitchDamageInitial * (myCurrentDifficulty * fMultiplier));
+		}
+	}
+	else {
+		int zombieclass = FindZombieClass(target);
+	// only if a zombieclass has been specified.
+		if (zombieclass != ZOMBIECLASS_TANK) zombieclass--;
+		else zombieclass -= 2;
+		if (!bGetDamage) {
+			fMultiplier = fHealthPlayerLevel[zombieclass];
+			iResult = iBaseSpecialInfectedHealth[zombieclass];
+			iResult += RoundToCeil(iResult * (myCurrentDifficulty * fMultiplier));
+		}
+		else {
+			fMultiplier = fDamagePlayerLevel[zombieclass];
+			iResult = iBaseSpecialDamage[zombieclass];
+			iResult += RoundToFloor(iResult * (myCurrentDifficulty * fMultiplier));
+		}
+	}
+	if (iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) {
+		// health result or damage result
+		float handicapLevelBonus = 0.0;
+		if (!bGetDamage) {
+			if (fSurvivorHealthBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
+			if (handicapLevel[client] > 0) {
+				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 1);
+				int healthBonus = RoundToCeil(iResult * handicapLevelBonus);
+				if (healthBonus > 0) iResult += healthBonus;
+			}
+		}
+		else {
+			if (fSurvivorDamageBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+			if (handicapLevel[client] > 0) {
+				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 0);
+				int damageBonus = RoundToCeil(iResult * handicapLevelBonus);
+				if (damageBonus > 0) iResult += damageBonus;
+			}
+		}
+	}
+	if (bGetDamage) {
+		// show the damage increase/decrease if the player has associated talents doing so.
+		float TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		float TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		TheAbilityMultiplier += TheAbilityMultiplierAlt;
+		iResult -= RoundToCeil(TheAbilityMultiplier);
+
+		TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		TheAbilityMultiplier += TheAbilityMultiplierAlt;
+		iResult += RoundToCeil(TheAbilityMultiplier);
+	}
+	return iResult;
 }
 
 public void ProfileEditorMenu(client) {
@@ -3506,7 +3585,6 @@ stock GetAbilityText(client, char[] TheString, TheSize, Handle Keys, Handle Valu
 	char text2[512];
 	char tDraft[512];
 	char AbilityType[64];
-	char TheMaximumMultiplier[64];
 	float TheAbilityMultiplier = 0.0;
 	char pct[4];
 	Format(pct, sizeof(pct), "%");
@@ -3687,7 +3765,7 @@ public Handle Augments_Equip(client) {
 		GetArrayString(equippedAugmentsIDCodes[client], i, itemCode, 64);
 		GetAugmentSurname(client, GetAugmentPos(client, itemCode), activatorText, 64, targetText, 64);
 		if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
-		else if (!StrEqual(activatorText, "-1") && !StrEqual(targetText, "-1")) Format(itemStr, 64, "%s, %s", targetText, activatorText);
+		else if (!StrEqual(activatorText, "-1") && !StrEqual(targetText, "-1")) Format(itemStr, 64, "%s %s", activatorText, targetText);
 		else if (!StrEqual(activatorText, "-1")) Format(itemStr, 64, "%s", activatorText);
 		else Format(itemStr, 64, "%s", targetText);
 
@@ -3816,7 +3894,7 @@ public Handle Inspect_Augment(client, slot) {
 	GetAugmentSurname(client, slot, actText, 64, tarText, 64);
 
 	if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
-	else if (!StrEqual(actText, "-1") && !StrEqual(tarText, "-1")) Format(itemStr, 64, "%s, %s", tarText, actText);
+	else if (!StrEqual(actText, "-1") && !StrEqual(tarText, "-1")) Format(itemStr, 64, "%s %s", actText, tarText);
 	else if (!StrEqual(actText, "-1")) Format(itemStr, 64, "%s", actText);
 	else Format(itemStr, 64, "%s", tarText);
 	
@@ -3836,14 +3914,14 @@ public Handle Inspect_Augment(client, slot) {
 	if (activatorRating > 0) {
 		Format(activatorText, 64, "%s augment info", activatorText);
 		Format(activatorText, 64, "%T", activatorText, client);
-		Format(text, sizeof(text), "\t\t+%3.2f%s to %s talents affecting the activator.", (activatorRating * fAugmentRatingMultiplier) * 100.0, pct, activatorText);
+		Format(text, sizeof(text), "\t\t+%3.2f%s to %s talents", (activatorRating * fAugmentRatingMultiplier) * 100.0, pct, activatorText);
 		DrawPanelText(menu, text);
 	}
 	
 	if (targetRating > 0) {
 		Format(targetText, 64, "%s augment info", targetText);
 		Format(targetText, 64, "%T", targetText, client);
-		Format(text, sizeof(text), "\t\t+%3.2f%s to %s talents affecting targets.", (targetRating * fAugmentRatingMultiplier) * 100.0, pct, targetText);
+		Format(text, sizeof(text), "\t\t+%3.2f%s to %s talents", (targetRating * fAugmentRatingMultiplier) * 100.0, pct, targetText);
 		DrawPanelText(menu, text);
 	}
 	Format(text, sizeof(text), "item id: %d\nitem price: %s SP", slot, itemCost);
@@ -3987,7 +4065,7 @@ stock HandicapMenu(client) {
 	int size = GetArraySize(a_HandicapLevels);
 	char text[512];
 	if (handicapLevel[client] > 0) Format(text, 512, "Handicap Level: %d", handicapLevel[client]);
-	else Format(text, 512, "Handicap Disabed");
+	else Format(text, 512, "Handicap Disabled");
 	SetMenuTitle(menu, text);
 	for (int i = 0; i < size; i++) {
 		HandicapValues[client]	= GetArrayCell(a_HandicapLevels, i, 1);
@@ -3997,11 +4075,20 @@ stock HandicapMenu(client) {
 		float handicapHealth = GetArrayCell(HandicapValues[client], HANDICAP_HEALTH);
 		int lootFindBonus	 = GetArrayCell(HandicapValues[client], HANDICAP_LOOTFIND);
 		int scoreRequired	 = GetArrayCell(HandicapValues[client], HANDICAP_SCORE_REQUIRED);
+		float scoreMult		 = GetArrayCell(HandicapValues[client], HANDICAP_SCORE_MULTIPLIER);
 		int scoreMissing	 = (BestRating[client] >= scoreRequired) ? 0 : scoreRequired - Rating[client];
-		if (scoreMissing == 0) Format(text, sizeof(text), "%T", "handicap level unlocked", client, menuName, RoundToCeil(handicapDamage * 100.0), pct, RoundToCeil(handicapHealth * 100.0), pct, RoundToCeil((lootFindBonus * fAugmentRatingMultiplier) * 100.0), pct, pct);
+		char damage[10];
+		AddCommasToString(RoundToCeil(handicapDamage * 100.0), damage, 10);
+		char health[10];
+		AddCommasToString(RoundToCeil(handicapHealth * 100.0), health, 10);
+		char lootfind[10];
+		AddCommasToString(RoundToCeil((lootFindBonus * fAugmentRatingMultiplier) * 100.0), lootfind, 10);
+		char scorebonus[10];
+		AddCommasToString(RoundToCeil(scoreMult * 100.0), scorebonus, 10);
+		if (scoreMissing == 0) Format(text, sizeof(text), "%T", "handicap level unlocked", client, menuName, damage, pct, health, pct, lootfind, pct, pct, scorebonus);
 		else {
 			AddCommasToString(scoreMissing, text, sizeof(text));
-			Format(text, sizeof(text), "%T", "handicap level locked", client, menuName, RoundToCeil(handicapDamage * 100.0), pct, RoundToCeil(handicapHealth * 100.0), pct, RoundToCeil((lootFindBonus * fAugmentRatingMultiplier) * 100.0), pct, text, pct);
+			Format(text, sizeof(text), "%T", "handicap level locked", client, menuName, damage, pct, health, pct, lootfind, pct, text, pct, scorebonus);
 		}
 		AddMenuItem(menu, text, text);
 	}
@@ -4010,22 +4097,72 @@ stock HandicapMenu(client) {
 }
 
 stock void SetClientHandicapValues(client) {
+	if (GetArraySize(HandicapSelectedValues[client]) != 4) ResizeArray(HandicapSelectedValues[client], 4);
+	if (IsFakeClient(client)) return;
 	if (handicapLevel[client] < 1) {
-		if (GetArraySize(HandicapSelectedValues[client]) != 3) ResizeArray(HandicapSelectedValues[client], 3);
 		SetArrayCell(HandicapSelectedValues[client], 0, 0.0);
 		SetArrayCell(HandicapSelectedValues[client], 1, 0.0);
 		SetArrayCell(HandicapSelectedValues[client], 2, 0);
+		SetArrayCell(HandicapSelectedValues[client], 3, 0.05);
 		return;
 	}
 	SetHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
-	if (GetArraySize(HandicapSelectedValues[client]) != 3) ResizeArray(HandicapSelectedValues[client], 3);
 	float handicapDamage = GetArrayCell(SetHandicapValues[client], HANDICAP_DAMAGE);
 	float handicapHealth = GetArrayCell(SetHandicapValues[client], HANDICAP_HEALTH);
 	int lootFindBonus	 = GetArrayCell(SetHandicapValues[client], HANDICAP_LOOTFIND);
+	float scoreMult		 = GetArrayCell(SetHandicapValues[client], HANDICAP_SCORE_MULTIPLIER);
 
 	SetArrayCell(HandicapSelectedValues[client], 0, handicapDamage);
 	SetArrayCell(HandicapSelectedValues[client], 1, handicapHealth);
 	SetArrayCell(HandicapSelectedValues[client], 2, lootFindBonus);
+	SetArrayCell(HandicapSelectedValues[client], 3, scoreMult);
+
+	// make sure the bot handicaps are set to the highest handicap player in the server.
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || !IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (handicapLevel[i] >= handicapLevel[client]) continue;
+		handicapLevel[i] = handicapLevel[client];
+		if (GetArraySize(HandicapSelectedValues[i]) != 4) ResizeArray(HandicapSelectedValues[i], 4);
+		SetArrayCell(HandicapSelectedValues[i], 0, handicapDamage);
+		SetArrayCell(HandicapSelectedValues[i], 1, handicapHealth);
+		SetArrayCell(HandicapSelectedValues[i], 2, lootFindBonus);
+		SetArrayCell(HandicapSelectedValues[i], 3, scoreMult);
+	}
+}
+
+stock void SetBotClientHandicapValues(int clientToIgnore = 0) {
+	int client = -1;
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR || handicapLevel[i] < 1) continue;
+		if (clientToIgnore > 0 && i == clientToIgnore) continue;
+		if (client == -1 || handicapLevel[i] > handicapLevel[client]) client = i;
+	}
+	if (client == -1) {
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClient(i) || !IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+			if (GetArraySize(HandicapSelectedValues[i]) != 4) ResizeArray(HandicapSelectedValues[i], 4);
+			SetArrayCell(HandicapSelectedValues[i], 0, 0.0);
+			SetArrayCell(HandicapSelectedValues[i], 1, 0.0);
+			SetArrayCell(HandicapSelectedValues[i], 2, 0);
+			SetArrayCell(HandicapSelectedValues[i], 3, 0.0);
+		}
+		return;
+	}
+	SetHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
+	float handicapDamage = GetArrayCell(SetHandicapValues[client], HANDICAP_DAMAGE);
+	float handicapHealth = GetArrayCell(SetHandicapValues[client], HANDICAP_HEALTH);
+	int lootFindBonus	 = GetArrayCell(SetHandicapValues[client], HANDICAP_LOOTFIND);
+	float scoreMult		 = GetArrayCell(SetHandicapValues[client], HANDICAP_SCORE_MULTIPLIER);
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || !IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (handicapLevel[i] >= handicapLevel[client]) continue;
+		handicapLevel[i] = handicapLevel[client];
+		if (GetArraySize(HandicapSelectedValues[i]) != 4) ResizeArray(HandicapSelectedValues[i], 4);
+		SetArrayCell(HandicapSelectedValues[i], 0, handicapDamage);
+		SetArrayCell(HandicapSelectedValues[i], 1, handicapHealth);
+		SetArrayCell(HandicapSelectedValues[i], 2, lootFindBonus);
+		SetArrayCell(HandicapSelectedValues[i], 3, scoreMult);
+	}
 }
 
 public HandicapMenu_Handle(Handle menu, MenuAction action, client, slot) {
@@ -4047,6 +4184,7 @@ public HandicapMenu_Handle(Handle menu, MenuAction action, client, slot) {
 
 //augmentParts
 stock Augments_Inventory(client) {
+	itemToDisassemble[client] = -1;
 	Handle menu = CreateMenu(Augments_Inventory_Handle);
 	char pct[4];
 	Format(pct, 4, "%");
@@ -4083,7 +4221,7 @@ stock Augments_Inventory(client) {
 			GetAugmentSurname(client, i, activatorText, 64, targetText, 64);
 
 			if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
-			else if (!StrEqual(activatorText, "-1") && !StrEqual(targetText, "-1")) Format(itemStr, 64, "%s, %s", targetText, activatorText);
+			else if (!StrEqual(activatorText, "-1") && !StrEqual(targetText, "-1")) Format(itemStr, 64, "%s %s", activatorText, targetText);
 			else if (!StrEqual(activatorText, "-1")) Format(itemStr, 64, "%s", activatorText);
 			else Format(itemStr, 64, "%s", targetText);
 

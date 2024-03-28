@@ -322,7 +322,10 @@ public void QuerySaveNewPlayer(Handle owner, Handle hndl, const char[] error, an
 		if (StrContains(error, "Duplicate column name", false) == -1) LogMessage("QuerySaveNewPlayer Error %s", error);
 		return;
 	}
-	if (IsLegitimateClient(client)) SavePlayerData(client, _, true);
+	if (IsLegitimateClient(client)) {
+		SavePlayerData(client, _, true);
+		FormatPlayerName(client);
+	}
 }
 
 public void QueryResults(Handle owner, Handle hndl, const char[] error, any client) {
@@ -1054,6 +1057,7 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 		resr[client] = 1;
 		WipeDebuffs(_, client, true);
 		bIsDisconnecting[client] = true;
+		SetBotClientHandicapValues(client);
 	}
 	else resr[client] = 0;
 
@@ -1159,6 +1163,7 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	}
 	int ActionSlotSize = iActionBarSlots;
 	if (GetArraySize(ActionBar[client]) != ActionSlotSize) ResizeArray(ActionBar[client], ActionSlotSize);
+	if (GetArraySize(ActionBarMenuPos[client]) != iActionBarSlots) ResizeArray(ActionBarMenuPos[client], iActionBarSlots);
 	char ActionBarText[64];
 	for (int i = 0; i < ActionSlotSize; i++) {	// isnt looping?
 
@@ -1731,7 +1736,6 @@ stock void LoadTalentTrees(client, char[] key, bool IsTalentTwo = false, char[] 
 
 	b_IsLoadingTrees[client] = true;
 	int size = GetArraySize(a_Menu_Talents);
-	int theresult = 0;
 
 	if (!IsTalentTwo) bIsTalentTwo[client] = false;
 	else bIsTalentTwo[client] = true;
@@ -1770,7 +1774,6 @@ stock void LoadTalentTrees(client, char[] key, bool IsTalentTwo = false, char[] 
 		if (StrEqual(profilekey, "none")) Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
 		else Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, profilekey);
 		SQL_TQuery(hDatabase, QueryResults_LoadActionBar, tquery, client);
-		LoadClientAugments(client);
 		LoadPos[client] = 0;
 	}
 	return;
@@ -1937,6 +1940,7 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 		SetArrayString(hWeaponList[client], 1, text);
 		// IsFound = true;
 	}
+	LoadClientAugments(client);
 	return;
 }
 
@@ -1983,7 +1987,8 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 
 stock FormatPlayerName(client) {
 	char playerNameFormatted[512];
-	if (IsFakeClient(client) || handicapLevel[client] < 1) Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
+	if (strlen(baseName[client]) < 1) GetClientName(client, baseName[client], sizeof(baseName[]));
+	if (handicapLevel[client] < 1) Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
 	else Format(playerNameFormatted, 512, "[%d] [%d] %s", handicapLevel[client], PlayerLevel[client], baseName[client]);
 	SetClientInfo(client, "name", playerNameFormatted);
 }
@@ -2217,6 +2222,7 @@ public Action Timer_InitializeClientLoad(Handle timer, any client) {
 	//Format(ClassLoadQueue[client], sizeof(ClassLoadQueue[]), "none");
 	ClearArray(InfectedHealth[client]);
 	ResizeArray(ActionBar[client], iActionBarSlots);
+	ResizeArray(ActionBarMenuPos[client], iActionBarSlots);
 	IsClientLoadedEx(client);
 	return Plugin_Stop;
 }

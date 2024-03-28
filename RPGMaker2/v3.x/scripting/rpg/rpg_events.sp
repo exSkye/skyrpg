@@ -256,15 +256,6 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 		if (b_IsFinaleActive) {
 			b_IsFinaleActive = false;
 			b_IsRescueVehicleArrived = true;
-			int TheInfectedLevel = HumanSurvivorLevels();
-			int TheHumans = HumanPlayersInGame();
-			int TheLiving = LivingSurvivorCount();
-			//new RatingMult = GetConfigValueInt("rating level multiplier?");
-			int InfectedLevelType = iBotLevelType;
-			for (int i = 1; i <= MaxClients; i++) {
-				if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-				RoundExperienceMultiplier[i] += FinSurvBon;
-			}
 		}
 		//PrintToChatAll("%t", "Experience Gains Disabled", orange, white, orange, white, blue);
 	}
@@ -2142,6 +2133,11 @@ stock CheckMinimumRate(client) {
 	if (Rating[client] < 0) Rating[client] = 0;
 }
 
+stock float GetScoreMultiplier(int client) {
+	float scoreMultiplier = (handicapLevel[client] > 0) ? GetArrayCell(HandicapSelectedValues[client], 3) : fNoHandicapScoreMultiplier;
+	return scoreMultiplier;
+}
+
 stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 	bool IsLegitimateClientClient = IsLegitimateClient(client);
 	int clientTeam = -1;
@@ -2252,7 +2248,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		else if (ClientType == 1) SurvivorDamage = GetArrayCell(WitchDamage[i], pos, 2);
 		else if (ClientType == 2) SurvivorDamage = GetArrayCell(SpecialCommon[i], pos, 2);
 		else if (ClientType == 3) SurvivorDamage = GetArrayCell(CommonInfected[i], pos, 2);
-		RatingBonus = GetRatingReward(i, client);
+		RatingBonus = RoundToCeil(GetRatingReward(i, client) * GetScoreMultiplier(i));
 		if (RatingBonus < 1) continue;
 		if (iAntiFarmMax > 0 && !CheckKillPositions(i)) {
 			CheckKillPositions(i, true);
