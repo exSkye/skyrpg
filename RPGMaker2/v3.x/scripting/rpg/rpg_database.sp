@@ -1220,8 +1220,8 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 	}
 	if (b_IsTrueDisconnect) {
-		SetClientInfo(client, "name", baseName[client]);
 		Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
+		SetClientInfo(client, "name", baseName[client]);
 		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 		Format(BuildingStack[client], sizeof(BuildingStack[]), "none");
 		Format(LoadoutName[client], sizeof(LoadoutName[]), "none");
@@ -1684,7 +1684,7 @@ public void QueryResults_LoadTalentTrees(Handle owner, Handle hndl, const char[]
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
 	int size = GetArraySize(a_Database_Talents);
-	if (GetArraySize(a_Database_PlayerTalents[client]) != size) {
+	if (GetArraySize(a_Database_PlayerTalents[client]) != size || GetArraySize(a_Database_PlayerTalents_Experience[client]) != size) {
 		ResizeArray(a_Database_PlayerTalents[client], size);
 		ResizeArray(a_Database_PlayerTalents_Experience[client], size);
 	}

@@ -13,7 +13,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v3.4.5.8"
+#define PLUGIN_VERSION				"v3.4.5.8a"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 #define PLUGIN_NAME					"RPG Construction Set"
@@ -44,6 +44,12 @@
 
 
 /*
+ Version 3.4.5.8a
+ - Fixed the double-loading of player augments when loading a saved profile.
+ - Fixed a stack overflow bug related to the CreateAoE method - it could indefinitely call itself but that is no longer the case.
+ - Fixed an error when a player left that it would not properly set the basename, so new joining players would have their name.
+ - Fixed an error that caused new players to sometimes not create data due to a very rare index out of bounds error.
+
  Version 3.4.5.8
  - Survivor bots now have a handicap set equal to the highest handicap player in the server.
 	- Survivor bots handicap level should now also display on their name / when players look @ them.
@@ -3943,7 +3949,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		GetAugmentSurname(client, size, majorname, sizeof(majorname), perfectname, sizeof(perfectname), false);
 		if (!StrEqual(majorname, "-1")) Format(majorname, sizeof(majorname), "%t", majorname);
 		if (!StrEqual(perfectname, "-1")) Format(perfectname, sizeof(perfectname), "%t", perfectname);
-		if (!StrEqual(majorname, "-1") && !StrEqual(perfectname, "-1")) Format(augmentStrengthText, 64, "%s, %s", perfectname, majorname);
+		if (!StrEqual(majorname, "-1") && !StrEqual(perfectname, "-1")) Format(augmentStrengthText, 64, "%s %s", majorname, perfectname);
 		else if (!StrEqual(majorname, "-1")) Format(augmentStrengthText, 64, "%s", majorname);
 		else Format(augmentStrengthText, 64, "%s", perfectname);
 	}

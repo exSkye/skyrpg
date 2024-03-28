@@ -8071,7 +8071,7 @@ stock CreateAoE(owner, float fRangeOfEffect, amount, effectType = 0, bool bMustB
 		GetClientAbsOrigin(teammate, teammatePos);
 		if (GetVectorDistance(ownerPos, teammatePos) > 384.0 || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
 		playersInRange++;
-		if (effectType == 0) HealPlayer(teammate, owner, amount * 1.0, 'h', true);
+		if (effectType == 0) HealPlayer(teammate, owner, amount * 1.0, 'h', true, true);
 	}
 	char effectColor[64];
 	if (effectType == 0) Format(effectColor, sizeof(effectColor), "green:green");
@@ -11186,7 +11186,7 @@ stock ReleasePlayer(client) {
 	return -1;
 }
 
-stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStrength = false) {	// must heal for abilities that instant-heal
+stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStrength = false, bool dontFireTriggers = false) {	// must heal for abilities that instant-heal
 	if (!IsLegitimateClient(client) || !IsPlayerAlive(client)) return 0;
 	bool bIsIncapacitated = IsIncapacitated(client);
 	if (bIsIncapacitated && bHasWeakness[client]) return 0;
@@ -11236,8 +11236,8 @@ stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStre
 			NewHealth -= MyMaximumHealth;
 			SetEntityMoveType(client, MOVETYPE_WALK);
 			SetEntityHealth(client, RoundToCeil(GetMaximumHealth(client) * fHealthSurvivorRevive) + NewHealth);
-			GetAbilityStrengthByTrigger(client, activator, "R", _, 0);
-			GetAbilityStrengthByTrigger(activator, client, "r", _, 0);
+			if (client != activator) GetAbilityStrengthByTrigger(client, activator, "R", _, 0);
+			if (!dontFireTriggers) GetAbilityStrengthByTrigger(activator, client, "r", _, 0);
 		}
 		/*else {
 			SetEntityHealth(client, MyMaximumHealth);
@@ -11280,8 +11280,10 @@ stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStre
 		AwardExperience(activator, 1, HealAmount);
 		SetArrayCell(playerContributionTracker[activator], CONTRIBUTION_TRACKER_HEALING, GetArrayCell(playerContributionTracker[activator], CONTRIBUTION_TRACKER_HEALING) + HealAmount);
 		if (IsLegitimateClientAlive(activator)) {
-			if (activator != client) GetAbilityStrengthByTrigger(activator, client, "healally", _, HealAmount);
-			else GetAbilityStrengthByTrigger(activator, client, "healself", _, HealAmount);
+			if (!dontFireTriggers) {
+				if (activator != client) GetAbilityStrengthByTrigger(activator, client, "healally", _, HealAmount);
+				else GetAbilityStrengthByTrigger(activator, client, "healself", _, HealAmount);
+			}
 			float TheAbilityMultiplier = GetAbilityMultiplier(activator, "t");
 			if (TheAbilityMultiplier != -1.0) {
 

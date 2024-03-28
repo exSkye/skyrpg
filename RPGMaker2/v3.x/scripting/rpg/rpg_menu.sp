@@ -408,7 +408,6 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 				Format(tquery, sizeof(tquery), "%s, `disab`, `primarywep`, `secondwep`", tquery);
 				Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
 				SQL_TQuery(hDatabase, QueryResults_LoadActionBar, tquery, client);
-				LoadClientAugments(client);
 				LoadPos[client] = 0;
 				return;
 			}
