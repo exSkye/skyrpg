@@ -882,10 +882,10 @@ stock ShowActionBar(client) {
 				}
 			}
 			if (bIsAbility && AmmoCooldownTime != -1.0 && AmmoCooldownTime > 0.0 ||
-				!bIsAbility && (AmmoCooldownTime > 0.0 || AmmoCooldownTime == -1.0)) Format(text, sizeof(text), "%s\nActive: %3.2fs", text, AmmoCooldownTime);
+				!bIsAbility && (AmmoCooldownTime > 0.0 || AmmoCooldownTime == -1.0)) Format(text, sizeof(text), "%s\nActive: %ds", text, RoundToNearest(AmmoCooldownTime));
 
 			AmmoCooldownTime = fAmmoCooldownTime;
-			if (AmmoCooldownTime != -1.0) Format(text, sizeof(text), "%s\nCooldown: %3.2fs", text, AmmoCooldownTime);
+			if (AmmoCooldownTime != -1.0) Format(text, sizeof(text), "%s\nCooldown: %ds", text, RoundToNearest(AmmoCooldownTime));
 		}
 		AddMenuItem(menu, text, text);
 	}
@@ -1207,7 +1207,7 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 
 	char s_TalentDependency[64];
 	// Collect player team and server gamemode.
-	Format(currentGamemode, sizeof(currentGamemode), "%d", ReadyUp_GetGameMode());
+	Format(currentGamemode, sizeof(currentGamemode), "%d", ReadyUpGameMode);
 	Format(clientTeam, sizeof(clientTeam), "%d", GetClientTeam(client));
 
 	int size	= GetArraySize(a_Menu_Main);
@@ -2371,6 +2371,7 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 		iResult += RoundToFloor(iResult * (myCurrentDifficulty * fMultiplier));
 	}// even requests are for damage.
 	if (request != 7 && iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) {
+		if (GetArraySize(HandicapSelectedValues[client]) != 4) SetClientHandicapValues(client, true);
 		// health result or damage result
 		float handicapLevelBonus = 0.0;
 		if (request % 2 != 0) {
@@ -2395,12 +2396,13 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 		float TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		float TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		TheAbilityMultiplier += TheAbilityMultiplierAlt;
-		iResult -= RoundToCeil(TheAbilityMultiplier);
+		if (TheAbilityMultiplier > 0.9) TheAbilityMultiplier = 0.9;
+		iResult -= RoundToCeil(iResult * TheAbilityMultiplier);
 
 		TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		TheAbilityMultiplier += TheAbilityMultiplierAlt;
-		iResult += RoundToCeil(TheAbilityMultiplier);
+		iResult += RoundToCeil(iResult * TheAbilityMultiplier);
 	}
 	//result 7 returns damage shield values. result 8(which is even so no check required) returns damage reduction ability strength.
 	/*if (zombieclass != 0 && (request % 2 == 0 || request == 7)) {
@@ -2474,6 +2476,7 @@ stock int GetInfectedData(client, target, bool bGetDamage = false) {
 	}
 	if (iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) {
 		// health result or damage result
+		if (GetArraySize(HandicapSelectedValues[client]) != 4) SetClientHandicapValues(client, true);
 		float handicapLevelBonus = 0.0;
 		if (!bGetDamage) {
 			if (fSurvivorHealthBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
@@ -3166,18 +3169,20 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	else if (infotype == 3) GetArrayString(Values, TALENT_COOLDOWN_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
 	int istrength = RoundToCeil(f_Strength);
 	float f_StrengthIncrement = (infotype == 2) ? GetArrayCell(Values, TALENT_ACTIVE_STRENGTH_VALUE) : StringToFloat(sTalentStrengthType);
-	if (istrength < 1) return 0.0;
+	if (istrength < 1 || infotype == 3 && f_StrengthIncrement <= 0.0) return 0.0;
 	f_StrengthPoint = f_StrengthIncrement;
 
 	char activatorEffects[64];
 	GetArrayString(Values, ACTIVATOR_ABILITY_EFFECTS, activatorEffects, 64);
 	char targetEffects[64];
 	GetArrayString(Values, TARGET_ABILITY_EFFECTS, targetEffects, 64);
-
-	float fCategoryAugmentBuff = GetCategoryAugmentBuff(client, TalentNameOverride, f_StrengthPoint);
-	float fCategoryTalentBuff = GetCategoryTalentBuff(client, activatorEffects, targetEffects);
-	if (fCategoryAugmentBuff > 0.0) f_StrengthPoint += (f_StrengthPoint * fCategoryAugmentBuff);
-	if (fCategoryTalentBuff > 0.0) f_StrengthPoint += (f_StrengthPoint * fCategoryTalentBuff);
+	int skipAugmentModifiers = GetArrayCell(Values, TALENT_NO_AUGMENT_MODIFIERS);
+	if (skipAugmentModifiers != 1) {
+		float fCategoryAugmentBuff = GetCategoryAugmentBuff(client, TalentNameOverride, f_StrengthPoint);
+		float fCategoryTalentBuff = GetCategoryTalentBuff(client, activatorEffects, targetEffects);
+		if (fCategoryAugmentBuff > 0.0) f_StrengthPoint += (f_StrengthPoint * fCategoryAugmentBuff);
+		if (fCategoryTalentBuff > 0.0) f_StrengthPoint += (f_StrengthPoint * fCategoryTalentBuff);
+	}
 
 	if (governingAttributeMultiplier > 0.0) f_StrengthPoint += (f_StrengthPoint * governingAttributeMultiplier);
 	if (infotype == 3) {
@@ -3379,6 +3384,22 @@ public Handle TalentInfoScreen(client) {
 					else Format(text, sizeof(text), "%T", "Ability Info Time Max", client, i_AbilityTime);
 					DrawPanelText(menu, text);
 				}
+				float healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_ACT_REMAINING);
+				if (healthPercentageReqActRemaining > 0.0) {
+					Format(text, sizeof(text), "%T", "Activator Health Required", client, healthPercentageReqActRemaining * 100.0, pct);
+					DrawPanelText(menu, text);
+				}
+				healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_ACTIVATION_COST);
+				if (healthPercentageReqActRemaining > 0.0) {
+					Format(text, sizeof(text), "%T", "Activator Health Cost", client, healthPercentageReqActRemaining * 100.0, pct, RoundToCeil(healthPercentageReqActRemaining * GetMaximumHealth(client)));
+					DrawPanelText(menu, text);
+				}
+				healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], MULT_STR_NEARBY_DOWN_ALLIES);
+				if (healthPercentageReqActRemaining > 0.0) {
+					float multiplyStrengthNearbyRange = GetArrayCell(PurchaseValues[client], MULT_STR_NEARBY_DOWN_ALLIES_RANGE);
+					Format(text, sizeof(text), "%T", "Multiply Strength Nearby Downed Allies", client, healthPercentageReqActRemaining * 100.0, pct, multiplyStrengthNearbyRange);
+					DrawPanelText(menu, text);
+				}
 			}
 		}
 		else {
@@ -3541,10 +3562,10 @@ public Handle TalentInfoScreen(client) {
 		Format(text, sizeof(text), "%T", "contribution required notice", client);
 		DrawPanelText(menu, text);
 	}
-	if (isCompoundingTalent == 1) {
-		Format(text, sizeof(text), "%T", "compounding talent info", client);
-		DrawPanelText(menu, text);
-	}
+	// if (isCompoundingTalent == 1) {
+	// 	Format(text, sizeof(text), "%T", "compounding talent info", client);
+	// 	DrawPanelText(menu, text);
+	// }
 	if (IsEffectOverTime) {
 		Format(text, sizeof(text), "%T", "effect over time talent info", client);
 		DrawPanelText(menu, text);
@@ -4095,17 +4116,26 @@ stock HandicapMenu(client) {
 	DisplayMenu(menu, client, 0);
 }
 
-stock void SetClientHandicapValues(client) {
-	if (GetArraySize(HandicapSelectedValues[client]) != 4) ResizeArray(HandicapSelectedValues[client], 4);
+stock void SetClientHandicapValues(client, bool skipArrayCheck = false) {
+	if (skipArrayCheck || GetArraySize(HandicapSelectedValues[client]) != 4) ResizeArray(HandicapSelectedValues[client], 4);
 	if (IsFakeClient(client)) return;
 	if (handicapLevel[client] < 1) {
 		SetArrayCell(HandicapSelectedValues[client], 0, 0.0);
 		SetArrayCell(HandicapSelectedValues[client], 1, 0.0);
 		SetArrayCell(HandicapSelectedValues[client], 2, 0);
-		SetArrayCell(HandicapSelectedValues[client], 3, 0.05);
+		SetArrayCell(HandicapSelectedValues[client], 3, fNoHandicapScoreMultiplier);
 		return;
 	}
 	SetHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
+	if (BestRating[client] < GetArrayCell(SetHandicapValues[client], HANDICAP_SCORE_REQUIRED)) {
+		// useful for if a server operator ever changes handicap scores and so players who are no longer eligible would be affected here.
+		handicapLevel[client] = -1;
+		SetArrayCell(HandicapSelectedValues[client], 0, 0.0);
+		SetArrayCell(HandicapSelectedValues[client], 1, 0.0);
+		SetArrayCell(HandicapSelectedValues[client], 2, 0);
+		SetArrayCell(HandicapSelectedValues[client], 3, fNoHandicapScoreMultiplier);
+		return;
+	}
 	float handicapDamage = GetArrayCell(SetHandicapValues[client], HANDICAP_DAMAGE);
 	float handicapHealth = GetArrayCell(SetHandicapValues[client], HANDICAP_HEALTH);
 	int lootFindBonus	 = GetArrayCell(SetHandicapValues[client], HANDICAP_LOOTFIND);

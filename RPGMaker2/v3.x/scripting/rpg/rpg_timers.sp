@@ -775,6 +775,7 @@ public Action Timer_Freezer(Handle timer, any client) {
 // }
 
 public ReadyUp_FwdChangeTeam(client, team) {
+	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
 	CreateTimer(0.2, Timer_ChangeTeamCheck, client, TIMER_FLAG_NO_MAPCHANGE);
 }
 

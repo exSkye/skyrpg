@@ -324,6 +324,8 @@ stock int GetWeaponProficiencyType(int client) {
 	result 1 to get the offset, which is used to determine how much reserve ammo there is remaining.
 	result 2 to get the max amount of reserve ammo this weapon can hold.
 	result 3 to get the current amount of reserve ammo is remaining.
+	result 4 is the amount of ammo to return to the magazine
+	result 5 is to give the player the max amount of reserve ammo
 */
 stock int GetWeaponResult(int client, int result = 0, int amountToAdd = 0) {
 	int iWeapon = GetPlayerWeaponSlot(client, 0);
@@ -335,7 +337,7 @@ stock int GetWeaponResult(int client, int result = 0, int amountToAdd = 0) {
 	float fValue = 0.0;
 	int targetgun = GetPlayerWeaponSlot(client, 0);
 	int wOffset = 0;
-	if (result == 3 || result == 4) {
+	if (result >= 3) {
 		if (!IsValidEdict(targetgun)) return -1;
 		targetgun = FindDataMapInfo(client, "m_iAmmo");
 		wOffset = GetWeaponResult(client, 1);
@@ -356,9 +358,11 @@ stock int GetWeaponResult(int client, int result = 0, int amountToAdd = 0) {
 			return RoundToCeil(fValue);
 		}
 		if (result == 1) return GetArrayCell(WeaponResultValues[client], WEAPONINFO_OFFSET);
-		if (result == 2) {
+		if (result == 2 || result == 5) {
 			int value = GetArrayCell(WeaponResultValues[client], WEAPONINFO_AMMO);
-			return value + RoundToCeil(GetAbilityStrengthByTrigger(client, _, "ammoreserve", _, value, _, _, "ammoreserve", 0, true));
+			value += RoundToCeil(GetAbilityStrengthByTrigger(client, _, "ammoreserve", _, value, _, _, "ammoreserve", 0, true));
+			if (result == 5) SetEntData(client, (targetgun + wOffset), value);
+			return value;
 		}
 		if (result == 3) {
 			return GetEntData(client, (targetgun + wOffset));
@@ -1744,7 +1748,8 @@ stock AddSpecialInfectedDamage(client, target, TotalDamage = 0, bool IsTankingIn
 	//if (i_DamageBonus > TrueHealthRemaining) i_DamageBonus = TrueHealthRemaining;
 
 	if (!IsTankingInstead) {
-		int i_HealthRemaining = i_InfectedMaxHealth - i_InfectedCurrent;
+		//int i_HealthRemaining = i_InfectedMaxHealth - i_InfectedCurrent;
+		int i_HealthRemaining = RoundToCeil(i_InfectedMaxHealth * (1.0 - CheckTeammateDamages(target, client)));
 		if (i_DamageBonus > i_HealthRemaining) i_DamageBonus = i_HealthRemaining;
 
 		if (IsSpecialCommonInRange(target, 't')) return 0;
@@ -1832,6 +1837,7 @@ stock AddSpecialCommonDamage(client, entity, playerDamage, bool IsStatusDamage =
 		if (damageTotal < 0) damageTotal = 0;
 		//if (playerDamage > TrueHealthRemaining) playerDamage = TrueHealthRemaining;
 		int maxHP = GetArrayCell(SpecialCommon[client], my_pos, 1) - damageTotal;
+		maxHP = RoundToCeil(maxHP * (1.0 - CheckTeammateDamages(entity, client)));
 		if (playerDamage > maxHP) playerDamage = maxHP;
 		SetArrayCell(SpecialCommon[client], my_pos, damageTotal + playerDamage, 2);
 		if (playerDamage > 0) {
@@ -2214,8 +2220,17 @@ stock float GetInfectedAbilityStrengthByTrigger(activator, targetPlayer = 0, cha
 		int iInfectedInRange = 0;
 		char secondaryEffects[64];
 		GetArrayString(TriggerValues[activator], SECONDARY_EFFECTS, secondaryEffects, sizeof(secondaryEffects));
-		char callAbilityTrigger[64];
-		GetArrayString(TriggerValues[activator], TALENT_CALL_ABILITY_TRIGGER, callAbilityTrigger, sizeof(callAbilityTrigger));
+		char activatorCallAbilityTrigger[64];
+		GetArrayString(TriggerValues[activator], ACTIVATOR_CALL_ABILITY_TRIGGER, activatorCallAbilityTrigger, sizeof(activatorCallAbilityTrigger));
+
+		char targetCallAbilityTrigger[64];
+		GetArrayString(TriggerValues[activator], TARGET_CALL_ABILITY_TRIGGER, targetCallAbilityTrigger, sizeof(targetCallAbilityTrigger));
+
+		fPercentageHealthRequired = GetArrayCell(TriggerValues[activator], HEALTH_PERCENTAGE_REQ_ACT_REMAINING);
+		if (fPercentageHealthRequired > 0.0 && fPercentageHealthRemaining < fPercentageHealthRequired) continue;
+
+		float fPercentageHealthActivationCost = GetArrayCell(TriggerValues[activator], HEALTH_PERCENTAGE_ACTIVATION_COST);
+		if (fPercentageHealthActivationCost > 0.0 && fPercentageHealthActivationCost >= fPercentageHealthRemaining) continue;
 
 		fPercentageHealthRequired = GetArrayCell(TriggerValues[activator], HEALTH_PERCENTAGE_REQ);
 		if (fPercentageHealthRequired > 0.0 && fPercentageHealthRemaining > fPercentageHealthRequired) continue;
@@ -2313,11 +2328,14 @@ stock float GetInfectedAbilityStrengthByTrigger(activator, targetPlayer = 0, cha
 					if (bIsStatusEffects) p_Strength = (p_Strength * MyStatusEffects[activator]);
 					if (ResultType >= 1) {
 						if (!bDontActuallyActivate) {
+							// fPercentageHealthRequired = GetArrayCell(TriggerValues[activator], HEALTH_PERCENTAGE_ACTIVATION_COST);
+							// emaining < fPercentageHealthRequired) continue;
+
 							if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
 							ActivateAbilityEx(activator, target, damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
 												GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
 												GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-												abilityTrigger, damagetype, _, callAbilityTrigger, entityIdToPassThrough);
+												abilityTrigger, damagetype, _, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 						}
 					}
 					else {
@@ -2326,7 +2344,7 @@ stock float GetInfectedAbilityStrengthByTrigger(activator, targetPlayer = 0, cha
 							ActivateAbilityEx(activator, activator, damagevalue, activatoreffects, p_Strength, p_Time, target, _, isRawType,
 																		GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
 																		GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-																		abilityTrigger, damagetype, _, callAbilityTrigger, entityIdToPassThrough);
+																		abilityTrigger, damagetype, _, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 						}
 					}
 				}
@@ -2545,8 +2563,16 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		GetArrayString(TriggerValues[activator], SECONDARY_EFFECTS, secondaryEffects, sizeof(secondaryEffects));
 		char nameOfItemToGivePlayer[64];
 		GetArrayString(TriggerValues[activator], ITEM_NAME_TO_GIVE_PLAYER, nameOfItemToGivePlayer, sizeof(nameOfItemToGivePlayer));
-		char callAbilityTrigger[64];
-		GetArrayString(TriggerValues[activator], TALENT_CALL_ABILITY_TRIGGER, callAbilityTrigger, sizeof(callAbilityTrigger));
+		char activatorCallAbilityTrigger[64];
+		GetArrayString(TriggerValues[activator], ACTIVATOR_CALL_ABILITY_TRIGGER, activatorCallAbilityTrigger, sizeof(activatorCallAbilityTrigger));
+		char targetCallAbilityTrigger[64];
+		GetArrayString(TriggerValues[activator], TARGET_CALL_ABILITY_TRIGGER, targetCallAbilityTrigger, sizeof(targetCallAbilityTrigger));
+
+		fPercentageHealthRequired = GetArrayCell(TriggerValues[activator], HEALTH_PERCENTAGE_REQ_ACT_REMAINING);
+		if (fPercentageHealthRequired > 0.0 && fPercentageHealthRemaining < fPercentageHealthRequired) continue;
+
+		float fPercentageHealthActivationCost = GetArrayCell(TriggerValues[activator], HEALTH_PERCENTAGE_ACTIVATION_COST);
+		if (fPercentageHealthActivationCost > 0.0 && fPercentageHealthActivationCost >= fPercentageHealthRemaining) continue;
 		/*
 			This statement must come after the bIsCompounding check as we force a result type based on whether
 			targeteffects or activatoreffects field is filled out in the talent.
@@ -2620,6 +2646,15 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		float f_Time					= GetArrayCell(MyTalentStrengths[activator], i, 1);
 		float f_Cooldown				= GetArrayCell(MyTalentStrengths[activator], i, 2);
 		f_Strength				= f_EachPoint;
+
+		// More Multiplying talents by a certain number of things...
+		float multStrengthByNearbyAllies = GetArrayCell(TriggerValues[activator], MULT_STR_NEARBY_DOWN_ALLIES);
+		if (multStrengthByNearbyAllies > 0.0) {
+			float multStrengthByNearbyAlliesRange = GetArrayCell(TriggerValues[activator], MULT_STR_NEARBY_DOWN_ALLIES_RANGE);
+			int numOfAlliesInRange = GetClientsInRangeByState(activator, multStrengthByNearbyAlliesRange, true, _, SURVIVOR_STATE_INCAPACITATED);
+			if (numOfAlliesInRange > 0) f_Strength *= (numOfAlliesInRange * multStrengthByNearbyAllies);
+		}
+
 		int maxConsecutiveHitsToCount = 0;
 		int maxConsecutiveHitsDivide = 0;
 		int maxConsecutiveHeadshotsToCount = 0;
@@ -2644,6 +2679,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		if (maxConsecutiveHitsToCount > 0 || maxConsecutiveHeadshotsToCount > 0) {
 			f_Strength			*= (maxConsecutiveHitsToCount + maxConsecutiveHeadshotsToCount);
 		}
+
 		// we don't put the node on cooldown if we're not activating it.
 		//if (!bDontActuallyActivate
 		// we call the dontActuallyActivate functionality in actual damage calculations for certain events for better time complexity
@@ -2740,7 +2776,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 							ActivateAbilityEx(activator, target, damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
 												GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
 												GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-												abilityTrigger, damagetype, nameOfItemToGivePlayer, callAbilityTrigger, entityIdToPassThrough);
+												abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 						}
 					}
 					else {
@@ -2754,7 +2790,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 							ActivateAbilityEx(activator, activator, damagevalue, activatoreffects, p_Strength, p_Time, target, _, isRawType,
 																		GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
 																		GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-																		abilityTrigger, damagetype, nameOfItemToGivePlayer, callAbilityTrigger, entityIdToPassThrough);
+																		abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 						}
 					}
 				}
@@ -4465,7 +4501,7 @@ stock ForceClientJump(activator, float g_TalentStrength, victim = 0) {
 stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_TalentStrength, float g_TalentTime, victim = 0,
 						char[] Trigger = "0", isRaw = 0, float AoERange = 0.0, char[] secondaryEffects = "-1",
 						float secondaryAoERange = 0.0, hitgroup = -1, char[] secondaryTrigger = "-1", char[] AbilityTriggerIgnore = "none",
-						damagetype = -1, char[] nameOfItemToGivePlayer = "-1", char[] callAbilityTrigger = "-1", entityIdToPassThrough = -1) {
+						damagetype = -1, char[] nameOfItemToGivePlayer = "-1", char[] activatorCallAbilityTrigger = "-1", entityIdToPassThrough = -1, float healthActivationCost = 0.0, char[] targetCallAbilityTrigger = "-1") {
 	//return;
 
 	//PrintToChat(activator, "damage %d Effects: %s Strength: %3.2f", d_Damage, Effects, g_TalentStrength);
@@ -4474,7 +4510,10 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 	/*
 		It lags a lot when it has to check the string for a specific substring every single time, so we need to call activateabilityex multiple times for each different effect, instead.
 	*/
-	if (StrEqual(Effects, "d")) return;	// should never happen, but if it does.
+	if (IsFireDamage(damagetype) || StrEqual(Effects, "d")) return;	// should never happen, but if it does.
+	int healthCost = (healthActivationCost <= 0.0) ? 0 : RoundToCeil(healthActivationCost * GetMaximumHealth(activator));
+	if (healthCost > 0) SetClientTotalHealth(activator, activator, healthCost);
+
 	if (g_TalentStrength > 0.0) {
 		// When a node successfully fires, it can call custom ability triggers.
 		if (!StrEqual(secondaryTrigger, "-1")) GetAbilityStrengthByTrigger(activator, target, secondaryTrigger);
@@ -4539,14 +4578,14 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 			CreateTimer(0.5, Timer_TickingMine, entityIdToPassThrough, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 		else if (StrEqual(Effects, "aoeheal")) {	// testing this version instead of the above for readability.
-			CreateAoE(activator, AoERange, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength));
+			CreateAoE(target, AoERange, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength), _, _, hitgroup, damagetype, targetCallAbilityTrigger);
 		}
 		else if (StrEqual(Effects, "ffexplode")) {
-			CreatePlayerExplosion(activator, 384.0, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength), false);
+			CreatePlayerExplosion(target, 384.0, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength), false);
 		}
-		else if (StrEqual(Effects, "noffexplode")) {
-			CreatePlayerExplosion(activator, 384.0, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength));
-		}
+		// else if (StrEqual(Effects, "noffexplode")) {
+		// 	CreatePlayerExplosion(activator, 384.0, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength));
+		// }
 		else if (StrEqual(Effects, "poisonclaw")) {
 			int acid = RoundToFloor(iDamage * (GetDifficultyRating(victim) * fAcidDamagePlayerLevel));
 			CreateAndAttachFlame(victim, acid * (GetClientStatusEffect(victim, "acid") + 1), 10.0, 0.5, FindInfectedClient(true), "acid");
@@ -4588,11 +4627,8 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 			}
 		}
 		else if (StrEqual(Effects, "b")) BeanBag(target, g_TalentStrength);
-		else if (StrEqual(Effects, "c")) {
-
-			//CreateCombustion(target, g_TalentStrength, g_TalentTime);
-			if (FindZombieClass(target) != ZOMBIECLASS_TANK) CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.5, activator, "burn");
-		}
+		else if (StrEqual(Effects, "c")) CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.5, activator, "burn");
+		else if (StrEqual(Effects, "acidburn")) CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.5, activator, "acid");
 		else if (StrEqual(Effects, "f") && IsLegitimateClient(target)) CreateFireEx(target);
 		else if (StrEqual(Effects, "E")) {
 
@@ -4664,7 +4700,12 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 		else if (StrEqual(Effects, "giveitem") && !StrEqual(nameOfItemToGivePlayer, "-1")) {
 			ExecCheatCommand(activator, "give", nameOfItemToGivePlayer);
 		}
-		//if (!StrEqual(callAbilityTrigger, "-1")) GetAbilityStrengthByTrigger(activator, target, callAbilityTrigger, _, RoundToCeil(d_Damage * g_TalentStrength));
+		if (!StrEqual(activatorCallAbilityTrigger, "-1")) {
+			GetAbilityStrengthByTrigger(activator, target, activatorCallAbilityTrigger, _, RoundToCeil(d_Damage * g_TalentStrength), _, _, _, _, _, _, hitgroup, _, damagetype);
+		}
+		if (activator != target && !StrEqual(targetCallAbilityTrigger, "-1")) {
+			GetAbilityStrengthByTrigger(target, activator, targetCallAbilityTrigger, _, RoundToCeil(d_Damage * g_TalentStrength), _, _, _, _, _, _, hitgroup, _, damagetype);
+		}
 	}
 	return;
 }
@@ -5286,9 +5327,12 @@ stock CreateAndAttachFlame(client, damage = 0, float lifetime = 10.0, float tick
 		OnCommonInfectedCreated(client, true);
 		return;
 	}
-	float TheAbilityMultiplier = GetAbilityMultiplier(client, "B");
-	if (TheAbilityMultiplier > 0.0) damage += RoundToCeil(damage * TheAbilityMultiplier);
-	if (tickIntContinued <= 0.0) tickIntContinued = tickInt;
+	bool isLegitimate = IsLegitimateClient(client);
+	if (isLegitimate) {
+		float TheAbilityMultiplier = GetAbilityMultiplier(client, "B");
+		if (TheAbilityMultiplier > 0.0) damage += RoundToCeil(damage * TheAbilityMultiplier);
+		if (tickIntContinued <= 0.0) tickIntContinued = tickInt;
+	}
 	/* old code:
 	Format(t_EntityOnFire, sizeof(t_EntityOnFire), "%d+%d+%3.2f+%3.2f+%3.2f+%s+%s", client, damage, lifetime, tickInt, tickIntContinued, SteamID, DebuffName);
 	PushArrayString(Handle:EntityOnFire, t_EntityOnFire);*/
@@ -5303,14 +5347,8 @@ stock CreateAndAttachFlame(client, damage = 0, float lifetime = 10.0, float tick
 	ResizeArray(EntityOnFireName, size + 1);	// strings need to be stored in a separate list.
 	SetArrayString(EntityOnFireName, size, DebuffName);
 	//bNoNewFireDebuff[client] = false;
-	DebuffOnCooldown(client, DebuffName, true); // using an array so we can store all the cooldowns in one place. this removes the cooldown.
-	if (StrEqual(DebuffName, "burn", false)) {
-
-		if (IsLegitimateClient(client)) {
-			//if (FindZombieClass(client) == ZOMBIECLASS_TANK) LogMessage("CreateAndAttachFlame() on tank");
-			IgniteEntity(client, lifetime);
-		}
-	}
+	if (IsLegitimateClient(client)) DebuffOnCooldown(client, DebuffName, true); // using an array so we can store all the cooldowns in one place. this removes the cooldown.
+	if (isLegitimate && StrEqual(DebuffName, "burn", false)) IgniteEntity(client, lifetime);
 	//if (StrEqual(DebuffName, "acid", false) && (IsLegitimateClient(client) || damage == 0 && IsCommonInfected(client))) CreateAcid(FindInfectedClient(true), client, 48.0);
 	if (damage == 0 && StrEqual(DebuffName, "acid", false) && IsCommonInfected(client)) CreateAcid(FindInfectedClient(true), client, 48.0);
 	//}
@@ -5901,13 +5939,23 @@ stock float GetCommonValueFloatAtPos(entity, pos, char[] Section_Name = "none") 
 			RemoveFromArray(CommonAffixes, i);
 			i--;
 			size--;
+			ForceClearSpecialCommon(ent);
+			if (IsValidEntity(ent)) AcceptEntityInput(ent, "Kill");
 			continue;
 		}
 		if (entity != ent) continue;	// searching for a specific entity.
 		GetEntPropString(entity, Prop_Data, "m_iName", AffixName[0], sizeof(AffixName[]));
 
 		ent = FindListPositionBySearchKey(AffixName[0], a_CommonAffixes, 2, DEBUG);
-		if (ent < 0) LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
+		if (ent < 0) {
+			LogMessage("[GetCommonValue] failed at FindListPositionBySearchKey(%s)", AffixName[0]);
+			RemoveFromArray(CommonAffixes, i);
+			i--;
+			size--;
+			ForceClearSpecialCommon(entity);
+			if (IsValidEntity(entity)) AcceptEntityInput(entity, "Kill");
+			continue;
+		}
 		else {
 
 			//h_CommonKeys		= GetArrayCell(a_CommonAffixes, ent, 0);
@@ -7849,7 +7897,9 @@ stock AddCommonInfectedDamage(client, entity, playerDamage = 0, bool IsStatusDam
 	if (playerDamage > 0) {
 		int commonDamageReceived = GetArrayCell(CommonInfected[client], pos, 2);
 		int commonHealthRemaining = GetArrayCell(CommonInfected[client], pos, 1);
-		if (playerDamage > commonHealthRemaining - commonDamageReceived) playerDamage = commonHealthRemaining - commonDamageReceived;
+		commonHealthRemaining = RoundToCeil(commonHealthRemaining * (1.0 - CheckTeammateDamages(entity, client)));
+		if (commonHealthRemaining < commonDamageReceived) playerDamage = commonHealthRemaining;
+		else if (playerDamage > commonHealthRemaining - commonDamageReceived) playerDamage = commonHealthRemaining - commonDamageReceived;
 		DamageContribution[client] += RoundToFloor(playerDamage * SurvivorExperienceMult);
 		SetArrayCell(CommonInfected[client], pos, commonDamageReceived + playerDamage, 2);
 		SetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_DAMAGE, GetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_DAMAGE) + playerDamage);
@@ -7915,6 +7965,7 @@ stock AddWitchDamage(client, entity, playerDamageToWitch, bool IsStatusDamage = 
 	}
 	if (playerDamageToWitch >= 0) {
 		healthTotal = GetArrayCell(WitchDamage[client], my_pos, 1);
+		healthTotal = RoundToCeil(healthTotal * (1.0 - CheckTeammateDamages(entity, client)));
 		//new TrueHealthRemaining = RoundToCeil((1.0 - CheckTeammateDamages(entity, client)) * healthTotal);	// in case other players have damaged the mob - we can't just assume the remaining health without comparing to other players.
 		if (damagevariant != 2) {
 			damageTotal = GetArrayCell(WitchDamage[client], my_pos, 2);
@@ -8059,11 +8110,12 @@ stock GetExplosionDamage(target, damage, survivor) {
 	return 0;
 }*/
 
-stock CreateAoE(owner, float fRangeOfEffect, amount, effectType = 0, bool bMustBeSameTeamAsOwner = true) {
+stock CreateAoE(int owner, float fRangeOfEffect, amount, effectType = 0, bool bMustBeSameTeamAsOwner = true, int hitgroup, int damagetype, char[] targetCallAbilityTrigger) {
 	float ownerPos[3];
 	GetEntPropVector(owner, Prop_Send, "m_vecOrigin", ownerPos);
 	int playersInRange = 0;
 	int ownerTeam = GetClientTeam(owner);
+	bool bHasTargetAbilityTrigger = (StrEqual(targetCallAbilityTrigger, "-1")) ? false : true;
 	for (int teammate = 1; teammate <= MaxClients; teammate++) {
 		if (teammate == owner) continue;
 		if (!IsLegitimateClientAlive(teammate) || bMustBeSameTeamAsOwner && GetClientTeam(teammate) != ownerTeam) continue;
@@ -8071,7 +8123,8 @@ stock CreateAoE(owner, float fRangeOfEffect, amount, effectType = 0, bool bMustB
 		GetClientAbsOrigin(teammate, teammatePos);
 		if (GetVectorDistance(ownerPos, teammatePos) > 384.0 || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
 		playersInRange++;
-		if (effectType == 0) HealPlayer(teammate, owner, amount * 1.0, 'h', true, true);
+		if (effectType == 0) HealPlayer(teammate, owner, amount * 1.0, 'h', true);
+		if (bHasTargetAbilityTrigger) GetAbilityStrengthByTrigger(teammate, owner, targetCallAbilityTrigger, _, amount, _, _, _, _, _, _, hitgroup, _, damagetype);
 	}
 	char effectColor[64];
 	if (effectType == 0) Format(effectColor, sizeof(effectColor), "green:green");
@@ -8648,22 +8701,25 @@ stock bool IsVectorsCrossed(client, float torigin[3], float aorigin[3], float f_
 	return false;
 }
 
+bool ForceClearSpecialCommon(entity) {
+	int pos		= FindListPositionByEntity(entity, CommonList);
+	if (pos >= 0) RemoveFromArray(CommonList, pos); // bug with common/specials/infected having insane hp is deleting entity from array instead of the position where entity was found xD
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i)) continue;
+		pos			= FindListPositionByEntity(entity, CommonInfected[i]);
+		if (pos >= 0) RemoveFromArray(CommonInfected[i], pos);
+		pos			= FindListPositionByEntity(entity, SpecialCommon[i]);
+		if (pos >= 0) RemoveFromArray(SpecialCommon[i], pos);
+	}
+	return true;
+}
+
 public OnEntityDestroyed(entity) {
 	// if (IsFallenSurvivor(entity)) {
 	// 	new defibOrMedkit = GetRandomInt(1,2);
 	// }
 	if (!b_IsActiveRound || !IsCommonInfected(entity)) return;
-	if (IsSpecialCommon(entity)) {
-		int pos		= FindListPositionByEntity(entity, CommonList);
-		if (pos >= 0) RemoveFromArray(CommonList, pos); // bug with common/specials/infected having insane hp is deleting entity from array instead of the position where entity was found xD
-		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsLegitimateClient(i)) continue;
-			pos			= FindListPositionByEntity(entity, CommonInfected[i]);
-			if (pos >= 0) RemoveFromArray(CommonInfected[i], pos);
-			pos			= FindListPositionByEntity(entity, SpecialCommon[i]);
-			if (pos >= 0) RemoveFromArray(SpecialCommon[i], pos);
-		}
-	}
+	if (!IsSpecialCommon(entity)) ClearSpecialCommon(entity);
 	OnCommonInfectedCreated(entity, true);
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i)) continue;
@@ -10992,7 +11048,7 @@ stock SetClientTotalHealth(attacker = -1, client, damage, bool IsSetHealthInstea
 					SetEntPropFloat(client, Prop_Send, "m_healthBuffer", 0.0);
 					SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
 					damage -= RoundToFloor(fHealthBuffer);
-					SetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_TANKING, GetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_TANKING) + RoundToFloor(fHealthBuffer));
+					if (attacker != client) SetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_TANKING, GetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_TANKING) + RoundToFloor(fHealthBuffer));
 				}
 			}
 			else {
@@ -11012,7 +11068,7 @@ stock SetClientTotalHealth(attacker = -1, client, damage, bool IsSetHealthInstea
 				SetEntityHealth(client, GetClientHealth(client) - damage);
 				//AddTalentExperience(client, "constitution", damage);
 			}
-			SetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_TANKING, GetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_TANKING) + realDamage);
+			if (attacker != client) SetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_TANKING, GetArrayCell(playerContributionTracker[client], CONTRIBUTION_TRACKER_TANKING) + realDamage);
 		}
 	}
 	else {
@@ -11186,7 +11242,7 @@ stock ReleasePlayer(client) {
 	return -1;
 }
 
-stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStrength = false, bool dontFireTriggers = false) {	// must heal for abilities that instant-heal
+stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStrength = false) {	// must heal for abilities that instant-heal
 	if (!IsLegitimateClient(client) || !IsPlayerAlive(client)) return 0;
 	bool bIsIncapacitated = IsIncapacitated(client);
 	if (bIsIncapacitated && bHasWeakness[client]) return 0;
@@ -11237,7 +11293,7 @@ stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStre
 			SetEntityMoveType(client, MOVETYPE_WALK);
 			SetEntityHealth(client, RoundToCeil(GetMaximumHealth(client) * fHealthSurvivorRevive) + NewHealth);
 			if (client != activator) GetAbilityStrengthByTrigger(client, activator, "R", _, 0);
-			if (!dontFireTriggers) GetAbilityStrengthByTrigger(activator, client, "r", _, 0);
+			GetAbilityStrengthByTrigger(activator, client, "r", _, 0);
 		}
 		/*else {
 			SetEntityHealth(client, MyMaximumHealth);
@@ -11280,10 +11336,13 @@ stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStre
 		AwardExperience(activator, 1, HealAmount);
 		SetArrayCell(playerContributionTracker[activator], CONTRIBUTION_TRACKER_HEALING, GetArrayCell(playerContributionTracker[activator], CONTRIBUTION_TRACKER_HEALING) + HealAmount);
 		if (IsLegitimateClientAlive(activator)) {
-			if (!dontFireTriggers) {
-				if (activator != client) GetAbilityStrengthByTrigger(activator, client, "healally", _, HealAmount);
-				else GetAbilityStrengthByTrigger(activator, client, "healself", _, HealAmount);
+			//if (!dontFireTriggers) {
+			if (activator != client) {
+				GetAbilityStrengthByTrigger(activator, client, "healally", _, HealAmount);
+				GetAbilityStrengthByTrigger(client, activator, "wasHealed", _, HealAmount);
 			}
+			else GetAbilityStrengthByTrigger(activator, client, "healself", _, HealAmount);
+			//}
 			float TheAbilityMultiplier = GetAbilityMultiplier(activator, "t");
 			if (TheAbilityMultiplier != -1.0) {
 
@@ -11373,6 +11432,11 @@ new entity = CreateEntityByName("prop_dynamic_override");
 */
 
 void ExecCheatCommand(int client = 0, const char[] command, const char[] parameters = "") {
+	if (StrEqual(parameters, "ammo")) {
+		// we handle refilling ammo differently since we use custom values for reserve amount.
+		GetWeaponResult(client, 5);
+		return;
+	}
 	int iFlags = GetCommandFlags(command);
 	SetCommandFlags(command, iFlags & ~FCVAR_CHEAT);
 	if(client < 1) ServerCommand("%s %s",command,parameters);
@@ -11413,6 +11477,27 @@ stock int ValidSurvivors() {
 	int count = 0;
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == TEAM_SURVIVOR && IsPlayerAlive(i)) count++;
+	}
+	return count;
+}
+
+// targetstate = 0 (ignore) 1 (ensnared) 2 (incapacitated) 3 (dead)
+stock int GetClientsInRangeByState(int client, float range, bool sameTeam = false, bool allowBots = true, int targetState = 0) {
+	int count = 0;
+	int team = GetClientTeam(client);
+	float cpos[3];
+	GetClientAbsOrigin(client, cpos);
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || i == client) continue;
+		if (!allowBots && IsFakeClient(i)) continue;
+		if (sameTeam && GetClientTeam(i) != team) continue;
+		if (targetState == 1 && L4D2_GetInfectedAttacker(i) == -1) continue;
+		if (targetState == 2 && !IsIncapacitated(i)) continue;
+		if (targetState == 3 && IsPlayerAlive(i)) continue;
+		float tpos[3];
+		GetClientAbsOrigin(i, tpos);
+		if (GetVectorDistance(cpos, tpos) > range) continue;
+		count++;
 	}
 	return count;
 }

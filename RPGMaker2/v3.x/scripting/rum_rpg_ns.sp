@@ -13,7 +13,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v3.4.5.8a"
+#define PLUGIN_VERSION				"v3.4.5.9"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 #define PLUGIN_NAME					"RPG Construction Set"
@@ -36,6 +36,13 @@
 #define MODIFIER_HEALING			0
 #define MODIFIER_TANKING			1
 #define MODIFIER_DAMAGE				2	// not really used...
+
+// for some new keys in talents as of v3.4.5.9
+// might move this elsewhere at some point, happy here for now.
+#define SURVIVOR_STATE_IGNORE			0
+#define SURVIVOR_STATE_ENSNARED			1
+#define SURVIVOR_STATE_INCAPACITATED	2
+#define SURVIVOR_STATE_DEAD				3
 //	================================
 #define DEBUG     					false
 //	================================
@@ -43,12 +50,48 @@
 
 
 
+
 /*
+ Version 3.4.5.9
+ - Added five new keys for talents:
+	"no augment modifiers?"							"1"		// if set to 1, augments will not affect that specific talent
+	"health percentage remaining required?" 		"0.75"	// % health required to trigger this talent.
+	"health cost on activation?"					"0.01"	// 1% cost to health each time this talent triggers.
+	"multiply strength downed allies?"				"0.05"	// % to multiply the talent strength for each incapacitated ally in range. (survivor only)
+	"multiply strength downed allies range?"		"512.0" // range required for the above percentage to be applied, per client.
+	Now D&D's Weaponize Life talent can be a reality! Yay!
+ - Added a new method in rpg_wrappers, GetClientsInRangeByState; Added 4 SURVIVOR STATE definitions to accompany it.
+
+ - Several bug fixes:
+	- buying ammo now restores the proper amount instead of the vanilla amount.
+	- fire no longer triggers talents, and is only buffed if a player has fire damage increasing talents.
+	- over-killing special infected will no longer provide more score than intended.
+ - Patched an exploit that was being used to circumvent losing bonus multiplier.
+ - Fixed a bug where enemy data could become bugged if a players handicap data didn't load properly.
+ - Fixed a bug that required a player to swap weapons at the start of the round to activate the correct talents for that weapon.
+ - Fixed a bug where common infected triggered OOB errors
+ - Fixed a bug wherein super commons could occasionally error and no longer take damage
+
+ There are a lot of keys that I added support for, but are either unused or were commented-out from when the mod had severely-poor time complexity.
+ I've gone ahead and re-enabled a key for talents:
+ "activator ability trigger to call?"
+
+ I've added a new key that does the above but for the target(s) of talents, and renamed the key above for consistency from "ability trigger to call?"
+ "target ability trigger to call?" - for example, being on the receiving end of another players AoE heal ability could fire a specific trigger that could fire off other
+ talents, and those talents could each have different scenario requirements, creating even more potential for branching talent builds.
+
+ At this time, the default talentmenu.cfg only contains one talent that takes advantage of this: Blood Warrior I, which triggers Blood Warrior II with this call.
+ This means that Blood Warrior II can only trigger when Blood Warrior I triggers, and only triggers at this time if it's not on cooldown. Otherwise it will trigger the next
+ time that Blood Warrior I triggers.
+ This key allows you to fire off other talents based on certain scenarios, assuming the player has unlocked those talents.
+
  Version 3.4.5.8a
  - Fixed the double-loading of player augments when loading a saved profile.
  - Fixed a stack overflow bug related to the CreateAoE method - it could indefinitely call itself but that is no longer the case.
  - Fixed an error when a player left that it would not properly set the basename, so new joining players would have their name.
  - Fixed an error that caused new players to sometimes not create data due to a very rare index out of bounds error.
+ - Players who are no longer eligible for a handicap level will have it taken from them on load.
+ - Changed ability bar active/cooldown times to show as whole numbers instead of floats.
 
  Version 3.4.5.8
  - Survivor bots now have a handicap set equal to the highest handicap player in the server.
@@ -454,7 +497,7 @@ public Plugin myinfo = {
 #define CONTRIBUTION_COST					165
 #define ITEM_NAME_TO_GIVE_PLAYER			166
 #define HIDE_TALENT_STRENGTH_DISPLAY		167
-#define TALENT_CALL_ABILITY_TRIGGER			168
+#define ACTIVATOR_CALL_ABILITY_TRIGGER		168
 #define TALENT_WEAPON_SLOT_REQUIRED			169
 #define REQ_CONSECUTIVE_HEADSHOTS			170
 #define MULT_STR_CONSECUTIVE_HEADSHOTS		171
@@ -464,9 +507,15 @@ public Plugin myinfo = {
 #define IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS	175
 #define IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES		176
 #define ACTIVATOR_STATUS_EFFECT_REQUIRED	177
+#define HEALTH_PERCENTAGE_REQ_ACT_REMAINING 178
+#define HEALTH_PERCENTAGE_ACTIVATION_COST	179
+#define MULT_STR_NEARBY_DOWN_ALLIES			180
+#define MULT_STR_NEARBY_DOWN_ALLIES_RANGE	181
+#define TALENT_NO_AUGMENT_MODIFIERS			182
+#define TARGET_CALL_ABILITY_TRIGGER			183
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION	178
+#define TALENT_FIRST_RANDOM_KEY_POSITION	184
 #define SUPER_COMMON_MAX_ALLOWED			0
 #define SUPER_COMMON_AURA_EFFECT			1
 #define SUPER_COMMON_RANGE_MIN				2
@@ -2227,28 +2276,28 @@ public ReadyUpEnd_Complete() {
 		}
 		if (iRoundStartWeakness == 1) {
 			for (int i = 1; i <= MaxClients; i++) {
-				if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
-					staggerCooldownOnTriggers[i] = false;
-					ISBILED[i] = false;
-					bHasWeakness[i] = true;
-					SurvivorEnrage[i][0] = 0.0;
-					SurvivorEnrage[i][1] = 0.0;
-					ISDAZED[i] = 0.0;
-					if (b_IsLoaded[i]) {
-						SurvivorStamina[i] = GetPlayerStamina(i) - 1;
-						SetMaximumHealth(i);
-					}
-					else if (!b_IsLoading[i]) OnClientLoaded(i);
-					bIsSurvivorFatigue[i] = false;
-					LastWeaponDamage[i] = 1;
-					HealingContribution[i] = 0;
-					TankingContribution[i] = 0;
-					DamageContribution[i] = 0;
-					PointsContribution[i] = 0.0;
-					HexingContribution[i] = 0;
-					BuffingContribution[i] = 0;
-					b_IsFloating[i] = false;
+				if (!IsLegitimateClient(i)) continue;
+				staggerCooldownOnTriggers[i] = false;
+				ISBILED[i] = false;
+				bHasWeakness[i] = true;
+				SurvivorEnrage[i][0] = 0.0;
+				SurvivorEnrage[i][1] = 0.0;
+				ISDAZED[i] = 0.0;
+				if (GetClientTeam(i) == TEAM_SURVIVOR && b_IsLoaded[i]) {
+					SurvivorStamina[i] = GetPlayerStamina(i) - 1;
+					SetMaximumHealth(i);
 				}
+				else if (!b_IsLoading[i]) OnClientLoaded(i);
+				bIsSurvivorFatigue[i] = false;
+				LastWeaponDamage[i] = 1;
+				HealingContribution[i] = 0;
+				TankingContribution[i] = 0;
+				DamageContribution[i] = 0;
+				PointsContribution[i] = 0.0;
+				HexingContribution[i] = 0;
+				BuffingContribution[i] = 0;
+				b_IsFloating[i] = false;
+				SetMyWeapons(i);
 			}
 		}
 	}
@@ -2341,7 +2390,9 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		int survivorCounter = TotalHumanSurvivors();
 		bool AnyBotsOnSurvivorTeam = BotsOnSurvivorTeam();
 		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+			if (!IsLegitimateClient(i)) continue;
+			SetMyWeapons(i);
+			if (IsFakeClient(i)) continue;
 			bIsMeleeCooldown[i] = false;
 			if (GroupMemberBonus > 0.0) {
 				if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
@@ -4130,6 +4181,30 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	int sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
 	if (StrEqual(Config, CONFIG_MENUTALENTS)) {
+		if (FindStringInArray(TalentKey, "target ability trigger to call?") == -1) {
+			PushArrayString(TalentKey, "target ability trigger to call?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "no augment modifiers?") == -1) {
+			PushArrayString(TalentKey, "no augment modifiers?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "multiply strength downed allies range?") == -1) {
+			PushArrayString(TalentKey, "multiply strength downed allies range?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "multiply strength downed allies?") == -1) {
+			PushArrayString(TalentKey, "multiply strength downed allies?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "health cost on activation?") == -1) {
+			PushArrayString(TalentKey, "health cost on activation?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "health percentage remaining required?") == -1) {
+			PushArrayString(TalentKey, "health percentage remaining required?");
+			PushArrayString(TalentValue, "-1.0");
+		}
 		if (FindStringInArray(TalentKey, "activator status effect required?") == -1) {
 			PushArrayString(TalentKey, "activator status effect required?");
 			PushArrayString(TalentValue, "-1");
@@ -4166,8 +4241,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			PushArrayString(TalentKey, "weapon slot required?");
 			PushArrayString(TalentValue, "-1");
 		}
-		if (FindStringInArray(TalentKey, "ability trigger to call?") == -1) {
-			PushArrayString(TalentKey, "ability trigger to call?");
+		if (FindStringInArray(TalentKey, "activator ability trigger to call?") == -1) {
+			PushArrayString(TalentKey, "activator ability trigger to call?");
 			PushArrayString(TalentValue, "-1");
 		}
 		if (FindStringInArray(TalentKey, "hide talent strength display?") == -1) {
@@ -5044,7 +5119,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos == 165 && !StrEqual(text, "contribution cost required?") ||
 			pos == 166 && !StrEqual(text, "give player this item on trigger?") ||
 			pos == 167 && !StrEqual(text, "hide talent strength display?") ||
-			pos == 168 && !StrEqual(text, "ability trigger to call?") ||
+			pos == 168 && !StrEqual(text, "activator ability trigger to call?") ||
 			pos == 169 && !StrEqual(text, "weapon slot required?") ||
 			pos == 170 && !StrEqual(text, "require consecutive headshots?") ||
 			pos == 171 && !StrEqual(text, "mult str by same headshots?") ||
@@ -5053,7 +5128,13 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos == 174 && !StrEqual(text, "active effect allows all weapons?") ||
 			pos == 175 && !StrEqual(text, "active effect allows all hitgroups?") ||
 			pos == 176 && !StrEqual(text, "active effect allows all classes?") ||
-			pos == 177 && !StrEqual(text, "activator status effect required?")) {
+			pos == 177 && !StrEqual(text, "activator status effect required?") ||
+			pos == 178 && !StrEqual(text, "health percentage remaining required?") ||
+			pos == 179 && !StrEqual(text, "health cost on activation?") ||
+			pos == 180 && !StrEqual(text, "multiply strength downed allies?") ||
+			pos == 181 && !StrEqual(text, "multiply strength downed allies range?") ||
+			pos == 182 && !StrEqual(text, "no augment modifiers?") ||
+			pos == 183 && !StrEqual(text, "target ability trigger to call?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -5077,9 +5158,10 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			i == ACTIVATOR_MUST_HAVE_HIGH_GROUND || i == TARGET_MUST_HAVE_HIGH_GROUND || i == ACTIVATOR_TARGET_MUST_EVEN_GROUND ||
 			i == IF_EOT_ACTIVE_ALLOW_ALL_WEAPONS || i == WEAPONS_PERMITTED || i == HEALTH_PERCENTAGE_REQ ||
 			i == COHERENCY_RANGE || i == COHERENCY_MAX || i == COHERENCY_REQ ||
-			i == HEALTH_PERCENTAGE_REQ_TAR_REMAINING || i == HEALTH_PERCENTAGE_REQ_TAR_MISSING ||
+			i == HEALTH_PERCENTAGE_REQ_TAR_REMAINING || i == HEALTH_PERCENTAGE_REQ_TAR_MISSING || i == HEALTH_PERCENTAGE_REQ_ACT_REMAINING ||
 			i == REQUIRES_ZOOM || i == IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS || i == REQUIRES_HEADSHOT ||
-			i == REQUIRES_LIMBSHOT) {
+			i == REQUIRES_LIMBSHOT || i == HEALTH_PERCENTAGE_ACTIVATION_COST || i == MULT_STR_NEARBY_DOWN_ALLIES || i == MULT_STR_NEARBY_DOWN_ALLIES_RANGE ||
+			i == TALENT_NO_AUGMENT_MODIFIERS) {
 				GetArrayString(TalentValue, i, text, sizeof(text));
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int

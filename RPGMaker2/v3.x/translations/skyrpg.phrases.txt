@@ -3,6 +3,21 @@
 
 "Phrases"
 {
+	"Activator Health Required"
+	{
+		"#format"			"{1:3.1f},{2:s}"
+		"en"				"Health required: {1}{2}"
+	}
+	"Activator Health Cost"
+	{
+		"#format"			"{1:3.1f},{2:s},{3:i}"
+		"en"				"Health cost: {1}{2} ({3})"
+	}
+	"Multiply Strength Nearby Downed Allies"
+	{
+		"#format"			"{1:3.1f},{2:s},{3:3.1f}"
+		"en"				"Talent strength *= {1}{2} for each incapacitated ally within {3} units."
+	}
 	"handicap level unlocked"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s}"
@@ -26,6 +41,10 @@
 		"en"				"Efficient"
 	}
 	"noffexplode perfect surname"
+	{
+		"en"				"Explosive"
+	}
+	"ffexplode perfect surname"
 	{
 		"en"				"Explosive"
 	}
@@ -89,6 +108,10 @@
 	{
 		"en"				"Explosive"
 	}
+	"ffexplode major surname"
+	{
+		"en"				"Explosive"
+	}
 	"ammoreserve major surname"
 	{
 		"en"				"Reservist"
@@ -133,6 +156,10 @@
 	{
 		"en"				"Optimist"
 	}
+	"activetime major surname"
+	{
+		"en"				"Spellcasters"
+	}
 	"weak damage increase i"
 	{
 		"en"				"Shadow Damage I"
@@ -159,11 +186,11 @@
 	}
 	"heal spec i info"
 	{
-		"en"				"Increases all healing, but also reduces all outgoing damage."
+		"en"				"Unlike normal talents, proficiencies are multiplicative.\nIncreases all healing, but also reduces all outgoing damage."
 	}
 	"heal spec ii info"
 	{
-		"en"				"Increases all healing, but also increases all damage taken."
+		"en"				"Unlike normal talents, proficiencies are multiplicative.\nIncreases all healing, but also increases all damage taken."
 	}
 	"tank spec i"
 	{
@@ -175,11 +202,11 @@
 	}
 	"tank spec i info"
 	{
-		"en"				"Reduces all damage taken, but also reduces all healing."
+		"en"				"Unlike normal talents, proficiencies are multiplicative.\nReduces all damage taken, but also reduces all healing."
 	}
 	"tank spec ii info"
 	{
-		"en"				"Reduces all damage taken, but also reduces all damage dealt."
+		"en"				"Unlike normal talents, proficiencies are multiplicative.\nReduces all damage taken, but also reduces all damage dealt."
 	}
 	"damage spec i"
 	{
@@ -191,11 +218,11 @@
 	}
 	"damage spec i info"
 	{
-		"en"				"Increases all damage dealt, but also reduces all healing."
+		"en"				"Unlike normal talents, proficiencies are multiplicative.\nIncreases all damage dealt, but also reduces all healing."
 	}
 	"damage spec ii info"
 	{
-		"en"				"Increases all damage dealt, but also increases all damage taken."
+		"en"				"Unlike normal talents, proficiencies are multiplicative.\nIncreases all damage dealt, but also increases all damage taken."
 	}
 	"player end of map roll award"
 	{
@@ -227,6 +254,10 @@
 	"noffexplode augment info"
 	{
 		"en"				"Explosion (no ff)"
+	}
+	"ffexplode augment info"
+	{
+		"en"				"Explosion"
 	}
 	"ammoreserve augment info"
 	{
@@ -275,6 +306,10 @@
 	"maghalfempty augment info"
 	{
 		"en"				"Mag Half-Empty"
+	}
+	"activetime augment info"
+	{
+		"en"				"Spellcasters"
 	}
 	"equip augment"
 	{
@@ -3027,7 +3062,7 @@
 	}
 	"battlemage path i info"
 	{
-		"en"				"Explode, dealing AoE damage based on your last ally heal\nupon reaching the threshold."
+		"en"				"Explode, dealing AoE damage based on your last ally melee heal\nupon reaching the threshold."
 	}
 	"battlemage path iii"
 	{
@@ -3045,9 +3080,49 @@
 	{
 		"en"				"Explode, dealing AoE damage after eating enough damage\nto reach the threshold."
 	}
+	"sadist path i"
+	{
+		"en"				"Sadist I"
+	}
+	"sadist path i info"
+	{
+		"en"				"Deal major single-target damage when reaching the\nthreshold with a melee weapon."
+	}
+	"sadist path ii"
+	{
+		"en"				"Sadist II"
+	}
+	"sadist path ii info"
+	{
+		"en"				"Deal AoE explosive damage when reaching the\nthreshold with a melee weapon."
+	}
+	"sadist path iii"
+	{
+		"en"				"Sadist III"
+	}
+	"sadist path iv"
+	{
+		"en"				"Sadist IV"
+	}
 	"warforged path i"
 	{
 		"en"				"Warforged I"
+	}
+	"elementalist path i"
+	{
+		"en"				"Elementalist I"
+	}
+	"elementalist path ii"
+	{
+		"en"				"Elementalist II"
+	}
+	"elementalist path i info"
+	{
+		"en"				"Apply one [Bu]rn debuff stack on melee hit, when you are on fire."
+	}
+	"elementalist path ii info"
+	{
+		"en"				"Apply one Acid Burn [Ab] debuff stack on melee hit, when you are in acid."
 	}
 	"warforged path i info"
 	{
@@ -3191,6 +3266,22 @@
 	{
 		"en"				"Reduced damage when your attacker is the same\nclass/type as your last attacker."
 	}
+	"hodor path i"
+	{
+		"en"				"Hodor I"
+	}
+	"hodor path i info"
+	{
+		"en"				"Damage resistance for when your teammates need you the most.\nHold. The. Line."
+	}
+	"hodor path ii"
+	{
+		"en"				"Hodor II"
+	}
+	"hodor path ii info"
+	{
+		"en"				"Melee damage bonus at the most-critical hour."
+	}
 	"warrior path i"
 	{
 		"en"				"Warrior I"
@@ -3298,6 +3389,10 @@
 	{
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i}"
 		"en"				"With your trusty melee weapon, deal damage per consecutive hit, up to {10} stacks."
+	}
+	"brawler path iii info"
+	{
+		"en"				"Deal increased melee weapon damage when\nconsecutively hitting the same target."
 	}
 	"sharpshooter path i"
 	{

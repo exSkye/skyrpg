@@ -225,7 +225,8 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 	char curEquippedWeapon[64];
 	if (StrEqual(event_name, "weapon_reload") || StrEqual(event_name, "bullet_impact")) {
 		int WeaponId =	GetEntPropEnt(attacker, Prop_Data, "m_hActiveWeapon");
-		GetEntityClassname(WeaponId, curEquippedWeapon, sizeof(curEquippedWeapon));
+		if (IsValidEntity(WeaponId)) GetEntityClassname(WeaponId, curEquippedWeapon, sizeof(curEquippedWeapon));
+		else Format(curEquippedWeapon, sizeof(curEquippedWeapon), "-1");
 	}
 	if (victimTeam == TEAM_SURVIVOR) {
 		if (StrEqual(event_name, "revive_success")) {
@@ -278,8 +279,10 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 	if (bulletimpact == 1) {
 		if (attackerTeam == TEAM_SURVIVOR) {
 			int bulletsFired = 0;
-			GetTrieValue(currentEquippedWeapon[attacker], curEquippedWeapon, bulletsFired);
-			SetTrieValue(currentEquippedWeapon[attacker], curEquippedWeapon, bulletsFired + 1);
+			if (!StrEqual(curEquippedWeapon, "-1")) {
+				GetTrieValue(currentEquippedWeapon[attacker], curEquippedWeapon, bulletsFired);
+				SetTrieValue(currentEquippedWeapon[attacker], curEquippedWeapon, bulletsFired + 1);
+			}
 			float Coords[3];
 			Coords[0] = GetEventFloat(event, "x");
 			Coords[1] = GetEventFloat(event, "y");
@@ -2134,6 +2137,7 @@ stock CheckMinimumRate(client) {
 }
 
 stock float GetScoreMultiplier(int client) {
+	if (GetArraySize(HandicapSelectedValues[client]) != 4) SetClientHandicapValues(client, true);
 	float scoreMultiplier = (handicapLevel[client] > 0) ? GetArrayCell(HandicapSelectedValues[client], 3) : fNoHandicapScoreMultiplier;
 	return scoreMultiplier;
 }
@@ -2559,8 +2563,8 @@ stock bool SameTeam_OnTakeDamage(healer, target, damage, bool IsDamageTalent = f
 	// 	CreateTimer(0.1, Timer_HealImmunity, target, TIMER_FLAG_NO_MAPCHANGE);
 	// }
 	HealPlayer(target, healer, iHealerAmount * 1.0, 'h', true);
-	GetAbilityStrengthByTrigger(healer, target, "didHeals", _, iHealerAmount);
-	GetAbilityStrengthByTrigger(target, healer, "wasHealed", _, iHealerAmount);
+	//GetAbilityStrengthByTrigger(healer, target, "didHeals", _, iHealerAmount);
+	//GetAbilityStrengthByTrigger(target, healer, "wasHealed", _, iHealerAmount);
 	// To prevent endless loops, we only call damage talents when the function is called directly from OnTakeDamage()
 	if (IsDamageTalent) {
 		GetAbilityStrengthByTrigger(healer, target, "d", FindZombieClass(healer), iHealerAmount);

@@ -1225,6 +1225,7 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 		Format(BuildingStack[client], sizeof(BuildingStack[]), "none");
 		Format(LoadoutName[client], sizeof(LoadoutName[]), "none");
+		handicapLevel[client] = -1;
 
 		ClearEquippedAugmentData(client);
 		ClearLocalClientAugmentData(client);
@@ -2122,7 +2123,11 @@ public OnClientDisconnect(client)
 		// 	//LogMessage("bot removed, setting to not loaded.");
 		// 	b_IsLoaded[client] = false;
 		// }
-
+		if (IsFakeClient(client)) {
+			b_IsLoaded[client] = false;
+			handicapLevel[client] = -1;
+			Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
+		}
 		if (ISEXPLODE[client] != INVALID_HANDLE) {
 
 			KillTimer(ISEXPLODE[client]);
