@@ -268,7 +268,9 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 				//PrintToChat(client, "heal regen for %3.3f", healregenamount);
 				//HealPlayer(client, client, healregenamount, 'h', true);
 				float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", false);
+				float clericRange = GetStrengthByKeyValueFloat(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", COHERENCY_RANGE);
 				if (clericHealPercentage > 0.0) {
+					if (clericRange <= 0.0) clericRange = 512.0;
 					healregenamount *= clericHealPercentage;
 					if (healregenamount < 1.0) healregenamount = 1.1;
 					new playersInRange = 0;
@@ -279,11 +281,11 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 						if (!IsLegitimateClientAlive(teammate) || GetClientTeam(teammate) != TEAM_SURVIVOR) continue;
 						float teammatePos[3];
 						GetClientAbsOrigin(teammate, teammatePos);
-						if (GetVectorDistance(clientPos, teammatePos) > 256.0 || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
+						if (GetVectorDistance(clientPos, teammatePos) > clericRange || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
 						playersInRange++;
 						HealPlayer(teammate, client, healregenamount, 'h', true);
 					}
-					if (playersInRange > 0) CreateRing(client, 256.0, "green", "32.0", false, 0.5);
+					if (playersInRange > 0) CreateRing(client, clericRange, "green", "32.0", false, 1.0);
 				}
 			}
 		}

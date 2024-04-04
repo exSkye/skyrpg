@@ -13,7 +13,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v3.4.5.9"
+#define PLUGIN_VERSION				"v3.4.5.9a"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 #define PLUGIN_NAME					"RPG Construction Set"
@@ -36,7 +36,6 @@
 #define MODIFIER_HEALING			0
 #define MODIFIER_TANKING			1
 #define MODIFIER_DAMAGE				2	// not really used...
-
 // for some new keys in talents as of v3.4.5.9
 // might move this elsewhere at some point, happy here for now.
 #define SURVIVOR_STATE_IGNORE			0
@@ -48,18 +47,30 @@
 //	================================
 
 
-
-
-
 /*
+ Version 3.4.5.9a
+ - Spells/Abilities now receive buffs from augments and their governing attribute, where applicable.
+ - Corrected an issue where spell/ability stamina cost was always being set to 1.
+ - All damage/health of enemies is now calculated in the same method so enemy level/character data always shows accurate values.
+ - Patched a rare bug where common infected would be designated as super commons, but not be super commons.
+ - Added new keys for talents:
+	"must be within coherency of talent?"			"cleric"	// this talent would only trigger if the activating player is within coherency range of a teammates cleric talent.
+	"must be unhurt by si or witch?"				"1"			// if 1, talent is skipped if the target is common infected, or if the witch/special infected has hurt the survivor.
+	"skip talent for augment roll?"					"1"			// for specialty talents designed for coherency triggers, so they don't roll as buffs on augments as they would buff nothing.
+	"require ally with adrenaline?"					"1"			// If 1, must be paired with the "coherency range?" talent. If an ally within the coherency range has active adrenaline, this talent fires.
+	"require ally below health percentage?"			"0.5"		// This talent requires an ally within coherency range that is at 50% health or lower.
+	"require ensnared ally?"						"1"			// If 1, there must be an ensnared ally within the "coherency range?" for this talent to trigger.
+	"target must be ally ensnarer?"					"1"			// If 1, the target of this talent must be a special infected that is ensnaring an ally in range.
+	"multiply strength ensnared allies?"			"0.05"		// If > 0.0, increases the talent strength by multiples of this value, for each ensnared ally within "coherency range?"
+	"require enemy in coherency range?"				"1"			// If 1, this talent will only activate if there is an enemy within the coherency range. Best used with talents that passively trigger, as they're on a timer.
+	"enemy in coherency is target?"					"1"			// If 1, this talent will automatically set the target of the talents "target ability effects?" to an enemy special infected (or survivor) within coherency range.
+	"no augment modifiers?"							"1"			// if set to 1, augments will not affect that specific talent
+	"health percentage remaining required?" 		"0.75"		// % health required to trigger this talent.
+	"health cost on activation?"					"0.01"		// 1% cost to health each time this talent triggers.
+	"multiply strength downed allies?"				"0.05"		// % to multiply the talent strength for each incapacitated ally in range. (survivor only)
+ - Added the "explosion" "ability trigger?" that fires off whenever a special infected, witch, or common infected takes damage from a pipebomb, fireworks, explosive ammo, or other explosive source triggered by the activator.
+
  Version 3.4.5.9
- - Added five new keys for talents:
-	"no augment modifiers?"							"1"		// if set to 1, augments will not affect that specific talent
-	"health percentage remaining required?" 		"0.75"	// % health required to trigger this talent.
-	"health cost on activation?"					"0.01"	// 1% cost to health each time this talent triggers.
-	"multiply strength downed allies?"				"0.05"	// % to multiply the talent strength for each incapacitated ally in range. (survivor only)
-	"multiply strength downed allies range?"		"512.0" // range required for the above percentage to be applied, per client.
-	Now D&D's Weaponize Life talent can be a reality! Yay!
  - Added a new method in rpg_wrappers, GetClientsInRangeByState; Added 4 SURVIVOR STATE definitions to accompany it.
 
  - Several bug fixes:
@@ -277,31 +288,33 @@
  + Add support for survivor bots to use augments.
 */
 
-#define CVAR_SHOW					FCVAR_NOTIFY
-#define DMG_HEADSHOT				2147483648
-#define ZOMBIECLASS_SMOKER											1
-#define ZOMBIECLASS_BOOMER											2
-#define ZOMBIECLASS_HUNTER											3
-#define ZOMBIECLASS_SPITTER											4
-#define ZOMBIECLASS_JOCKEY											5
-#define ZOMBIECLASS_CHARGER											6
-#define ZOMBIECLASS_WITCH											7
-#define ZOMBIECLASS_TANK											8
-#define ZOMBIECLASS_SURVIVOR										0
-#define TANKSTATE_TIRED												0
-#define TANKSTATE_REFLECT											1
-#define TANKSTATE_FIRE												2
-#define TANKSTATE_DEATH												3
-#define TANKSTATE_TELEPORT											4
-#define TANKSTATE_HULK												5
-#define EFFECTOVERTIME_ACTIVATETALENT	0
-#define EFFECTOVERTIME_GETACTIVETIME	1
-#define EFFECTOVERTIME_GETCOOLDOWN		2
-#define DMG_SPITTERACID1 263168
-#define DMG_SPITTERACID2 265216
-#define CONTRIBUTION_TRACKER_HEALING	0
-#define CONTRIBUTION_TRACKER_DAMAGE		1
-#define CONTRIBUTION_TRACKER_TANKING	2
+#define CVAR_SHOW								FCVAR_NOTIFY
+#define DMG_HEADSHOT							2147483648
+#define ZOMBIECLASS_SMOKER						1
+#define ZOMBIECLASS_BOOMER						2
+#define ZOMBIECLASS_HUNTER						3
+#define ZOMBIECLASS_SPITTER						4
+#define ZOMBIECLASS_JOCKEY						5
+#define ZOMBIECLASS_CHARGER						6
+#define ZOMBIECLASS_WITCH						7
+#define ZOMBIECLASS_TANK						8
+#define ZOMBIECLASS_SURVIVOR					0
+
+#define TANKSTATE_TIRED							0
+#define TANKSTATE_REFLECT						1
+#define TANKSTATE_FIRE							2
+#define TANKSTATE_DEATH							3
+#define TANKSTATE_TELEPORT						4
+#define TANKSTATE_HULK							5
+
+#define EFFECTOVERTIME_ACTIVATETALENT			0
+#define EFFECTOVERTIME_GETACTIVETIME			1
+#define EFFECTOVERTIME_GETCOOLDOWN				2
+#define DMG_SPITTERACID1						263168
+#define DMG_SPITTERACID2						265216
+#define CONTRIBUTION_TRACKER_HEALING			0
+#define CONTRIBUTION_TRACKER_DAMAGE				1
+#define CONTRIBUTION_TRACKER_TANKING			2
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
@@ -321,275 +334,287 @@ public Plugin myinfo = {
 
 // from n^3 to n^2
 // weapondamages.cfg
-#define WEAPONINFO_DAMAGE					0
-#define WEAPONINFO_OFFSET					1
-#define WEAPONINFO_AMMO						2
-#define WEAPONINFO_RANGE					3
-#define WEAPONINFO_RANGE_REQUIRED			4
+#define WEAPONINFO_DAMAGE						0
+#define WEAPONINFO_OFFSET						1
+#define WEAPONINFO_AMMO							2
+#define WEAPONINFO_RANGE						3
+#define WEAPONINFO_RANGE_REQUIRED				4
 // for the talentmenu.cfg
-#define ABILITY_TYPE						0
-#define COMPOUNDING_TALENT					1
-#define COMPOUND_WITH						2
-#define ACTIVATOR_ABILITY_EFFECTS			3
-#define TARGET_ABILITY_EFFECTS				4
-#define SECONDARY_EFFECTS					5
-#define WEAPONS_PERMITTED					6
-#define HEALTH_PERCENTAGE_REQ				7
-#define COHERENCY_RANGE						8
-#define COHERENCY_MAX						9
-#define COHERENCY_REQ						10
-#define HEALTH_PERCENTAGE_REQ_TAR_REMAINING	11
-#define HEALTH_PERCENTAGE_REQ_TAR_MISSING	12
-#define ACTIVATOR_TEAM_REQ					13
-#define ACTIVATOR_CLASS_REQ					14
-#define REQUIRES_ZOOM						15
-#define COMBAT_STATE_REQ					16
-#define PLAYER_STATE_REQ					17
-#define PASSIVE_ABILITY						18
-#define REQUIRES_HEADSHOT					19
-#define REQUIRES_LIMBSHOT					20
-#define REQUIRES_CROUCHING					21
-#define ACTIVATOR_STAGGER_REQ				22
-#define TARGET_STAGGER_REQ					23
-#define CANNOT_TARGET_SELF					24
-#define MUST_BE_JUMPING_OR_FLYING			25
-#define VOMIT_STATE_REQ_ACTIVATOR			26
-#define VOMIT_STATE_REQ_TARGET				27
-#define REQ_ADRENALINE_EFFECT				28
-#define DISABLE_IF_WEAKNESS					29
-#define REQ_WEAKNESS						30
-#define TARGET_CLASS_REQ					31
-#define CLEANSE_TRIGGER						32
-#define REQ_CONSECUTIVE_HITS				33
-#define BACKGROUND_TALENT					34
-#define STATUS_EFFECT_MULTIPLIER			35
-#define MULTIPLY_RANGE						36
-#define MULTIPLY_COMMONS					37
-#define MULTIPLY_SUPERS						38
-#define MULTIPLY_WITCHES					39
-#define MULTIPLY_SURVIVORS					40
-#define MULTIPLY_SPECIALS					41
-#define STRENGTH_INCREASE_ZOOMED			42
-#define STRENGTH_INCREASE_TIME_CAP			43
-#define STRENGTH_INCREASE_TIME_REQ			44
-#define ZOOM_TIME_HAS_MINIMUM_REQ			45
-#define HOLDING_FIRE_STRENGTH_INCREASE		46
-#define DAMAGE_TIME_HAS_MINIMUM_REQ			47
-#define HEALTH_PERCENTAGE_REQ_MISSING		48
-#define HEALTH_PERCENTAGE_REQ_MISSING_MAX	49
-#define IS_OWN_TALENT						50
-#define SECONDARY_ABILITY_TRIGGER			51
-#define TARGET_IS_SELF						52
-#define PRIMARY_AOE							53
-#define SECONDARY_AOE						54
-#define GET_TALENT_NAME						55
-#define GET_TRANSLATION						56
-#define GOVERNING_ATTRIBUTE					57
-#define TALENT_TREE_CATEGORY				58
-#define PART_OF_MENU_NAMED					59
-#define GET_TALENT_LAYER					60
-#define IS_TALENT_ABILITY					61
-#define ACTION_BAR_NAME						62
-#define NUM_TALENTS_REQ						63
-#define TALENT_UPGRADE_STRENGTH_VALUE		64
-#define TALENT_UPGRADE_SCALE				65
-#define TALENT_COOLDOWN_STRENGTH_VALUE		66
-#define TALENT_COOLDOWN_SCALE				67
-#define TALENT_ACTIVE_STRENGTH_VALUE		68
-#define TALENT_ACTIVE_SCALE					69
-#define COOLDOWN_GOVERNOR_OF_TALENT			70
-#define TALENT_STRENGTH_HARD_LIMIT			71
-#define TALENT_IS_EFFECT_OVER_TIME			72
-#define SPECIAL_AMMO_TALENT_STRENGTH		73
-#define LAYER_COUNTING_IS_IGNORED			74
-#define IS_ATTRIBUTE						75
-#define HIDE_TRANSLATION					76
-#define TALENT_ROLL_CHANCE					77
+#define ABILITY_TYPE							0
+#define COMPOUNDING_TALENT						1
+#define COMPOUND_WITH							2
+#define ACTIVATOR_ABILITY_EFFECTS				3
+#define TARGET_ABILITY_EFFECTS					4
+#define SECONDARY_EFFECTS						5
+#define WEAPONS_PERMITTED						6
+#define HEALTH_PERCENTAGE_REQ					7
+#define COHERENCY_RANGE							8
+#define COHERENCY_MAX							9
+#define COHERENCY_REQ							10
+#define HEALTH_PERCENTAGE_REQ_TAR_REMAINING		11
+#define HEALTH_PERCENTAGE_REQ_TAR_MISSING		12
+#define ACTIVATOR_TEAM_REQ						13
+#define ACTIVATOR_CLASS_REQ						14
+#define REQUIRES_ZOOM							15
+#define COMBAT_STATE_REQ						16
+#define PLAYER_STATE_REQ						17
+#define PASSIVE_ABILITY							18
+#define REQUIRES_HEADSHOT						19
+#define REQUIRES_LIMBSHOT						20
+#define REQUIRES_CROUCHING						21
+#define ACTIVATOR_STAGGER_REQ					22
+#define TARGET_STAGGER_REQ						23
+#define CANNOT_TARGET_SELF						24
+#define MUST_BE_JUMPING_OR_FLYING				25
+#define VOMIT_STATE_REQ_ACTIVATOR				26
+#define VOMIT_STATE_REQ_TARGET					27
+#define REQ_ADRENALINE_EFFECT					28
+#define DISABLE_IF_WEAKNESS						29
+#define REQ_WEAKNESS							30
+#define TARGET_CLASS_REQ						31
+#define CLEANSE_TRIGGER							32
+#define REQ_CONSECUTIVE_HITS					33
+#define BACKGROUND_TALENT						34
+#define STATUS_EFFECT_MULTIPLIER				35
+#define MULTIPLY_RANGE							36
+#define MULTIPLY_COMMONS						37
+#define MULTIPLY_SUPERS							38
+#define MULTIPLY_WITCHES						39
+#define MULTIPLY_SURVIVORS						40
+#define MULTIPLY_SPECIALS						41
+#define STRENGTH_INCREASE_ZOOMED				42
+#define STRENGTH_INCREASE_TIME_CAP				43
+#define STRENGTH_INCREASE_TIME_REQ				44
+#define ZOOM_TIME_HAS_MINIMUM_REQ				45
+#define HOLDING_FIRE_STRENGTH_INCREASE			46
+#define DAMAGE_TIME_HAS_MINIMUM_REQ				47
+#define HEALTH_PERCENTAGE_REQ_MISSING			48
+#define HEALTH_PERCENTAGE_REQ_MISSING_MAX		49
+#define IS_OWN_TALENT							50
+#define SECONDARY_ABILITY_TRIGGER				51
+#define TARGET_IS_SELF							52
+#define PRIMARY_AOE								53
+#define SECONDARY_AOE							54
+#define GET_TALENT_NAME							55
+#define GET_TRANSLATION							56
+#define GOVERNING_ATTRIBUTE						57
+#define TALENT_TREE_CATEGORY					58
+#define PART_OF_MENU_NAMED						59
+#define GET_TALENT_LAYER						60
+#define IS_TALENT_ABILITY						61
+#define ACTION_BAR_NAME							62
+#define NUM_TALENTS_REQ							63
+#define TALENT_UPGRADE_STRENGTH_VALUE			64
+#define TALENT_UPGRADE_SCALE					65
+#define TALENT_COOLDOWN_STRENGTH_VALUE			66
+#define TALENT_COOLDOWN_SCALE					67
+#define TALENT_ACTIVE_STRENGTH_VALUE			68
+#define TALENT_ACTIVE_SCALE						69
+#define COOLDOWN_GOVERNOR_OF_TALENT				70
+#define TALENT_STRENGTH_HARD_LIMIT				71
+#define TALENT_IS_EFFECT_OVER_TIME				72
+#define SPECIAL_AMMO_TALENT_STRENGTH			73
+#define LAYER_COUNTING_IS_IGNORED				74
+#define IS_ATTRIBUTE							75
+#define HIDE_TRANSLATION						76
+#define TALENT_ROLL_CHANCE						77
 // spells
-#define SPELL_INTERVAL_PER_POINT			78
-#define SPELL_INTERVAL_FIRST_POINT			79
-#define SPELL_RANGE_PER_POINT				80
-#define SPELL_RANGE_FIRST_POINT				81
-#define SPELL_STAMINA_PER_POINT				82
-#define SPELL_BASE_STAMINA_REQ				83
-#define SPELL_COOLDOWN_PER_POINT			84
-#define SPELL_COOLDOWN_FIRST_POINT			85
-#define SPELL_COOLDOWN_START				86
-#define SPELL_ACTIVE_TIME_PER_POINT			87
-#define SPELL_ACTIVE_TIME_FIRST_POINT		88
-#define SPELL_AMMO_EFFECT					89
-#define SPELL_EFFECT_MULTIPLIER				90
+#define SPELL_INTERVAL_PER_POINT				78
+#define SPELL_INTERVAL_FIRST_POINT				79
+#define SPELL_RANGE_PER_POINT					80
+#define SPELL_RANGE_FIRST_POINT					81
+#define SPELL_STAMINA_PER_POINT					82
+#define SPELL_BASE_STAMINA_REQ					83
+#define SPELL_COOLDOWN_PER_POINT				84
+#define SPELL_COOLDOWN_FIRST_POINT				85
+#define SPELL_COOLDOWN_START					86
+#define SPELL_ACTIVE_TIME_PER_POINT				87
+#define SPELL_ACTIVE_TIME_FIRST_POINT			88
+#define SPELL_AMMO_EFFECT						89
+#define SPELL_EFFECT_MULTIPLIER					90
 // abilities
-#define ABILITY_ACTIVE_EFFECT				91
-#define ABILITY_PASSIVE_EFFECT				92
-#define ABILITY_COOLDOWN_EFFECT				93
-#define ABILITY_IS_REACTIVE					94
-#define ABILITY_TEAMS_ALLOWED				95
-#define ABILITY_COOLDOWN_STRENGTH			96
-#define ABILITY_MAXIMUM_PASSIVE_MULTIPLIER	97
-#define ABILITY_MAXIMUM_ACTIVE_MULTIPLIER	98
-#define ABILITY_ACTIVE_STATE_ENSNARE_REQ	99
-#define ABILITY_ACTIVE_STRENGTH				100
-#define ABILITY_PASSIVE_IGNORES_COOLDOWN	101
-#define ABILITY_PASSIVE_STATE_ENSNARE_REQ	102
-#define ABILITY_PASSIVE_STRENGTH			103
-#define ABILITY_PASSIVE_ONLY				104
-#define ABILITY_IS_SINGLE_TARGET			105
-#define ABILITY_DRAW_DELAY					106
-#define ABILITY_ACTIVE_DRAW_DELAY			107
-#define ABILITY_PASSIVE_DRAW_DELAY			108
-#define ATTRIBUTE_MULTIPLIER				109
-#define ATTRIBUTE_USE_THESE_MULTIPLIERS		110
-#define ATTRIBUTE_BASE_MULTIPLIER			111
-#define ATTRIBUTE_DIMINISHING_MULTIPLIER	112
-#define ATTRIBUTE_DIMINISHING_RETURNS		113
-#define HUD_TEXT_BUFF_EFFECT_OVER_TIME		114
-#define IS_SUB_MENU_OF_TALENTCONFIG			115
-#define IS_TALENT_TYPE						116
-#define ITEM_ITEM_ID						117
-#define ITEM_RARITY							118
-#define OLD_ATTRIBUTE_EXPERIENCE_START		119
-#define OLD_ATTRIBUTE_EXPERIENCE_MULTIPLIER	120
-#define IS_AURA_INSTEAD						121
-#define EFFECT_COOLDOWN_TRIGGER				122
-#define EFFECT_INACTIVE_TRIGGER				123
-#define ABILITY_REACTIVE_TYPE				124
-#define ABILITY_ACTIVE_TIME					125
-#define ABILITY_REQ_NO_ENSNARE				126
-#define ABILITY_SKY_LEVEL_REQ				127
-#define ABILITY_TOGGLE_EFFECT				128
-#define SPELL_HUMANOID_ONLY					129
-#define SPELL_INANIMATE_ONLY				130
-#define SPELL_ALLOW_COMMONS					131
-#define SPELL_ALLOW_SPECIALS				132
-#define SPELL_ALLOW_SURVIVORS				133
-#define ABILITY_COOLDOWN					134
-#define EFFECT_ACTIVATE_PER_TICK			135
-#define EFFECT_SECONDARY_EPT_ONLY			136
-#define ABILITY_ACTIVE_END_ABILITY_TRIGGER	137
-#define ABILITY_COOLDOWN_END_TRIGGER		138
-#define ABILITY_DOES_DAMAGE					139
-#define TALENT_IS_SPELL						140
-#define TALENT_MINIMUM_LEVEL_REQ			141
-#define ABILITY_TOGGLE_STRENGTH				142
-#define TARGET_AND_LAST_TARGET_CLASS_MATCH	143
-#define TARGET_RANGE_REQUIRED				144
-#define TARGET_RANGE_REQUIRED_OUTSIDE		145
-#define TARGET_MUST_BE_LAST_TARGET			146
-#define ACTIVATOR_MUST_BE_ON_FIRE			147
-#define ACTIVATOR_MUST_SUFFER_ACID_BURN		148
-#define ACTIVATOR_MUST_BE_EXPLODING			149
-#define ACTIVATOR_MUST_BE_SLOW				150
-#define ACTIVATOR_MUST_BE_FROZEN			151
-#define ACTIVATOR_MUST_BE_SCORCHED			152
-#define ACTIVATOR_MUST_BE_STEAMING			153
-#define ACTIVATOR_MUST_BE_DROWNING			154
-#define ACTIVATOR_MUST_HAVE_HIGH_GROUND		155
-#define TARGET_MUST_HAVE_HIGH_GROUND		156
-#define ACTIVATOR_TARGET_MUST_EVEN_GROUND	157
-#define TARGET_MUST_BE_IN_THE_AIR			158
-#define ABILITY_EVENT_TYPE					159
-#define LAST_KILL_MUST_BE_HEADSHOT			160
-#define MULT_STR_CONSECUTIVE_HITS			161
-#define MULT_STR_CONSECUTIVE_MAX			162
-#define MULT_STR_CONSECUTIVE_DIV			163
-#define CONTRIBUTION_TYPE_CATEGORY			164
-#define CONTRIBUTION_COST					165
-#define ITEM_NAME_TO_GIVE_PLAYER			166
-#define HIDE_TALENT_STRENGTH_DISPLAY		167
-#define ACTIVATOR_CALL_ABILITY_TRIGGER		168
-#define TALENT_WEAPON_SLOT_REQUIRED			169
-#define REQ_CONSECUTIVE_HEADSHOTS			170
-#define MULT_STR_CONSECUTIVE_HEADSHOTS		171
-#define MULT_STR_CONSECUTIVE_HEADSHOTS_MAX	172
-#define MULT_STR_CONSECUTIVE_HEADSHOTS_DIV	173
-#define IF_EOT_ACTIVE_ALLOW_ALL_WEAPONS		174
-#define IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS	175
-#define IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES		176
-#define ACTIVATOR_STATUS_EFFECT_REQUIRED	177
-#define HEALTH_PERCENTAGE_REQ_ACT_REMAINING 178
-#define HEALTH_PERCENTAGE_ACTIVATION_COST	179
-#define MULT_STR_NEARBY_DOWN_ALLIES			180
-#define MULT_STR_NEARBY_DOWN_ALLIES_RANGE	181
-#define TALENT_NO_AUGMENT_MODIFIERS			182
-#define TARGET_CALL_ABILITY_TRIGGER			183
+#define ABILITY_ACTIVE_EFFECT					91
+#define ABILITY_PASSIVE_EFFECT					92
+#define ABILITY_COOLDOWN_EFFECT					93
+#define ABILITY_IS_REACTIVE						94
+#define ABILITY_TEAMS_ALLOWED					95
+#define ABILITY_COOLDOWN_STRENGTH				96
+#define ABILITY_MAXIMUM_PASSIVE_MULTIPLIER		97
+#define ABILITY_MAXIMUM_ACTIVE_MULTIPLIER		98
+#define ABILITY_ACTIVE_STATE_ENSNARE_REQ		99
+#define ABILITY_ACTIVE_STRENGTH					100
+#define ABILITY_PASSIVE_IGNORES_COOLDOWN		101
+#define ABILITY_PASSIVE_STATE_ENSNARE_REQ		102
+#define ABILITY_PASSIVE_STRENGTH				103
+#define ABILITY_PASSIVE_ONLY					104
+#define ABILITY_IS_SINGLE_TARGET				105
+#define ABILITY_DRAW_DELAY						106
+#define ABILITY_ACTIVE_DRAW_DELAY				107
+#define ABILITY_PASSIVE_DRAW_DELAY				108
+#define ATTRIBUTE_MULTIPLIER					109
+#define ATTRIBUTE_USE_THESE_MULTIPLIERS			110
+#define ATTRIBUTE_BASE_MULTIPLIER				111
+#define ATTRIBUTE_DIMINISHING_MULTIPLIER		112
+#define ATTRIBUTE_DIMINISHING_RETURNS			113
+#define HUD_TEXT_BUFF_EFFECT_OVER_TIME			114
+#define IS_SUB_MENU_OF_TALENTCONFIG				115
+#define IS_TALENT_TYPE							116
+#define ITEM_ITEM_ID							117
+#define ITEM_RARITY								118
+#define OLD_ATTRIBUTE_EXPERIENCE_START			119
+#define OLD_ATTRIBUTE_EXPERIENCE_MULTIPLIER		120
+#define IS_AURA_INSTEAD							121
+#define EFFECT_COOLDOWN_TRIGGER					122
+#define EFFECT_INACTIVE_TRIGGER					123
+#define ABILITY_REACTIVE_TYPE					124
+#define ABILITY_ACTIVE_TIME						125
+#define ABILITY_REQ_NO_ENSNARE					126
+#define ABILITY_SKY_LEVEL_REQ					127
+#define ABILITY_TOGGLE_EFFECT					128
+#define SPELL_HUMANOID_ONLY						129
+#define SPELL_INANIMATE_ONLY					130
+#define SPELL_ALLOW_COMMONS						131
+#define SPELL_ALLOW_SPECIALS					132
+#define SPELL_ALLOW_SURVIVORS					133
+#define ABILITY_COOLDOWN						134
+#define EFFECT_ACTIVATE_PER_TICK				135
+#define EFFECT_SECONDARY_EPT_ONLY				136
+#define ABILITY_ACTIVE_END_ABILITY_TRIGGER		137
+#define ABILITY_COOLDOWN_END_TRIGGER			138
+#define ABILITY_DOES_DAMAGE						139
+#define TALENT_IS_SPELL							140
+#define TALENT_MINIMUM_LEVEL_REQ				141
+#define ABILITY_TOGGLE_STRENGTH					142
+#define TARGET_AND_LAST_TARGET_CLASS_MATCH		143
+#define TARGET_RANGE_REQUIRED					144
+#define TARGET_RANGE_REQUIRED_OUTSIDE			145
+#define TARGET_MUST_BE_LAST_TARGET				146
+#define ACTIVATOR_MUST_BE_ON_FIRE				147
+#define ACTIVATOR_MUST_SUFFER_ACID_BURN			148
+#define ACTIVATOR_MUST_BE_EXPLODING				149
+#define ACTIVATOR_MUST_BE_SLOW					150
+#define ACTIVATOR_MUST_BE_FROZEN				151
+#define ACTIVATOR_MUST_BE_SCORCHED				152
+#define ACTIVATOR_MUST_BE_STEAMING				153
+#define ACTIVATOR_MUST_BE_DROWNING				154
+#define ACTIVATOR_MUST_HAVE_HIGH_GROUND			155
+#define TARGET_MUST_HAVE_HIGH_GROUND			156
+#define ACTIVATOR_TARGET_MUST_EVEN_GROUND		157
+#define TARGET_MUST_BE_IN_THE_AIR				158
+#define ABILITY_EVENT_TYPE						159
+#define LAST_KILL_MUST_BE_HEADSHOT				160
+#define MULT_STR_CONSECUTIVE_HITS				161
+#define MULT_STR_CONSECUTIVE_MAX				162
+#define MULT_STR_CONSECUTIVE_DIV				163
+#define CONTRIBUTION_TYPE_CATEGORY				164
+#define CONTRIBUTION_COST						165
+#define ITEM_NAME_TO_GIVE_PLAYER				166
+#define HIDE_TALENT_STRENGTH_DISPLAY			167
+#define ACTIVATOR_CALL_ABILITY_TRIGGER			168
+#define TALENT_WEAPON_SLOT_REQUIRED				169
+#define REQ_CONSECUTIVE_HEADSHOTS				170
+#define MULT_STR_CONSECUTIVE_HEADSHOTS			171
+#define MULT_STR_CONSECUTIVE_HEADSHOTS_MAX		172
+#define MULT_STR_CONSECUTIVE_HEADSHOTS_DIV		173
+#define IF_EOT_ACTIVE_ALLOW_ALL_WEAPONS			174
+#define IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS		175
+#define IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES			176
+#define ACTIVATOR_STATUS_EFFECT_REQUIRED		177
+#define HEALTH_PERCENTAGE_REQ_ACT_REMAINING 	178
+#define HEALTH_PERCENTAGE_ACTIVATION_COST		179
+#define MULT_STR_NEARBY_DOWN_ALLIES				180
+#define MULT_STR_NEARBY_ENSNARED_ALLIES			181
+#define TALENT_NO_AUGMENT_MODIFIERS				182
+#define TARGET_CALL_ABILITY_TRIGGER				183
+#define COHERENCY_TALENT_NEARBY_REQUIRED		184
+#define UNHURT_BY_SPECIALINFECTED_OR_WITCH		185
+#define SKIP_TALENT_FOR_AUGMENT_ROLL			186
+#define REQUIRE_ALLY_WITH_ADRENALINE			187
+#define REQUIRE_ALLY_BELOW_HEALTH_PERCENTAGE	188
+#define REQUIRE_ENSNARED_ALLY					189
+#define REQUIRE_TARGET_HAS_ENSNARED_ALLY		190
+#define REQUIRE_ENEMY_IN_COHERENCY_RANGE		191
+#define ENEMY_IN_COHERENCY_IS_TARGET			192
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION	184
-#define SUPER_COMMON_MAX_ALLOWED			0
-#define SUPER_COMMON_AURA_EFFECT			1
-#define SUPER_COMMON_RANGE_MIN				2
-#define SUPER_COMMON_RANGE_PLAYER_LEVEL		3
-#define SUPER_COMMON_RANGE_MAX				4
-#define SUPER_COMMON_COOLDOWN				5
-#define SUPER_COMMON_AURA_STRENGTH			6
-#define SUPER_COMMON_STRENGTH_TARGET		7
-#define SUPER_COMMON_LEVEL_STRENGTH			8
-#define SUPER_COMMON_SPAWN_CHANCE			9
-#define SUPER_COMMON_DRAW_TYPE				10
-#define SUPER_COMMON_FIRE_IMMUNITY			11
-#define SUPER_COMMON_MODEL_SIZE				12
-#define SUPER_COMMON_GLOW					13
-#define SUPER_COMMON_GLOW_RANGE				14
-#define SUPER_COMMON_GLOW_COLOUR			15
-#define SUPER_COMMON_BASE_HEALTH			16
-#define SUPER_COMMON_HEALTH_PER_LEVEL		17
-#define SUPER_COMMON_NAME					18
-#define SUPER_COMMON_CHAIN_REACTION			19
-#define SUPER_COMMON_DEATH_EFFECT			20
-#define SUPER_COMMON_DEATH_BASE_TIME		21
-#define SUPER_COMMON_DEATH_MAX_TIME			22
-#define SUPER_COMMON_DEATH_INTERVAL			23
-#define SUPER_COMMON_DEATH_MULTIPLIER		24
-#define SUPER_COMMON_LEVEL_REQ				25
-#define SUPER_COMMON_FORCE_MODEL			26
-#define SUPER_COMMON_DAMAGE_EFFECT			27
-#define SUPER_COMMON_ENEMY_MULTIPLICATION	28
-#define SUPER_COMMON_ONFIRE_BASE_TIME		29
-#define SUPER_COMMON_ONFIRE_LEVEL			30
-#define SUPER_COMMON_ONFIRE_MAX_TIME		31
-#define SUPER_COMMON_ONFIRE_INTERVAL		32
-#define SUPER_COMMON_STRENGTH_SPECIAL		33
-#define SUPER_COMMON_RAW_STRENGTH			34
-#define SUPER_COMMON_RAW_COMMON_STRENGTH	35
-#define SUPER_COMMON_RAW_PLAYER_STRENGTH	36
-#define SUPER_COMMON_REQ_BILED_SURVIVORS	37
-#define SUPER_COMMON_FIRST_RANDOM_KEY_POS	38
+#define TALENT_FIRST_RANDOM_KEY_POSITION		193
+#define SUPER_COMMON_MAX_ALLOWED				0
+#define SUPER_COMMON_AURA_EFFECT				1
+#define SUPER_COMMON_RANGE_MIN					2
+#define SUPER_COMMON_RANGE_PLAYER_LEVEL			3
+#define SUPER_COMMON_RANGE_MAX					4
+#define SUPER_COMMON_COOLDOWN					5
+#define SUPER_COMMON_AURA_STRENGTH				6
+#define SUPER_COMMON_STRENGTH_TARGET			7
+#define SUPER_COMMON_LEVEL_STRENGTH				8
+#define SUPER_COMMON_SPAWN_CHANCE				9
+#define SUPER_COMMON_DRAW_TYPE					10
+#define SUPER_COMMON_FIRE_IMMUNITY				11
+#define SUPER_COMMON_MODEL_SIZE					12
+#define SUPER_COMMON_GLOW						13
+#define SUPER_COMMON_GLOW_RANGE					14
+#define SUPER_COMMON_GLOW_COLOUR				15
+#define SUPER_COMMON_BASE_HEALTH				16
+#define SUPER_COMMON_HEALTH_PER_LEVEL			17
+#define SUPER_COMMON_NAME						18
+#define SUPER_COMMON_CHAIN_REACTION				19
+#define SUPER_COMMON_DEATH_EFFECT				20
+#define SUPER_COMMON_DEATH_BASE_TIME			21
+#define SUPER_COMMON_DEATH_MAX_TIME				22
+#define SUPER_COMMON_DEATH_INTERVAL				23
+#define SUPER_COMMON_DEATH_MULTIPLIER			24
+#define SUPER_COMMON_LEVEL_REQ					25
+#define SUPER_COMMON_FORCE_MODEL				26
+#define SUPER_COMMON_DAMAGE_EFFECT				27
+#define SUPER_COMMON_ENEMY_MULTIPLICATION		28
+#define SUPER_COMMON_ONFIRE_BASE_TIME			29
+#define SUPER_COMMON_ONFIRE_LEVEL				30
+#define SUPER_COMMON_ONFIRE_MAX_TIME			31
+#define SUPER_COMMON_ONFIRE_INTERVAL			32
+#define SUPER_COMMON_STRENGTH_SPECIAL			33
+#define SUPER_COMMON_RAW_STRENGTH				34
+#define SUPER_COMMON_RAW_COMMON_STRENGTH		35
+#define SUPER_COMMON_RAW_PLAYER_STRENGTH		36
+#define SUPER_COMMON_REQ_BILED_SURVIVORS		37
+#define SUPER_COMMON_FIRST_RANDOM_KEY_POS		38
 
 // for the events.cfg
-#define EVENT_PERPETRATOR					0
-#define EVENT_VICTIM						1
-#define EVENT_SAMETEAM_TRIGGER				2
-#define EVENT_PERPETRATOR_TEAM_REQ			3
-#define EVENT_PERPETRATOR_ABILITY_TRIGGER	4
-#define EVENT_VICTIM_TEAM_REQ				5
-#define EVENT_VICTIM_ABILITY_TRIGGER		6
-#define EVENT_DAMAGE_TYPE					7
-#define EVENT_GET_HEALTH					8
-#define EVENT_DAMAGE_AWARD					9
-#define EVENT_GET_ABILITIES					10
-#define EVENT_IS_PLAYER_NOW_IT				11
-#define EVENT_IS_ORIGIN						12
-#define EVENT_IS_DISTANCE					13
-#define EVENT_MULTIPLIER_POINTS				14
-#define EVENT_MULTIPLIER_EXPERIENCE			15
-#define EVENT_IS_SHOVED						16
-#define EVENT_IS_BULLET_IMPACT				17
-#define EVENT_ENTERED_SAFEROOM				18
+#define EVENT_PERPETRATOR						0
+#define EVENT_VICTIM							1
+#define EVENT_SAMETEAM_TRIGGER					2
+#define EVENT_PERPETRATOR_TEAM_REQ				3
+#define EVENT_PERPETRATOR_ABILITY_TRIGGER		4
+#define EVENT_VICTIM_TEAM_REQ					5
+#define EVENT_VICTIM_ABILITY_TRIGGER			6
+#define EVENT_DAMAGE_TYPE						7
+#define EVENT_GET_HEALTH						8
+#define EVENT_DAMAGE_AWARD						9
+#define EVENT_GET_ABILITIES						10
+#define EVENT_IS_PLAYER_NOW_IT					11
+#define EVENT_IS_ORIGIN							12
+#define EVENT_IS_DISTANCE						13
+#define EVENT_MULTIPLIER_POINTS					14
+#define EVENT_MULTIPLIER_EXPERIENCE				15
+#define EVENT_IS_SHOVED							16
+#define EVENT_IS_BULLET_IMPACT					17
+#define EVENT_ENTERED_SAFEROOM					18
 
 // for handicap.cfg
-#define HANDICAP_TRANSLATION				0
-#define HANDICAP_DAMAGE						1
-#define HANDICAP_HEALTH						2
-#define HANDICAP_LOOTFIND					3
-#define HANDICAP_SCORE_REQUIRED				4
-#define HANDICAP_SCORE_MULTIPLIER			5
+#define HANDICAP_TRANSLATION					0
+#define HANDICAP_DAMAGE							1
+#define HANDICAP_HEALTH							2
+#define HANDICAP_LOOTFIND						3
+#define HANDICAP_SCORE_REQUIRED					4
+#define HANDICAP_SCORE_MULTIPLIER				5
 
 // for easier tracking of hitgroups and insurance against inverting values while coding
 #define HITGROUP_LIMB		2
 #define HITGROUP_HEAD		1
 #define HITGROUP_OTHER		0
 
+Handle GetStrengthFloat[MAXPLAYERS + 1];
+Handle TalentPositionsWithEffectName[MAXPLAYERS + 1];
+Handle PlayerBuffVals[MAXPLAYERS + 1];
 Handle AbilityTriggerValues[MAXPLAYERS + 1];
 float fNoHandicapScoreMultiplier;
 bool b_isWaiting[MAXPLAYERS + 1];
@@ -1723,19 +1748,19 @@ public int ReadyUp_TrueDisconnect(int client) {
 stock CreateAllArrays() {
 	if (b_FirstLoad) return;
 	LogMessage("=====\t\tRunning first-time load of RPG.\t\t=====");
-	if (holdingFireList == INVALID_HANDLE) holdingFireList = CreateArray(32);
-	if (zoomCheckList == INVALID_HANDLE) zoomCheckList = CreateArray(32);
-	if (hThreatSort == INVALID_HANDLE) hThreatSort = CreateArray(32);
-	if (hThreatMeter == INVALID_HANDLE) hThreatMeter = CreateArray(32);
-	if (LoggedUsers == INVALID_HANDLE) LoggedUsers = CreateArray(32);
-	if (SuperCommonQueue == INVALID_HANDLE) SuperCommonQueue = CreateArray(32);
-	if (CommonInfectedQueue == INVALID_HANDLE) CommonInfectedQueue = CreateArray(32);
-	if (CoveredInVomit == INVALID_HANDLE) CoveredInVomit = CreateArray(32);
-	if (NewUsersRound == INVALID_HANDLE) NewUsersRound = CreateArray(32);
-	if (SpecialAmmoData == INVALID_HANDLE) SpecialAmmoData = CreateArray(32);
-	if (SpecialAmmoSave == INVALID_HANDLE) SpecialAmmoSave = CreateArray(32);
-	if (MainKeys == INVALID_HANDLE) MainKeys = CreateArray(32);
-	if (MainValues == INVALID_HANDLE) MainValues = CreateArray(32);
+	if (holdingFireList == INVALID_HANDLE) holdingFireList = CreateArray(16);
+	if (zoomCheckList == INVALID_HANDLE) zoomCheckList = CreateArray(16);
+	if (hThreatSort == INVALID_HANDLE) hThreatSort = CreateArray(16);
+	if (hThreatMeter == INVALID_HANDLE) hThreatMeter = CreateArray(16);
+	if (LoggedUsers == INVALID_HANDLE) LoggedUsers = CreateArray(16);
+	if (SuperCommonQueue == INVALID_HANDLE) SuperCommonQueue = CreateArray(16);
+	if (CommonInfectedQueue == INVALID_HANDLE) CommonInfectedQueue = CreateArray(16);
+	if (CoveredInVomit == INVALID_HANDLE) CoveredInVomit = CreateArray(16);
+	if (NewUsersRound == INVALID_HANDLE) NewUsersRound = CreateArray(16);
+	if (SpecialAmmoData == INVALID_HANDLE) SpecialAmmoData = CreateArray(16);
+	if (SpecialAmmoSave == INVALID_HANDLE) SpecialAmmoSave = CreateArray(16);
+	if (MainKeys == INVALID_HANDLE) MainKeys = CreateArray(16);
+	if (MainValues == INVALID_HANDLE) MainValues = CreateArray(16);
 	if (a_Menu_Talents == INVALID_HANDLE) a_Menu_Talents = CreateArray(4);
 	if (a_Menu_Main == INVALID_HANDLE) a_Menu_Main = CreateArray(3);
 	if (a_Events == INVALID_HANDLE) a_Events = CreateArray(3);
@@ -1743,74 +1768,74 @@ stock CreateAllArrays() {
 	if (a_Pets == INVALID_HANDLE) a_Pets = CreateArray(3);
 	if (a_Store == INVALID_HANDLE) a_Store = CreateArray(3);
 	if (a_Trails == INVALID_HANDLE) a_Trails = CreateArray(3);
-	if (a_Database_Talents == INVALID_HANDLE) a_Database_Talents = CreateArray(32);
-	if (a_Database_Talents_Defaults == INVALID_HANDLE) a_Database_Talents_Defaults 	= CreateArray(32);
-	if (a_Database_Talents_Defaults_Name == INVALID_HANDLE) a_Database_Talents_Defaults_Name				= CreateArray(32);
-	if (EventSection == INVALID_HANDLE) EventSection									= CreateArray(32);
-	if (HookSection == INVALID_HANDLE) HookSection										= CreateArray(32);
-	if (CallKeys == INVALID_HANDLE) CallKeys										= CreateArray(32);
-	if (CallValues == INVALID_HANDLE) CallValues										= CreateArray(32);
-	if (DirectorKeys == INVALID_HANDLE) DirectorKeys									= CreateArray(32);
-	if (DirectorValues == INVALID_HANDLE) DirectorValues									= CreateArray(32);
-	if (DatabaseKeys == INVALID_HANDLE) DatabaseKeys									= CreateArray(32);
-	if (DatabaseValues == INVALID_HANDLE) DatabaseValues									= CreateArray(32);
-	if (DatabaseSection == INVALID_HANDLE) DatabaseSection									= CreateArray(32);
-	if (a_Database_PlayerTalents_Bots == INVALID_HANDLE) a_Database_PlayerTalents_Bots					= CreateArray(32);
-	if (PlayerAbilitiesCooldown_Bots == INVALID_HANDLE) PlayerAbilitiesCooldown_Bots					= CreateArray(32);
-	if (PlayerAbilitiesImmune_Bots == INVALID_HANDLE) PlayerAbilitiesImmune_Bots						= CreateArray(32);
-	if (BotSaveKeys == INVALID_HANDLE) BotSaveKeys										= CreateArray(32);
-	if (BotSaveValues == INVALID_HANDLE) BotSaveValues									= CreateArray(32);
-	if (BotSaveSection == INVALID_HANDLE) BotSaveSection									= CreateArray(32);
-	if (LoadDirectorSection == INVALID_HANDLE) LoadDirectorSection								= CreateArray(32);
-	if (QueryDirectorKeys == INVALID_HANDLE) QueryDirectorKeys								= CreateArray(32);
-	if (QueryDirectorValues == INVALID_HANDLE) QueryDirectorValues								= CreateArray(32);
-	if (QueryDirectorSection == INVALID_HANDLE) QueryDirectorSection							= CreateArray(32);
-	if (FirstDirectorKeys == INVALID_HANDLE) FirstDirectorKeys								= CreateArray(32);
-	if (FirstDirectorValues == INVALID_HANDLE) FirstDirectorValues								= CreateArray(32);
-	if (FirstDirectorSection == INVALID_HANDLE) FirstDirectorSection							= CreateArray(32);
-	if (PlayerAbilitiesName == INVALID_HANDLE) PlayerAbilitiesName								= CreateArray(32);
+	if (a_Database_Talents == INVALID_HANDLE) a_Database_Talents = CreateArray(16);
+	if (a_Database_Talents_Defaults == INVALID_HANDLE) a_Database_Talents_Defaults 	= CreateArray(16);
+	if (a_Database_Talents_Defaults_Name == INVALID_HANDLE) a_Database_Talents_Defaults_Name				= CreateArray(16);
+	if (EventSection == INVALID_HANDLE) EventSection									= CreateArray(16);
+	if (HookSection == INVALID_HANDLE) HookSection										= CreateArray(16);
+	if (CallKeys == INVALID_HANDLE) CallKeys										= CreateArray(16);
+	if (CallValues == INVALID_HANDLE) CallValues										= CreateArray(16);
+	if (DirectorKeys == INVALID_HANDLE) DirectorKeys									= CreateArray(16);
+	if (DirectorValues == INVALID_HANDLE) DirectorValues									= CreateArray(16);
+	if (DatabaseKeys == INVALID_HANDLE) DatabaseKeys									= CreateArray(16);
+	if (DatabaseValues == INVALID_HANDLE) DatabaseValues									= CreateArray(16);
+	if (DatabaseSection == INVALID_HANDLE) DatabaseSection									= CreateArray(16);
+	if (a_Database_PlayerTalents_Bots == INVALID_HANDLE) a_Database_PlayerTalents_Bots					= CreateArray(16);
+	if (PlayerAbilitiesCooldown_Bots == INVALID_HANDLE) PlayerAbilitiesCooldown_Bots					= CreateArray(16);
+	if (PlayerAbilitiesImmune_Bots == INVALID_HANDLE) PlayerAbilitiesImmune_Bots						= CreateArray(16);
+	if (BotSaveKeys == INVALID_HANDLE) BotSaveKeys										= CreateArray(16);
+	if (BotSaveValues == INVALID_HANDLE) BotSaveValues									= CreateArray(16);
+	if (BotSaveSection == INVALID_HANDLE) BotSaveSection									= CreateArray(16);
+	if (LoadDirectorSection == INVALID_HANDLE) LoadDirectorSection								= CreateArray(16);
+	if (QueryDirectorKeys == INVALID_HANDLE) QueryDirectorKeys								= CreateArray(16);
+	if (QueryDirectorValues == INVALID_HANDLE) QueryDirectorValues								= CreateArray(16);
+	if (QueryDirectorSection == INVALID_HANDLE) QueryDirectorSection							= CreateArray(16);
+	if (FirstDirectorKeys == INVALID_HANDLE) FirstDirectorKeys								= CreateArray(16);
+	if (FirstDirectorValues == INVALID_HANDLE) FirstDirectorValues								= CreateArray(16);
+	if (FirstDirectorSection == INVALID_HANDLE) FirstDirectorSection							= CreateArray(16);
+	if (PlayerAbilitiesName == INVALID_HANDLE) PlayerAbilitiesName								= CreateArray(16);
 	if (a_DirectorActions == INVALID_HANDLE) a_DirectorActions								= CreateArray(3);
-	if (a_DirectorActions_Cooldown == INVALID_HANDLE) a_DirectorActions_Cooldown						= CreateArray(32);
-	if (LockedTalentKeys == INVALID_HANDLE) LockedTalentKeys							= CreateArray(32);
-	if (LockedTalentValues == INVALID_HANDLE) LockedTalentValues						= CreateArray(32);
-	if (LockedTalentSection == INVALID_HANDLE) LockedTalentSection						= CreateArray(32);
-	if (Give_Store_Keys == INVALID_HANDLE) Give_Store_Keys							= CreateArray(32);
-	if (Give_Store_Values == INVALID_HANDLE) Give_Store_Values							= CreateArray(32);
-	if (Give_Store_Section == INVALID_HANDLE) Give_Store_Section							= CreateArray(32);
-	if (a_WeaponDamages == INVALID_HANDLE) a_WeaponDamages = CreateArray(32);
-	if (a_CommonAffixes == INVALID_HANDLE) a_CommonAffixes = CreateArray(32);
-	if (a_HandicapLevels == INVALID_HANDLE) a_HandicapLevels = CreateArray(32);
-	if (CommonList == INVALID_HANDLE) CommonList = CreateArray(32);
-	if (WitchList == INVALID_HANDLE) WitchList				= CreateArray(32);
-	if (CommonAffixes == INVALID_HANDLE) CommonAffixes	= CreateArray(32);
-	if (h_CAKeys == INVALID_HANDLE) h_CAKeys = CreateArray(32);
-	if (h_CAValues == INVALID_HANDLE) h_CAValues = CreateArray(32);
-	if (SearchKey_Section == INVALID_HANDLE) SearchKey_Section = CreateArray(32);
-	if (CCASection == INVALID_HANDLE) CCASection = CreateArray(32);
-	if (CCAKeys == INVALID_HANDLE) CCAKeys = CreateArray(32);
-	if (CCAValues == INVALID_HANDLE) CCAValues = CreateArray(32);
-	if (h_CommonKeys == INVALID_HANDLE) h_CommonKeys = CreateArray(32);
-	if (h_CommonValues == INVALID_HANDLE) h_CommonValues = CreateArray(32);
-	//if (CommonInfected == INVALID_HANDLE) CommonInfected = CreateArray(32);
-	if (EntityOnFire == INVALID_HANDLE) EntityOnFire = CreateArray(32);
-	if (EntityOnFireName == INVALID_HANDLE) EntityOnFireName = CreateArray(32);
-	if (CommonDrawKeys == INVALID_HANDLE) CommonDrawKeys = CreateArray(32);
-	if (CommonDrawValues == INVALID_HANDLE) CommonDrawValues = CreateArray(32);
-	if (ItemDropArray == INVALID_HANDLE) ItemDropArray = CreateArray(32);
-	if (PreloadKeys == INVALID_HANDLE) PreloadKeys = CreateArray(32);
-	if (PreloadValues == INVALID_HANDLE) PreloadValues = CreateArray(32);
-	if (ItemDropKeys == INVALID_HANDLE) ItemDropKeys = CreateArray(32);
-	if (ItemDropValues == INVALID_HANDLE) ItemDropValues = CreateArray(32);
-	if (ItemDropSection == INVALID_HANDLE) ItemDropSection = CreateArray(32);
-	if (persistentCirculation == INVALID_HANDLE) persistentCirculation = CreateArray(32);
-	if (RandomSurvivorClient == INVALID_HANDLE) RandomSurvivorClient = CreateArray(32);
+	if (a_DirectorActions_Cooldown == INVALID_HANDLE) a_DirectorActions_Cooldown						= CreateArray(16);
+	if (LockedTalentKeys == INVALID_HANDLE) LockedTalentKeys							= CreateArray(16);
+	if (LockedTalentValues == INVALID_HANDLE) LockedTalentValues						= CreateArray(16);
+	if (LockedTalentSection == INVALID_HANDLE) LockedTalentSection						= CreateArray(16);
+	if (Give_Store_Keys == INVALID_HANDLE) Give_Store_Keys							= CreateArray(16);
+	if (Give_Store_Values == INVALID_HANDLE) Give_Store_Values							= CreateArray(16);
+	if (Give_Store_Section == INVALID_HANDLE) Give_Store_Section							= CreateArray(16);
+	if (a_WeaponDamages == INVALID_HANDLE) a_WeaponDamages = CreateArray(16);
+	if (a_CommonAffixes == INVALID_HANDLE) a_CommonAffixes = CreateArray(16);
+	if (a_HandicapLevels == INVALID_HANDLE) a_HandicapLevels = CreateArray(16);
+	if (CommonList == INVALID_HANDLE) CommonList = CreateArray(16);
+	if (WitchList == INVALID_HANDLE) WitchList				= CreateArray(16);
+	if (CommonAffixes == INVALID_HANDLE) CommonAffixes	= CreateArray(16);
+	if (h_CAKeys == INVALID_HANDLE) h_CAKeys = CreateArray(16);
+	if (h_CAValues == INVALID_HANDLE) h_CAValues = CreateArray(16);
+	if (SearchKey_Section == INVALID_HANDLE) SearchKey_Section = CreateArray(16);
+	if (CCASection == INVALID_HANDLE) CCASection = CreateArray(16);
+	if (CCAKeys == INVALID_HANDLE) CCAKeys = CreateArray(16);
+	if (CCAValues == INVALID_HANDLE) CCAValues = CreateArray(16);
+	if (h_CommonKeys == INVALID_HANDLE) h_CommonKeys = CreateArray(16);
+	if (h_CommonValues == INVALID_HANDLE) h_CommonValues = CreateArray(16);
+	//if (CommonInfected == INVALID_HANDLE) CommonInfected = CreateArray(16);
+	if (EntityOnFire == INVALID_HANDLE) EntityOnFire = CreateArray(16);
+	if (EntityOnFireName == INVALID_HANDLE) EntityOnFireName = CreateArray(16);
+	if (CommonDrawKeys == INVALID_HANDLE) CommonDrawKeys = CreateArray(16);
+	if (CommonDrawValues == INVALID_HANDLE) CommonDrawValues = CreateArray(16);
+	if (ItemDropArray == INVALID_HANDLE) ItemDropArray = CreateArray(16);
+	if (PreloadKeys == INVALID_HANDLE) PreloadKeys = CreateArray(16);
+	if (PreloadValues == INVALID_HANDLE) PreloadValues = CreateArray(16);
+	if (ItemDropKeys == INVALID_HANDLE) ItemDropKeys = CreateArray(16);
+	if (ItemDropValues == INVALID_HANDLE) ItemDropValues = CreateArray(16);
+	if (ItemDropSection == INVALID_HANDLE) ItemDropSection = CreateArray(16);
+	if (persistentCirculation == INVALID_HANDLE) persistentCirculation = CreateArray(16);
+	if (RandomSurvivorClient == INVALID_HANDLE) RandomSurvivorClient = CreateArray(16);
 	if (RoundStatistics == INVALID_HANDLE) RoundStatistics = CreateArray(16);
-	if (EffectOverTime == INVALID_HANDLE) EffectOverTime = CreateArray(32);
-	if (TimeOfEffectOverTime == INVALID_HANDLE) TimeOfEffectOverTime = CreateArray(32);
-	if (StaggeredTargets == INVALID_HANDLE) StaggeredTargets = CreateArray(32);
-	if (SetNodesKeys == INVALID_HANDLE) SetNodesKeys = CreateArray(32);
-	if (SetNodesValues == INVALID_HANDLE) SetNodesValues = CreateArray(32);
-	if (playerCustomEntitiesCreated == INVALID_HANDLE) playerCustomEntitiesCreated = CreateArray(32);
+	if (EffectOverTime == INVALID_HANDLE) EffectOverTime = CreateArray(16);
+	if (TimeOfEffectOverTime == INVALID_HANDLE) TimeOfEffectOverTime = CreateArray(16);
+	if (StaggeredTargets == INVALID_HANDLE) StaggeredTargets = CreateArray(16);
+	if (SetNodesKeys == INVALID_HANDLE) SetNodesKeys = CreateArray(16);
+	if (SetNodesValues == INVALID_HANDLE) SetNodesValues = CreateArray(16);
+	if (playerCustomEntitiesCreated == INVALID_HANDLE) playerCustomEntitiesCreated = CreateArray(16);
 	for (int i = 1; i <= MAXPLAYERS; i++) {
 		itemToDisassemble[i] = -1;
 		augmentParts[i] = 0;
@@ -1822,223 +1847,226 @@ stock CreateAllArrays() {
 		if (CommonInfected[i] == INVALID_HANDLE) CommonInfected[i] = CreateArray(8);
 		if (possibleLootPool[i] == INVALID_HANDLE) possibleLootPool[i] = CreateArray(32);
 		if (currentEquippedWeapon[i] == INVALID_HANDLE) currentEquippedWeapon[i] = CreateTrie();
-		if (GetCategoryStrengthKeys[i] == INVALID_HANDLE) GetCategoryStrengthKeys[i] = CreateArray(32);
-		if (GetCategoryStrengthValues[i] == INVALID_HANDLE) GetCategoryStrengthValues[i] = CreateArray(32);
-		if (GetCategoryStrengthSection[i] == INVALID_HANDLE) GetCategoryStrengthSection[i] = CreateArray(32);
-		//if (GCMKeys[i] == INVALID_HANDLE) GCMKeys[i] = CreateArray(32);
-		//if (GCMValues[i] == INVALID_HANDLE) GCMValues[i] = CreateArray(32);
-		if (PassiveStrengthKeys[i] == INVALID_HANDLE) PassiveStrengthKeys[i] = CreateArray(32);
-		if (PassiveStrengthValues[i] == INVALID_HANDLE) PassiveStrengthValues[i] = CreateArray(32);
-		if (PassiveTalentName[i] == INVALID_HANDLE) PassiveTalentName[i] = CreateArray(32);
-		if (UpgradeCategoryKeys[i] == INVALID_HANDLE) UpgradeCategoryKeys[i] = CreateArray(32);
-		if (UpgradeCategoryValues[i] == INVALID_HANDLE) UpgradeCategoryValues[i] = CreateArray(32);
-		if (UpgradeCategoryName[i] == INVALID_HANDLE) UpgradeCategoryName[i] = CreateArray(32);
-		if (TranslationOTNKeys[i] == INVALID_HANDLE) TranslationOTNKeys[i] = CreateArray(32);
-		if (TranslationOTNValues[i] == INVALID_HANDLE) TranslationOTNValues[i] = CreateArray(32);
-		if (TranslationOTNSection[i] == INVALID_HANDLE) TranslationOTNSection[i] = CreateArray(32);
-		if (GCVKeys[i] == INVALID_HANDLE) GCVKeys[i] = CreateArray(32);
-		if (GCVValues[i] == INVALID_HANDLE) GCVValues[i] = CreateArray(32);
-		if (GCVSection[i] == INVALID_HANDLE) GCVSection[i] = CreateArray(32);
-		if (hWeaponList[i] == INVALID_HANDLE) hWeaponList[i] = CreateArray(32);
-		if (LoadoutConfigKeys[i] == INVALID_HANDLE) LoadoutConfigKeys[i] = CreateArray(32);
-		if (LoadoutConfigValues[i] == INVALID_HANDLE) LoadoutConfigValues[i] = CreateArray(32);
-		if (LoadoutConfigSection[i] == INVALID_HANDLE) LoadoutConfigSection[i] = CreateArray(32);
-		if (ActiveStatuses[i] == INVALID_HANDLE) ActiveStatuses[i] = CreateArray(32);
-		if (AbilityConfigKeys[i] == INVALID_HANDLE) AbilityConfigKeys[i] = CreateArray(32);
-		if (AbilityConfigValues[i] == INVALID_HANDLE) AbilityConfigValues[i] = CreateArray(32);
-		if (AbilityConfigSection[i] == INVALID_HANDLE) AbilityConfigSection[i] = CreateArray(32);
-		if (GetAbilityKeys[i] == INVALID_HANDLE) GetAbilityKeys[i] = CreateArray(32);
-		if (GetAbilityValues[i] == INVALID_HANDLE) GetAbilityValues[i] = CreateArray(32);
-		if (GetAbilitySection[i] == INVALID_HANDLE) GetAbilitySection[i] = CreateArray(32);
-		if (IsAbilityKeys[i] == INVALID_HANDLE) IsAbilityKeys[i] = CreateArray(32);
-		if (IsAbilityValues[i] == INVALID_HANDLE) IsAbilityValues[i] = CreateArray(32);
-		if (IsAbilitySection[i] == INVALID_HANDLE) IsAbilitySection[i] = CreateArray(32);
-		if (CheckAbilityKeys[i] == INVALID_HANDLE) CheckAbilityKeys[i] = CreateArray(32);
-		if (CheckAbilityValues[i] == INVALID_HANDLE) CheckAbilityValues[i] = CreateArray(32);
-		if (CheckAbilitySection[i] == INVALID_HANDLE) CheckAbilitySection[i] = CreateArray(32);
-		if (GetTalentStrengthKeys[i] == INVALID_HANDLE) GetTalentStrengthKeys[i] = CreateArray(32);
-		if (GetTalentStrengthValues[i] == INVALID_HANDLE) GetTalentStrengthValues[i] = CreateArray(32);
-		if (CastKeys[i] == INVALID_HANDLE) CastKeys[i] = CreateArray(32);
-		if (CastValues[i] == INVALID_HANDLE) CastValues[i] = CreateArray(32);
-		if (CastSection[i] == INVALID_HANDLE) CastSection[i] = CreateArray(32);
-		if (ActionBar[i] == INVALID_HANDLE) ActionBar[i] = CreateArray(32);
-		if (ActionBarMenuPos[i] == INVALID_HANDLE) ActionBarMenuPos[i] = CreateArray(32);
-		if (TalentsAssignedKeys[i] == INVALID_HANDLE) TalentsAssignedKeys[i] = CreateArray(32);
-		if (TalentsAssignedValues[i] == INVALID_HANDLE) TalentsAssignedValues[i] = CreateArray(32);
-		if (CartelValueKeys[i] == INVALID_HANDLE) CartelValueKeys[i] = CreateArray(32);
-		if (CartelValueValues[i] == INVALID_HANDLE) CartelValueValues[i] = CreateArray(32);
-		if (LegitClassSection[i] == INVALID_HANDLE) LegitClassSection[i] = CreateArray(32);
-		if (TalentActionKeys[i] == INVALID_HANDLE) TalentActionKeys[i] = CreateArray(32);
-		if (TalentActionValues[i] == INVALID_HANDLE) TalentActionValues[i] = CreateArray(32);
-		if (TalentActionSection[i] == INVALID_HANDLE) TalentActionSection[i] = CreateArray(32);
-		if (TalentExperienceKeys[i] == INVALID_HANDLE) TalentExperienceKeys[i] = CreateArray(32);
-		if (TalentExperienceValues[i] == INVALID_HANDLE) TalentExperienceValues[i] = CreateArray(32);
-		if (TalentTreeKeys[i] == INVALID_HANDLE) TalentTreeKeys[i] = CreateArray(32);
-		if (TalentTreeValues[i] == INVALID_HANDLE) TalentTreeValues[i] = CreateArray(32);
-		if (TheLeaderboards[i] == INVALID_HANDLE) TheLeaderboards[i] = CreateArray(32);
-		if (TheLeaderboardsData[i] == INVALID_HANDLE) TheLeaderboardsData[i] = CreateArray(32);
-		if (TankState_Array[i] == INVALID_HANDLE) TankState_Array[i] = CreateArray(32);
-		if (PlayerInventory[i] == INVALID_HANDLE) PlayerInventory[i] = CreateArray(32);
-		if (PlayerEquipped[i] == INVALID_HANDLE) PlayerEquipped[i] = CreateArray(32);
-		if (MenuStructure[i] == INVALID_HANDLE) MenuStructure[i] = CreateArray(32);
-		if (TempAttributes[i] == INVALID_HANDLE) TempAttributes[i] = CreateArray(32);
-		if (TempTalents[i] == INVALID_HANDLE) TempTalents[i] = CreateArray(32);
-		if (PlayerProfiles[i] == INVALID_HANDLE) PlayerProfiles[i] = CreateArray(32);
-		if (SpecialAmmoEffectKeys[i] == INVALID_HANDLE) SpecialAmmoEffectKeys[i] = CreateArray(32);
-		if (SpecialAmmoEffectValues[i] == INVALID_HANDLE) SpecialAmmoEffectValues[i] = CreateArray(32);
-		if (ActiveAmmoCooldownKeys[i] == INVALID_HANDLE) ActiveAmmoCooldownKeys[i] = CreateArray(32);
-		if (ActiveAmmoCooldownValues[i] == INVALID_HANDLE) ActiveAmmoCooldownValues[i] = CreateArray(32);
-		if (PlayActiveAbilities[i] == INVALID_HANDLE) PlayActiveAbilities[i] = CreateArray(32);
-		if (PlayerActiveAmmo[i] == INVALID_HANDLE) PlayerActiveAmmo[i] = CreateArray(32);
-		if (SpecialAmmoKeys[i] == INVALID_HANDLE) SpecialAmmoKeys[i] = CreateArray(32);
-		if (SpecialAmmoValues[i] == INVALID_HANDLE) SpecialAmmoValues[i] = CreateArray(32);
-		if (SpecialAmmoSection[i] == INVALID_HANDLE) SpecialAmmoSection[i] = CreateArray(32);
-		if (DrawSpecialAmmoKeys[i] == INVALID_HANDLE) DrawSpecialAmmoKeys[i] = CreateArray(32);
-		if (DrawSpecialAmmoValues[i] == INVALID_HANDLE) DrawSpecialAmmoValues[i] = CreateArray(32);
-		if (SpecialAmmoStrengthKeys[i] == INVALID_HANDLE) SpecialAmmoStrengthKeys[i] = CreateArray(32);
-		if (SpecialAmmoStrengthValues[i] == INVALID_HANDLE) SpecialAmmoStrengthValues[i] = CreateArray(32);
-		if (WeaponLevel[i] == INVALID_HANDLE) WeaponLevel[i] = CreateArray(32);
-		if (ExperienceBank[i] == INVALID_HANDLE) ExperienceBank[i] = CreateArray(32);
-		if (MenuPosition[i] == INVALID_HANDLE) MenuPosition[i] = CreateArray(32);
-		if (IsClientInRangeSAKeys[i] == INVALID_HANDLE) IsClientInRangeSAKeys[i] = CreateArray(32);
-		if (IsClientInRangeSAValues[i] == INVALID_HANDLE) IsClientInRangeSAValues[i] = CreateArray(32);
-		if (InfectedAuraKeys[i] == INVALID_HANDLE) InfectedAuraKeys[i] = CreateArray(32);
-		if (InfectedAuraValues[i] == INVALID_HANDLE) InfectedAuraValues[i] = CreateArray(32);
-		if (InfectedAuraSection[i] == INVALID_HANDLE) InfectedAuraSection[i] = CreateArray(32);
-		if (TalentUpgradeKeys[i] == INVALID_HANDLE) TalentUpgradeKeys[i] = CreateArray(32);
-		if (TalentUpgradeValues[i] == INVALID_HANDLE) TalentUpgradeValues[i] = CreateArray(32);
-		if (TalentUpgradeSection[i] == INVALID_HANDLE) TalentUpgradeSection[i] = CreateArray(32);
-		if (InfectedHealth[i] == INVALID_HANDLE) InfectedHealth[i] = CreateArray(32);
-		if (WitchDamage[i] == INVALID_HANDLE) WitchDamage[i]	= CreateArray(32);
-		if (SpecialCommon[i] == INVALID_HANDLE) SpecialCommon[i] = CreateArray(32);
-		if (MenuKeys[i] == INVALID_HANDLE) MenuKeys[i]								= CreateArray(32);
-		if (MenuValues[i] == INVALID_HANDLE) MenuValues[i]							= CreateArray(32);
-		if (MenuSection[i] == INVALID_HANDLE) MenuSection[i]							= CreateArray(32);
-		if (TriggerKeys[i] == INVALID_HANDLE) TriggerKeys[i]							= CreateArray(32);
-		if (TriggerValues[i] == INVALID_HANDLE) TriggerValues[i]						= CreateArray(32);
-		if (TriggerSection[i] == INVALID_HANDLE) TriggerSection[i]						= CreateArray(32);
-		if (PreloadTalentValues[i] == INVALID_HANDLE) PreloadTalentValues[i]			= CreateArray(32);
-		if (PreloadTalentSection[i] == INVALID_HANDLE) PreloadTalentSection[i]			= CreateArray(32);
-		if (MyTalentStrengths[i] == INVALID_HANDLE) MyTalentStrengths[i]				= CreateArray(32);
-		if (MyTalentStrength[i] == INVALID_HANDLE) MyTalentStrength[i]					= CreateArray(32);
-		if (AbilityKeys[i] == INVALID_HANDLE) AbilityKeys[i]							= CreateArray(32);
-		if (AbilityValues[i] == INVALID_HANDLE) AbilityValues[i]						= CreateArray(32);
-		if (AbilitySection[i] == INVALID_HANDLE) AbilitySection[i]						= CreateArray(32);
-		if (ChanceKeys[i] == INVALID_HANDLE) ChanceKeys[i]							= CreateArray(32);
-		if (ChanceValues[i] == INVALID_HANDLE) ChanceValues[i]							= CreateArray(32);
-		if (PurchaseKeys[i] == INVALID_HANDLE) PurchaseKeys[i]						= CreateArray(32);
-		if (PurchaseValues[i] == INVALID_HANDLE) PurchaseValues[i]						= CreateArray(32);
-		if (ChanceSection[i] == INVALID_HANDLE) ChanceSection[i]						= CreateArray(32);
-		if (a_Database_PlayerTalents[i] == INVALID_HANDLE) a_Database_PlayerTalents[i]				= CreateArray(32);
-		if (a_Database_PlayerTalents_Experience[i] == INVALID_HANDLE) a_Database_PlayerTalents_Experience[i] = CreateArray(32);
-		if (PlayerAbilitiesCooldown[i] == INVALID_HANDLE) PlayerAbilitiesCooldown[i]				= CreateArray(32);
-		if (acdrKeys[i] == INVALID_HANDLE) acdrKeys[i] = CreateArray(32);
-		if (acdrValues[i] == INVALID_HANDLE) acdrValues[i] = CreateArray(32);
-		if (acdrSection[i] == INVALID_HANDLE) acdrSection[i] = CreateArray(32);
-		if (GetLayerStrengthKeys[i] == INVALID_HANDLE) GetLayerStrengthKeys[i] = CreateArray(32);
-		if (GetLayerStrengthValues[i] == INVALID_HANDLE) GetLayerStrengthValues[i] = CreateArray(32);
-		if (GetLayerStrengthSection[i] == INVALID_HANDLE) GetLayerStrengthSection[i] = CreateArray(32);
-		if (a_Store_Player[i] == INVALID_HANDLE) a_Store_Player[i]						= CreateArray(32);
-		if (StoreKeys[i] == INVALID_HANDLE) StoreKeys[i]							= CreateArray(32);
-		if (StoreValues[i] == INVALID_HANDLE) StoreValues[i]							= CreateArray(32);
-		if (StoreMultiplierKeys[i] == INVALID_HANDLE) StoreMultiplierKeys[i]					= CreateArray(32);
-		if (StoreMultiplierValues[i] == INVALID_HANDLE) StoreMultiplierValues[i]				= CreateArray(32);
-		if (StoreTimeKeys[i] == INVALID_HANDLE) StoreTimeKeys[i]						= CreateArray(32);
-		if (StoreTimeValues[i] == INVALID_HANDLE) StoreTimeValues[i]						= CreateArray(32);
-		if (LoadStoreSection[i] == INVALID_HANDLE) LoadStoreSection[i]						= CreateArray(32);
-		if (SaveSection[i] == INVALID_HANDLE) SaveSection[i]							= CreateArray(32);
-		if (StoreChanceKeys[i] == INVALID_HANDLE) StoreChanceKeys[i]						= CreateArray(32);
-		if (StoreChanceValues[i] == INVALID_HANDLE) StoreChanceValues[i]					= CreateArray(32);
-		if (StoreItemNameSection[i] == INVALID_HANDLE) StoreItemNameSection[i]					= CreateArray(32);
-		if (StoreItemSection[i] == INVALID_HANDLE) StoreItemSection[i]						= CreateArray(32);
-		if (TrailsKeys[i] == INVALID_HANDLE) TrailsKeys[i]							= CreateArray(32);
-		if (TrailsValues[i] == INVALID_HANDLE) TrailsValues[i]							= CreateArray(32);
-		if (DamageKeys[i] == INVALID_HANDLE) DamageKeys[i]						= CreateArray(32);
-		if (DamageValues[i] == INVALID_HANDLE) DamageValues[i]					= CreateArray(32);
-		if (DamageSection[i] == INVALID_HANDLE) DamageSection[i]				= CreateArray(32);
-		if (MOTKeys[i] == INVALID_HANDLE) MOTKeys[i] = CreateArray(32);
-		if (MOTValues[i] == INVALID_HANDLE) MOTValues[i] = CreateArray(32);
-		if (MOTSection[i] == INVALID_HANDLE) MOTSection[i] = CreateArray(32);
-		if (BoosterKeys[i] == INVALID_HANDLE) BoosterKeys[i]							= CreateArray(32);
-		if (BoosterValues[i] == INVALID_HANDLE) BoosterValues[i]						= CreateArray(32);
-		if (RPGMenuPosition[i] == INVALID_HANDLE) RPGMenuPosition[i]						= CreateArray(32);
-		if (h_KilledPosition_X[i] == INVALID_HANDLE) h_KilledPosition_X[i]				= CreateArray(32);
-		if (h_KilledPosition_Y[i] == INVALID_HANDLE) h_KilledPosition_Y[i]				= CreateArray(32);
-		if (h_KilledPosition_Z[i] == INVALID_HANDLE) h_KilledPosition_Z[i]				= CreateArray(32);
-		if (MeleeKeys[i] == INVALID_HANDLE) MeleeKeys[i]						= CreateArray(32);
-		if (MeleeValues[i] == INVALID_HANDLE) MeleeValues[i]					= CreateArray(32);
-		if (MeleeSection[i] == INVALID_HANDLE) MeleeSection[i]					= CreateArray(32);
-		if (RCAffixes[i] == INVALID_HANDLE) RCAffixes[i] = CreateArray(32);
-		if (AKKeys[i] == INVALID_HANDLE) AKKeys[i]						= CreateArray(32);
-		if (AKValues[i] == INVALID_HANDLE) AKValues[i]					= CreateArray(32);
-		if (AKSection[i] == INVALID_HANDLE) AKSection[i]					= CreateArray(32);
-		if (SurvivorsIgnored[i] == INVALID_HANDLE) SurvivorsIgnored[i] = CreateArray(32);
-		if (MyGroup[i] == INVALID_HANDLE) MyGroup[i] = CreateArray(32);
-		if (PlayerEffectOverTime[i] == INVALID_HANDLE) PlayerEffectOverTime[i] = CreateArray(32);
-		if (PlayerEffectOverTimeEffects[i] == INVALID_HANDLE) PlayerEffectOverTimeEffects[i] = CreateArray(32);
-		if (CheckEffectOverTimeKeys[i] == INVALID_HANDLE) CheckEffectOverTimeKeys[i] = CreateArray(32);
-		if (CheckEffectOverTimeValues[i] == INVALID_HANDLE) CheckEffectOverTimeValues[i] = CreateArray(32);
-		if (FormatEffectOverTimeKeys[i] == INVALID_HANDLE) FormatEffectOverTimeKeys[i] = CreateArray(32);
-		if (FormatEffectOverTimeValues[i] == INVALID_HANDLE) FormatEffectOverTimeValues[i] = CreateArray(32);
-		if (FormatEffectOverTimeSection[i] == INVALID_HANDLE) FormatEffectOverTimeSection[i] = CreateArray(32);
-		if (CooldownEffectTriggerKeys[i] == INVALID_HANDLE) CooldownEffectTriggerKeys[i] = CreateArray(32);
-		if (CooldownEffectTriggerValues[i] == INVALID_HANDLE) CooldownEffectTriggerValues[i] = CreateArray(32);
-		if (IsSpellAnAuraKeys[i] == INVALID_HANDLE) IsSpellAnAuraKeys[i] = CreateArray(32);
-		if (IsSpellAnAuraValues[i] == INVALID_HANDLE) IsSpellAnAuraValues[i] = CreateArray(32);
-		if (CallAbilityCooldownTriggerKeys[i] == INVALID_HANDLE) CallAbilityCooldownTriggerKeys[i] = CreateArray(32);
-		if (CallAbilityCooldownTriggerValues[i] == INVALID_HANDLE) CallAbilityCooldownTriggerValues[i] = CreateArray(32);
-		if (CallAbilityCooldownTriggerSection[i] == INVALID_HANDLE) CallAbilityCooldownTriggerSection[i] = CreateArray(32);
-		if (GetIfTriggerRequirementsMetKeys[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetKeys[i] = CreateArray(32);
-		if (GetIfTriggerRequirementsMetValues[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetValues[i] = CreateArray(32);
-		if (GetIfTriggerRequirementsMetSection[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetSection[i] = CreateArray(32);
-		if (GAMKeys[i] == INVALID_HANDLE) GAMKeys[i] = CreateArray(32);
-		if (GAMValues[i] == INVALID_HANDLE) GAMValues[i] = CreateArray(32);
-		if (GAMSection[i] == INVALID_HANDLE) GAMSection[i] = CreateArray(32);
-		if (GetGoverningAttributeKeys[i] == INVALID_HANDLE) GetGoverningAttributeKeys[i] = CreateArray(32);
-		if (GetGoverningAttributeValues[i] == INVALID_HANDLE) GetGoverningAttributeValues[i] = CreateArray(32);
-		if (GetGoverningAttributeSection[i] == INVALID_HANDLE) GetGoverningAttributeSection[i] = CreateArray(32);
-		if (WeaponResultKeys[i] == INVALID_HANDLE) WeaponResultKeys[i] = CreateArray(32);
-		if (WeaponResultValues[i] == INVALID_HANDLE) WeaponResultValues[i] = CreateArray(32);
-		if (WeaponResultSection[i] == INVALID_HANDLE) WeaponResultSection[i] = CreateArray(32);
-		if (GetAbilityCooldownKeys[i] == INVALID_HANDLE) GetAbilityCooldownKeys[i] = CreateArray(32);
-		if (GetAbilityCooldownValues[i] == INVALID_HANDLE) GetAbilityCooldownValues[i] = CreateArray(32);
-		if (GetAbilityCooldownSection[i] == INVALID_HANDLE) GetAbilityCooldownSection[i] = CreateArray(32);
-		if (GetTalentValueSearchKeys[i] == INVALID_HANDLE) GetTalentValueSearchKeys[i] = CreateArray(32);
-		if (GetTalentValueSearchValues[i] == INVALID_HANDLE) GetTalentValueSearchValues[i] = CreateArray(32);
-		if (GetTalentValueSearchSection[i] == INVALID_HANDLE) GetTalentValueSearchSection[i] = CreateArray(32);
-		if (GetTalentStrengthSearchValues[i] == INVALID_HANDLE) GetTalentStrengthSearchValues[i] = CreateArray(32);
-		if (GetTalentStrengthSearchSection[i] == INVALID_HANDLE) GetTalentStrengthSearchSection[i] = CreateArray(32);
-		if (GetTalentKeyValueKeys[i] == INVALID_HANDLE) GetTalentKeyValueKeys[i] = CreateArray(32);
-		if (GetTalentKeyValueValues[i] == INVALID_HANDLE) GetTalentKeyValueValues[i] = CreateArray(32);
-		if (GetTalentKeyValueSection[i] == INVALID_HANDLE) GetTalentKeyValueSection[i] = CreateArray(32);
-		if (ApplyDebuffCooldowns[i] == INVALID_HANDLE) ApplyDebuffCooldowns[i] = CreateArray(32);
-		if (TalentAtMenuPositionSection[i] == INVALID_HANDLE) TalentAtMenuPositionSection[i] = CreateArray(32);
+		if (GetCategoryStrengthKeys[i] == INVALID_HANDLE) GetCategoryStrengthKeys[i] = CreateArray(16);
+		if (GetCategoryStrengthValues[i] == INVALID_HANDLE) GetCategoryStrengthValues[i] = CreateArray(16);
+		if (GetCategoryStrengthSection[i] == INVALID_HANDLE) GetCategoryStrengthSection[i] = CreateArray(16);
+		//if (GCMKeys[i] == INVALID_HANDLE) GCMKeys[i] = CreateArray(16);
+		//if (GCMValues[i] == INVALID_HANDLE) GCMValues[i] = CreateArray(16);
+		if (PassiveStrengthKeys[i] == INVALID_HANDLE) PassiveStrengthKeys[i] = CreateArray(16);
+		if (PassiveStrengthValues[i] == INVALID_HANDLE) PassiveStrengthValues[i] = CreateArray(16);
+		if (PassiveTalentName[i] == INVALID_HANDLE) PassiveTalentName[i] = CreateArray(16);
+		if (UpgradeCategoryKeys[i] == INVALID_HANDLE) UpgradeCategoryKeys[i] = CreateArray(16);
+		if (UpgradeCategoryValues[i] == INVALID_HANDLE) UpgradeCategoryValues[i] = CreateArray(16);
+		if (UpgradeCategoryName[i] == INVALID_HANDLE) UpgradeCategoryName[i] = CreateArray(16);
+		if (TranslationOTNKeys[i] == INVALID_HANDLE) TranslationOTNKeys[i] = CreateArray(16);
+		if (TranslationOTNValues[i] == INVALID_HANDLE) TranslationOTNValues[i] = CreateArray(16);
+		if (TranslationOTNSection[i] == INVALID_HANDLE) TranslationOTNSection[i] = CreateArray(16);
+		if (GCVKeys[i] == INVALID_HANDLE) GCVKeys[i] = CreateArray(16);
+		if (GCVValues[i] == INVALID_HANDLE) GCVValues[i] = CreateArray(16);
+		if (GCVSection[i] == INVALID_HANDLE) GCVSection[i] = CreateArray(16);
+		if (hWeaponList[i] == INVALID_HANDLE) hWeaponList[i] = CreateArray(16);
+		if (LoadoutConfigKeys[i] == INVALID_HANDLE) LoadoutConfigKeys[i] = CreateArray(16);
+		if (LoadoutConfigValues[i] == INVALID_HANDLE) LoadoutConfigValues[i] = CreateArray(16);
+		if (LoadoutConfigSection[i] == INVALID_HANDLE) LoadoutConfigSection[i] = CreateArray(16);
+		if (ActiveStatuses[i] == INVALID_HANDLE) ActiveStatuses[i] = CreateArray(16);
+		if (AbilityConfigKeys[i] == INVALID_HANDLE) AbilityConfigKeys[i] = CreateArray(16);
+		if (AbilityConfigValues[i] == INVALID_HANDLE) AbilityConfigValues[i] = CreateArray(16);
+		if (AbilityConfigSection[i] == INVALID_HANDLE) AbilityConfigSection[i] = CreateArray(16);
+		if (GetAbilityKeys[i] == INVALID_HANDLE) GetAbilityKeys[i] = CreateArray(16);
+		if (GetAbilityValues[i] == INVALID_HANDLE) GetAbilityValues[i] = CreateArray(16);
+		if (GetAbilitySection[i] == INVALID_HANDLE) GetAbilitySection[i] = CreateArray(16);
+		if (IsAbilityKeys[i] == INVALID_HANDLE) IsAbilityKeys[i] = CreateArray(16);
+		if (IsAbilityValues[i] == INVALID_HANDLE) IsAbilityValues[i] = CreateArray(16);
+		if (IsAbilitySection[i] == INVALID_HANDLE) IsAbilitySection[i] = CreateArray(16);
+		if (CheckAbilityKeys[i] == INVALID_HANDLE) CheckAbilityKeys[i] = CreateArray(16);
+		if (CheckAbilityValues[i] == INVALID_HANDLE) CheckAbilityValues[i] = CreateArray(16);
+		if (CheckAbilitySection[i] == INVALID_HANDLE) CheckAbilitySection[i] = CreateArray(16);
+		if (GetTalentStrengthKeys[i] == INVALID_HANDLE) GetTalentStrengthKeys[i] = CreateArray(16);
+		if (GetTalentStrengthValues[i] == INVALID_HANDLE) GetTalentStrengthValues[i] = CreateArray(16);
+		if (CastKeys[i] == INVALID_HANDLE) CastKeys[i] = CreateArray(16);
+		if (CastValues[i] == INVALID_HANDLE) CastValues[i] = CreateArray(16);
+		if (CastSection[i] == INVALID_HANDLE) CastSection[i] = CreateArray(16);
+		if (ActionBar[i] == INVALID_HANDLE) ActionBar[i] = CreateArray(16);
+		if (ActionBarMenuPos[i] == INVALID_HANDLE) ActionBarMenuPos[i] = CreateArray(16);
+		if (TalentsAssignedKeys[i] == INVALID_HANDLE) TalentsAssignedKeys[i] = CreateArray(16);
+		if (TalentsAssignedValues[i] == INVALID_HANDLE) TalentsAssignedValues[i] = CreateArray(16);
+		if (CartelValueKeys[i] == INVALID_HANDLE) CartelValueKeys[i] = CreateArray(16);
+		if (CartelValueValues[i] == INVALID_HANDLE) CartelValueValues[i] = CreateArray(16);
+		if (LegitClassSection[i] == INVALID_HANDLE) LegitClassSection[i] = CreateArray(16);
+		if (TalentActionKeys[i] == INVALID_HANDLE) TalentActionKeys[i] = CreateArray(16);
+		if (TalentActionValues[i] == INVALID_HANDLE) TalentActionValues[i] = CreateArray(16);
+		if (TalentActionSection[i] == INVALID_HANDLE) TalentActionSection[i] = CreateArray(16);
+		if (TalentExperienceKeys[i] == INVALID_HANDLE) TalentExperienceKeys[i] = CreateArray(16);
+		if (TalentExperienceValues[i] == INVALID_HANDLE) TalentExperienceValues[i] = CreateArray(16);
+		if (TalentTreeKeys[i] == INVALID_HANDLE) TalentTreeKeys[i] = CreateArray(16);
+		if (TalentTreeValues[i] == INVALID_HANDLE) TalentTreeValues[i] = CreateArray(16);
+		if (TheLeaderboards[i] == INVALID_HANDLE) TheLeaderboards[i] = CreateArray(16);
+		if (TheLeaderboardsData[i] == INVALID_HANDLE) TheLeaderboardsData[i] = CreateArray(16);
+		if (TankState_Array[i] == INVALID_HANDLE) TankState_Array[i] = CreateArray(16);
+		if (PlayerInventory[i] == INVALID_HANDLE) PlayerInventory[i] = CreateArray(16);
+		if (PlayerEquipped[i] == INVALID_HANDLE) PlayerEquipped[i] = CreateArray(16);
+		if (MenuStructure[i] == INVALID_HANDLE) MenuStructure[i] = CreateArray(16);
+		if (TempAttributes[i] == INVALID_HANDLE) TempAttributes[i] = CreateArray(16);
+		if (TempTalents[i] == INVALID_HANDLE) TempTalents[i] = CreateArray(16);
+		if (PlayerProfiles[i] == INVALID_HANDLE) PlayerProfiles[i] = CreateArray(16);
+		if (SpecialAmmoEffectKeys[i] == INVALID_HANDLE) SpecialAmmoEffectKeys[i] = CreateArray(16);
+		if (SpecialAmmoEffectValues[i] == INVALID_HANDLE) SpecialAmmoEffectValues[i] = CreateArray(16);
+		if (ActiveAmmoCooldownKeys[i] == INVALID_HANDLE) ActiveAmmoCooldownKeys[i] = CreateArray(16);
+		if (ActiveAmmoCooldownValues[i] == INVALID_HANDLE) ActiveAmmoCooldownValues[i] = CreateArray(16);
+		if (PlayActiveAbilities[i] == INVALID_HANDLE) PlayActiveAbilities[i] = CreateArray(16);
+		if (PlayerActiveAmmo[i] == INVALID_HANDLE) PlayerActiveAmmo[i] = CreateArray(16);
+		if (SpecialAmmoKeys[i] == INVALID_HANDLE) SpecialAmmoKeys[i] = CreateArray(16);
+		if (SpecialAmmoValues[i] == INVALID_HANDLE) SpecialAmmoValues[i] = CreateArray(16);
+		if (SpecialAmmoSection[i] == INVALID_HANDLE) SpecialAmmoSection[i] = CreateArray(16);
+		if (DrawSpecialAmmoKeys[i] == INVALID_HANDLE) DrawSpecialAmmoKeys[i] = CreateArray(16);
+		if (DrawSpecialAmmoValues[i] == INVALID_HANDLE) DrawSpecialAmmoValues[i] = CreateArray(16);
+		if (SpecialAmmoStrengthKeys[i] == INVALID_HANDLE) SpecialAmmoStrengthKeys[i] = CreateArray(16);
+		if (SpecialAmmoStrengthValues[i] == INVALID_HANDLE) SpecialAmmoStrengthValues[i] = CreateArray(16);
+		if (WeaponLevel[i] == INVALID_HANDLE) WeaponLevel[i] = CreateArray(16);
+		if (ExperienceBank[i] == INVALID_HANDLE) ExperienceBank[i] = CreateArray(16);
+		if (MenuPosition[i] == INVALID_HANDLE) MenuPosition[i] = CreateArray(16);
+		if (IsClientInRangeSAKeys[i] == INVALID_HANDLE) IsClientInRangeSAKeys[i] = CreateArray(16);
+		if (IsClientInRangeSAValues[i] == INVALID_HANDLE) IsClientInRangeSAValues[i] = CreateArray(16);
+		if (InfectedAuraKeys[i] == INVALID_HANDLE) InfectedAuraKeys[i] = CreateArray(16);
+		if (InfectedAuraValues[i] == INVALID_HANDLE) InfectedAuraValues[i] = CreateArray(16);
+		if (InfectedAuraSection[i] == INVALID_HANDLE) InfectedAuraSection[i] = CreateArray(16);
+		if (TalentUpgradeKeys[i] == INVALID_HANDLE) TalentUpgradeKeys[i] = CreateArray(16);
+		if (TalentUpgradeValues[i] == INVALID_HANDLE) TalentUpgradeValues[i] = CreateArray(16);
+		if (TalentUpgradeSection[i] == INVALID_HANDLE) TalentUpgradeSection[i] = CreateArray(16);
+		if (InfectedHealth[i] == INVALID_HANDLE) InfectedHealth[i] = CreateArray(16);
+		if (WitchDamage[i] == INVALID_HANDLE) WitchDamage[i]	= CreateArray(16);
+		if (SpecialCommon[i] == INVALID_HANDLE) SpecialCommon[i] = CreateArray(16);
+		if (MenuKeys[i] == INVALID_HANDLE) MenuKeys[i]								= CreateArray(16);
+		if (MenuValues[i] == INVALID_HANDLE) MenuValues[i]							= CreateArray(16);
+		if (MenuSection[i] == INVALID_HANDLE) MenuSection[i]							= CreateArray(16);
+		if (TriggerKeys[i] == INVALID_HANDLE) TriggerKeys[i]							= CreateArray(16);
+		if (TriggerValues[i] == INVALID_HANDLE) TriggerValues[i]						= CreateArray(16);
+		if (TriggerSection[i] == INVALID_HANDLE) TriggerSection[i]						= CreateArray(16);
+		if (PreloadTalentValues[i] == INVALID_HANDLE) PreloadTalentValues[i]			= CreateArray(16);
+		if (PreloadTalentSection[i] == INVALID_HANDLE) PreloadTalentSection[i]			= CreateArray(16);
+		if (MyTalentStrengths[i] == INVALID_HANDLE) MyTalentStrengths[i]				= CreateArray(16);
+		if (MyTalentStrength[i] == INVALID_HANDLE) MyTalentStrength[i]					= CreateArray(16);
+		if (AbilityKeys[i] == INVALID_HANDLE) AbilityKeys[i]							= CreateArray(16);
+		if (AbilityValues[i] == INVALID_HANDLE) AbilityValues[i]						= CreateArray(16);
+		if (AbilitySection[i] == INVALID_HANDLE) AbilitySection[i]						= CreateArray(16);
+		if (ChanceKeys[i] == INVALID_HANDLE) ChanceKeys[i]							= CreateArray(16);
+		if (ChanceValues[i] == INVALID_HANDLE) ChanceValues[i]							= CreateArray(16);
+		if (PurchaseKeys[i] == INVALID_HANDLE) PurchaseKeys[i]						= CreateArray(16);
+		if (PurchaseValues[i] == INVALID_HANDLE) PurchaseValues[i]						= CreateArray(16);
+		if (ChanceSection[i] == INVALID_HANDLE) ChanceSection[i]						= CreateArray(16);
+		if (a_Database_PlayerTalents[i] == INVALID_HANDLE) a_Database_PlayerTalents[i]				= CreateArray(16);
+		if (a_Database_PlayerTalents_Experience[i] == INVALID_HANDLE) a_Database_PlayerTalents_Experience[i] = CreateArray(16);
+		if (PlayerAbilitiesCooldown[i] == INVALID_HANDLE) PlayerAbilitiesCooldown[i]				= CreateArray(16);
+		if (acdrKeys[i] == INVALID_HANDLE) acdrKeys[i] = CreateArray(16);
+		if (acdrValues[i] == INVALID_HANDLE) acdrValues[i] = CreateArray(16);
+		if (acdrSection[i] == INVALID_HANDLE) acdrSection[i] = CreateArray(16);
+		if (GetLayerStrengthKeys[i] == INVALID_HANDLE) GetLayerStrengthKeys[i] = CreateArray(16);
+		if (GetLayerStrengthValues[i] == INVALID_HANDLE) GetLayerStrengthValues[i] = CreateArray(16);
+		if (GetLayerStrengthSection[i] == INVALID_HANDLE) GetLayerStrengthSection[i] = CreateArray(16);
+		if (a_Store_Player[i] == INVALID_HANDLE) a_Store_Player[i]						= CreateArray(16);
+		if (StoreKeys[i] == INVALID_HANDLE) StoreKeys[i]							= CreateArray(16);
+		if (StoreValues[i] == INVALID_HANDLE) StoreValues[i]							= CreateArray(16);
+		if (StoreMultiplierKeys[i] == INVALID_HANDLE) StoreMultiplierKeys[i]					= CreateArray(16);
+		if (StoreMultiplierValues[i] == INVALID_HANDLE) StoreMultiplierValues[i]				= CreateArray(16);
+		if (StoreTimeKeys[i] == INVALID_HANDLE) StoreTimeKeys[i]						= CreateArray(16);
+		if (StoreTimeValues[i] == INVALID_HANDLE) StoreTimeValues[i]						= CreateArray(16);
+		if (LoadStoreSection[i] == INVALID_HANDLE) LoadStoreSection[i]						= CreateArray(16);
+		if (SaveSection[i] == INVALID_HANDLE) SaveSection[i]							= CreateArray(16);
+		if (StoreChanceKeys[i] == INVALID_HANDLE) StoreChanceKeys[i]						= CreateArray(16);
+		if (StoreChanceValues[i] == INVALID_HANDLE) StoreChanceValues[i]					= CreateArray(16);
+		if (StoreItemNameSection[i] == INVALID_HANDLE) StoreItemNameSection[i]					= CreateArray(16);
+		if (StoreItemSection[i] == INVALID_HANDLE) StoreItemSection[i]						= CreateArray(16);
+		if (TrailsKeys[i] == INVALID_HANDLE) TrailsKeys[i]							= CreateArray(16);
+		if (TrailsValues[i] == INVALID_HANDLE) TrailsValues[i]							= CreateArray(16);
+		if (DamageKeys[i] == INVALID_HANDLE) DamageKeys[i]						= CreateArray(16);
+		if (DamageValues[i] == INVALID_HANDLE) DamageValues[i]					= CreateArray(16);
+		if (DamageSection[i] == INVALID_HANDLE) DamageSection[i]				= CreateArray(16);
+		if (MOTKeys[i] == INVALID_HANDLE) MOTKeys[i] = CreateArray(16);
+		if (MOTValues[i] == INVALID_HANDLE) MOTValues[i] = CreateArray(16);
+		if (MOTSection[i] == INVALID_HANDLE) MOTSection[i] = CreateArray(16);
+		if (BoosterKeys[i] == INVALID_HANDLE) BoosterKeys[i]							= CreateArray(16);
+		if (BoosterValues[i] == INVALID_HANDLE) BoosterValues[i]						= CreateArray(16);
+		if (RPGMenuPosition[i] == INVALID_HANDLE) RPGMenuPosition[i]						= CreateArray(16);
+		if (h_KilledPosition_X[i] == INVALID_HANDLE) h_KilledPosition_X[i]				= CreateArray(16);
+		if (h_KilledPosition_Y[i] == INVALID_HANDLE) h_KilledPosition_Y[i]				= CreateArray(16);
+		if (h_KilledPosition_Z[i] == INVALID_HANDLE) h_KilledPosition_Z[i]				= CreateArray(16);
+		if (MeleeKeys[i] == INVALID_HANDLE) MeleeKeys[i]						= CreateArray(16);
+		if (MeleeValues[i] == INVALID_HANDLE) MeleeValues[i]					= CreateArray(16);
+		if (MeleeSection[i] == INVALID_HANDLE) MeleeSection[i]					= CreateArray(16);
+		if (RCAffixes[i] == INVALID_HANDLE) RCAffixes[i] = CreateArray(16);
+		if (AKKeys[i] == INVALID_HANDLE) AKKeys[i]						= CreateArray(16);
+		if (AKValues[i] == INVALID_HANDLE) AKValues[i]					= CreateArray(16);
+		if (AKSection[i] == INVALID_HANDLE) AKSection[i]					= CreateArray(16);
+		if (SurvivorsIgnored[i] == INVALID_HANDLE) SurvivorsIgnored[i] = CreateArray(16);
+		if (MyGroup[i] == INVALID_HANDLE) MyGroup[i] = CreateArray(16);
+		if (PlayerEffectOverTime[i] == INVALID_HANDLE) PlayerEffectOverTime[i] = CreateArray(16);
+		if (PlayerEffectOverTimeEffects[i] == INVALID_HANDLE) PlayerEffectOverTimeEffects[i] = CreateArray(16);
+		if (CheckEffectOverTimeKeys[i] == INVALID_HANDLE) CheckEffectOverTimeKeys[i] = CreateArray(16);
+		if (CheckEffectOverTimeValues[i] == INVALID_HANDLE) CheckEffectOverTimeValues[i] = CreateArray(16);
+		if (FormatEffectOverTimeKeys[i] == INVALID_HANDLE) FormatEffectOverTimeKeys[i] = CreateArray(16);
+		if (FormatEffectOverTimeValues[i] == INVALID_HANDLE) FormatEffectOverTimeValues[i] = CreateArray(16);
+		if (FormatEffectOverTimeSection[i] == INVALID_HANDLE) FormatEffectOverTimeSection[i] = CreateArray(16);
+		if (CooldownEffectTriggerKeys[i] == INVALID_HANDLE) CooldownEffectTriggerKeys[i] = CreateArray(16);
+		if (CooldownEffectTriggerValues[i] == INVALID_HANDLE) CooldownEffectTriggerValues[i] = CreateArray(16);
+		if (IsSpellAnAuraKeys[i] == INVALID_HANDLE) IsSpellAnAuraKeys[i] = CreateArray(16);
+		if (IsSpellAnAuraValues[i] == INVALID_HANDLE) IsSpellAnAuraValues[i] = CreateArray(16);
+		if (CallAbilityCooldownTriggerKeys[i] == INVALID_HANDLE) CallAbilityCooldownTriggerKeys[i] = CreateArray(16);
+		if (CallAbilityCooldownTriggerValues[i] == INVALID_HANDLE) CallAbilityCooldownTriggerValues[i] = CreateArray(16);
+		if (CallAbilityCooldownTriggerSection[i] == INVALID_HANDLE) CallAbilityCooldownTriggerSection[i] = CreateArray(16);
+		if (GetIfTriggerRequirementsMetKeys[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetKeys[i] = CreateArray(16);
+		if (GetIfTriggerRequirementsMetValues[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetValues[i] = CreateArray(16);
+		if (GetIfTriggerRequirementsMetSection[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetSection[i] = CreateArray(16);
+		if (GAMKeys[i] == INVALID_HANDLE) GAMKeys[i] = CreateArray(16);
+		if (GAMValues[i] == INVALID_HANDLE) GAMValues[i] = CreateArray(16);
+		if (GAMSection[i] == INVALID_HANDLE) GAMSection[i] = CreateArray(16);
+		if (GetGoverningAttributeKeys[i] == INVALID_HANDLE) GetGoverningAttributeKeys[i] = CreateArray(16);
+		if (GetGoverningAttributeValues[i] == INVALID_HANDLE) GetGoverningAttributeValues[i] = CreateArray(16);
+		if (GetGoverningAttributeSection[i] == INVALID_HANDLE) GetGoverningAttributeSection[i] = CreateArray(16);
+		if (WeaponResultKeys[i] == INVALID_HANDLE) WeaponResultKeys[i] = CreateArray(16);
+		if (WeaponResultValues[i] == INVALID_HANDLE) WeaponResultValues[i] = CreateArray(16);
+		if (WeaponResultSection[i] == INVALID_HANDLE) WeaponResultSection[i] = CreateArray(16);
+		if (GetAbilityCooldownKeys[i] == INVALID_HANDLE) GetAbilityCooldownKeys[i] = CreateArray(16);
+		if (GetAbilityCooldownValues[i] == INVALID_HANDLE) GetAbilityCooldownValues[i] = CreateArray(16);
+		if (GetAbilityCooldownSection[i] == INVALID_HANDLE) GetAbilityCooldownSection[i] = CreateArray(16);
+		if (GetTalentValueSearchKeys[i] == INVALID_HANDLE) GetTalentValueSearchKeys[i] = CreateArray(16);
+		if (GetTalentValueSearchValues[i] == INVALID_HANDLE) GetTalentValueSearchValues[i] = CreateArray(16);
+		if (GetTalentValueSearchSection[i] == INVALID_HANDLE) GetTalentValueSearchSection[i] = CreateArray(16);
+		if (GetTalentStrengthSearchValues[i] == INVALID_HANDLE) GetTalentStrengthSearchValues[i] = CreateArray(16);
+		if (GetTalentStrengthSearchSection[i] == INVALID_HANDLE) GetTalentStrengthSearchSection[i] = CreateArray(16);
+		if (GetTalentKeyValueKeys[i] == INVALID_HANDLE) GetTalentKeyValueKeys[i] = CreateArray(16);
+		if (GetTalentKeyValueValues[i] == INVALID_HANDLE) GetTalentKeyValueValues[i] = CreateArray(16);
+		if (GetTalentKeyValueSection[i] == INVALID_HANDLE) GetTalentKeyValueSection[i] = CreateArray(16);
+		if (ApplyDebuffCooldowns[i] == INVALID_HANDLE) ApplyDebuffCooldowns[i] = CreateArray(16);
+		if (TalentAtMenuPositionSection[i] == INVALID_HANDLE) TalentAtMenuPositionSection[i] = CreateArray(16);
 		if (playerContributionTracker[i] == INVALID_HANDLE) playerContributionTracker[i] = CreateArray(8);
-		if (myLootDropCategoriesAllowed[i] == INVALID_HANDLE) myLootDropCategoriesAllowed[i] = CreateArray(32);
-		if (LootDropCategoryToBuffValues[i] == INVALID_HANDLE) LootDropCategoryToBuffValues[i] = CreateArray(32);
-		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(32);
-		if (myAugmentCategories[i] == INVALID_HANDLE) myAugmentCategories[i] = CreateArray(32);
-		if (myAugmentOwners[i] == INVALID_HANDLE) myAugmentOwners[i] = CreateArray(32);
-		if (myAugmentInfo[i] == INVALID_HANDLE) myAugmentInfo[i] = CreateArray(32);
-		if (equippedAugments[i] == INVALID_HANDLE) equippedAugments[i] = CreateArray(32);
-		if (equippedAugmentsCategory[i] == INVALID_HANDLE) equippedAugmentsCategory[i] = CreateArray(32);
-		if (GetAugmentTranslationKeys[i] == INVALID_HANDLE) GetAugmentTranslationKeys[i] = CreateArray(32);
-		if (GetAugmentTranslationVals[i] == INVALID_HANDLE) GetAugmentTranslationVals[i] = CreateArray(32);
-		if (myLootDropTargetEffectsAllowed[i] == INVALID_HANDLE) myLootDropTargetEffectsAllowed[i] = CreateArray(32);
-		if (myLootDropActivatorEffectsAllowed[i] == INVALID_HANDLE) myLootDropActivatorEffectsAllowed[i] = CreateArray(32);
-		if (equippedAugmentsActivator[i] == INVALID_HANDLE) equippedAugmentsActivator[i] = CreateArray(32);
-		if (equippedAugmentsTarget[i] == INVALID_HANDLE) equippedAugmentsTarget[i] = CreateArray(32);
-		if (myAugmentActivatorEffects[i] == INVALID_HANDLE) myAugmentActivatorEffects[i] = CreateArray(32);
-		if (myAugmentTargetEffects[i] == INVALID_HANDLE) myAugmentTargetEffects[i] = CreateArray(32);
-		if (equippedAugmentsIDCodes[i] == INVALID_HANDLE) equippedAugmentsIDCodes[i] = CreateArray(32);
-		if (lootRollData[i] == INVALID_HANDLE) lootRollData[i] = CreateArray(32);
-		if (playerLootOnGround[i] == INVALID_HANDLE) playerLootOnGround[i] = CreateArray(32);
-		if (possibleLootPoolTarget[i] == INVALID_HANDLE) possibleLootPoolTarget[i] = CreateArray(32);
-		if (possibleLootPoolActivator[i] == INVALID_HANDLE) possibleLootPoolActivator[i] = CreateArray(32);
-		if (HandicapValues[i] == INVALID_HANDLE) HandicapValues[i] = CreateArray(32);
-		if (HandicapSelectedValues[i] == INVALID_HANDLE) HandicapSelectedValues[i] = CreateArray(32);
-		if (SetHandicapValues[i] == INVALID_HANDLE) SetHandicapValues[i] = CreateArray(32);
-		if (AbilityTriggerValues[i] == INVALID_HANDLE) AbilityTriggerValues[i] = CreateArray(32);
+		if (myLootDropCategoriesAllowed[i] == INVALID_HANDLE) myLootDropCategoriesAllowed[i] = CreateArray(16);
+		if (LootDropCategoryToBuffValues[i] == INVALID_HANDLE) LootDropCategoryToBuffValues[i] = CreateArray(16);
+		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(16);
+		if (myAugmentCategories[i] == INVALID_HANDLE) myAugmentCategories[i] = CreateArray(16);
+		if (myAugmentOwners[i] == INVALID_HANDLE) myAugmentOwners[i] = CreateArray(16);
+		if (myAugmentInfo[i] == INVALID_HANDLE) myAugmentInfo[i] = CreateArray(16);
+		if (equippedAugments[i] == INVALID_HANDLE) equippedAugments[i] = CreateArray(16);
+		if (equippedAugmentsCategory[i] == INVALID_HANDLE) equippedAugmentsCategory[i] = CreateArray(16);
+		if (GetAugmentTranslationKeys[i] == INVALID_HANDLE) GetAugmentTranslationKeys[i] = CreateArray(16);
+		if (GetAugmentTranslationVals[i] == INVALID_HANDLE) GetAugmentTranslationVals[i] = CreateArray(16);
+		if (myLootDropTargetEffectsAllowed[i] == INVALID_HANDLE) myLootDropTargetEffectsAllowed[i] = CreateArray(16);
+		if (myLootDropActivatorEffectsAllowed[i] == INVALID_HANDLE) myLootDropActivatorEffectsAllowed[i] = CreateArray(16);
+		if (equippedAugmentsActivator[i] == INVALID_HANDLE) equippedAugmentsActivator[i] = CreateArray(16);
+		if (equippedAugmentsTarget[i] == INVALID_HANDLE) equippedAugmentsTarget[i] = CreateArray(16);
+		if (myAugmentActivatorEffects[i] == INVALID_HANDLE) myAugmentActivatorEffects[i] = CreateArray(16);
+		if (myAugmentTargetEffects[i] == INVALID_HANDLE) myAugmentTargetEffects[i] = CreateArray(16);
+		if (equippedAugmentsIDCodes[i] == INVALID_HANDLE) equippedAugmentsIDCodes[i] = CreateArray(16);
+		if (lootRollData[i] == INVALID_HANDLE) lootRollData[i] = CreateArray(16);
+		if (playerLootOnGround[i] == INVALID_HANDLE) playerLootOnGround[i] = CreateArray(16);
+		if (possibleLootPoolTarget[i] == INVALID_HANDLE) possibleLootPoolTarget[i] = CreateArray(16);
+		if (possibleLootPoolActivator[i] == INVALID_HANDLE) possibleLootPoolActivator[i] = CreateArray(16);
+		if (HandicapValues[i] == INVALID_HANDLE) HandicapValues[i] = CreateArray(16);
+		if (HandicapSelectedValues[i] == INVALID_HANDLE) HandicapSelectedValues[i] = CreateArray(16);
+		if (SetHandicapValues[i] == INVALID_HANDLE) SetHandicapValues[i] = CreateArray(16);
+		if (AbilityTriggerValues[i] == INVALID_HANDLE) AbilityTriggerValues[i] = CreateArray(16);
+		if (TalentPositionsWithEffectName[i] == INVALID_HANDLE) TalentPositionsWithEffectName[i] = CreateArray(16);
+		if (PlayerBuffVals[i] == INVALID_HANDLE) PlayerBuffVals[i] = CreateArray(16);
+		if (GetStrengthFloat[i] == INVALID_HANDLE) GetStrengthFloat[i] = CreateArray(16);
 	}
 	CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	b_FirstLoad = true;
@@ -2349,6 +2377,35 @@ stock bool IsEnrageActive() {
 		PrintToChatAll("%t", "enrage period", orange, blue, orange);
 	}
 	return true;
+}
+
+bool IsPlayerWithinBuffRange(client, char[] effectName) {
+	ClearArray(TalentPositionsWithEffectName[client]);
+	int size = GetArraySize(a_Menu_Talents);
+	char result[64];
+	for (int i = 0; i < size; i++) {
+		PlayerBuffVals[client]		= GetArrayCell(a_Menu_Talents, i, 1);
+		GetArrayString(PlayerBuffVals[client], ACTIVATOR_ABILITY_EFFECTS, result, sizeof(result));
+		if (!StrEqual(result, effectName)) continue;
+		PushArrayCell(TalentPositionsWithEffectName[client], i);
+	}
+	size = GetArraySize(TalentPositionsWithEffectName[client]);
+	float cpos[3];
+	GetClientAbsOrigin(client, cpos);
+	for (int i = 1; i <= MaxClients; i++) {
+		// skip client, dead players, and players not on clients team
+		if (i == client || !IsLegitimateClientAlive(i) || GetClientTeam(i) != GetClientTeam(client)) continue;
+		float ipos[3];
+		GetClientAbsOrigin(i, ipos);
+		for (int ii = 0; ii < size; ii++) {
+			int pos = GetArrayCell(TalentPositionsWithEffectName[client], ii);
+			float fRange = GetStrengthByKeyValueFloat(i, ACTIVATOR_ABILITY_EFFECTS, effectName, COHERENCY_RANGE, pos);
+			if (fRange <= 0.0) continue;	// no talents with this specification found.
+			if (GetVectorDistance(cpos, ipos) > fRange) continue;	// if the client is not within player i's coherency range
+			return true;
+		}
+	}
+	return false;	// client is not within range of this talent for any player on their team that has it.
 }
 
 bool ForcedWeakness(client) {
@@ -3359,9 +3416,13 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		RegisterConsoleCommands();
 		return;
 	}
-	Handle TalentKeys		=					CreateArray(32);
-	Handle TalentValues		=					CreateArray(32);
-	Handle TalentSection	=					CreateArray(32);
+	Handle TalentKeys;
+	if (StrEqual(configname, CONFIG_MENUTALENTS)) TalentKeys		=					CreateArray(16);
+	else										  TalentKeys		=					CreateArray(16);
+	Handle TalentValues;
+	if (StrEqual(configname, CONFIG_MENUTALENTS)) TalentValues		=					CreateArray(8);
+	else										  TalentValues		=					CreateArray(16);
+	Handle TalentSection	=					CreateArray(16);
 	int lastPosition = 0;
 	int counter = 0;
 	if (keyCount > 0) {
@@ -3378,6 +3439,7 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		//else if (StrEqual(configname, CONFIG_CLASSNAMES)) ResizeArray(a_Classnames, keyCount);
 	}
 	int a_Size						= GetArraySize(key);
+	int talentsLoaded = 0;
 	for (int i = 0; i < a_Size; i++) {
 		GetArrayString(key, i, s_key, sizeof(s_key));
 		GetArrayString(value, i, s_value, sizeof(s_value));
@@ -3402,8 +3464,13 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 			//else if (StrEqual(configname, CONFIG_CLASSNAMES)) SetConfigArrays(configname, a_Classnames, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Classnames), lastPosition - counter);
 			
 			lastPosition = i + 1;
+			if (StrEqual(configname, CONFIG_MENUTALENTS)) {
+				talentsLoaded++;
+				LogMessage("# of talents loaded: %d (%s)", talentsLoaded, s_section);
+			}
 		}
 	}
+
 	//CloseHandle(TalentKeys);
 	//CloseHandle(TalentValues);
 	//CloseHandle(TalentSection);
@@ -4073,11 +4140,13 @@ stock void SetLootDropCategories(client) {
 		PushArrayCell(possibleLootPool[client], i);
 		GetArrayString(LootDropCategoryToBuffValues[client], TALENT_TREE_CATEGORY, talentName, sizeof(talentName));
 		PushArrayString(myLootDropCategoriesAllowed[client], talentName);
+		//if (GetArrayCell(LootDropCategoryToBuffValues[client], SKIP_TALENT_FOR_AUGMENT_ROLL) != 1) {
 		GetArrayString(LootDropCategoryToBuffValues[client], ACTIVATOR_ABILITY_EFFECTS, talentName, sizeof(talentName));
 		if (!StrEqual(talentName, "-1") && !StrEqual(talentName, "0")) {
 			PushArrayString(myLootDropActivatorEffectsAllowed[client], talentName);
 			PushArrayCell(possibleLootPoolActivator[client], i);
 		}
+		//}
 
 		GetArrayString(LootDropCategoryToBuffValues[client], TARGET_ABILITY_EFFECTS, talentName, sizeof(talentName));
 		if (!StrEqual(talentName, "-1") && !StrEqual(talentName, "0")) {
@@ -4158,9 +4227,9 @@ public Action CMD_DirectorTalentToggle(client, args) {
 stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Handle Section, size, last, bool setConfigArraysDebugger = false) {
 	char text[64];
 	Handle TalentKey = CreateArray(16);
-	Handle TalentValue = CreateArray(16);
-	Handle TalentSection = CreateArray(16);
-	Handle TalentTriggers = CreateArray(16);
+	Handle TalentValue = CreateArray(8);
+	Handle TalentSection = CreateArray(8);
+	Handle TalentTriggers = CreateArray(8);
 	char key[64];
 	char value[64];
 	int a_Size = GetArraySize(Keys);
@@ -4169,18 +4238,51 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 
 		GetArrayString(Keys, i, key, sizeof(key));
 		GetArrayString(Values, i, value, sizeof(value));
-		//if (StrEqual(key, "EOM")) continue;	// we don't care about the EOM key at this point.
-		if (setConfigArraysDebugger && StrEqual(Config, CONFIG_MENUTALENTS)) LogMessage("\"%s\"\t\t\"%s\"", key, value);
+		if (setConfigArraysDebugger && StrEqual(Config, CONFIG_MENUTALENTS)) LogMessage("key found: \"%s\"\t\t\"%s\"", key, value);
 		PushArrayString(TalentKey, key);
 		PushArrayString(TalentValue, value);
 	}
 	if (setConfigArraysDebugger && StrEqual(Config, CONFIG_MENUTALENTS)) LogMessage("------------------------------------------------------------");
-	char talentName[64];
-	GetArrayString(Section, 0, talentName, sizeof(talentName));
 	int pos = 0;
 	int sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
 	if (StrEqual(Config, CONFIG_MENUTALENTS)) {
+		if (FindStringInArray(TalentKey, "enemy in coherency is target?") == -1) {
+			PushArrayString(TalentKey, "enemy in coherency is target?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "require enemy in coherency range?") == -1) {
+			PushArrayString(TalentKey, "require enemy in coherency range?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target must be ally ensnarer?") == -1) {
+			PushArrayString(TalentKey, "target must be ally ensnarer?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "require ensnared ally?") == -1) {
+			PushArrayString(TalentKey, "require ensnared ally?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "require ally below health percentage?") == -1) {
+			PushArrayString(TalentKey, "require ally below health percentage?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "require ally with adrenaline?") == -1) {
+			PushArrayString(TalentKey, "require ally with adrenaline?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "skip talent for augment roll?") == -1) {
+			PushArrayString(TalentKey, "skip talent for augment roll?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "must be unhurt by si or witch?") == -1) {
+			PushArrayString(TalentKey, "must be unhurt by si or witch?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "must be within coherency of talent?") == -1) {
+			PushArrayString(TalentKey, "must be within coherency of talent?");
+			PushArrayString(TalentValue, "-1");
+		}
 		if (FindStringInArray(TalentKey, "target ability trigger to call?") == -1) {
 			PushArrayString(TalentKey, "target ability trigger to call?");
 			PushArrayString(TalentValue, "-1");
@@ -4189,8 +4291,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			PushArrayString(TalentKey, "no augment modifiers?");
 			PushArrayString(TalentValue, "-1");
 		}
-		if (FindStringInArray(TalentKey, "multiply strength downed allies range?") == -1) {
-			PushArrayString(TalentKey, "multiply strength downed allies range?");
+		if (FindStringInArray(TalentKey, "multiply strength ensnared allies?") == -1) {
+			PushArrayString(TalentKey, "multiply strength ensnared allies?");
 			PushArrayString(TalentValue, "-1.0");
 		}
 		if (FindStringInArray(TalentKey, "multiply strength downed allies?") == -1) {
@@ -5132,9 +5234,18 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos == 178 && !StrEqual(text, "health percentage remaining required?") ||
 			pos == 179 && !StrEqual(text, "health cost on activation?") ||
 			pos == 180 && !StrEqual(text, "multiply strength downed allies?") ||
-			pos == 181 && !StrEqual(text, "multiply strength downed allies range?") ||
+			pos == 181 && !StrEqual(text, "multiply strength ensnared allies?") ||
 			pos == 182 && !StrEqual(text, "no augment modifiers?") ||
-			pos == 183 && !StrEqual(text, "target ability trigger to call?")) {
+			pos == 183 && !StrEqual(text, "target ability trigger to call?") ||
+			pos == 184 && !StrEqual(text, "must be within coherency of talent?") ||
+			pos == 185 && !StrEqual(text, "must be unhurt by si or witch?") ||
+			pos == 186 && !StrEqual(text, "skip talent for augment roll?") ||
+			pos == 187 && !StrEqual(text, "require ally with adrenaline?") ||
+			pos == 188 && !StrEqual(text, "require ally below health percentage?") ||
+			pos == 189 && !StrEqual(text, "require ensnared ally?") ||
+			pos == 190 && !StrEqual(text, "target must be ally ensnarer?") ||
+			pos == 191 && !StrEqual(text, "require enemy in coherency range?") ||
+			pos == 192 && !StrEqual(text, "enemy in coherency is target?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -5146,6 +5257,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			}
 			pos++;
 		}
+
 		for (int i = 0; i < sortSize; i++) {
 			if (i == TALENT_IS_EFFECT_OVER_TIME || i == ACTIVATOR_CLASS_REQ || i == TARGET_CLASS_REQ || i == ABILITY_TYPE ||
 			i == IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES || i == COMBAT_STATE_REQ || i == CONTRIBUTION_TYPE_CATEGORY ||
@@ -5160,8 +5272,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			i == COHERENCY_RANGE || i == COHERENCY_MAX || i == COHERENCY_REQ ||
 			i == HEALTH_PERCENTAGE_REQ_TAR_REMAINING || i == HEALTH_PERCENTAGE_REQ_TAR_MISSING || i == HEALTH_PERCENTAGE_REQ_ACT_REMAINING ||
 			i == REQUIRES_ZOOM || i == IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS || i == REQUIRES_HEADSHOT ||
-			i == REQUIRES_LIMBSHOT || i == HEALTH_PERCENTAGE_ACTIVATION_COST || i == MULT_STR_NEARBY_DOWN_ALLIES || i == MULT_STR_NEARBY_DOWN_ALLIES_RANGE ||
-			i == TALENT_NO_AUGMENT_MODIFIERS) {
+			i == REQUIRES_LIMBSHOT || i == HEALTH_PERCENTAGE_ACTIVATION_COST ||
+			i == TALENT_NO_AUGMENT_MODIFIERS || i == REQUIRE_ENEMY_IN_COHERENCY_RANGE || i == ENEMY_IN_COHERENCY_IS_TARGET) {// || i == UNHURT_BY_SPECIALINFECTED_OR_WITCH) {
 				GetArrayString(TalentValue, i, text, sizeof(text));
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
@@ -5206,23 +5318,18 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			else if (i == ABILITY_EVENT_TYPE || i == TALENT_IS_SPELL || i == TALENT_MINIMUM_LEVEL_REQ || i == NUM_TALENTS_REQ ||
 			i == HIDE_TALENT_STRENGTH_DISPLAY || i == HIDE_TRANSLATION || i == ABILITY_ACTIVE_DRAW_DELAY ||
 			i == ABILITY_PASSIVE_DRAW_DELAY || i == TALENT_ROLL_CHANCE || i == SPECIAL_AMMO_TALENT_STRENGTH ||
-			i == ABILITY_TOGGLE_STRENGTH || i == ABILITY_COOLDOWN || i == SPELL_EFFECT_MULTIPLIER || i == COMPOUNDING_TALENT) {
+			i == ABILITY_TOGGLE_STRENGTH || i == ABILITY_COOLDOWN || i == SPELL_EFFECT_MULTIPLIER || i == COMPOUNDING_TALENT ||
+			i == MULT_STR_NEARBY_DOWN_ALLIES || i == MULT_STR_NEARBY_ENSNARED_ALLIES || i == REQUIRE_TARGET_HAS_ENSNARED_ALLY ||
+			i == REQUIRE_ENSNARED_ALLY || i == SKIP_TALENT_FOR_AUGMENT_ROLL || i == REQUIRE_ALLY_WITH_ADRENALINE || i == REQUIRE_ALLY_BELOW_HEALTH_PERCENTAGE) {
 				GetArrayString(TalentValue, i, text, sizeof(text));
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 			}
 		}
+
 		if (setConfigArraysDebugger) {
 			LogMessage("--------------------------------------------------------------");
-			LogMessage("%s loaded successfully.", talentName);
 			LogMessage("# of keyvalues is %d", GetArraySize(TalentKey));
-			for (int i = 0; i < GetArraySize(TalentKey); i++) {
-				char text1[64];
-				char text2[64];
-				GetArrayString(TalentKey, i, text1, sizeof(text1));
-				GetArrayString(TalentValue, i, text2, sizeof(text2));
-				LogMessage("\"%s\"\t\t\t\t\"%s\"", text1, text2);
-			}
 		}
 	}
 	else if (StrEqual(Config, CONFIG_EVENTS)) {
@@ -5669,6 +5776,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 		}
 	}
 	GetArrayString(Section, size, text, sizeof(text));
+	if (setConfigArraysDebugger) LogMessage("TalentName: %s", text);
 	PushArrayString(TalentSection, text);
 	/*if (StrEqual(Config, CONFIG_MENUTALENTS) || StrEqual(Config, CONFIG_EVENTS)) {
 		LogMessage("%s", text);

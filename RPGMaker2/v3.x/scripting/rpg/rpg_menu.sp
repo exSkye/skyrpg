@@ -2325,7 +2325,11 @@ public void CharacterSheetMenu(client) {
 // 		StrContains(PlayerWeapon, "rifle", false) != -1 && StrContains(PlayerWeapon, "hunting", false) == -1) currentWeaponCategory[client] = (currentWeaponCategory[client] * 100) +		24;	// TIER 2 WEAPONS ONLY
 // }
 
-stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombieclass = 0, bool isRecalled = false) {
+// requests
+// 1 - common health, 2 common damage
+// 3 witch health, 4 witch damage
+// 5 special health, 6 special damage
+stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombieclass = 0, attacker = 0) {
 	//new Float:fResult;
 	int iResult;
 	float fMultiplier;
@@ -2370,12 +2374,12 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 		iResult = iBaseSpecialDamage[zombieclass];
 		iResult += RoundToFloor(iResult * (myCurrentDifficulty * fMultiplier));
 	}// even requests are for damage.
-	if (request != 7 && iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) {
+	if (request != 7) {
 		if (GetArraySize(HandicapSelectedValues[client]) != 4) SetClientHandicapValues(client, true);
 		// health result or damage result
 		float handicapLevelBonus = 0.0;
 		if (request % 2 != 0) {
-			if (fSurvivorHealthBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
+			if (fSurvivorHealthBonus > 0.0 && iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
 			if (handicapLevel[client] > 0) {
 				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 1);
 				int healthBonus = RoundToCeil(iResult * handicapLevelBonus);
@@ -2383,7 +2387,7 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 			}
 		}
 		else {
-			if (fSurvivorDamageBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
+			if (fSurvivorDamageBonus > 0.0 && iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
 			if (handicapLevel[client] > 0) {
 				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 0);
 				int damageBonus = RoundToCeil(iResult * handicapLevelBonus);
@@ -2403,6 +2407,44 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 		TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		TheAbilityMultiplier += TheAbilityMultiplierAlt;
 		iResult += RoundToCeil(iResult * TheAbilityMultiplier);
+
+		int totalIncomingTemp = 0;
+		float ammoStr = IsClientInRangeSpecialAmmo(client, "E", false, _, iResult * 1.0);
+		if (ammoStr > 0.0) totalIncomingTemp = RoundToCeil(iResult * ammoStr);
+		if (totalIncomingTemp > 0) iResult += totalIncomingTemp;
+		if (IsLegitimateClient(attacker)) {
+			ammoStr = IsClientInRangeSpecialAmmo(attacker, "E", false, _, iResult * 1.0);
+			if (ammoStr > 0.0) totalIncomingTemp = RoundToCeil(iResult * ammoStr);
+			if (totalIncomingTemp > 0) iResult += totalIncomingTemp;
+		}
+		if (attacker > 0) {
+			int damageReduction = RoundToCeil(GetAbilityStrengthByTrigger(client, attacker, "L", _, iResult, _, _, "o", 2, true));
+			if (damageReduction > 0) {
+				int maxDamageReduction = RoundToFloor(iResult * fMaxDamageResistance);
+				if (damageReduction > maxDamageReduction) damageReduction = maxDamageReduction;
+				GetAbilityStrengthByTrigger(client, attacker, "L", _, iResult);
+				iResult -= damageReduction; // true means we just get the result and don't execute the ability.
+			}
+		}
+		int DamageShield = 0;
+		ammoStr = IsClientInRangeSpecialAmmo(client, "D", false, _, iResult * 1.0);
+		if (ammoStr > 0.0) DamageShield = RoundToCeil(iResult * ammoStr);
+		if (DamageShield > 0) {
+			iResult -= DamageShield;
+			if (iResult < 0) return 0;
+		}
+		float AltAbilityMultiplier = GetAbilityMultiplier(client, "expo");
+		TheAbilityMultiplier = GetAbilityMultiplier(client, "X");
+		if (TheAbilityMultiplier > 0.0 && AltAbilityMultiplier > 0.0) TheAbilityMultiplier -= AltAbilityMultiplier;
+		else if (AltAbilityMultiplier > 0.0) TheAbilityMultiplier = 0.0 - AltAbilityMultiplier;
+		if (TheAbilityMultiplier >= 1.0) return -1;
+		else if (TheAbilityMultiplier > 0.0) {	// Damage received is reduced by the amount.
+			iResult -= RoundToCeil(iResult * TheAbilityMultiplier);
+		}
+		else if (AltAbilityMultiplier > 0.0 && TheAbilityMultiplier != 0.0) {	// AbilityMultiplier will always be negative here.
+			iResult += RoundToCeil(iResult * (TheAbilityMultiplier * -1.0));
+		}
+		iResult = RoundToCeil(CheckActiveAbility(client, iResult, 1));
 	}
 	//result 7 returns damage shield values. result 8(which is even so no check required) returns damage reduction ability strength.
 	/*if (zombieclass != 0 && (request % 2 == 0 || request == 7)) {
@@ -2430,83 +2472,6 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 	//else Format(stringRef, theSize, "%d", iResult);
 	AddCommasToString(iResult, stringRef, theSize);
 	//Format(stringRef, theSize, "%s", AddCommasToString(iResult));
-	return 0;
-}
-
-stock int GetInfectedData(client, target, bool bGetDamage = false) {
-	//new Float:fResult;
-	int iResult;
-	float fMultiplier;
-	//new Float:AbilityMultiplier = (request % 2 == 0) ? GetAbilityMultiplier(client, "X", 4) : 0.0;
-	int theCount = LivingSurvivorCount();
-	int myCurrentDifficulty = GetDifficultyRating(client);
-	// common infected health
-	if (IsCommonInfected(target)) {
-		if (!bGetDamage) iResult = GetCommonBaseHealth(client);
-		else {
-			fMultiplier = fCommonDamageLevel;
-			iResult = iCommonInfectedBaseDamage + RoundToCeil(iCommonInfectedBaseDamage * (myCurrentDifficulty * fMultiplier));
-		}
-	}
-	else if (IsWitch(target)) {
-		if (!bGetDamage) {
-			fMultiplier = fWitchHealthMult;
-			iResult = iWitchHealthBase + RoundToCeil(iWitchHealthBase * (myCurrentDifficulty * fWitchHealthMult));
-		}
-		else {
-			fMultiplier = fWitchDamageScaleLevel;
-			iResult = iWitchDamageInitial + RoundToCeil(iWitchDamageInitial * (myCurrentDifficulty * fMultiplier));
-		}
-	}
-	else {
-		int zombieclass = FindZombieClass(target);
-	// only if a zombieclass has been specified.
-		if (zombieclass != ZOMBIECLASS_TANK) zombieclass--;
-		else zombieclass -= 2;
-		if (!bGetDamage) {
-			fMultiplier = fHealthPlayerLevel[zombieclass];
-			iResult = iBaseSpecialInfectedHealth[zombieclass];
-			iResult += RoundToCeil(iResult * (myCurrentDifficulty * fMultiplier));
-		}
-		else {
-			fMultiplier = fDamagePlayerLevel[zombieclass];
-			iResult = iBaseSpecialDamage[zombieclass];
-			iResult += RoundToFloor(iResult * (myCurrentDifficulty * fMultiplier));
-		}
-	}
-	if (iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) {
-		// health result or damage result
-		if (GetArraySize(HandicapSelectedValues[client]) != 4) SetClientHandicapValues(client, true);
-		float handicapLevelBonus = 0.0;
-		if (!bGetDamage) {
-			if (fSurvivorHealthBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
-			if (handicapLevel[client] > 0) {
-				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 1);
-				int healthBonus = RoundToCeil(iResult * handicapLevelBonus);
-				if (healthBonus > 0) iResult += healthBonus;
-			}
-		}
-		else {
-			if (fSurvivorDamageBonus > 0.0) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
-			if (handicapLevel[client] > 0) {
-				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 0);
-				int damageBonus = RoundToCeil(iResult * handicapLevelBonus);
-				if (damageBonus > 0) iResult += damageBonus;
-			}
-		}
-	}
-	if (bGetDamage) {
-		// show the damage increase/decrease if the player has associated talents doing so.
-		float TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		float TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		TheAbilityMultiplier += TheAbilityMultiplierAlt;
-		iResult -= RoundToCeil(TheAbilityMultiplier);
-
-		TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		TheAbilityMultiplier += TheAbilityMultiplierAlt;
-		iResult += RoundToCeil(TheAbilityMultiplier);
-	}
 	return iResult;
 }
 
@@ -3280,7 +3245,7 @@ public Handle TalentInfoScreen(client) {
 	char TalentNameTranslation[64];
 	GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation), true);
 	Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", TalentNameTranslation, client);
-	char text[512];	
+	char text[1024];	
 	if (AbilityTalent != 1) {
 
 		if (FreeUpgrades[client] < 0) FreeUpgrades[client] = 0;
@@ -3313,7 +3278,7 @@ public Handle TalentInfoScreen(client) {
 	}
 	bool IsEffectOverTime = (GetArrayCell(PurchaseValues[client], TALENT_IS_EFFECT_OVER_TIME) == 1) ? true : false;
 
-	char TalentInfo[128];
+	char TalentInfo[512];
 	int AbilityType = 0;
 	bool bIsAttribute = (GetArrayCell(PurchaseValues[client], IS_ATTRIBUTE) == 1) ? true : false;
 	int iContributionCategoryRequired = -1;
@@ -3396,8 +3361,7 @@ public Handle TalentInfoScreen(client) {
 				}
 				healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], MULT_STR_NEARBY_DOWN_ALLIES);
 				if (healthPercentageReqActRemaining > 0.0) {
-					float multiplyStrengthNearbyRange = GetArrayCell(PurchaseValues[client], MULT_STR_NEARBY_DOWN_ALLIES_RANGE);
-					Format(text, sizeof(text), "%T", "Multiply Strength Nearby Downed Allies", client, healthPercentageReqActRemaining * 100.0, pct, multiplyStrengthNearbyRange);
+					Format(text, sizeof(text), "%T", "Multiply Strength Nearby Downed Allies", client, healthPercentageReqActRemaining * 100.0, pct);
 					DrawPanelText(menu, text);
 				}
 			}
@@ -3517,6 +3481,7 @@ public Handle TalentInfoScreen(client) {
 		float fPercentageHealthRequired = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_MISSING);
 		float fPercentageHealthRequiredBelow = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_REQ);
 		float fCoherencyRange = GetArrayCell(PurchaseValues[client], COHERENCY_RANGE);
+		float fPercentageHealthAllyMissingRequired = GetArrayCell(PurchaseValues[client], REQUIRE_ALLY_BELOW_HEALTH_PERCENTAGE);
 		float fTargetRangeRequired = GetArrayCell(PurchaseValues[client], TARGET_RANGE_REQUIRED);
 		int iCoherencyMax = GetArrayCell(PurchaseValues[client], COHERENCY_MAX);
 
@@ -3532,7 +3497,7 @@ public Handle TalentInfoScreen(client) {
 		int multiplyStrengthHeadshotDiv = GetArrayCell(PurchaseValues[client], MULT_STR_CONSECUTIVE_HEADSHOTS_DIV);
 
 		if (consecutiveHitsRequired > 0 || consecutiveHeadshotsRequired ||
-			fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0 || fTargetRangeRequired > 0.0 ||
+			fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0 || fPercentageHealthAllyMissingRequired > 0.0 || fTargetRangeRequired > 0.0 ||
 			multiplyStrengthConsecutiveHits == 1 && (multiplyStrengthConsecutiveMax > 1 || multiplyStrengthConsecutiveDiv > 1) ||
 			multiplyStrengthHeadshotHits == 1 && (multiplyStrengthHeadshotMax > 1 || multiplyStrengthHeadshotDiv > 1)) {
 			float fPercentageHealthRequiredMax = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_MISSING_MAX);
@@ -3540,7 +3505,7 @@ public Handle TalentInfoScreen(client) {
 			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, fPercentageHealthRequired * 100.0, pct, fPercentageHealthRequiredMax * 100.0, pct,
 				   fPercentageHealthRequiredBelow * 100.0, pct, fCoherencyRange, iCoherencyMax, fTargetRangeRequired,
 				   multiplyStrengthConsecutiveMax, multiplyStrengthConsecutiveDiv, multiplyStrengthHeadshotMax, multiplyStrengthHeadshotDiv,
-				   consecutiveHitsRequired, consecutiveHeadshotsRequired);
+				   consecutiveHitsRequired, consecutiveHeadshotsRequired, fPercentageHealthAllyMissingRequired * 100.0, pct);
 		}
 		else Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client);
 
