@@ -1312,31 +1312,18 @@ public Action Timer_SettingsCheck(Handle timer) {
 		return Plugin_Continue;
 	}
 
-	static RaidLevelCounter		= 0;
-	static bool bIsEnrage = false;
-	//static RageCommonLimit		= 0;
+	int handicapBonus = TotalHandicapLevel();
+	int RaidLevelCounter = RaidCommonBoost() + handicapBonus;
+	bool bIsEnrage = false;
 
 	if (!bIsSettingsCheck) return Plugin_Continue;
 	bIsSettingsCheck = false;
-
-	//if (!IsSurvivalMode) 
-	//if (!IsSurvivalMode) 
-	if (iTankRush != 1 || b_IsFinaleActive) {
-
-		RaidLevelCounter = RaidCommonBoost();
-
-		// we force a common limit on the tank rush servers
-		if (iTankRush == 1 && RaidLevelCounter < 30) RaidLevelCounter = 30;
-	}
-	else RaidLevelCounter = 0;
-	//else RaidLevelCounter = 0;
-	//else RaidLevelCounter = 0;
 
 	bIsEnrage = IsEnrageActive();
 
 	if (bIsEnrage) RaidLevelCounter = RoundToCeil(fEnrageMultiplier * RaidLevelCounter);
 	int CommonAllowed = AllowedCommons + RaidLevelCounter;
-	if (CommonAllowed <= iCommonsLimitUpper) SetConVarInt(FindConVar("z_common_limit"), CommonAllowed);
+	if (CommonAllowed <= iCommonsLimitUpper + handicapBonus) SetConVarInt(FindConVar("z_common_limit"), CommonAllowed);
 	else SetConVarInt(FindConVar("z_common_limit"), iCommonsLimitUpper);
 	if (iTankRush != 1) SetConVarInt(FindConVar("z_reserved_wanderers"), RaidLevelCounter);
 	else {
@@ -1351,6 +1338,15 @@ public Action Timer_SettingsCheck(Handle timer) {
 	SetConVarInt(FindConVar("z_mob_spawn_finale_size"), AllowedMobSpawnFinale + RaidLevelCounter);
 
 	return Plugin_Continue;
+}
+
+int TotalHandicapLevel() {
+	int count = 0;
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || handicapLevel[i] < 1) continue;
+		count += handicapLevel[i];
+	}
+	return count;
 }
 
 bool IsSurvivorsHealthy() {

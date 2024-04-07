@@ -797,6 +797,7 @@ stock void CreateNewPlayerEx(int client) {
 	LogMessage("No data rows for %N with steamid: %s, could be found, creating new player data.", client, key);
 	char oldName[64];
 	GetClientName(client, oldName, 64);
+	GetClientName(client, baseName[client], sizeof(baseName[]));
 	if (IsFakeClient(client)) PlayerLevel[client] = iBotPlayerStartingLevel;
 	else PlayerLevel[client]				=	iPlayerStartingLevel;
 	SetTotalExperienceByLevel(client, PlayerLevel[client]);
@@ -926,6 +927,7 @@ public void Query_CheckIfDataExists(Handle owner, Handle hndl, const char[] erro
 	else {
 
 		LogMessage("%d Data rows found for %N with steamid: %s, loading player data.", count, client, key);
+		GetClientName(client, baseName[client], sizeof(baseName[]));
 		//b_IsLoading[client] = false;
 		ClearAndLoad(client, true);
 		//if (!IsFakeClient(client)) CheckServerLevelRequirements(client);
@@ -2258,11 +2260,12 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client] && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
 		return;
 	}
+	char playerName[64];
 	bTimersRunning[client] = false;
-	GetClientName(client, baseName[client], 64);
-	// we do this because some players roleplay and use bot names, and we need to know when to overrided loaded players here
-	// this will also conveniently tell apart the humans and bots of the same names.
-	if (IsFakeClient(client)) Format(baseName[client], sizeof(baseName[]), "[BOT] %s", baseName[client]);
+	GetClientName(client, playerName, 64);
+	if (IsFakeClient(client) && StrContains(playerName, "[BOT]") == -1) {
+		Format(baseName[client], sizeof(baseName[]), "[BOT] %s", playerName);
+	}
 	// else if (StrContains(baseName[client], "[BOT]", true) != -1) {
 	// 	// if a human player tries to be cheeky and put this special key in their names, we remove it.
 	// 	ReplaceString(baseName[client], sizeof(baseName[]), "[BOT]", "");

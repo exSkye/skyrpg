@@ -46,6 +46,15 @@
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
 		"en"				"Deal increased melee damage to special infected\nthat have an ensnared Survivor for each {1}{2} health\nmissing while you have less than {5}{6} health."
 	}
+	"savior complex iii"
+	{
+		"en"				"Savior Complex III"
+	}
+	"savior complex iii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
+		"en"				"When healed by an ally, hurt yourself, exploding for\nAoE damage when within {7}units of an ensnared ally."
+	}
 	"determination i"
 	{
 		"en"				"Determination I"
@@ -103,6 +112,14 @@
 	"explosives i"
 	{
 		"en"				"Explosives I"
+	}
+	"explosives ii"
+	{
+		"en"				"Explosives II"
+	}
+	"explosives iii"
+	{
+		"en"				"Explosives III"
 	}
 	"explosives i info"
 	{
@@ -175,6 +192,22 @@
 	"cleric major surname"
 	{
 		"en"				"Clerics"
+	}
+	"snipersmark major surname"
+	{
+		"en"				"Snipers Mark"
+	}
+	"snipersmark perfect surname"
+	{
+		"en"				"Snipers Mark"
+	}
+	"b perfect surname"
+	{
+		"en"				"Bean Bag"
+	}
+	"b major surname"
+	{
+		"en"				"Bean Bag"
 	}
 	"H major surname"
 	{
@@ -319,6 +352,10 @@
 		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s}"
 		"en"				"{1}Attempting {2}{3} {4}augment rolls for all {5}"
 	}
+	"snipersmark augment info"
+	{
+		"en"				"Snipers Mark"
+	}
 	"cleric augment info"
 	{
 		"en"				"Cleric"
@@ -390,6 +427,22 @@
 	"activetime augment info"
 	{
 		"en"				"Spellcasters"
+	}
+	"b augment info"
+	{
+		"en"				"Bean Bag"
+	}
+	"1ststrike major surname"
+	{
+		"en"				"1st Strike"
+	}
+	"1ststrike perfect surname"
+	{
+		"en"				"1st Strike"
+	}
+	"1ststrike augment info"
+	{
+		"en"				"1st Strike"
 	}
 	"equip augment"
 	{
@@ -3342,6 +3395,38 @@
 	{
 		"en"				"Take reduced damage when you are on fire."
 	}
+	"arsonist path iii"
+	{
+		"en"				"Arsonist III"
+	}
+	"arsonist path iii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
+		"en"				"While on fire within {7}units of an ally on fire,\ndeal increased damage per stack up to {10} stacks."
+	}
+	"arsonist path iv"
+	{
+		"en"				"Arsonist IV"
+	}
+	"arsonist path iv info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
+		"en"				"While on fire within {7}units of an ally on fire,\ndeal increased melee damage per stack up to {10} stacks."
+	}
+	"arsonist path v"
+	{
+		"en"				"Arsonist V"
+	}
+	"arsonist path v info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
+		"en"				"Upon reaching the threshold with a melee weapon while\non fire, AoE explode for damage up to {10} stacks."
+	}
+	"savior complex iii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
+		"en"				"When healed by an ally, hurt yourself, exploding for\nAoE damage when within {7}units of an ensnared ally."
+	}
 	"opportunist path i"
 	{
 		"en"				"Opportunist I"
@@ -4482,11 +4567,11 @@
 	}
 	"first strike path i"
 	{
-		"en"				"First Strike I"
+		"en"				"(EoT)First Strike I"
 	}
 	"first strike path ii"
 	{
-		"en"				"First Strike II"
+		"en"				"(EoT)First Strike II"
 	}
 	"first strike path iii"
 	{
@@ -4527,7 +4612,7 @@
 	}
 	"snipers mark path i"
 	{
-		"en"				"Snipers Mark I"
+		"en"				"(EoT)Snipers Mark I"
 	}
 	"snipers mark path i info"
 	{
@@ -4536,7 +4621,7 @@
 	}
 	"manipulator path i"
 	{
-		"en"				"Manipulator I"
+		"en"				"(EoT)Manipulator I"
 	}
 	"manipulator path i info"
 	{
@@ -4560,7 +4645,7 @@
 	}
 	"dark cleric path ii"
 	{
-		"en"				"Dark Cleric II"
+		"en"				"(EoT)Dark Cleric II"
 	}
 	"dark cleric path ii info"
 	{
@@ -4663,6 +4748,15 @@
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
 		"en"				"Deal increased damage while you are within\n{7}units of an ally with the [Ad]renaline buff active."
 	}
+	"battlecry ii"
+	{
+		"en"				"Battle Cry II"
+	}
+	"battlecry ii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
+		"en"				"Explode for AoE damage when hurt by an enemy and\nwithin {7}units of an ally with the [Ad]renaline buff active."
+	}
 	"health regen critical i"
 	{
 		"en"				"(Adren)Critical Hour I"
@@ -4689,6 +4783,15 @@
 	{
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
 		"en"				"While there are allies within {7}units below {16}{17} health\ndeal increased damage and AoE heal nearby teammates on hitting an enemy."
+	}
+	"coverfire ii"
+	{
+		"en"				"Cover Fire II"
+	}
+	"coverfire ii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s}"
+		"en"				"Upon reaching the threshold while there are allies\nwithin {7}units below {16}{17} health, deal increased\ndamage and explode for AoE damage on hitting an enemy."
 	}
 	"health regen ii"
 	{

@@ -75,18 +75,6 @@ public SubmitEventHooks(value) {
 	}
 }
 
-stock FindPlayerWeapon(client, char[] weapon, size) {
-	if (IsLegitimateClient(client) && GetClientTeam(client) == TEAM_INFECTED) {
-		GetClientWeapon(client, weapon, size);
-	}
-	else {
-		int g_iActiveWeaponOffset = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
-		int iWeapon = GetEntDataEnt2(client, g_iActiveWeaponOffset);
-		if (IsValidEdict(iWeapon)) GetEdictClassname(iWeapon, weapon, size);
-		else Format(weapon, size, "-1");
-	}
-}
-
 public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 	//CallKeys							= GetArrayCell(a_Events, pos, 0);
 	CallValues							= GetArrayCell(a_Events, pos, 1);
@@ -2254,7 +2242,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		else if (ClientType == 3) SurvivorDamage = GetArrayCell(CommonInfected[i], pos, 2);
 		RatingBonus = RoundToCeil(GetRatingReward(i, client) * GetScoreMultiplier(i));
 		if (RatingBonus < 1) continue;
-		if (iAntiFarmMax > 0 && !CheckKillPositions(i)) {
+		if (iAntiFarmMax < 1 || !CheckKillPositions(i)) {
 			CheckKillPositions(i, true);
 			if (killerblow != i) GetAbilityStrengthByTrigger(i, client, "assist");
 			RollLoot(i, client);
@@ -2541,7 +2529,7 @@ stock bool SameTeam_OnTakeDamage(healer, target, damage, bool IsDamageTalent = f
 	//if (HealImmunity[target] ||
 	if (bIsInCheckpoint[target]) return true;
 	bool TheBool = IsMeleeAttacker(healer);
-	if (TheBool && bIsMeleeCooldown[healer]) return true;
+	//if (TheBool && bIsMeleeCooldown[healer]) return true;
 	//https://pastebin.com/tLLK9kZM
 	int iHealerAmount = GetBulletOrMeleeHealAmount(healer, target, damage, damagetype, TheBool);
 	if (iHealerAmount < 1) return true;
@@ -2549,15 +2537,15 @@ stock bool SameTeam_OnTakeDamage(healer, target, damage, bool IsDamageTalent = f
 		CombatTime[healer] = GetEngineTime() + fOutOfCombatTime;
 		bIsInCombat[healer] = true;
 	}
-	if (TheBool) {
-		bIsMeleeCooldown[healer] = true;				
-		CreateTimer(0.1, Timer_IsMeleeCooldown, healer, TIMER_FLAG_NO_MAPCHANGE);
-	}
-	else {
-		char Weapon[64];
-		GetClientWeapon(healer, Weapon, sizeof(Weapon));
-		if (StrContains(Weapon, "pistol", false) == -1)	GiveAmmoBack(healer, 1);
-	}
+	// if (TheBool) {
+	// 	bIsMeleeCooldown[healer] = true;				
+	// 	CreateTimer(0.1, Timer_IsMeleeCooldown, healer, TIMER_FLAG_NO_MAPCHANGE);
+	// }
+	// else {
+	// char Weapon[64];
+	// GetClientWeapon(healer, Weapon, sizeof(Weapon));
+	if (StrContains(MyCurrentWeapon[healer], "pistol", false) == -1) GiveAmmoBack(healer, 1);
+	// }
 	// if (!IsPlayerUsingShotgun(healer)) {
 	// 	HealImmunity[target] = true;
 	// 	CreateTimer(0.1, Timer_HealImmunity, target, TIMER_FLAG_NO_MAPCHANGE);

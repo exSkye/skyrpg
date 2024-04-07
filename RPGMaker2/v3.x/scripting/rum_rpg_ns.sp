@@ -13,14 +13,14 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v3.4.5.9a"
+#define PLUGIN_VERSION				"v3.4.6.0"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 #define PLUGIN_NAME					"RPG Construction Set"
 #define PLUGIN_DESCRIPTION			"Fully-customizable and modular RPG, like the one for Atari."
 #define CONFIG_EVENTS				"rpg/events.cfg"
 #define CONFIG_MAINMENU				"rpg/mainmenu.cfg"
-#define CONFIG_MENUTALENTS			"rpg/talentmenu.cfg"
+#define CONFIG_SURVIVORTALENTS		"rpg/talentmenu.cfg"
 #define CONFIG_POINTS				"rpg/points.cfg"
 #define CONFIG_MAPRECORDS			"rpg/maprecords.cfg"
 #define CONFIG_STORE				"rpg/store.cfg"
@@ -36,8 +36,7 @@
 #define MODIFIER_HEALING			0
 #define MODIFIER_TANKING			1
 #define MODIFIER_DAMAGE				2	// not really used...
-// for some new keys in talents as of v3.4.5.9
-// might move this elsewhere at some point, happy here for now.
+
 #define SURVIVOR_STATE_IGNORE			0
 #define SURVIVOR_STATE_ENSNARED			1
 #define SURVIVOR_STATE_INCAPACITATED	2
@@ -47,7 +46,24 @@
 //	================================
 
 
+
+
 /*
+ Version 3.4.6.0
+ - Fixed a bug in a certain calculation.
+ - Optimized memory usage.
+ - Optimized keyvalue arrays.
+ - Survivor bots will now ignore Defender common affix mobs and hurt them as normal mobs due to the difficulty programming support for L4D2's AI to recognize Defenders.
+ - Fixed melee weapon damage not working properly (it was registering as blast/explosion damage)
+ - Changed hard-coded melee damage cooldown of 0.25s -> 0.1s
+ - Optimized many methods to used memoized data.
+ - Handicap levels now increase common infected allowance across the board == living survivor handicap levels.
+
+ -Rolled-back changes to the GetInfectedAbilityTrigger method as it was causing random crashing without any error logs.
+
+ - Added more new keys for talents:
+	"require ally on fire?"							"1"			// If 1, requires a teammate within "coherency range?" to have [Bu]rn stacks from fire.
+
  Version 3.4.5.9a
  - Spells/Abilities now receive buffs from augments and their governing attribute, where applicable.
  - Corrected an issue where spell/ability stamina cost was always being set to 1.
@@ -299,14 +315,12 @@
 #define ZOMBIECLASS_WITCH						7
 #define ZOMBIECLASS_TANK						8
 #define ZOMBIECLASS_SURVIVOR					0
-
 #define TANKSTATE_TIRED							0
 #define TANKSTATE_REFLECT						1
 #define TANKSTATE_FIRE							2
 #define TANKSTATE_DEATH							3
 #define TANKSTATE_TELEPORT						4
 #define TANKSTATE_HULK							5
-
 #define EFFECTOVERTIME_ACTIVATETALENT			0
 #define EFFECTOVERTIME_GETACTIVETIME			1
 #define EFFECTOVERTIME_GETCOOLDOWN				2
@@ -535,9 +549,10 @@ public Plugin myinfo = {
 #define REQUIRE_TARGET_HAS_ENSNARED_ALLY		190
 #define REQUIRE_ENEMY_IN_COHERENCY_RANGE		191
 #define ENEMY_IN_COHERENCY_IS_TARGET			192
+#define REQUIRE_ALLY_ON_FIRE					193
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION		193
+#define TALENT_FIRST_RANDOM_KEY_POSITION		194
 #define SUPER_COMMON_MAX_ALLOWED				0
 #define SUPER_COMMON_AURA_EFFECT				1
 #define SUPER_COMMON_RANGE_MIN					2
@@ -612,6 +627,15 @@ public Plugin myinfo = {
 #define HITGROUP_HEAD		1
 #define HITGROUP_OTHER		0
 
+Handle ModelsToPrecache;
+Handle TalentMenuConfigs;
+Handle TalentKey;
+Handle TalentValue;
+Handle TalentSection;
+Handle TalentKeys;
+Handle TalentValues;
+Handle TalentSections;
+Handle TalentTriggers;
 Handle GetStrengthFloat[MAXPLAYERS + 1];
 Handle TalentPositionsWithEffectName[MAXPLAYERS + 1];
 Handle PlayerBuffVals[MAXPLAYERS + 1];
@@ -1583,7 +1607,6 @@ public void OnPluginStart() {
 	//if (!FileExists(LogPathDirectory)) SetFailState("[SKYRPG LOGGING] please create file at %s", LogPathDirectory);
 	RegAdminCmd("debugrpg", Cmd_debugrpg, ADMFLAG_KICK);
 	RegAdminCmd("resettpl", Cmd_ResetTPL, ADMFLAG_KICK);
-	RegAdminCmd("origin", Cmd_GetOrigin, ADMFLAG_KICK);
 	RegAdminCmd("deleteprofiles", CMD_DeleteProfiles, ADMFLAG_ROOT);
 	// These are mandatory because of quick commands, so I hardcode the entries.
 	RegConsoleCmd("autodismantle", CMD_AutoDismantle);
@@ -1664,15 +1687,6 @@ public Action CMD_FBEGIN(int client, int args) {
 	return Plugin_Handled;
 }
 
-public Action Cmd_GetOrigin(int client, int args) {
-	float OriginP[3];
-	char sMelee[64];
-	GetMeleeWeapon(client, sMelee, sizeof(sMelee));
-	GetClientAbsOrigin(client, OriginP);
-	PrintToChat(client, "[0] %3.3f [1] %3.3f [2] %3.3f\n%s", OriginP[0], OriginP[1], OriginP[2], sMelee);
-	return Plugin_Handled;
-}
-
 public Action CMD_DeleteProfiles(int client, int args) {
 	if (DeleteAllProfiles(client)) PrintToChat(client, "all saved profiles are deleted.");
 	return Plugin_Handled;
@@ -1748,6 +1762,8 @@ public int ReadyUp_TrueDisconnect(int client) {
 stock CreateAllArrays() {
 	if (b_FirstLoad) return;
 	LogMessage("=====\t\tRunning first-time load of RPG.\t\t=====");
+	if (ModelsToPrecache == INVALID_HANDLE) ModelsToPrecache = CreateArray(16);
+	if (TalentMenuConfigs == INVALID_HANDLE) TalentMenuConfigs = CreateArray(32);
 	if (holdingFireList == INVALID_HANDLE) holdingFireList = CreateArray(16);
 	if (zoomCheckList == INVALID_HANDLE) zoomCheckList = CreateArray(16);
 	if (hThreatSort == INVALID_HANDLE) hThreatSort = CreateArray(16);
@@ -1844,8 +1860,8 @@ stock CreateAllArrays() {
 		b_IsFloating[i] = false;
 		DisplayActionBar[i] = false;
 		ActionBarSlot[i] = -1;
-		if (CommonInfected[i] == INVALID_HANDLE) CommonInfected[i] = CreateArray(8);
-		if (possibleLootPool[i] == INVALID_HANDLE) possibleLootPool[i] = CreateArray(32);
+		if (CommonInfected[i] == INVALID_HANDLE) CommonInfected[i] = CreateArray(16);
+		if (possibleLootPool[i] == INVALID_HANDLE) possibleLootPool[i] = CreateArray(16);
 		if (currentEquippedWeapon[i] == INVALID_HANDLE) currentEquippedWeapon[i] = CreateTrie();
 		if (GetCategoryStrengthKeys[i] == INVALID_HANDLE) GetCategoryStrengthKeys[i] = CreateArray(16);
 		if (GetCategoryStrengthValues[i] == INVALID_HANDLE) GetCategoryStrengthValues[i] = CreateArray(16);
@@ -2038,7 +2054,7 @@ stock CreateAllArrays() {
 		if (GetTalentKeyValueSection[i] == INVALID_HANDLE) GetTalentKeyValueSection[i] = CreateArray(16);
 		if (ApplyDebuffCooldowns[i] == INVALID_HANDLE) ApplyDebuffCooldowns[i] = CreateArray(16);
 		if (TalentAtMenuPositionSection[i] == INVALID_HANDLE) TalentAtMenuPositionSection[i] = CreateArray(16);
-		if (playerContributionTracker[i] == INVALID_HANDLE) playerContributionTracker[i] = CreateArray(8);
+		if (playerContributionTracker[i] == INVALID_HANDLE) playerContributionTracker[i] = CreateArray(16);
 		if (myLootDropCategoriesAllowed[i] == INVALID_HANDLE) myLootDropCategoriesAllowed[i] = CreateArray(16);
 		if (LootDropCategoryToBuffValues[i] == INVALID_HANDLE) LootDropCategoryToBuffValues[i] = CreateArray(16);
 		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(16);
@@ -2083,8 +2099,6 @@ stock OnMapStartFunc() {
 }
 
 public void OnAllPluginsLoaded() {
-	//ReadyUp_NtvIsCampaignFinale();
-	//CheckDifficulty();
 }
 
 public ReadyUp_GetCampaignStatus(mapposition) {
@@ -2110,9 +2124,24 @@ public void OnMapStart() {
 	PrecacheModel("models/infected/witch_bride.mdl", true);
 	PrecacheModel("models/infected/witch.mdl", true);
 	PrecacheModel("models/props_interiors/toaster.mdl", true);
+	int modelprecacheSize = GetArraySize(ModelsToPrecache);
+	if (modelprecacheSize > 0) {
+		LogMessage("There are %d models to be precached.", modelprecacheSize);
+		for (int i = 0; i < modelprecacheSize; i++) {
+			char modelName[64];
+			GetArrayString(ModelsToPrecache, i, modelName, 64);
+			LogMessage("Checking if %s is precached...", modelName);
+			if (!IsModelPrecached(modelName)) {
+				LogMessage("Precaching %s", modelName);
+				PrecacheModel(modelName, true);
+			}
+			else LogMessage("MODEL ALREADY PRECACHED");
+		}
+	}
+
 	PrecacheSound(JETPACK_AUDIO, true);
-	g_iSprite = PrecacheModel("materials/sprites/laserbeam.vmt");
-	g_BeaconSprite = PrecacheModel("materials/sprites/halo01.vmt");
+	g_iSprite = PrecacheModel("materials/sprites/laserbeam.vmt", true);
+	g_BeaconSprite = PrecacheModel("materials/sprites/halo01.vmt", true);
 	b_IsActiveRound = false;
 	MapRoundsPlayed = 0;
 	b_IsCampaignComplete			= false;
@@ -2175,13 +2204,51 @@ stock CheckGamemode() {
 	}
 }
 
+bool SetTalentConfigs() {
+	int size = GetArraySize(MainKeys);
+	char result[64];
+	int len = -1;
+	ClearArray(TalentMenuConfigs);
+	LogMessage("Trying to set config files %d.", size);
+	for (int i = 0; i < size; i++) {
+		char configname[64];
+		GetArrayString(MainKeys, i, configname, 64);
+		if (!StrEqual(configname, "talent config?")) continue;
+		GetArrayString(MainValues, i, configname, 64);
+		LogMessage("Storing %s", configname);
+		PushArrayString(TalentMenuConfigs, configname);
+	}
+	// ClearArray(SetKeys);
+	// ClearArray(SetVals);
+	if (GetArraySize(TalentMenuConfigs) > 0) return true;
+	LogMessage("No config files found.");
+	return false;
+}
+
+bool IsTalentConfig(char[] configname) {
+	int size = GetArraySize(TalentMenuConfigs);
+	for (int i = 0; i < size; i++) {
+		char talentconfig[64];
+		GetArrayString(TalentMenuConfigs, i, talentconfig, 64);
+		if (StrEqual(configname, talentconfig)) return true;
+	}
+	return false;
+}
+
 public Action Timer_ExecuteConfig(Handle timer) {
 	if (ReadyUp_NtvConfigProcessing() == 0) {
 		// These are processed one-by-one in a defined-by-dependencies order, but you can place them here in any order you want.
 		// I've placed them here in the order they load for uniformality.
 		ReadyUp_ParseConfig(CONFIG_MAIN);
 		ReadyUp_ParseConfig(CONFIG_EVENTS);
-		ReadyUp_ParseConfig(CONFIG_MENUTALENTS);
+		ReadyUp_ParseConfig(CONFIG_SURVIVORTALENTS);
+		SetTalentConfigs();
+		for (int i = 0; i < GetArraySize(TalentMenuConfigs); i++) {
+			char configname[64];
+			GetArrayString(TalentMenuConfigs, i, configname, 64);
+			LogMessage("PARSING TALENT CONFIG: %s", configname);
+			ReadyUp_ParseConfig(configname);
+		}		
 		ReadyUp_ParseConfig(CONFIG_POINTS);
 		ReadyUp_ParseConfig(CONFIG_STORE);
 		ReadyUp_ParseConfig(CONFIG_TRAILS);
@@ -2432,7 +2499,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		bIsSettingsCheck = true;
 		IsEnrageNotified = false;
 		b_IsFinaleTanks = false;
-
 		ClearArray(persistentCirculation);
 		ClearArray(CoveredInVomit);
 		ClearArray(RoundStatistics);
@@ -2668,19 +2734,6 @@ stock CastActionEx(client, char[] t_actionpos = "none", TheSize, pos = -1) {
 	else {
 		PrintToChat(client, "%T", "Action Slot Range", client, white, blue, ActionSlots, white);
 	}
-}
-
-public Action CMD_GetWeapon(client, args) {
-	char s[64];
-	GetClientWeapon(client, s, sizeof(s));
-	if (StrEqual(s, "weapon_melee")) {
-		int iWeapon = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
-		iWeapon = GetEntDataEnt2(client, iWeapon);
-		GetEntityClassname(iWeapon, s, sizeof(s));
-		GetEntPropString(iWeapon, Prop_Data, "m_strMapSetScriptName", s, sizeof(s));
-	}
-	PrintToChat(client, "%s", s);
-	return Plugin_Handled;
 }
 
 stock MySurvivorCompanion(client) {
@@ -3093,12 +3146,6 @@ public ReadyUp_CampaignComplete() {
 	}
 }
 
-public Action CMD_MyWeapon(client, args){
-	char myWeapon[64];
-	GetWeaponName(client, myWeapon, sizeof(myWeapon));
-	PrintToChat(client, "%s", myWeapon);
-	return Plugin_Handled;
-}
 public Action CMD_CollectBonusExperience(client, args) {
 	/*if (CurrentMapPosition != 0 && RoundExperienceMultiplier[client] > 0.0 && BonusContainer[client] > 0 && !b_IsActiveRound) {
 		new RewardWaiting = RoundToCeil(BonusContainer[client] * RoundExperienceMultiplier[client]);
@@ -3318,7 +3365,8 @@ public ReadyUp_ParseConfigFailed(char[] config, char[] error) {
 
 	if (StrEqual(config, CONFIG_MAIN) ||
 		StrEqual(config, CONFIG_EVENTS) ||
-		StrEqual(config, CONFIG_MENUTALENTS) ||
+		StrEqual(config, CONFIG_SURVIVORTALENTS) ||
+		IsTalentConfig(config) ||
 		StrEqual(config, CONFIG_MAINMENU) ||
 		StrEqual(config, CONFIG_POINTS) ||
 		StrEqual(config, CONFIG_STORE) ||
@@ -3341,8 +3389,6 @@ stock RegisterConsoleCommands() {
 		if (hDatabase == INVALID_HANDLE) {
 			MySQL_Init();
 		}
-		
-		RegConsoleCmd("getwep", CMD_GetWeapon);
 		GetConfigValue(RPGMenuCommand, sizeof(RPGMenuCommand), "rpg menu command?");
 		RPGMenuCommandExplode = GetDelimiterCount(RPGMenuCommand, ",") + 1;
 		GetConfigValue(thetext, sizeof(thetext), "drop weapon command?");
@@ -3366,7 +3412,6 @@ stock RegisterConsoleCommands() {
 		GetConfigValue(thetext, sizeof(thetext), "abilitybar menu command?");
 		RegConsoleCmd(thetext, CMD_ActionBar);
 		//RegConsoleCmd("collect", CMD_CollectBonusExperience);
-		RegConsoleCmd("myweapon", CMD_MyWeapon);
 		GetConfigValue(thetext, sizeof(thetext), "companion command?");
 		RegConsoleCmd(thetext, CMD_CompanionOptions);
 		GetConfigValue(thetext, sizeof(thetext), "load profile command?");
@@ -3386,7 +3431,8 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 	//PrintToChatAll("Size: %d config: %s", GetArraySize(Handle:key), configname);
 	if (!StrEqual(configname, CONFIG_MAIN) &&
 		!StrEqual(configname, CONFIG_EVENTS) &&
-		!StrEqual(configname, CONFIG_MENUTALENTS) &&
+		!StrEqual(configname, CONFIG_SURVIVORTALENTS) &&
+		!IsTalentConfig(configname) &&
 		!StrEqual(configname, CONFIG_MAINMENU) &&
 		!StrEqual(configname, CONFIG_POINTS) &&
 		!StrEqual(configname, CONFIG_STORE) &&
@@ -3396,6 +3442,7 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		!StrEqual(configname, CONFIG_COMMONAFFIXES) &&
 		!StrEqual(configname, CONFIG_HANDICAP)) return;// &&
 		//!StrEqual(configname, CONFIG_CLASSNAMES)) return;
+	bool configIsForTalents = (IsTalentConfig(configname) || StrEqual(configname, CONFIG_SURVIVORTALENTS));
 	char s_key[64];
 	char s_value[64];
 	char s_section[64];
@@ -3416,17 +3463,15 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		RegisterConsoleCommands();
 		return;
 	}
-	Handle TalentKeys;
-	if (StrEqual(configname, CONFIG_MENUTALENTS)) TalentKeys		=					CreateArray(16);
-	else										  TalentKeys		=					CreateArray(16);
-	Handle TalentValues;
-	if (StrEqual(configname, CONFIG_MENUTALENTS)) TalentValues		=					CreateArray(8);
-	else										  TalentValues		=					CreateArray(16);
-	Handle TalentSection	=					CreateArray(16);
+	if (configIsForTalents) TalentKeys		=					CreateArray(12);
+	else					TalentKeys		=					CreateArray(16);
+	if (configIsForTalents) TalentValues	=					CreateArray(9);
+	else					TalentValues	=					CreateArray(16);
+	TalentSections	=					CreateArray(10);
 	int lastPosition = 0;
 	int counter = 0;
 	if (keyCount > 0) {
-		if (StrEqual(configname, CONFIG_MENUTALENTS)) ResizeArray(a_Menu_Talents, keyCount);
+		if (configIsForTalents) ResizeArray(a_Menu_Talents, keyCount);
 		else if (StrEqual(configname, CONFIG_MAINMENU)) ResizeArray(a_Menu_Main, keyCount);
 		else if (StrEqual(configname, CONFIG_EVENTS)) ResizeArray(a_Events, keyCount);
 		else if (StrEqual(configname, CONFIG_POINTS)) ResizeArray(a_Points, keyCount);
@@ -3444,31 +3489,37 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		GetArrayString(key, i, s_key, sizeof(s_key));
 		GetArrayString(value, i, s_value, sizeof(s_value));
 		//LogMessage("\"%s\"\t\t\t\"%s\"", s_key, s_value);
-		PushArrayString(TalentKeys, s_key);
-		PushArrayString(TalentValues, s_value);
-		if (StrEqual(s_key, "EOM")) {
-
-			GetArrayString(section, i, s_section, sizeof(s_section));
-			PushArrayString(TalentSection, s_section);
-
-			if (StrEqual(configname, CONFIG_MENUTALENTS)) SetConfigArrays(configname, a_Menu_Talents, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Menu_Talents), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_MAINMENU)) SetConfigArrays(configname, a_Menu_Main, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Menu_Main), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_EVENTS)) SetConfigArrays(configname, a_Events, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Events), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_POINTS)) SetConfigArrays(configname, a_Points, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Points), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_PETS)) SetConfigArrays(configname, a_Pets, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Pets), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_STORE)) SetConfigArrays(configname, a_Store, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Store), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_TRAILS)) SetConfigArrays(configname, a_Trails, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Trails), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_WEAPONS)) SetConfigArrays(configname, a_WeaponDamages, TalentKeys, TalentValues, TalentSection, GetArraySize(a_WeaponDamages), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_COMMONAFFIXES)) SetConfigArrays(configname, a_CommonAffixes, TalentKeys, TalentValues, TalentSection, GetArraySize(a_CommonAffixes), lastPosition - counter);
-			else if (StrEqual(configname, CONFIG_HANDICAP)) SetConfigArrays(configname, a_HandicapLevels, TalentKeys, TalentValues, TalentSection, GetArraySize(a_HandicapLevels), lastPosition - counter);
-			//else if (StrEqual(configname, CONFIG_CLASSNAMES)) SetConfigArrays(configname, a_Classnames, TalentKeys, TalentValues, TalentSection, GetArraySize(a_Classnames), lastPosition - counter);
-			
-			lastPosition = i + 1;
-			if (StrEqual(configname, CONFIG_MENUTALENTS)) {
-				talentsLoaded++;
-				LogMessage("# of talents loaded: %d (%s)", talentsLoaded, s_section);
-			}
+		if (!StrEqual(s_key, "EOM")) {
+			PushArrayString(TalentKeys, s_key);
+			PushArrayString(TalentValues, s_value);
+			continue;
 		}
+		GetArrayString(section, i, s_section, sizeof(s_section));
+		PushArrayString(TalentSections, s_section);
+
+		if (configIsForTalents) SetConfigArrays(configname, a_Menu_Talents, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Menu_Talents), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_MAINMENU)) SetConfigArrays(configname, a_Menu_Main, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Menu_Main), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_EVENTS)) SetConfigArrays(configname, a_Events, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Events), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_POINTS)) SetConfigArrays(configname, a_Points, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Points), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_PETS)) SetConfigArrays(configname, a_Pets, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Pets), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_STORE)) SetConfigArrays(configname, a_Store, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Store), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_TRAILS)) SetConfigArrays(configname, a_Trails, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Trails), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_WEAPONS)) SetConfigArrays(configname, a_WeaponDamages, TalentKeys, TalentValues, TalentSections, GetArraySize(a_WeaponDamages), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_COMMONAFFIXES)) SetConfigArrays(configname, a_CommonAffixes, TalentKeys, TalentValues, TalentSections, GetArraySize(a_CommonAffixes), lastPosition - counter);
+		else if (StrEqual(configname, CONFIG_HANDICAP)) SetConfigArrays(configname, a_HandicapLevels, TalentKeys, TalentValues, TalentSections, GetArraySize(a_HandicapLevels), lastPosition - counter);
+		//else if (StrEqual(configname, CONFIG_CLASSNAMES)) SetConfigArrays(configname, a_Classnames, TalentKeys, TalentValues, tTalentSection, GetArraySize(a_Classnames), lastPosition - counter);
+		
+		lastPosition = i + 1;
+		if (configIsForTalents) {
+			talentsLoaded++;
+			LogMessage("# of talents loaded: %d (%s)", talentsLoaded, s_section);
+		}
+		ClearArray(TalentKeys);
+		ClearArray(TalentValues);
+		ClearArray(TalentSections);
+	}
+	if (configIsForTalents) {
+		LogMessage("TOTAL # of talents loaded: %d", talentsLoaded);
 	}
 
 	//CloseHandle(TalentKeys);
@@ -3479,11 +3530,11 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		if (a_DirectorActions != INVALID_HANDLE) ClearArray(a_DirectorActions);
 		a_DirectorActions			=	CreateArray(3);
 		if (a_DirectorActions_Cooldown != INVALID_HANDLE) ClearArray(a_DirectorActions_Cooldown);
-		a_DirectorActions_Cooldown	=	CreateArray(32);
+		a_DirectorActions_Cooldown	=	CreateArray(16);
 		int size						=	GetArraySize(a_Points);
-		Handle Keys					=	CreateArray(32);
-		Handle Values				=	CreateArray(32);
-		Handle Section				=	CreateArray(32);
+		Handle Keys					=	CreateArray(16);
+		Handle Values				=	CreateArray(16);
+		Handle Section				=	CreateArray(10);
 		int sizer						=	0;
 		for (int i = 0; i < size; i++) {
 			Keys						=	GetArrayCell(a_Points, i, 0);
@@ -3493,7 +3544,7 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 			for (int ii = 0; ii < size2; ii++) {
 				GetArrayString(Keys, ii, s_key, sizeof(s_key));
 				GetArrayString(Values, ii, s_value, sizeof(s_value));
-				if (StrEqual(s_key, "model?")) PrecacheModel(s_value, false);
+				if (StrEqual(s_key, "model?")) PushArrayString(ModelsToPrecache, s_value); //PrecacheModel(s_value, true);
 				else if (StrEqual(s_key, "director option?") && StrEqual(s_value, "1")) {
 					sizer				=	GetArraySize(a_DirectorActions);
 					ResizeArray(a_DirectorActions, sizer + 1);
@@ -3521,7 +3572,7 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		We need to preload an array full of all the positions of item drops.
 		Faster than searching every time.
 	*/
-	if (StrEqual(configname, CONFIG_MENUTALENTS)) {
+	if (configIsForTalents) {
 		ClearArray(ItemDropArray);
 		int mySize = GetArraySize(a_Menu_Talents);
 		int curSize= -1;
@@ -3543,6 +3594,17 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 			pos = 0;
 		}
 	}
+	if (StrEqual(configname, CONFIG_COMMONAFFIXES) && GetArraySize(ModelsToPrecache) > 0) {
+		LogMessage("there are models to precache, setting a timer so we can reload the map. This should only occur once.");
+		CreateTimer(10.0, Timer_PrecacheReset, _, TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+public Action Timer_PrecacheReset(Handle timer) {
+	char cur[64];
+	GetCurrentMap(cur, 64);
+	ServerCommand("changelevel %s", cur);
+	return Plugin_Stop;
 }
 /*
 	These specific variables can be called the same way, every time, so we declare them globally.
@@ -3918,19 +3980,8 @@ stock RollLoot(client, enemyClient) {
 			CreateItemDrop(client, enemyClient);
 		}
 	}
-	// int talentSelectedPos = GetArrayCell(possibleLootPool[client], GetRandomInt(0, lootPoolSize-1), 0);
-	// char text[128];
-	// GetArrayString(a_Database_Talents, talentSelectedPos, text, sizeof(text));
-	// GetTranslationOfTalentName(client, text, text, sizeof(text), true);
-	// Format(text, sizeof(text), "%t", text);
-	// char name[64];
-	// GetClientName(client, name, sizeof(name));
-	// Format(text, sizeof(text), "{B}%s {N}obtains an {B}%s {N}augment", name, text);
-	// for (int i = 1; i <= MaxClients; i++) {
-	// 	if (!IsLegitimateClient(i)) continue;
-	// 	Client_PrintToChat(i, true, text);
-	// }
 }
+
 
 stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, bool isALootBag = false) {
 	if (IsFakeClient(client)) return;
@@ -4225,28 +4276,36 @@ public Action CMD_DirectorTalentToggle(client, args) {
 }
 
 stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Handle Section, size, last, bool setConfigArraysDebugger = false) {
+	bool configIsForTalents = (IsTalentConfig(Config) || StrEqual(Config, CONFIG_SURVIVORTALENTS));
 	char text[64];
-	Handle TalentKey = CreateArray(16);
-	Handle TalentValue = CreateArray(8);
-	Handle TalentSection = CreateArray(8);
-	Handle TalentTriggers = CreateArray(8);
+	if (configIsForTalents) TalentKey		=					CreateArray(12);
+	else					TalentKey		=					CreateArray(16);
+	if (configIsForTalents) TalentValue		=					CreateArray(9);
+	else					TalentValue		=					CreateArray(16);
+	TalentSection = CreateArray(16);
+	if (configIsForTalents) TalentTriggers	= CreateArray(8);
 	char key[64];
 	char value[64];
 	int a_Size = GetArraySize(Keys);
+	//setConfigArraysDebugger = true;
 	if (setConfigArraysDebugger) LogMessage("Config array size is %d", a_Size);
-	for (int i = last; i < a_Size; i++) {
+	for (int i = 0; i < a_Size; i++) {
 
 		GetArrayString(Keys, i, key, sizeof(key));
 		GetArrayString(Values, i, value, sizeof(value));
-		if (setConfigArraysDebugger && StrEqual(Config, CONFIG_MENUTALENTS)) LogMessage("key found: \"%s\"\t\t\"%s\"", key, value);
+		if (setConfigArraysDebugger && configIsForTalents) LogMessage("key found: \"%s\"\t\t\"%s\"", key, value);
 		PushArrayString(TalentKey, key);
 		PushArrayString(TalentValue, value);
 	}
-	if (setConfigArraysDebugger && StrEqual(Config, CONFIG_MENUTALENTS)) LogMessage("------------------------------------------------------------");
+	if (setConfigArraysDebugger && configIsForTalents) LogMessage("------------------------------------------------------------");
 	int pos = 0;
 	int sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
-	if (StrEqual(Config, CONFIG_MENUTALENTS)) {
+	if (configIsForTalents) {
+		if (FindStringInArray(TalentKey, "require ally on fire?") == -1) {
+			PushArrayString(TalentKey, "require ally on fire?");
+			PushArrayString(TalentValue, "-1");
+		}
 		if (FindStringInArray(TalentKey, "enemy in coherency is target?") == -1) {
 			PushArrayString(TalentKey, "enemy in coherency is target?");
 			PushArrayString(TalentValue, "-1");
@@ -5245,7 +5304,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos == 189 && !StrEqual(text, "require ensnared ally?") ||
 			pos == 190 && !StrEqual(text, "target must be ally ensnarer?") ||
 			pos == 191 && !StrEqual(text, "require enemy in coherency range?") ||
-			pos == 192 && !StrEqual(text, "enemy in coherency is target?")) {
+			pos == 192 && !StrEqual(text, "enemy in coherency is target?") ||
+			pos == 193 && !StrEqual(text, "require ally on fire?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -5320,7 +5380,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			i == ABILITY_PASSIVE_DRAW_DELAY || i == TALENT_ROLL_CHANCE || i == SPECIAL_AMMO_TALENT_STRENGTH ||
 			i == ABILITY_TOGGLE_STRENGTH || i == ABILITY_COOLDOWN || i == SPELL_EFFECT_MULTIPLIER || i == COMPOUNDING_TALENT ||
 			i == MULT_STR_NEARBY_DOWN_ALLIES || i == MULT_STR_NEARBY_ENSNARED_ALLIES || i == REQUIRE_TARGET_HAS_ENSNARED_ALLY ||
-			i == REQUIRE_ENSNARED_ALLY || i == SKIP_TALENT_FOR_AUGMENT_ROLL || i == REQUIRE_ALLY_WITH_ADRENALINE || i == REQUIRE_ALLY_BELOW_HEALTH_PERCENTAGE) {
+			i == REQUIRE_ENSNARED_ALLY || i == SKIP_TALENT_FOR_AUGMENT_ROLL || i == REQUIRE_ALLY_WITH_ADRENALINE || i == REQUIRE_ALLY_BELOW_HEALTH_PERCENTAGE ||
+			i == REQUIRE_ALLY_ON_FIRE) {
 				GetArrayString(TalentValue, i, text, sizeof(text));
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
@@ -5663,12 +5724,18 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos++;
 		}
 		for (int i = 0; i < sortSize; i++) {
+			char tk[64];
+			GetArrayString(TalentKey, i, tk, sizeof(tk));
+			GetArrayString(TalentValue, i, text, sizeof(text));
 			if (i == SUPER_COMMON_REQ_BILED_SURVIVORS || i == SUPER_COMMON_MAX_ALLOWED || i == SUPER_COMMON_SPAWN_CHANCE ||
 			i == SUPER_COMMON_MODEL_SIZE) {
-				GetArrayString(TalentValue, i, text, sizeof(text));
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 			}
+			//LogMessage("\"%s\"\t\t\"%s\"", tk, text);
+			if (StrContains(text, ".mdl") == -1) continue;
+			LogMessage("Found a model; %s", text);
+			PushArrayString(ModelsToPrecache, text);
 		}
 	}
 	else if (StrEqual(Config, CONFIG_HANDICAP)) {
@@ -5720,7 +5787,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 		}
 		for (int i = 0; i < sortSize; i++) {
 			GetArrayString(TalentValue, i, text, sizeof(text));
-			if (StrEqual(text, "EOM")) continue;
+			//if (StrEqual(text, "EOM")) continue;
 			if (i == HANDICAP_TRANSLATION) continue;
 			if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 			else SetArrayCell(TalentValue, i, StringToInt(text));	//int
@@ -5770,15 +5837,15 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 		}
 		for (int i = 0; i < sortSize; i++) {
 			GetArrayString(TalentValue, i, text, sizeof(text));
-			if (StrEqual(text, "EOM")) continue;
+			//if (StrEqual(text, "EOM")) continue;
 			if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 			else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 		}
 	}
-	GetArrayString(Section, size, text, sizeof(text));
+	GetArrayString(Section, 0, text, sizeof(text));
 	if (setConfigArraysDebugger) LogMessage("TalentName: %s", text);
 	PushArrayString(TalentSection, text);
-	/*if (StrEqual(Config, CONFIG_MENUTALENTS) || StrEqual(Config, CONFIG_EVENTS)) {
+	/*if (StrEqual(Config, CONFIG_SURVIVORTALENTS) || StrEqual(Config, CONFIG_EVENTS)) {
 		LogMessage("%s", text);
 		sortSize = GetArraySize(TalentKey);
 		for (new i = 0; i < sortSize; i++) {
@@ -5791,7 +5858,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	SetArrayCell(Main, size, TalentKey, 0);
 	SetArrayCell(Main, size, TalentValue, 1);
 	SetArrayCell(Main, size, TalentSection, 2);
-	if (StrEqual(Config, CONFIG_MENUTALENTS)) {
+	if (configIsForTalents) {
 		PushArrayString(a_Database_Talents, text);
 		SetArrayCell(Main, size, TalentTriggers, 3);
 	}

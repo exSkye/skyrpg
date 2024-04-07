@@ -1257,6 +1257,7 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 		FormatKeyValue(gamemodesAllowed, sizeof(gamemodesAllowed), MenuKeys[client], MenuValues[client], "gamemode?", gamemodesAllowed);
 		FormatKeyValue(flagsAllowed, sizeof(flagsAllowed), MenuKeys[client], MenuValues[client], "flags?", flagsAllowed);
 		FormatKeyValue(configname, sizeof(configname), MenuKeys[client], MenuValues[client], "config?");
+		bool configIsForTalents = (IsTalentConfig(configname) || StrEqual(configname, CONFIG_SURVIVORTALENTS));
 		FormatKeyValue(s_TalentDependency, sizeof(s_TalentDependency), MenuKeys[client], MenuValues[client], "talent dependency?");
 		FormatKeyValue(sCvarRequired, sizeof(sCvarRequired), MenuKeys[client], MenuValues[client], "cvar_required?");
 		FormatKeyValue(translationInfo, sizeof(translationInfo), MenuKeys[client], MenuValues[client], "translation?");
@@ -1291,7 +1292,7 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 
 		// If director talent menu options is enabled by an admin, only specific options should show. We determine this here.
 		if (b_IsDirectorTalents[client]) {
-			if (StrEqual(configname, CONFIG_MENUTALENTS) ||
+			if (configIsForTalents ||
 			StrEqual(configname, CONFIG_POINTS) ||
 			b_IsDirectorTalents[client] && StrEqual(configname, "level up") ||
 			PlayerLevel[client] >= iMaxLevel && StrEqual(configname, "prestige") ||
@@ -1482,6 +1483,7 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 		// We want to know the value of the target config based on the keys and values pulled.
 		// This will be used to determine where we send the player.
 		FormatKeyValue(config, sizeof(config), MenuKeys[client], MenuValues[client], "config?");
+		bool configIsForTalents = (IsTalentConfig(config) || StrEqual(config, CONFIG_SURVIVORTALENTS));
 		FormatKeyValue(t_MenuName, sizeof(t_MenuName), MenuKeys[client], MenuValues[client], "target menu?");
 		FormatKeyValue(c_MenuName, sizeof(c_MenuName), MenuKeys[client], MenuValues[client], "menu name?");
 
@@ -1600,7 +1602,7 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 
 			BuildStoreMenu(client);
 		}
-		else if (StrEqual(config, CONFIG_MENUTALENTS)) {
+		else if (configIsForTalents) {
 
 			// In previous versions of RPG, players could see, but couldn't open specific menus if the director talents were active.
 			// In this version, if director talents are active, you just can't see a talent with "activator class required?" that is strictly 0.
@@ -2780,9 +2782,11 @@ stock BuildSubMenu(client, char[] MenuName, char[] ConfigName, char[] ReturnMenu
 	Format(MenuSelection_p[client], sizeof(MenuSelection_p[]), "%s", MenuSelection[client]);
 	Format(MenuSelection[client], sizeof(MenuSelection[]), "%s", ConfigName);
 
+	bool configIsForTalents = (IsTalentConfig(ConfigName) || StrEqual(ConfigName, CONFIG_SURVIVORTALENTS));
+
 	if (!b_IsDirectorTalents[client]) {
 
-		if (StrEqual(ConfigName, CONFIG_MENUTALENTS)) {
+		if (configIsForTalents) {
 
 			BuildMenuTitle(client, menu, _, 1, _, ShowPlayerLayerInformation[client]);
 		}
