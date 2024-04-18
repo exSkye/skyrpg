@@ -33,11 +33,11 @@ public Action Timer_HealImmunity(Handle timer, any client) {
 	return Plugin_Stop;
 }
 
-public Action Timer_IsMeleeCooldown(Handle timer, any client) {
+// public Action Timer_IsMeleeCooldown(Handle timer, any client) {
 
-	if (IsLegitimateClient(client)) { bIsMeleeCooldown[client] = false; }
-	return Plugin_Stop;
-}
+// 	if (IsLegitimateClient(client)) { bIsMeleeCooldown[client] = false; }
+// 	return Plugin_Stop;
+// }
 
 public Action Timer_ResetShotgunCooldown(Handle timer, any client) {
 	if (IsLegitimateClient(client)) shotgunCooldown[client] = false;
@@ -289,7 +289,8 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 				}
 			}
 		}
-		ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
+		//ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
+		ModifyHealth(client);
 		if (GetClientHealth(client) > mymaxhealth) SetEntityHealth(client, mymaxhealth);
 	}
 	GetAbilityStrengthByTrigger(client, client, "p", _, _, _, _, _, _, _, 0); // percentage passives
@@ -846,16 +847,6 @@ public Action Timer_CloakingDeviceBreakdown(Handle timer, any client) {
 
 		SetEntityRenderMode(client, RENDER_NORMAL);
 		SetEntityRenderColor(client, 255, 255, 255, 255);
-	}
-	return Plugin_Stop;
-}
-
-public Action Timer_ResetPlayerHealth(Handle timer, any client) {
-
-	if (IsLegitimateClientAlive(client)) {
-
-		LoadHealthMaximum(client);
-		GiveMaximumHealth(client);
 	}
 	return Plugin_Stop;
 }

@@ -1986,11 +1986,16 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 	b_IsLoaded[client] = true;
 	b_IsLoading[client] = false;
 	SurvivorStamina[client] = GetPlayerStamina(client);
+	SetMaximumHealth(client);
+	if (!b_IsActiveRound) GiveMaximumHealth(client);
 }
 
 stock FormatPlayerName(client) {
 	char playerNameFormatted[512];
-	if (strlen(baseName[client]) < 1) GetClientName(client, baseName[client], sizeof(baseName[]));
+	if (strlen(baseName[client]) < 1) {
+		LogMessage("Old name is %N", client);
+		GetClientName(client, baseName[client], sizeof(baseName[]));
+	}
 	if (handicapLevel[client] < 1) Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
 	else Format(playerNameFormatted, 512, "[%d] [%d] %s", handicapLevel[client], PlayerLevel[client], baseName[client]);
 	SetClientInfo(client, "name", playerNameFormatted);

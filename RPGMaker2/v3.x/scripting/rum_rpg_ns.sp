@@ -1,3 +1,6 @@
+// (c) Michael "Sky" Toth
+// Distributed under the GPLv3 license =)
+
 #define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL				"models/survivors/survivor_coach.mdl"
@@ -13,7 +16,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v3.4.6.0"
+#define PLUGIN_VERSION				"v3.4.6.2"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 #define PLUGIN_NAME					"RPG Construction Set"
@@ -32,7 +35,6 @@
 #define CONFIG_HANDICAP				"rpg/handicap.cfg"
 #define LOGFILE						"rum_rpg.txt"
 #define JETPACK_AUDIO				"ambient/gas/steam2.wav"
-
 #define MODIFIER_HEALING			0
 #define MODIFIER_TANKING			1
 #define MODIFIER_DAMAGE				2	// not really used...
@@ -43,12 +45,29 @@
 #define SURVIVOR_STATE_DEAD				3
 //	================================
 #define DEBUG     					false
-//	================================
+/*	================================
 
+ Version 3.4.6.2
+ - Added a new variable to track whether a melee weapon is equipped or not.
+ - Optimized the SetMyWeapons(client) method.
+ - Fixed a math bug in GetTalentInfo()
+ - Fixed a bug in GetAttributeMultiplier() where I was using the wrong variable for the calculation.
+ - Bags will no longer be created and instead augment parts given when a potential item does not meet the players item loot% threshold setting.
+ - Players can no longer choose to auto-destroy minor augments specifically under the new auto-dismantle on roll system, as minor augments are determined after the player picks the item up, not at the time of bag generation.
+ - Redesigned attributes for linear (instead of exponential) multiplication.
+ - Added a new variable to control if attribute talents are additive or multiplicative:
+	"are attribute talents multiplicative?"			"0"			// By default, if this key is omitted attribute talents are additive.
+ - Tanking now earns score.
+ - Tanking now earns experience from common infected.
 
+ Version 3.4.6.1
+ 
+ - Removed hard-coded melee weapon damage cooldown due to potential bug crash related.
+ - Redesigned healing to scale off of healing talents, not damage talents. This means healing will no longer scale with damage.
+ - Fixed a bug where items in healing or throwable slots could be recorded as a clients weapon and the wrong type of proficiency would get called.
+ - Heal strength will now display proper values on the ability bar.
+ - Max health capped to 30,000 for survivors because engine breaks around 33k health
 
-
-/*
  Version 3.4.6.0
  - Fixed a bug in a certain calculation.
  - Optimized memory usage.
@@ -58,6 +77,7 @@
  - Changed hard-coded melee damage cooldown of 0.25s -> 0.1s
  - Optimized many methods to used memoized data.
  - Handicap levels now increase common infected allowance across the board == living survivor handicap levels.
+ - Fixed a logic error causing a visual bug where infected health numbers would not drop (but the health bar would)
 
  -Rolled-back changes to the GetInfectedAbilityTrigger method as it was causing random crashing without any error logs.
 
@@ -627,6 +647,10 @@ public Plugin myinfo = {
 #define HITGROUP_HEAD		1
 #define HITGROUP_OTHER		0
 
+int iAttributesAreMultiplicative;
+int iMaximumCommonsPerPlayer;
+bool hasMeleeWeaponEquipped[MAXPLAYERS + 1];
+int iMaximumTanksPerPlayer;
 Handle ModelsToPrecache;
 Handle TalentMenuConfigs;
 Handle TalentKey;
@@ -1192,6 +1216,7 @@ float fRatingMultSupers;
 float fRatingMultCommons;
 float fRatingMultTank;
 float fRatingMultWitch;
+float fRatingMultTanking;
 float fTeamworkExperience;
 float fItemMultiplierLuck;
 float fItemMultiplierTeam;
@@ -2206,8 +2231,8 @@ stock CheckGamemode() {
 
 bool SetTalentConfigs() {
 	int size = GetArraySize(MainKeys);
-	char result[64];
-	int len = -1;
+	//char result[64];
+	//int len = -1;
 	ClearArray(TalentMenuConfigs);
 	LogMessage("Trying to set config files %d.", size);
 	for (int i = 0; i < size; i++) {
@@ -3723,6 +3748,7 @@ stock LoadMainConfig() {
 	fRatingMultCommons					= GetConfigValueFloat("rating multiplier commons?");
 	fRatingMultTank						= GetConfigValueFloat("rating multiplier tank?");
 	fRatingMultWitch					= GetConfigValueFloat("rating multiplier witch?");
+	fRatingMultTanking					= GetConfigValueFloat("rating multiplier tanking?");
 	fTeamworkExperience					= GetConfigValueInt("maximum teamwork experience?") * 1.0;
 	fItemMultiplierLuck					= GetConfigValueFloat("buy item luck multiplier?");
 	fItemMultiplierTeam					= GetConfigValueInt("buy teammate item multiplier?") * 1.0;
@@ -3882,6 +3908,10 @@ stock LoadMainConfig() {
 	iInventoryLimit						= GetConfigValueInt("max persistent loot inventory size?", 50);
 	iLevelRequiredToEarnScore			= GetConfigValueInt("level required to earn score?", 10);
 	fNoHandicapScoreMultiplier			= GetConfigValueFloat("base score multiplier (no handicap?)", 0.05);
+	iMaximumTanksPerPlayer				= GetConfigValueInt("maximum tank spawns per player?", 2);
+	iMaximumCommonsPerPlayer			= GetConfigValueInt("maximum common increase per player?", 30);
+	iAttributesAreMultiplicative		= GetConfigValueInt("are attribute talents multiplicative?", 0);
+
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
@@ -3898,22 +3928,22 @@ public Action CMD_AutoDismantle(client, args) {
 	if (handicapLevel[client] > 0) lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
 	if (args < 1) {
 		PrintToChat(client, "\x04!autodismantle <score>\n\x03augments that roll under this score will be auto-dismantled. \x04limit: \x03%d", BestRating[client] + lootFindBonus);
-		PrintToChat(client, "\x04!autodismantle minor - \x03toggle auto dismantle of minor augments on/off");
+		//PrintToChat(client, "\x04!autodismantle minor - \x03toggle auto dismantle of minor augments on/off");
 		return Plugin_Handled;
 	}
 	char arg[64];
 	GetCmdArg(1, arg, 64);
-	if (StrEqual(arg, "minor", false)) {
-		if (iplayerDismantleMinorAugments[client] == 0) {
-			iplayerDismantleMinorAugments[client] = 1;
-			PrintToChat(client, "\x04minor augment \x03auto-dismantle \x05Enabled");
-		}
-		else {
-			iplayerDismantleMinorAugments[client] = 0;
-			PrintToChat(client, "\x04minor augment \x03auto-dismantle \x05Disabled");
-		}
-		return Plugin_Handled;
-	}
+	// if (StrEqual(arg, "minor", false)) {
+	// 	if (iplayerDismantleMinorAugments[client] == 0) {
+	// 		iplayerDismantleMinorAugments[client] = 1;
+	// 		PrintToChat(client, "\x04minor augment \x03auto-dismantle \x05Enabled");
+	// 	}
+	// 	else {
+	// 		iplayerDismantleMinorAugments[client] = 0;
+	// 		PrintToChat(client, "\x04minor augment \x03auto-dismantle \x05Disabled");
+	// 	}
+	// 	return Plugin_Handled;
+	// }
 	int auto = StringToInt(arg);
 	if (auto > 0 && auto <= BestRating[client] + lootFindBonus) {
 		iplayerSettingAutoDismantleScore[client] = auto;
@@ -3969,6 +3999,7 @@ stock RollLoot(client, enemyClient) {
 	if (handicapLevel[client] > 0) {
 		lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
 	}
+	int numOfAugmentPartsToReturn = 0;
 	for (int i = numOfRollsToAttempt; i > 0; i--) {
 		int roll = GetRandomInt(1, RoundToCeil(1.0 / fLootChance));
 		if (roll != 1) continue;
@@ -3976,9 +4007,19 @@ stock RollLoot(client, enemyClient) {
 		else {
 			int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
 			int max = (min + iRatingRequiredForAugmentLootDrops > BestRating[client]) ? min + iRatingRequiredForAugmentLootDrops : BestRating[client];
-			PushArrayCell(playerLootOnGround[client], GetRandomInt(min,max+lootFindBonus));
-			CreateItemDrop(client, enemyClient);
+			int itemScore = GetRandomInt(min,max+lootFindBonus);
+			if (itemScore < iplayerSettingAutoDismantleScore[client]) numOfAugmentPartsToReturn++;
+			else {
+				PushArrayCell(playerLootOnGround[client], itemScore);
+				CreateItemDrop(client, enemyClient);
+			}
 		}
+	}
+	if (numOfAugmentPartsToReturn > 0) {
+		char text[64];
+		augmentParts[client] += numOfAugmentPartsToReturn;
+		Format(text, 64, "{G}+%d {O}augment parts", numOfAugmentPartsToReturn);
+		Client_PrintToChat(client, true, text);
 	}
 }
 
@@ -3995,13 +4036,6 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	}
 	int potentialItemRatingOverride = (forceAugmentItemLevel > 0) ? forceAugmentItemLevel : GetRandomInt(min, max+lootFindBonus);
 	char text[512];
-	if (potentialItemRatingOverride < iplayerSettingAutoDismantleScore[client]) {
-		augmentParts[client]++;
-		Format(text, 64, "{G}+1 {O}augment parts");
-		Client_PrintToChat(client, true, text);
-		return;
-	}
-	//if (potentialItemRatingOverride == 0 && Rating[client] < iRatingRequiredForAugmentLootDrops) return;
 
 	int size = GetArraySize(myAugmentIDCodes[client]);
 	char buffedCategory[64];
@@ -4021,13 +4055,12 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	lootrolls[0] = roll;
 	int lootsize = 0;
 	while (potentialItemRating > thisAugmentRatingRequiredForNextTier) {
-		if (lootsize == 0) lootsize++;
+		if (lootsize < 2) lootsize++;
+		else break;
 		roll = GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating);
 		potentialItemRating -= roll;
 		//potentialItemRating -= iRatingRequiredForAugmentLootDrops;
 		lootrolls[lootsize] = roll;
-		if (lootsize < 2 && potentialItemRating > thisAugmentRatingRequiredForNextTier) lootsize++;
-		else break;
 	}
 	ResizeArray(myAugmentIDCodes[client], size+1);
 	ResizeArray(myAugmentCategories[client], size+1);
@@ -4098,18 +4131,18 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	}
 	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
 	if (augmentActivatorRating == -1 && augmentTargetRating == -1) {
-		if (iplayerDismantleMinorAugments[client] == 1) {
-			augmentParts[client]++;
-			RemoveFromArray(myAugmentIDCodes[client], size);
-			RemoveFromArray(myAugmentCategories[client], size);
-			RemoveFromArray(myAugmentOwners[client], size);
-			RemoveFromArray(myAugmentInfo[client], size);
-			RemoveFromArray(myAugmentTargetEffects[client], size);
-			RemoveFromArray(myAugmentActivatorEffects[client], size);
-			Format(text, 64, "{G}+1 {O}augment parts");
-			Client_PrintToChat(client, true, text);
-			return;
-		}
+		// if (iplayerDismantleMinorAugments[client] == 1) {
+		// 	augmentParts[client]++;
+		// 	RemoveFromArray(myAugmentIDCodes[client], size);
+		// 	RemoveFromArray(myAugmentCategories[client], size);
+		// 	RemoveFromArray(myAugmentOwners[client], size);
+		// 	RemoveFromArray(myAugmentInfo[client], size);
+		// 	RemoveFromArray(myAugmentTargetEffects[client], size);
+		// 	RemoveFromArray(myAugmentActivatorEffects[client], size);
+		// 	Format(text, 64, "{G}+1 {O}augment parts");
+		// 	Client_PrintToChat(client, true, text);
+		// 	return;
+		// }
 		Format(augmentStrengthText, 10, "minor");
 	}
 	else {
@@ -5317,7 +5350,6 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			}
 			pos++;
 		}
-
 		for (int i = 0; i < sortSize; i++) {
 			if (i == TALENT_IS_EFFECT_OVER_TIME || i == ACTIVATOR_CLASS_REQ || i == TARGET_CLASS_REQ || i == ABILITY_TYPE ||
 			i == IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES || i == COMBAT_STATE_REQ || i == CONTRIBUTION_TYPE_CATEGORY ||
@@ -5387,7 +5419,6 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 			}
 		}
-
 		if (setConfigArraysDebugger) {
 			LogMessage("--------------------------------------------------------------");
 			LogMessage("# of keyvalues is %d", GetArraySize(TalentKey));

@@ -803,11 +803,17 @@ stock ShowActionBar(client) {
 	static char baseWeaponDamageText[64];
 	//decl String:lastBaseDamageText[64];
 	if (iShowDamageOnActionBar == 1) {
-		new baseWeaponDamage = DataScreenWeaponDamage(client);	// expensive way
+		int baseWeaponDamage = DataScreenWeaponDamage(client);	// expensive way
 		if (baseWeaponDamage > 0) {
 			AddCommasToString(baseWeaponDamage, baseWeaponDamageText, sizeof(baseWeaponDamageText));
 		//AddCommasToString(lastBaseDamage[client], baseWeaponDamageText, sizeof(baseWeaponDamageText));
 			Format(text, sizeof(text), "%s\nDamage: %s", text, baseWeaponDamageText);
+		}
+		int healDamage = DataScreenWeaponDamage(client, true);
+		if (healDamage > 0) {
+			AddCommasToString(healDamage, baseWeaponDamageText, sizeof(baseWeaponDamageText));
+		//AddCommasToString(lastBaseDamage[client], baseWeaponDamageText, sizeof(baseWeaponDamageText));
+			Format(text, sizeof(text), "%s\nHeal: %s", text, baseWeaponDamageText);
 		}
 	}
 	Format(text, sizeof(text), "%s\nsame target Hits: %d", text, ConsecutiveHits[client]);
@@ -2259,17 +2265,17 @@ public void CharacterSheetMenu(client) {
 			Format(weaponDamage, sizeof(weaponDamage), "%d", healRegen);
 			ReplaceString(text, sizeof(text), "{HPRGN}", weaponDamage);
 		}
-		if (!IsMeleeAttacker(client)) {
+		if (!hasMeleeWeaponEquipped[client]) {
 			if (StrContains(text, "{HEALSTRGUN}", true) != -1) {
 				// new pelletMultiplication = (IsPlayerUsingShotgun(client)) ? 10 : 1;
-				Format(weaponDamage, sizeof(weaponDamage), "%d", GetBulletOrMeleeHealAmount(client, target, currentWeaponDamage, DMG_BULLET, false));
+				Format(weaponDamage, sizeof(weaponDamage), "%d", GetBulletOrMeleeHealAmount(client, target, currentWeaponDamage, DMG_BULLET));
 				ReplaceString(text, sizeof(text), "{HEALSTRGUN}", weaponDamage);
 			}
 			if (StrContains(text, "{HEALSTRMEL}", true) != -1) ReplaceString(text, sizeof(text), "{HEALSTRMEL}", "N/A");
 		}
 		else {
 			if (StrContains(text, "{HEALSTRMEL}", true) != -1) {
-				Format(weaponDamage, sizeof(weaponDamage), "%d", GetBulletOrMeleeHealAmount(client, target, currentWeaponDamage, DMG_SLASH, true));
+				Format(weaponDamage, sizeof(weaponDamage), "%d", GetBulletOrMeleeHealAmount(client, target, currentWeaponDamage, DMG_SLASH));
 				ReplaceString(text, sizeof(text), "{HEALSTRMEL}", weaponDamage);
 			}
 			if (StrContains(text, "{HEALSTRGUN}", true) != -1) ReplaceString(text, sizeof(text), "{HEALSTRGUN}", "N/A");
@@ -2634,9 +2640,8 @@ public ProfileEditorMenuHandle(Handle menu, MenuAction action, client, slot) {
 
 stock SaveProfile(client, SaveType = 0) {	// 1 insert a new save, 2 overwrite an existing save.
 
-	if (strlen(LoadoutName[client]) < 8) {
-
-		PrintToChat(client, "use !loadoutname to name your loadout. Must be >= 8 chars");
+	if (StrEqual(LoadoutName[client], "none")) {
+		PrintToChat(client, "\x04Please set a valid !loadoutname before trying again.");
 		return;
 	}
 
@@ -3117,7 +3122,6 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	else f_Strength	=	GetTalentStrength(client, TalentNameOverride) * 1.0;
 	if (bIsNext) f_Strength++;
 	if (f_Strength <= 0.0) return 0.0;
-	float f_StrengthPoint	= 0.0;
 	if (target == 0 || !IsLegitimateClient(target)) target = client;
 	/*
 		Server operators can make up their own custom attributes, and make them affect any node they want.
@@ -3127,19 +3131,25 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	if (!skipGettingValues) {
 		Values = GetArrayCell(a_Menu_Talents, GetMenuPosition(client, TalentNameOverride), 1);
 	}
-	char text[64];
-	GetArrayString(Values, GOVERNING_ATTRIBUTE, text, sizeof(text));
-	float governingAttributeMultiplier = 0.0;
-	if (!StrEqual(text, "-1")) governingAttributeMultiplier = GetAttributeMultiplier(client, text);
 
 	//we want to add support for a "type" of talent.
 	char sTalentStrengthType[64];
 	if (infotype == 0 || infotype == 1) GetArrayString(Values, TALENT_UPGRADE_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
 	else if (infotype == 3) GetArrayString(Values, TALENT_COOLDOWN_STRENGTH_VALUE, sTalentStrengthType, sizeof(sTalentStrengthType));
 	int istrength = RoundToCeil(f_Strength);
-	float f_StrengthIncrement = (infotype == 2) ? GetArrayCell(Values, TALENT_ACTIVE_STRENGTH_VALUE) : StringToFloat(sTalentStrengthType);
+	float f_StrengthIncrement = (infotype == 2) ? GetArrayCell(Values, TALENT_ACTIVE_STRENGTH_VALUE) : (StrContains(sTalentStrengthType, ".") == -1) ? StringToInt(sTalentStrengthType) * 1.0 : StringToFloat(sTalentStrengthType);
 	if (istrength < 1 || infotype == 3 && f_StrengthIncrement <= 0.0) return 0.0;
-	f_StrengthPoint = f_StrengthIncrement;
+	float f_StrengthPoint = f_StrengthIncrement;
+	char text[64];
+	GetArrayString(Values, GOVERNING_ATTRIBUTE, text, sizeof(text));
+	float governingAttributeMultiplier = 0.0;
+	if (!StrEqual(text, "-1")) {
+		governingAttributeMultiplier = GetAttributeMultiplier(client, text);
+		if (governingAttributeMultiplier > 0.0) {
+			f_StrengthIncrement += (f_StrengthIncrement * governingAttributeMultiplier);
+			if (iAttributesAreMultiplicative == 1) f_StrengthPoint = f_StrengthIncrement;
+		}
+	}
 
 	char activatorEffects[64];
 	GetArrayString(Values, ACTIVATOR_ABILITY_EFFECTS, activatorEffects, 64);
@@ -3149,11 +3159,9 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	if (skipAugmentModifiers != 1) {
 		float fCategoryAugmentBuff = GetCategoryAugmentBuff(client, TalentNameOverride, f_StrengthPoint);
 		float fCategoryTalentBuff = GetCategoryTalentBuff(client, activatorEffects, targetEffects);
-		if (fCategoryAugmentBuff > 0.0) f_StrengthPoint += (f_StrengthPoint * fCategoryAugmentBuff);
-		if (fCategoryTalentBuff > 0.0) f_StrengthPoint += (f_StrengthPoint * fCategoryTalentBuff);
+		if (fCategoryAugmentBuff > 0.0) f_StrengthPoint += (f_StrengthIncrement * fCategoryAugmentBuff);
+		if (fCategoryTalentBuff > 0.0) f_StrengthPoint += (f_StrengthIncrement * fCategoryTalentBuff);
 	}
-
-	if (governingAttributeMultiplier > 0.0) f_StrengthPoint += (f_StrengthPoint * governingAttributeMultiplier);
 	if (infotype == 3) {
 		char sCooldownGovernor[64];
 		float cdReduction = 0.0;
@@ -3526,7 +3534,7 @@ public Handle TalentInfoScreen(client) {
 		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_COOLDOWN_EFFECT);
 		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
 	}
-	int isCompoundingTalent = GetArrayCell(PurchaseValues[client], COMPOUNDING_TALENT);	// -1 if no value is provided.
+	//int isCompoundingTalent = GetArrayCell(PurchaseValues[client], COMPOUNDING_TALENT);	// -1 if no value is provided.
 	if (iContributionCategoryRequired >= 0) {
 		Format(text, sizeof(text), "%T", "contribution required notice", client);
 		DrawPanelText(menu, text);
