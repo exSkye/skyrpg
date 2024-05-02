@@ -540,7 +540,6 @@ public void LoadLeaderboardsQuery(Handle owner, Handle hndl, const char[] error,
 }
 
 stock void ResetData(int client) {
-
 	RefreshSurvivor(client);
 	ResetContributionTracker(client);
 	HealingContribution[client] = 0;
@@ -580,16 +579,12 @@ stock void ResetData(int client) {
 	StrugglePower[client] = 0;
 }
 
-public Action Timer_TryToLoad(Handle timer, any client) {
-	if (!IsLegitimateClient(client)) {
-		b_isWaiting[client] = false;
-		return Plugin_Stop;
-	}
-	char key[64];
-	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
-	if (StrEqual(key, "STEAM_ID_STOP_IGNORING_RETVALS")) return Plugin_Continue;
-	b_isWaiting[client] = false;
-	ClearAndLoad(client);
+public Action Timer_CheckIfClientIsIdle(Handle timer, any client) {
+	if (!IsLegitimateClient(client)) return Plugin_Stop;
+	if (IsClientIdle(client)) return Plugin_Continue;
+	LogMessage("%N is no longer idle, loading data.", client);
+	b_IsIdle[client] = false;
+	ClearAndLoad(client, true);
 	return Plugin_Stop;
 }
 
@@ -598,19 +593,20 @@ stock void ClearAndLoad(int client, bool IgnoreLoad = false) {
 	if (hDatabase == INVALID_HANDLE) return;
 	//new client = FindClientWithAuthString(key, true);
 	if (client < 1) return;
-	if (b_isWaiting[client] || b_IsLoading[client] && !IgnoreLoad) return;
+	if (b_IsLoading[client] && !IgnoreLoad) return;
+	if (IsClientIdle(client)) {
+		if (!b_IsIdle[client]) {
+			LogMessage("%N is idling on a bot, waiting for them to take over.", client);
+			b_IsIdle[client] = true;
+			CreateTimer(1.0, Timer_CheckIfClientIsIdle, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
+		return;
+	}
 	ClearArray(possibleLootPool[client]);
 	b_IsLoading[client] = true;
 
 	char key[64];
 	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
-	if (StrEqual(key, "STEAM_ID_STOP_IGNORING_RETVALS")) {
-		// client has not loaded in fully and for some reason this can get called before OnClientAuthorized in SM1.11+
-		// if this happens, we do a loop that checks for their actual steam id, and if so call this again.
-		b_isWaiting[client] = true;
-		CreateTimer(1.0, Timer_TryToLoad, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		return;
-	}
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 
 	//if (StrContains(key, "BOT", false) != -1) {
@@ -795,9 +791,6 @@ stock void CreateNewPlayerEx(int client) {
 	}
 
 	LogMessage("No data rows for %N with steamid: %s, could be found, creating new player data.", client, key);
-	char oldName[64];
-	GetClientName(client, oldName, 64);
-	GetClientName(client, baseName[client], sizeof(baseName[]));
 	if (IsFakeClient(client)) PlayerLevel[client] = iBotPlayerStartingLevel;
 	else PlayerLevel[client]				=	iPlayerStartingLevel;
 	SetTotalExperienceByLevel(client, PlayerLevel[client]);
@@ -925,9 +918,8 @@ public void Query_CheckIfDataExists(Handle owner, Handle hndl, const char[] erro
 			//if (StrContains(DefaultProfileName, "-1", false) == -1) LoadProfileEx(client, DefaultProfileName);
 	}
 	else {
-
+		IsClearedToLoad(client, true);
 		LogMessage("%d Data rows found for %N with steamid: %s, loading player data.", count, client, key);
-		GetClientName(client, baseName[client], sizeof(baseName[]));
 		//b_IsLoading[client] = false;
 		ClearAndLoad(client, true);
 		//if (!IsFakeClient(client)) CheckServerLevelRequirements(client);
@@ -1222,8 +1214,8 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 	}
 	if (b_IsTrueDisconnect) {
-		Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
-		SetClientInfo(client, "name", baseName[client]);
+		// Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
+		// SetClientInfo(client, "name", baseName[client]);
 		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 		Format(BuildingStack[client], sizeof(BuildingStack[]), "none");
 		Format(LoadoutName[client], sizeof(LoadoutName[]), "none");
@@ -1486,6 +1478,32 @@ public ReadProfiles_GenerateAll(Handle owner, Handle hndl, const char[] error, a
 	}
 }
 
+stock bool IsClearedToLoad(int client, bool insert = false, bool remove = false) {
+	LogMessage("Is %N authorized to load?", client);
+	char key[512];
+	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+
+	int size = GetArraySize(ClientsPermittedToLoad);
+	for (int i = 0; i < size; i++) {
+		char steamid[512];
+		GetArrayString(ClientsPermittedToLoad, i, steamid, sizeof(steamid));
+		if (!StrEqual(steamid, key)) continue;
+		if (remove) {
+			LogMessage("%N should have finished loading and is no longer authorized to load data.", client);
+			RemoveFromArray(ClientsPermittedToLoad, i);
+		}
+		else LogMessage("%N is authorized to load.", client);
+		return true;
+	}
+	if (insert) {
+		PushArrayString(ClientsPermittedToLoad, key);
+		LogMessage("%N is now authorized to load.", client);
+	}
+	else LogMessage("%N is not authorized to load.", client);
+	return false;
+}
+
 public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any client) {
 	if ( hndl != INVALID_HANDLE ) {
 		char key[64];
@@ -1496,7 +1514,7 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 		int RestedTime		= 0;
 		int iLevel = 0;
 		//decl String:t_Class[64];
-		if (!IsLegitimateClient(client)) {
+		if (!IsLegitimateClient(client) || !IsClearedToLoad(client)) {
 			if (client > 0) b_IsLoading[client] = false;
 			return;
 		}
@@ -1618,6 +1636,7 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 		else {
 			ResetData(client);
 			b_IsLoading[client] = false;
+			LogMessage("%N loaded with a level <= 0, creating new player.", client);
 			CreateNewPlayer(client);
 		}
 		if (iRPGMode < 1) {
@@ -1887,10 +1906,11 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 			//if (client == -1 || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
 		}
 	}
-	if (ReadyUpGameMode != 3) GiveProfileItems(client);
+	if (ReadyUpGameMode != 3) CreateTimer(1.0, Timer_GiveProfileItems, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	SetClientTalentStrength(client);
 	LogMessage("Loaded data for %N", client);
 	PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
+	IsClearedToLoad(client, _, true);
 	//ChangeHook(client, true);
 
 	// b_IsLoaded[client] = true;
@@ -1904,6 +1924,12 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 	SetMaximumHealth(client);
 	GiveMaximumHealth(client);
 	return;
+}
+
+public Action Timer_GiveProfileItems(Handle timer, any client) {
+	if (IsPlayerAlive(client)) GiveProfileItems(client);
+	else return Plugin_Continue;
+	return Plugin_Stop;
 }
 
 
@@ -1948,7 +1974,6 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 }
 
 stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
-	b_IsLoaded[client] = false;
 	b_IsLoading[client] = true;
 	int ASize = GetArraySize(a_Menu_Talents);
 	ResizeArray(MyTalentStrength[client], ASize);
@@ -1983,7 +2008,6 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 		playerCurrentAugmentLevel[client] = (iCurrentAugmentLevel / iAugmentLevelDivisor);
 		SetLootDropCategories(client);
 	}
-	b_IsLoaded[client] = true;
 	b_IsLoading[client] = false;
 	SurvivorStamina[client] = GetPlayerStamina(client);
 	SetMaximumHealth(client);
@@ -1992,10 +2016,6 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 
 stock FormatPlayerName(client) {
 	char playerNameFormatted[512];
-	if (strlen(baseName[client]) < 1) {
-		LogMessage("Old name is %N", client);
-		GetClientName(client, baseName[client], sizeof(baseName[]));
-	}
 	if (handicapLevel[client] < 1) Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
 	else Format(playerNameFormatted, 512, "[%d] [%d] %s", handicapLevel[client], PlayerLevel[client], baseName[client]);
 	SetClientInfo(client, "name", playerNameFormatted);
@@ -2130,11 +2150,11 @@ public OnClientDisconnect(client)
 		// 	//LogMessage("bot removed, setting to not loaded.");
 		// 	b_IsLoaded[client] = false;
 		// }
-		if (IsFakeClient(client)) {
-			b_IsLoaded[client] = false;
-			handicapLevel[client] = -1;
-			Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
-		}
+		// if (IsFakeClient(client)) {
+		// 	b_IsLoaded[client] = false;
+		// 	handicapLevel[client] = -1;
+		// 	Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
+		// }
 		if (ISEXPLODE[client] != INVALID_HANDLE) {
 
 			KillTimer(ISEXPLODE[client]);
@@ -2162,6 +2182,7 @@ public OnClientDisconnect(client)
 		shotgunCooldown[client] = false;
 		b_IsInSaferoom[client] = false;
 		bIsInCheckpoint[client] = false;
+		b_IsIdle[client] = false;
 		ResetData(client);
 		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 		//Format(ClassLoadQueue[client], sizeof(ClassLoadQueue[]), "none");
@@ -2205,7 +2226,7 @@ public Action Timer_InitializeClientLoad(Handle timer, any client) {
 		teleportIntoSaferoom[2] = -300.968750;
 		TeleportEntity(client, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 	}
-	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client] && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
+	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client]) {
 		FormatPlayerName(client);
 		SetMaximumHealth(client);
 		GiveMaximumHealth(client);
@@ -2262,19 +2283,11 @@ stock bool IsLoadingClientBaseNameDefault(client) {
 
 stock OnClientLoaded(client, bool IsHooked = false) {
 	//if (!IsClientConnected(client)) return;
-	if (!IsLoadingClientBaseNameDefault(client) && b_IsLoaded[client] && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
+	if (b_IsLoaded[client] && (!b_IsActiveRound || !IsClientIdle(client))) {//} && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
 		return;
 	}
-	char playerName[64];
 	bTimersRunning[client] = false;
-	GetClientName(client, playerName, 64);
-	if (IsFakeClient(client) && StrContains(playerName, "[BOT]") == -1) {
-		Format(baseName[client], sizeof(baseName[]), "[BOT] %s", playerName);
-	}
-	// else if (StrContains(baseName[client], "[BOT]", true) != -1) {
-	// 	// if a human player tries to be cheeky and put this special key in their names, we remove it.
-	// 	ReplaceString(baseName[client], sizeof(baseName[]), "[BOT]", "");
-	// }
+	GetClientName(client, baseName[client], sizeof(baseName[]));
 	b_IsLoaded[client] = true;
 	bIsGiveProfileItems[client] = false;
 
@@ -2359,6 +2372,7 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 
 		bIsEligibleMapAward[client] = true;
 	}
+	LogMessage("%N is in-game, starting Timer_LoadData", client);
 	CreateTimer(1.0, Timer_LoadData, client, TIMER_FLAG_NO_MAPCHANGE);
 	char thetext[64];
 	GetConfigValue(thetext, sizeof(thetext), "enter server flags?");

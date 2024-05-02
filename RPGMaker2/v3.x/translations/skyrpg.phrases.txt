@@ -26,7 +26,7 @@
 	"handicap level locked"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s}"
-		"en"				"{1}: +{2}{3}/+{4}{5}❤, +{6}{7}loot, {10}{9} score (locked)"
+		"en"				"{1}(locked): +{2}{3}/+{4}{5}❤, +{6}{7}loot, {10}{9} score (+{8} score req.)"
 	}
 	"savior complex i"
 	{
@@ -181,6 +181,10 @@
 	{
 		"en"				"Vampiric"
 	}
+	"cdr perfect surname"
+	{
+		"en"				"Accelerating"
+	}
 	"speed perfect surname"
 	{
 		"en"				"Swift"
@@ -260,6 +264,10 @@
 	"vampire major surname"
 	{
 		"en"				"Vampiric"
+	}
+	"cdr major surname"
+	{
+		"en"				"Accelerating"
 	}
 	"speed major surname"
 	{
@@ -356,6 +364,30 @@
 	{
 		"en"				"Snipers Mark"
 	}
+	"R perfect surname"
+	{
+		"en"				"Thorns"
+	}
+	"R major surname"
+	{
+		"en"				"Thorns"
+	}
+	"R augment info"
+	{
+		"en"				"Thorns"
+	}
+	"acidburn perfect surname"
+	{
+		"en"				"Acid Burn"
+	}
+	"acidburn major surname"
+	{
+		"en"				"Acid Burn"
+	}
+	"acidburn augment info"
+	{
+		"en"				"Acid Burn"
+	}
 	"cleric augment info"
 	{
 		"en"				"Cleric"
@@ -415,6 +447,10 @@
 	"vampire augment info"
 	{
 		"en"				"Vampire"
+	}
+	"cdr augment info"
+	{
+		"en"				"Cooldown Reduction"
 	}
 	"speed augment info"
 	{
@@ -480,9 +516,21 @@
 	{
 		"en"				"Confirm to disassemble this augment"
 	}
+	"reroll augment"
+	{
+		"en"				"Reroll Augment"
+	}
+	"lock augment"
+	{
+		"en"				"Favourite Augment"
+	}
+	"unlock augment"
+	{
+		"en"				"Unlock Augment"
+	}
 	"view augment inventory"
 	{
-		"en"				"Augments"
+		"en"				"Augments\n!autodismantle in chat for more info."
 	}
 	"equip augment inventory"
 	{
@@ -728,6 +776,58 @@
 	{
 		"en"				"Node Trees"
 	}
+	"frontline"
+	{
+		"en"				"Frontline"
+	}
+	"survival"
+	{
+		"en"				"Survivalist"
+	}
+	"offensive"
+	{
+		"en"				"Offensive"
+	}
+	"utility"
+	{
+		"en"				"Utility"
+	}
+	"attribute"
+	{
+		"en"				"Attributes"
+	}
+	"hunter"
+	{
+		"en"				"Hunter"
+	}
+	"jockey"
+	{
+		"en"				"Jockey"	
+	}
+	"spitter"
+	{
+		"en"				"Spitter"
+	}
+	"charger"
+	{
+		"en"				"Charger"	
+	}
+	"tank"
+	{
+		"en"				"Tank"
+	}
+	"smoker"
+	{
+		"en"				"Smoker"
+	}
+	"support"
+	{
+		"en"				"Support"
+	}
+	"ambush"
+	{
+		"en"				"Ambush"
+	}
 	"frontline talents"
 	{
 		"en"				"Frontline"
@@ -903,7 +1003,7 @@
 	}
 	"personal settings"
 	{
-		"en"				"Settings\nCreate/Save/Delete Profiles\nWeapons to receive on-load\nAugments\nLevel/Enemy Info"
+		"en"				"Settings\nCreate/Save/Delete Profiles\nWeapons to receive on-load\nLevel/Enemy Info\nWeapon Proficiency Data"
 	}
 	"threat menu"
 	{
@@ -1023,9 +1123,9 @@
 	{
 		"en"				"View My Ranking"
 	}
-	"my proficiency"
+	"proficiency data"
 	{
-		"en"				"My Proficiency Levels"
+		"en"				"Weapon Proficiency Data"
 	}
 	"talent trees"
 	{
@@ -1708,8 +1808,8 @@
 	}
 	"Player Level Text"
 	{
-		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"{3}xp{4}{5}xp\nLevel {1} / {2}\nScore: {6}"
+		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:s}"
+		"en"				"{3}xp{4}{5}xp\nLevel {1} / {2}\nScore: {6}\nScrap: {7}"
 	}
 	"XP Level Cap"
 	{
@@ -2652,6 +2752,11 @@
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
 		"en"				"{1}+{2}{3} {4}score"
+	}
+	"rating increase for tanking"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}+{2}{3} {4}score (tanking)"
 	}
 	"living survivors experience bonus"
 	{
@@ -3730,7 +3835,7 @@
 	}
 	"arms dealer iii info"
 	{
-		"en"				"Regenerate a percentage of your reserve ammo\nwhile your primary weapon is holstered."
+		"en"				"Regenerate a percentage of your primary weapons ammo\nreserve while you have pistol(s) or a magnum drawn."
 	}
 	"ammo reserve i"
 	{
@@ -5650,6 +5755,10 @@
 	{
 		"en"				"Reflective Armour (Tank)"
 	}
+	"cdr"
+	{
+		"en"				"Cooldown Reduction"
+	}
 	"vampire"
 	{
 		"en"				"Vampire"
@@ -7371,7 +7480,7 @@
 	}
 	"No Action Equipped"
 	{
-		"en"				"None"
+		"en"				"<empty>"
 	}
 	"No Weapon Equipped"
 	{

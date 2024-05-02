@@ -3236,11 +3236,6 @@ stock bool AbilityChanceSuccess(client, char[] s_TalentName = "none") {
 	return false;
 }
 
-stock GetAugmentStrength(augmentId, char[] TalentName) {
-
-	// Augments have their own unique identifiers that aren't tied to players, even though a player can have the particular item equipped at any time.
-}
-
 stock GetCategoryStrength(client, char[] sTalentCategory, bool bGetMaximumTreePointsInstead = false) {
 	if (!IsLegitimateClient(client)) return 0;
 	int count = 0;
@@ -4806,7 +4801,7 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 			CreateAoE(activator, AoERange, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength), _, _, hitgroup, damagetype, targetCallAbilityTrigger);
 		}
 		else if (StrEqual(Effects, "ffexplode")) {
-			CreatePlayerExplosion(activator, 384.0, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength), false);
+			CreatePlayerExplosion(activator, 384.0, RoundToCeil(d_Damage * g_TalentStrength), false);
 		}
 		// else if (StrEqual(Effects, "noffexplode")) {
 		// 	CreatePlayerExplosion(activator, 384.0, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength));
@@ -4923,7 +4918,7 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 		else if (StrEqual(Effects, "t")) CreateAcid(activator, target, 512.0);
 		else if (StrEqual(Effects, "T")) HealPlayer(target, activator, iDamage * 1.0, 'T');
 		else if (StrEqual(Effects, "z")) ZeroGravity(activator, target, g_TalentStrength, g_TalentTime);
-		else if (StrEqual(Effects, "revive")) ReviveDownedSurvivor(target);
+		else if (StrEqual(Effects, "revive")) ReviveDownedSurvivor(target, activator);
 		else if (StrEqual(Effects, "giveitem") && !StrEqual(nameOfItemToGivePlayer, "-1")) {
 			ExecCheatCommand(activator, "give", nameOfItemToGivePlayer);
 		}
@@ -7039,10 +7034,6 @@ public Action Timer_StartPlayerTimers(Handle timer) {
 	if (!b_IsActiveRound) return Plugin_Stop;
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i)) continue;
-		if (!b_IsLoading[i] && PlayerLevel[i] < iPlayerStartingLevel) {
-			ClearAndLoad(i);
-			continue;
-		}
 		if (bTimersRunning[i] || !b_IsLoaded[i]) continue;
 		bTimersRunning[i] = true;
 		CreateTimer(fSpecialAmmoInterval, Timer_AmmoActiveTimer, i, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -7949,6 +7940,23 @@ stock ChangeInfectedClass(client, zombieclass = 0, bool dontChangeClass = false)
 			//GetAbilityStrengthByTrigger(client, _, "a", FindZombieClass(client), 0);	// activator, target, trigger ability, effects, zombieclass, damage
 		}
 	}
+}
+
+stock bool HasIdlePlayer(int bot) {
+    int userid = GetEntData(bot, FindSendPropInfo("SurvivorBot", "m_humanSpectatorUserID"));
+    int client = GetClientOfUserId(userid);
+    if (IsLegitimateClient(client) && !IsFakeClient(client) && GetClientTeam(client) != TEAM_SURVIVOR) return true;
+    return false;
+}
+
+stock bool IsClientIdle(int client) {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || !IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR || !HasIdlePlayer(i)) continue;
+		int userid = GetEntData(i, FindSendPropInfo("SurvivorBot", "m_humanSpectatorUserID"));
+		int spec = GetClientOfUserId(userid);
+		if (spec == client) return true;
+	}
+	return false;
 }
 
 stock SetSpecialInfectedHealth(attacker, zombieclass = 0) {
@@ -10082,9 +10090,9 @@ public Action CMD_LoadoutName(client, args) {
 		return Plugin_Handled;
 	}
 	GetCmdArg(1, LoadoutName[client], sizeof(LoadoutName[]));
-	if (strlen(LoadoutName[client]) < 4 || strlen(LoadoutName[client]) > 15) {
+	if (strlen(LoadoutName[client]) < 3 || strlen(LoadoutName[client]) > 20) {
 		Format(LoadoutName[client], 64, "none");
-		PrintToChat(client, "loadout name must be >= 4 && <= 15 characters long.");
+		PrintToChat(client, "loadout name must be >= 3 && <= 20 characters long.");
 		return Plugin_Handled;
 	}
 	if (StrContains(LoadoutName[client], "SavedProfile", false) != -1) {
@@ -10837,9 +10845,22 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool bIsFalling 
 				SQL_TQuery(hDatabase, QueryResults, text, client);
 			}
 			//if (ReadyUpGameMode != 3)
-			Rating[client] = RoundToCeil(Rating[client] * (1.0 - fRatingPercentLostOnDeath)) + 1;
-			int minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
-			if (Rating[client] < minimumRating) Rating[client] = minimumRating;
+			if (fRatingPercentLostOnDeath > 0.0) {
+				Rating[client] = RoundToCeil(Rating[client] * (1.0 - fRatingPercentLostOnDeath)) + 1;
+				int minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
+				if (Rating[client] < minimumRating) Rating[client] = minimumRating;
+
+				if (handicapLevel[client] > 0) {
+					OnDeathHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client], 1);
+					int scoreRequired	 = GetArrayCell(OnDeathHandicapValues[client], HANDICAP_SCORE_REQUIRED);
+					if (Rating[client] < scoreRequired) {
+						handicapLevel[client] = 0;
+						SetClientHandicapValues(client);
+						FormatPlayerName(client);
+						PrintToChat(client, "\x04Score requirement for current handicap level not met. \x03Handicap level reset.");
+					}
+				}
+			}
 
 			if (!isPlayerASurvivorBot) {
 
@@ -11250,7 +11271,7 @@ stock bool SetTempHealth(client, targetclient, float TemporaryHealth=30.0, bool 
 	if (!IsLegitimateClientAlive(targetclient)) return false;
 	if (IsRevive) {
 
-		if (IsInNeedOfPickup) ReviveDownedSurvivor(targetclient);
+		if (IsInNeedOfPickup) ReviveDownedSurvivor(targetclient, client);
 
 		// When a player revives someone (or is revived) we call the SetTempHealth function and here
 		// It simply calls itself 
@@ -11284,13 +11305,21 @@ stock ModifyHealth(client){//}, float TalentStrength, float TalentTime, isRawVal
 	SetMaximumHealth(client);
 }
 
-stock ReviveDownedSurvivor(client) {
-
-	//if (IsLedged(client)) HealPlayer(client, client, 1.0, 'h');
-	//else
-	ExecCheatCommand(client, "give", "health");
-	//SetEntProp(client, Prop_Send, "m_isIncapacitated", 0);
-	SetMaximumHealth(client);
+stock void ReviveDownedSurvivor(client, int activator = 0) {
+	int reviveCount = GetIncapCount(client);
+	SetEntProp(client, Prop_Send, "m_isIncapacitated", 0);
+	SetIncapCount(client, reviveCount+1);
+	if (reviveCount+1 >= iMaxIncap) SetEntProp(client, Prop_Send, "m_bIsOnThirdStrike", 1);
+	int reviveOwner = GetEntPropEnt(client, Prop_Send, "m_reviveOwner");
+	if (IsLegitimateClientAlive(reviveOwner)) {
+		SetEntPropEnt(reviveOwner, Prop_Send, "m_reviveTarget", -1);
+		SetEntityMoveType(reviveOwner, MOVETYPE_WALK);
+	}
+	SetEntPropEnt(client, Prop_Send, "m_reviveOwner", -1);
+	SetEntityMoveType(client, MOVETYPE_WALK);
+	SetEntityHealth(client, RoundToCeil(GetMaximumHealth(client) * fHealthSurvivorRevive));
+	if (client != activator) GetAbilityStrengthByTrigger(client, activator, "R", _, 0);
+	GetAbilityStrengthByTrigger(activator, client, "r", _, 0);
 }
 
 /*
@@ -11304,9 +11333,12 @@ if (RoundToFloor(PlayerHealth_Temp + HealAmount) >= GetMaximumHealth(client) && 
 	}
 	*/
 
-stock GetIncapCount(client) {
-
+stock int GetIncapCount(int client) {
 	return GetEntProp(client, Prop_Send, "m_currentReviveCount");
+}
+
+stock void SetIncapCount(int client, int count) {
+	SetEntProp(client, Prop_Send, "m_currentReviveCount", count);
 }
 
 stock bool IsBeingRevived(client) {
@@ -11416,7 +11448,11 @@ stock HealPlayer(client, activator, float f_TalentStrength, ability, bool IsStre
 		// You don't die if you get incapped too many times, but it would be a pretty annoying game play loop.
 		else {
 		//if (!IsBeingRevived(client)) {
+			int reviveCount = GetIncapCount(client);
 			SetEntProp(client, Prop_Send, "m_isIncapacitated", 0);
+			LogMessage("%N incap count is now %d of a maximum %d", client, reviveCount+1, iMaxIncap);
+			SetIncapCount(client, reviveCount+1);
+			if (reviveCount+1 >= iMaxIncap) SetEntProp(client, Prop_Send, "m_bIsOnThirdStrike", 1);
 			int reviveOwner = GetEntPropEnt(client, Prop_Send, "m_reviveOwner");
 			if (IsLegitimateClientAlive(reviveOwner)) {
 				SetEntPropEnt(reviveOwner, Prop_Send, "m_reviveTarget", -1);
@@ -11751,7 +11787,7 @@ stock bool IsPlayerTryingToPickupLoot(client) {
 	char name[64];
 	GetClientName(client, name, sizeof(name));
 	int currentGameTime = GetTime();
-	if (lastItemTime + 3 < currentGameTime || !StrEqual(name, lastPlayerGrab)) {
+	if (lastItemTime + 5 < currentGameTime || !StrEqual(name, lastPlayerGrab)) {
 		Format(text, sizeof(text), "{B}%s {N}is searching a {O}bag...", name);
 	}
 	lastItemTime = currentGameTime;
@@ -11767,7 +11803,12 @@ stock bool IsPlayerTryingToPickupLoot(client) {
 		if (StrContains(entityClassname, key) == -1) continue;
 		int size = GetArraySize(playerLootOnGround[i]);
 		if (size > 0) {
-			GenerateAndGivePlayerAugment(i, GetArrayCell(playerLootOnGround[i], size-1), true);
+			if (GetArraySize(myAugmentIDCodes[i]) < iInventoryLimit) GenerateAndGivePlayerAugment(i, GetArrayCell(playerLootOnGround[i], size-1), true);
+			else {
+				augmentParts[i]++;
+				Format(text, 64, "{O}Inventory Full; {G}+1 {O}scrap");
+				Client_PrintToChat(client, true, text);
+			}
 			RemoveFromArray(playerLootOnGround[i], size-1);	// we remove the oldest loot drop stored for this player from their "queue"
 			AcceptEntityInput(entity, "Kill");
 			return true;

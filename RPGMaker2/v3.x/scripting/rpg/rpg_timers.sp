@@ -1187,7 +1187,8 @@ public Action Timer_CheckIfHooked(Handle timer) {
 		if (bHasWeakness[i]) {
 			SetEntityRenderMode(i, RENDER_TRANSCOLOR);
 			SetEntityRenderColor(i, 0, 0, 0, 255);
-			SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 0);
+			if (GetIncapCount(i) < iMaxIncap) SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 0);
+			else SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
 			if (!IsFakeClient(i) && !bWeaknessAssigned[i]) {
 				EmitSoundToClient(i, "player/heartbeatloop.wav");
 				bWeaknessAssigned[i] = true;
@@ -1334,7 +1335,7 @@ public Action Timer_SettingsCheck(Handle timer) {
 int TotalHandicapLevel() {
 	int count = 0;
 	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || handicapLevel[i] < 1) continue;
+		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || IsFakeClient(i) || handicapLevel[i] < 1) continue;
 		count += handicapLevel[i];
 	}
 	return count;

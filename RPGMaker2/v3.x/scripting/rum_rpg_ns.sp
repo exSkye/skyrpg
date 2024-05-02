@@ -16,7 +16,7 @@
 #define MAX_CHAT_LENGTH		1024
 #define COOPRECORD_DB				"db_season_coop"
 #define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v3.4.6.2"
+#define PLUGIN_VERSION				"v3.4.6.4"
 #define PROFILE_VERSION				"v1.5"
 #define PLUGIN_CONTACT				"github.com/exskye/"
 #define PLUGIN_NAME					"RPG Construction Set"
@@ -46,6 +46,23 @@
 //	================================
 #define DEBUG     					false
 /*	================================
+
+ Version 3.4.6.4
+ - Added first iteration of gear comparator when considering whether to equip a new augment.
+ - Reroll functionality is now in the mod!
+ - Marketplace is removed - it detracts from the users individual experience in a shared-world.
+ - Full augment info is displayed on the augment inventory page.
+ - Fixed a bug that replicated survivor bot levels over and over.
+ - Added "talent cooldown minimum value?" for talents, so that the starting cooldown time isn't the lowest possible cooldown time.
+ - Rolled-back the change that saw attributes only affect augments. Attributes now affect talents - not augments - again.
+ - Players can now use the !autodismantle feature for multiple purposes - type the !autodismantle command in chat for more info!
+ - Players can now favourite augments they don't want to be destroyed by the !autodismantle command.
+ - Players now have their handicap level reset if they die and are no longer eligible for their current handicap level - client is notified.
+ - Only medkits can reset the incap count now.
+ - FINALLY patched the bug that caused player data to not load properly during live rounds when connecting onto a bot.
+
+ Version 3.4.6.3
+ - Survivor bots with handicaps no longer have those handicaps contribute to the common limit.
 
  Version 3.4.6.2
  - Added a new variable to track whether a melee weapon is equipped or not.
@@ -570,9 +587,10 @@ public Plugin myinfo = {
 #define REQUIRE_ENEMY_IN_COHERENCY_RANGE		191
 #define ENEMY_IN_COHERENCY_IS_TARGET			192
 #define REQUIRE_ALLY_ON_FIRE					193
+#define TALENT_MINIMUM_COOLDOWN_TIME			194
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION		194
+#define TALENT_FIRST_RANDOM_KEY_POSITION		195
 #define SUPER_COMMON_MAX_ALLOWED				0
 #define SUPER_COMMON_AURA_EFFECT				1
 #define SUPER_COMMON_RANGE_MIN					2
@@ -612,7 +630,6 @@ public Plugin myinfo = {
 #define SUPER_COMMON_RAW_PLAYER_STRENGTH		36
 #define SUPER_COMMON_REQ_BILED_SURVIVORS		37
 #define SUPER_COMMON_FIRST_RANDOM_KEY_POS		38
-
 // for the events.cfg
 #define EVENT_PERPETRATOR						0
 #define EVENT_VICTIM							1
@@ -647,7 +664,18 @@ public Plugin myinfo = {
 #define HITGROUP_HEAD		1
 #define HITGROUP_OTHER		0
 
-int iAttributesAreMultiplicative;
+Handle ClientsPermittedToLoad;
+bool b_IsIdle[MAXPLAYERS + 1];
+Handle OnDeathHandicapValues[MAXPLAYERS + 1];
+Handle EquipAugmentPanel[MAXPLAYERS + 1];
+int iAugmentsAffectCooldowns;
+int augmentRerollBuffPos[MAXPLAYERS + 1];
+int augmentRerollBuffPosToSkip[MAXPLAYERS + 1];
+int augmentRerollBuffType[MAXPLAYERS + 1];
+int iAugmentCategoryRerollCost;
+int iAugmentActivatorRerollCost;
+int iAugmentTargetRerollCost;
+int augmentSlotToEquipOn[MAXPLAYERS + 1];
 int iMaximumCommonsPerPlayer;
 bool hasMeleeWeaponEquipped[MAXPLAYERS + 1];
 int iMaximumTanksPerPlayer;
@@ -665,7 +693,6 @@ Handle TalentPositionsWithEffectName[MAXPLAYERS + 1];
 Handle PlayerBuffVals[MAXPLAYERS + 1];
 Handle AbilityTriggerValues[MAXPLAYERS + 1];
 float fNoHandicapScoreMultiplier;
-bool b_isWaiting[MAXPLAYERS + 1];
 int iplayerDismantleMinorAugments[MAXPLAYERS + 1];
 int iplayerSettingAutoDismantleScore[MAXPLAYERS + 1];
 Handle SetHandicapValues[MAXPLAYERS + 1];
@@ -1498,6 +1525,9 @@ int iUseLinearLeveling;
 int currentWeaponCategory[MAXPLAYERS + 1];
 int iUniqueServerCode;
 int lootDropCounter;
+Handle myUnlockedCategories[MAXPLAYERS + 1];
+Handle myUnlockedActivators[MAXPLAYERS + 1];
+Handle myUnlockedTargets[MAXPLAYERS + 1];
 Handle myLootDropCategoriesAllowed[MAXPLAYERS + 1];
 Handle myLootDropTargetEffectsAllowed[MAXPLAYERS + 1];
 Handle myLootDropActivatorEffectsAllowed[MAXPLAYERS + 1];
@@ -1508,6 +1538,8 @@ Handle myAugmentOwners[MAXPLAYERS + 1];
 Handle myAugmentInfo[MAXPLAYERS + 1];
 int iAugmentLevelDivisor;
 float fAugmentRatingMultiplier;
+float fAugmentActivatorRatingMultiplier;
+float fAugmentTargetRatingMultiplier;
 Handle equippedAugments[MAXPLAYERS + 1];
 Handle equippedAugmentsCategory[MAXPLAYERS + 1];
 int iRatingRequiredForAugmentLootDrops;
@@ -1545,6 +1577,7 @@ int lastItemTime;
 char lastPlayerGrab[64];
 int iInventoryLimit;
 char sDeleteBotFlags[64];
+int iMultiplierForAugmentLootDrops;
 
 public Action CMD_DropWeapon(int client, int args) {
 	int CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
@@ -1636,7 +1669,7 @@ public void OnPluginStart() {
 	// These are mandatory because of quick commands, so I hardcode the entries.
 	RegConsoleCmd("autodismantle", CMD_AutoDismantle);
 	RegConsoleCmd("rollloot", CMD_RollLoot);
-	RegConsoleCmd("loaddata", CMD_LoadData);
+	//RegConsoleCmd("loaddata", CMD_LoadData);
 	RegConsoleCmd("price", CMD_SetAugmentPrice);
 	RegConsoleCmd("say", CMD_ChatCommand);
 	RegConsoleCmd("say_team", CMD_TeamChatCommand);
@@ -1697,7 +1730,8 @@ public void OnPluginStart() {
 }
 
 public Action CMD_LoadData(int client, int args) {
-
+	if (IsClearedToLoad(client)) return Plugin_Handled;
+	IsClearedToLoad(client, true);
 	ClearAndLoad(client, true);
 	return Plugin_Handled;
 }
@@ -1746,6 +1780,8 @@ stock void UnhookAll() {
 }
 
 public int ReadyUp_TrueDisconnect(int client) {
+	if (IsFakeClient(client)) return;
+	IsClearedToLoad(client, _, true);
 	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
 	bTimersRunning[client] = false;
 	staggerCooldownOnTriggers[client] = false;
@@ -1764,16 +1800,7 @@ public int ReadyUp_TrueDisconnect(int client) {
 	LoadTarget[client] = -1;
 	ImmuneToAllDamage[client] = false;
 	b_IsLoaded[client] = false;		// only set to false if a REAL player leaves - this way bots don't repeatedly load their data.
-	// Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
-	// Format(BuildingStack[client], sizeof(BuildingStack[]), "none");
-	// Format(LoadoutName[client], sizeof(LoadoutName[]), "none");
-	//CreateTimer(1.0, Timer_RemoveSaveSafety, client, TIMER_FLAG_NO_MAPCHANGE);
 	bIsSettingsCheck = true;
-	// if (b_IsActiveRound && ScenarioEndConditionsMet()) {	// If the disconnecting player was the last living human survivor, if the round is live, we end the round.
-	// 	b_IsMissionFailed = true;
-	// 	ForceServerCommand("scenario_end");
-	// 	CallRoundIsOver();
-	// }
 }
 
 //stock LoadConfigValues() {
@@ -1877,6 +1904,7 @@ stock CreateAllArrays() {
 	if (SetNodesKeys == INVALID_HANDLE) SetNodesKeys = CreateArray(16);
 	if (SetNodesValues == INVALID_HANDLE) SetNodesValues = CreateArray(16);
 	if (playerCustomEntitiesCreated == INVALID_HANDLE) playerCustomEntitiesCreated = CreateArray(16);
+	if (ClientsPermittedToLoad == INVALID_HANDLE) ClientsPermittedToLoad = CreateArray(16);
 	for (int i = 1; i <= MAXPLAYERS; i++) {
 		itemToDisassemble[i] = -1;
 		augmentParts[i] = 0;
@@ -1885,6 +1913,7 @@ stock CreateAllArrays() {
 		b_IsFloating[i] = false;
 		DisplayActionBar[i] = false;
 		ActionBarSlot[i] = -1;
+		b_IsIdle[i] = false;
 		if (CommonInfected[i] == INVALID_HANDLE) CommonInfected[i] = CreateArray(16);
 		if (possibleLootPool[i] == INVALID_HANDLE) possibleLootPool[i] = CreateArray(16);
 		if (currentEquippedWeapon[i] == INVALID_HANDLE) currentEquippedWeapon[i] = CreateTrie();
@@ -2108,6 +2137,11 @@ stock CreateAllArrays() {
 		if (TalentPositionsWithEffectName[i] == INVALID_HANDLE) TalentPositionsWithEffectName[i] = CreateArray(16);
 		if (PlayerBuffVals[i] == INVALID_HANDLE) PlayerBuffVals[i] = CreateArray(16);
 		if (GetStrengthFloat[i] == INVALID_HANDLE) GetStrengthFloat[i] = CreateArray(16);
+		if (myUnlockedCategories[i] == INVALID_HANDLE) myUnlockedCategories[i] = CreateArray(16);
+		if (myUnlockedActivators[i] == INVALID_HANDLE) myUnlockedActivators[i] = CreateArray(16);
+		if (myUnlockedTargets[i] == INVALID_HANDLE) myUnlockedTargets[i] = CreateArray(16);
+		if (EquipAugmentPanel[i] == INVALID_HANDLE) EquipAugmentPanel[i] = CreateArray(16);
+		if (OnDeathHandicapValues[i] == INVALID_HANDLE) OnDeathHandicapValues[i] = CreateArray(16);
 	}
 	CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	b_FirstLoad = true;
@@ -2353,14 +2387,6 @@ public ReadyUp_ReadyUpStart() {
 			ClearArray(h_KilledPosition_X[i]);		// We clear all positions from the array.
 			ClearArray(h_KilledPosition_Y[i]);
 			ClearArray(h_KilledPosition_Z[i]);
-			/*if (b_IsMissionFailed && GetClientTeam(i) == TEAM_SURVIVOR && IsFakeClient(i)) {
-
-				if (!b_IsLoading[i]) {
-
-					b_IsLoaded[i] = false;
-					OnClientLoaded(i);
-				}
-			}*/
 		}
 	}
 	RefreshSurvivorBots();
@@ -2371,7 +2397,9 @@ public ReadyUp_ReadyUpEnd() {
 }
 
 public Action Timer_Defibrillator(Handle timer, any client) {
-	if (IsLegitimateClient(client) && !IsPlayerAlive(client)) Defibrillator(0, client);
+	if (IsLegitimateClient(client) && !IsPlayerAlive(client)) {
+		Defibrillator(0, client);
+	}
 	return Plugin_Stop;
 }
 
@@ -3056,7 +3084,7 @@ public Action CMD_ActionBar(client, args) {
 	return Plugin_Handled;
 }
 
-public Action CMD_GiveInventoryItem(client, args) {
+/*public Action CMD_GiveInventoryItem(client, args) {
 	if (args < 2) {
 		PrintToChat(client, "\x04!giveaugment <name> <augment id>");
 		return Plugin_Handled;
@@ -3138,7 +3166,7 @@ public Action CMD_GiveInventoryItem(client, args) {
 	PrintToChat(targetclient, "%N gave you an augment... Check it out.", client);
 	Augments_Inventory(client);
 	return Plugin_Handled;
-}
+}*/
 
 public Action CMD_GiveStorePoints(client, args) {
 	char thetext[64];
@@ -3426,8 +3454,8 @@ stock RegisterConsoleCommands() {
 		RegConsoleCmd(thetext, CMD_DataEraseBot);
 		//GetConfigValue(thetext, sizeof(thetext), "give store points command?");
 		//RegConsoleCmd(thetext, CMD_GiveStorePoints);
-		GetConfigValue(thetext, sizeof(thetext), "give augment command?");
-		RegConsoleCmd(thetext, CMD_GiveInventoryItem);
+		// GetConfigValue(thetext, sizeof(thetext), "give augment command?");
+		// RegConsoleCmd(thetext, CMD_GiveInventoryItem);
 		GetConfigValue(thetext, sizeof(thetext), "give level command?");
 		RegConsoleCmd(thetext, CMD_GiveLevel);
 		GetConfigValue(thetext, sizeof(thetext), "share points command?");
@@ -3885,7 +3913,9 @@ stock LoadMainConfig() {
 	iUseLinearLeveling					= GetConfigValueInt("experience requirements are linear?", 0);
 	iUniqueServerCode					= GetConfigValueInt("unique server code?", 10);
 	iAugmentLevelDivisor				= GetConfigValueInt("augment level divisor?", 1000);
-	fAugmentRatingMultiplier			= GetConfigValueFloat("augment bonus rating multiplier?", 0.00001);
+	fAugmentRatingMultiplier			= GetConfigValueFloat("augment bonus category rating multiplier?", 0.00001);
+	fAugmentActivatorRatingMultiplier	= GetConfigValueFloat("augment bonus activator rating multiplier?", 0.000005);
+	fAugmentTargetRatingMultiplier		= GetConfigValueFloat("augment bonus target rating multiplier?", 0.000005);
 	iRatingRequiredForAugmentLootDrops	= GetConfigValueInt("rating required for augment drops?", 30000);
 	fAugmentTierChance					= GetConfigValueFloat("augment tier chance?", 0.5);
 	fAntiFarmDistance					= GetConfigValueFloat("anti farm kill distance?");
@@ -3910,7 +3940,11 @@ stock LoadMainConfig() {
 	fNoHandicapScoreMultiplier			= GetConfigValueFloat("base score multiplier (no handicap?)", 0.05);
 	iMaximumTanksPerPlayer				= GetConfigValueInt("maximum tank spawns per player?", 2);
 	iMaximumCommonsPerPlayer			= GetConfigValueInt("maximum common increase per player?", 30);
-	iAttributesAreMultiplicative		= GetConfigValueInt("are attribute talents multiplicative?", 0);
+	iAugmentCategoryRerollCost			= GetConfigValueInt("augment category reroll cost?", 100);
+	iAugmentActivatorRerollCost			= GetConfigValueInt("augment activator reroll cost?", 200);
+	iAugmentTargetRerollCost			= GetConfigValueInt("augment target reroll cost?", 300);
+	iMultiplierForAugmentLootDrops		= GetConfigValueInt("augment score tier multiplier?", 2);
+	iAugmentsAffectCooldowns			= GetConfigValueInt("augment affects cooldowns?", 1);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
@@ -3928,26 +3962,96 @@ public Action CMD_AutoDismantle(client, args) {
 	if (handicapLevel[client] > 0) lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
 	if (args < 1) {
 		PrintToChat(client, "\x04!autodismantle <score>\n\x03augments that roll under this score will be auto-dismantled. \x04limit: \x03%d", BestRating[client] + lootFindBonus);
-		//PrintToChat(client, "\x04!autodismantle minor - \x03toggle auto dismantle of minor augments on/off");
+		PrintToChat(client, "\x04!autodismantle clear - \x03Deletes \x04all augments \x03not equipped or favourited.");
+		PrintToChat(client, "\x04!autodismantle major - \x03Deletes all \x04major \x03augments not equipped or favourited.");
+		PrintToChat(client, "\x04!autodismantle minor - \x03Deletes all \x04minor \x03augments not equipped or favourited.");
 		return Plugin_Handled;
 	}
 	char arg[64];
 	GetCmdArg(1, arg, 64);
-	// if (StrEqual(arg, "minor", false)) {
-	// 	if (iplayerDismantleMinorAugments[client] == 0) {
-	// 		iplayerDismantleMinorAugments[client] = 1;
-	// 		PrintToChat(client, "\x04minor augment \x03auto-dismantle \x05Enabled");
-	// 	}
-	// 	else {
-	// 		iplayerDismantleMinorAugments[client] = 0;
-	// 		PrintToChat(client, "\x04minor augment \x03auto-dismantle \x05Disabled");
-	// 	}
-	// 	return Plugin_Handled;
-	// }
-	int auto = StringToInt(arg);
-	if (auto > 0 && auto <= BestRating[client] + lootFindBonus) {
-		iplayerSettingAutoDismantleScore[client] = auto;
-		PrintToChat(client, "\x04I will auto dismantle any augments of \x03%d \x04score or lower.", iplayerSettingAutoDismantleScore[client]);
+	char key[64];
+	char tquery[512];
+	int size = 0;
+	int refunded = 0;
+	char effects[64];
+	int isEquipped = 0;
+	if (StrEqual(arg, "clear")) {
+		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `isequipped` = '-1' AND `steam_id` = '%s';", TheDBPrefix, key);
+		SQL_TQuery(hDatabase, QueryResults, tquery, client);
+
+		size = GetArraySize(myAugmentInfo[client]);
+		for (int i = size-1; i >= 0; i--) {
+			isEquipped = GetArrayCell(myAugmentInfo[client], i, 3);
+			if (isEquipped != -1) continue;
+			RemoveFromArray(myAugmentIDCodes[client], i);
+			RemoveFromArray(myAugmentCategories[client], i);
+			RemoveFromArray(myAugmentOwners[client], i);
+			RemoveFromArray(myAugmentInfo[client], i);
+			RemoveFromArray(myAugmentTargetEffects[client], i);
+			RemoveFromArray(myAugmentActivatorEffects[client], i);
+			refunded++;
+		}
+		PrintToChat(client, "\x04Deleted \x03all \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
+		augmentParts[client] += refunded;
+	}
+	else if (StrEqual(arg, "minor")) {
+		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `acteffects` = '-1' AND `tareffects` = '-1' AND `steam_id` = '%s';", TheDBPrefix, key);
+		SQL_TQuery(hDatabase, QueryResults, tquery, client);
+
+		size = GetArraySize(myAugmentInfo[client]);
+		for (int i = size-1; i >= 0; i--) {
+			isEquipped = GetArrayCell(myAugmentInfo[client], i, 3);
+			if (isEquipped != -1) continue;
+			GetArrayString(myAugmentTargetEffects[client], i, effects, sizeof(effects));
+			if (!StrEqual(effects, "-1")) continue;
+			GetArrayString(myAugmentActivatorEffects[client], i, effects, sizeof(effects));
+			if (!StrEqual(effects, "-1")) continue;
+			RemoveFromArray(myAugmentTargetEffects[client], i);
+			RemoveFromArray(myAugmentActivatorEffects[client], i);
+			RemoveFromArray(myAugmentIDCodes[client], i);
+			RemoveFromArray(myAugmentCategories[client], i);
+			RemoveFromArray(myAugmentOwners[client], i);
+			RemoveFromArray(myAugmentInfo[client], i);
+			refunded++;
+		}
+		PrintToChat(client, "\x04Deleted all \x03minor \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
+		augmentParts[client] += refunded;
+	}
+	else if (StrEqual(arg, "major")) {
+		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE (`acteffects` = '-1' AND `tareffects` != '-1' AND `steam_id` = '%s') OR (`acteffects` != '-1' AND `tareffects` = '-1' AND `steam_id` = '%s');", TheDBPrefix, key, key);
+		SQL_TQuery(hDatabase, QueryResults, tquery, client);
+		char othereffects[64];
+		size = GetArraySize(myAugmentInfo[client]);
+		for (int i = size-1; i >= 0; i--) {
+			isEquipped = GetArrayCell(myAugmentInfo[client], i, 3);
+			if (isEquipped != -1) continue;
+			GetArrayString(myAugmentTargetEffects[client], i, effects, sizeof(effects));
+			GetArrayString(myAugmentActivatorEffects[client], i, othereffects, sizeof(othereffects));
+			if (!StrEqual(effects, "-1") && !StrEqual(othereffects, "-1") ||
+				StrEqual(effects, "-1") && StrEqual(othereffects, "-1")) continue;
+			RemoveFromArray(myAugmentTargetEffects[client], i);
+			RemoveFromArray(myAugmentActivatorEffects[client], i);
+			RemoveFromArray(myAugmentIDCodes[client], i);
+			RemoveFromArray(myAugmentCategories[client], i);
+			RemoveFromArray(myAugmentOwners[client], i);
+			RemoveFromArray(myAugmentInfo[client], i);
+			refunded++;
+		}
+		PrintToChat(client, "\x04Deleted all \x03major \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
+		augmentParts[client] += refunded;
+	}
+	else {
+		int auto = StringToInt(arg);
+		if (auto > 0 && auto <= BestRating[client] + lootFindBonus) {
+			iplayerSettingAutoDismantleScore[client] = auto;
+			PrintToChat(client, "\x04I will auto dismantle any augments of \x03%d \x04score or lower.", iplayerSettingAutoDismantleScore[client]);
+		}
 	}
 	return Plugin_Handled;
 }
@@ -3964,8 +4068,12 @@ stock EndOfMapRollLoot() {
 	else Format(sWhichPlayersToRollNotice, 32, "living survivors");
 	PrintToChatAll("%t", "end of map augment rolls", blue, green, iNumOfEndMapLootRolls, blue, sWhichPlayersToRollNotice);
 	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR || IsFakeClient(i)) continue;
 		if (iAllPlayersEndMapLootRolls != 1 && !IsPlayerAlive(i)) continue;
+		if (GetArraySize(myAugmentIDCodes[i]) >= iInventoryLimit) {
+			PrintToChat(i, "\x04INVENTORY FULL - LOOT ROLL FORFEITED");
+			continue;
+		}
 		int numRollsRemainingThisPlayer = (GetArraySize(possibleLootPool[i]) < iPlayerStartingLevel) ? 0 : iNumOfEndMapLootRolls;
 		while (numRollsRemainingThisPlayer > 0) {
 			numRollsRemainingThisPlayer--;
@@ -3979,7 +4087,7 @@ stock EndOfMapRollLoot() {
 }
 
 stock RollLoot(client, enemyClient) {
-	if (iLootEnabled == 0 || IsFakeClient(client)) return;
+	if (iLootEnabled == 0 || IsFakeClient(client) || Rating[client] < iRatingRequiredForAugmentLootDrops) return;
 	int lootPoolSize = GetArraySize(possibleLootPool[client]);
 	if (lootPoolSize < iUpgradesRequiredForLoot) return;
 	int zombieclass = FindZombieClass(enemyClient);
@@ -4005,7 +4113,8 @@ stock RollLoot(client, enemyClient) {
 		if (roll != 1) continue;
 		if (iLootBagsAreGenerated != 1) GenerateAndGivePlayerAugment(client);
 		else {
-			int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
+			//int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
+			int min = Rating[client];
 			int max = (min + iRatingRequiredForAugmentLootDrops > BestRating[client]) ? min + iRatingRequiredForAugmentLootDrops : BestRating[client];
 			int itemScore = GetRandomInt(min,max+lootFindBonus);
 			if (itemScore < iplayerSettingAutoDismantleScore[client]) numOfAugmentPartsToReturn++;
@@ -4018,7 +4127,7 @@ stock RollLoot(client, enemyClient) {
 	if (numOfAugmentPartsToReturn > 0) {
 		char text[64];
 		augmentParts[client] += numOfAugmentPartsToReturn;
-		Format(text, 64, "{G}+%d {O}augment parts", numOfAugmentPartsToReturn);
+		Format(text, 64, "{G}+%d {O}scrap", numOfAugmentPartsToReturn);
 		Client_PrintToChat(client, true, text);
 	}
 }
@@ -4044,14 +4153,17 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 
 	int potentialItemRating = (potentialItemRatingOverride == 0) ? Rating[client] : potentialItemRatingOverride;
 	int count = 1;
-	while (count < 3 && potentialItemRating > (count*2) * iRatingRequiredForAugmentLootDrops) count++;
-	if (count == 3) count = 4;
-	int thisAugmentRatingRequiredForNextTier = count * iRatingRequiredForAugmentLootDrops;
+	while (count == 0 && potentialItemRating > iRatingRequiredForAugmentLootDrops || count < 3 && potentialItemRating > (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops) {
+		count++;
+	}
+	count--;
+	int thisAugmentRatingRequiredForNextTier = (count > 0) ? (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops : iRatingRequiredForAugmentLootDrops;
 	char augmentStrengthText[64];
 	int lootrolls[3];
 	int roll = GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating);
 	potentialItemRating -= roll;
-	//potentialItemRating -= iRatingRequiredForAugmentLootDrops;
+	count--;
+	thisAugmentRatingRequiredForNextTier = (count > 0) ? (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops : iRatingRequiredForAugmentLootDrops;
 	lootrolls[0] = roll;
 	int lootsize = 0;
 	while (potentialItemRating > thisAugmentRatingRequiredForNextTier) {
@@ -4061,6 +4173,9 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		potentialItemRating -= roll;
 		//potentialItemRating -= iRatingRequiredForAugmentLootDrops;
 		lootrolls[lootsize] = roll;
+		if (count == 0) break;
+		count--;
+		thisAugmentRatingRequiredForNextTier = (count > 0) ? (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops : iRatingRequiredForAugmentLootDrops;
 	}
 	ResizeArray(myAugmentIDCodes[client], size+1);
 	ResizeArray(myAugmentCategories[client], size+1);
@@ -4080,6 +4195,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 
 	char menuText[64];
 	int len = GetAugmentTranslation(client, buffedCategory, menuText);
+	Format(menuText, 64, "%T", menuText, client);
 
 	char name[64];
 	GetClientName(client, name, sizeof(name));
@@ -4090,6 +4206,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	SetArrayCell(myAugmentInfo[client], size, 0, 1);			// item cost
 	SetArrayCell(myAugmentInfo[client], size, 0, 2);			// is item for sale
 	SetArrayCell(myAugmentInfo[client], size, -1, 3);			// which augment slot the item is equipped in - -1 for no slot.
+
 
 	int possibilities = RoundToCeil(1.0 / fAugmentTierChance);
 	int type = GetRandomInt(1, possibilities);
@@ -4131,18 +4248,6 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	}
 	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
 	if (augmentActivatorRating == -1 && augmentTargetRating == -1) {
-		// if (iplayerDismantleMinorAugments[client] == 1) {
-		// 	augmentParts[client]++;
-		// 	RemoveFromArray(myAugmentIDCodes[client], size);
-		// 	RemoveFromArray(myAugmentCategories[client], size);
-		// 	RemoveFromArray(myAugmentOwners[client], size);
-		// 	RemoveFromArray(myAugmentInfo[client], size);
-		// 	RemoveFromArray(myAugmentTargetEffects[client], size);
-		// 	RemoveFromArray(myAugmentActivatorEffects[client], size);
-		// 	Format(text, 64, "{G}+1 {O}augment parts");
-		// 	Client_PrintToChat(client, true, text);
-		// 	return;
-		// }
 		Format(augmentStrengthText, 10, "minor");
 	}
 	else {
@@ -4155,13 +4260,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		else if (!StrEqual(majorname, "-1")) Format(augmentStrengthText, 64, "%s", majorname);
 		else Format(augmentStrengthText, 64, "%s", perfectname);
 	}
-	Format(text, sizeof(text), "{B}%s {N}found a {B}+{OG}%3.3f{B}PCT {O}%s {B}%s %s {O}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
-	if (forceAugmentItemLevel < 1) Format(text, sizeof(text), "%s {N}on a corpse.", text);
-	else if (isALootBag) Format(text, sizeof(text), "%s {N}in the bag.", text);
-	else {
-		if (iAllPlayersEndMapLootRolls != 1) Format(text, sizeof(text), "%s {N}in the safe room.", text);
-		else Format(text, sizeof(text), "%s {N}as a participation reward.", text);
-	}
+	Format(text, sizeof(text), "{B}%s {N}obtained a {B}+{OG}%3.1f{B}PCT {O}%s {OG}%s {O}%s {B}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
 	ReplaceString(text, sizeof(text), "PCT", "%%", true);
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
@@ -4173,17 +4272,6 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	char tquery[512];
 	Format(tquery, sizeof(tquery), "INSERT INTO `%s_loot` (`steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`) VALUES ('%s', '%s', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%d');", TheDBPrefix, key, sItemCode, lootrolls[0], buffedCategory, 0, 0, -1, activatorEffects, augmentActivatorRating, targetEffects, augmentTargetRating);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
-	//if (forceAugmentItemLevel > 0) PrintToChatAll("%t", "player end of map roll award", blue, name, white, blue, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, pct, augmentStrengthText, menuText, buffedCategory[len], green, white);
-	//else PrintToChatAll("%t", "player loot award", blue, name, white, blue, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, pct, augmentStrengthText, menuText, buffedCategory[len], green, white);
-	// test
-	// char t1[64];
-	// char t2[64];
-	// char t3[64];
-	// GetArrayString(myAugmentCategories[client], size, t1, 64);
-	// GetArrayString(myAugmentOwners[client], size, t2, 64);
-	// GetArrayString(myAugmentIDCodes[client], size, t3, 64);
-	// LogMessage("---------------------------\nID: %s\nOwner: %s\nCategory: %s\nRating: %d\nItem Value: %d\nIs for Sale: %d", t3, t2, t1,
-	// GetArrayCell(myAugmentInfo[client], size), GetArrayCell(myAugmentInfo[client], size, 1), GetArrayCell(myAugmentInfo[client], size, 2));
 }
 
 stock void GetUniqueAugmentLootDropItemCode(char[] sTime) {
@@ -4193,6 +4281,16 @@ stock void GetUniqueAugmentLootDropItemCode(char[] sTime) {
 	LogMessage("itemcode is %s", sTime);
 }
 
+stock bool ArrayContains(Handle array, char[] val) {
+	int size = GetArraySize(array);
+	for (int i = 0; i < size; i++) {
+		char text[64];
+		GetArrayString(array, i, text, 64);
+		if (StrEqual(val, text)) return true;
+	}
+	return false;
+}
+
 stock void SetLootDropCategories(client) {
 	ClearArray(possibleLootPool[client]);
 	ClearArray(possibleLootPoolActivator[client]);
@@ -4200,6 +4298,10 @@ stock void SetLootDropCategories(client) {
 	ClearArray(myLootDropCategoriesAllowed[client]);
 	ClearArray(myLootDropTargetEffectsAllowed[client]);
 	ClearArray(myLootDropActivatorEffectsAllowed[client]);
+	ClearArray(myUnlockedCategories[client]);
+	ClearArray(myUnlockedActivators[client]);
+	ClearArray(myUnlockedTargets[client]);
+
 	int size = GetArraySize(a_Menu_Talents);
 	if (GetArraySize(MyTalentStrength[client]) != size) ResizeArray(MyTalentStrength[client], size);
 	int explodeCount = GetDelimiterCount(sCategoriesToIgnore, ",") + 1;
@@ -4224,10 +4326,12 @@ stock void SetLootDropCategories(client) {
 		PushArrayCell(possibleLootPool[client], i);
 		GetArrayString(LootDropCategoryToBuffValues[client], TALENT_TREE_CATEGORY, talentName, sizeof(talentName));
 		PushArrayString(myLootDropCategoriesAllowed[client], talentName);
+		if (!ArrayContains(myUnlockedCategories[client], talentName)) PushArrayString(myUnlockedCategories[client], talentName);
 		//if (GetArrayCell(LootDropCategoryToBuffValues[client], SKIP_TALENT_FOR_AUGMENT_ROLL) != 1) {
 		GetArrayString(LootDropCategoryToBuffValues[client], ACTIVATOR_ABILITY_EFFECTS, talentName, sizeof(talentName));
 		if (!StrEqual(talentName, "-1") && !StrEqual(talentName, "0")) {
 			PushArrayString(myLootDropActivatorEffectsAllowed[client], talentName);
+			if (!ArrayContains(myUnlockedActivators[client], talentName)) PushArrayString(myUnlockedActivators[client], talentName);
 			PushArrayCell(possibleLootPoolActivator[client], i);
 		}
 		//}
@@ -4235,6 +4339,7 @@ stock void SetLootDropCategories(client) {
 		GetArrayString(LootDropCategoryToBuffValues[client], TARGET_ABILITY_EFFECTS, talentName, sizeof(talentName));
 		if (!StrEqual(talentName, "-1") && !StrEqual(talentName, "0")) {
 			PushArrayString(myLootDropTargetEffectsAllowed[client], talentName);
+			if (!ArrayContains(myUnlockedTargets[client], talentName)) PushArrayString(myUnlockedTargets[client], talentName);
 			PushArrayCell(possibleLootPoolTarget[client], i);
 		}
 	}
@@ -4335,6 +4440,10 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	int sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
 	if (configIsForTalents) {
+		if (FindStringInArray(TalentKey, "talent cooldown minimum value?") == -1) {
+			PushArrayString(TalentKey, "talent cooldown minimum value?");
+			PushArrayString(TalentValue, "0.0");
+		}
 		if (FindStringInArray(TalentKey, "require ally on fire?") == -1) {
 			PushArrayString(TalentKey, "require ally on fire?");
 			PushArrayString(TalentValue, "-1");
@@ -5338,7 +5447,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos == 190 && !StrEqual(text, "target must be ally ensnarer?") ||
 			pos == 191 && !StrEqual(text, "require enemy in coherency range?") ||
 			pos == 192 && !StrEqual(text, "enemy in coherency is target?") ||
-			pos == 193 && !StrEqual(text, "require ally on fire?")) {
+			pos == 193 && !StrEqual(text, "require ally on fire?") ||
+			pos == 194 && !StrEqual(text, "talent cooldown minimum value?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -5413,7 +5523,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			i == ABILITY_TOGGLE_STRENGTH || i == ABILITY_COOLDOWN || i == SPELL_EFFECT_MULTIPLIER || i == COMPOUNDING_TALENT ||
 			i == MULT_STR_NEARBY_DOWN_ALLIES || i == MULT_STR_NEARBY_ENSNARED_ALLIES || i == REQUIRE_TARGET_HAS_ENSNARED_ALLY ||
 			i == REQUIRE_ENSNARED_ALLY || i == SKIP_TALENT_FOR_AUGMENT_ROLL || i == REQUIRE_ALLY_WITH_ADRENALINE || i == REQUIRE_ALLY_BELOW_HEALTH_PERCENTAGE ||
-			i == REQUIRE_ALLY_ON_FIRE) {
+			i == REQUIRE_ALLY_ON_FIRE || i == TALENT_MINIMUM_COOLDOWN_TIME) {
 				GetArrayString(TalentValue, i, text, sizeof(text));
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
