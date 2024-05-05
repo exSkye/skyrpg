@@ -295,7 +295,7 @@
 	}
 	"weak damage increase"
 	{
-		"en"				"Deal increased damage whilst black and white."
+		"en"				"Deal increased damage from all sources while black and white."
 	}
 	"heal spec i"
 	{
@@ -387,6 +387,18 @@
 	"acidburn augment info"
 	{
 		"en"				"Acid Burn"
+	}
+	"c perfect surname"
+	{
+		"en"				"Burn"
+	}
+	"c major surname"
+	{
+		"en"				"Burn"
+	}
+	"c augment info"
+	{
+		"en"				"Burn"
 	}
 	"cleric augment info"
 	{

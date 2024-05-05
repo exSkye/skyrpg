@@ -1,44 +1,43 @@
 // (c) Michael "Sky" Toth
 // Distributed under the GPLv3 license =)
 
-#define NICK_MODEL				"models/survivors/survivor_gambler.mdl"
-#define ROCHELLE_MODEL			"models/survivors/survivor_producer.mdl"
-#define COACH_MODEL				"models/survivors/survivor_coach.mdl"
-#define ELLIS_MODEL				"models/survivors/survivor_mechanic.mdl"
-#define ZOEY_MODEL				"models/survivors/survivor_teenangst.mdl"
-#define FRANCIS_MODEL			"models/survivors/survivor_biker.mdl"
-#define LOUIS_MODEL				"models/survivors/survivor_manager.mdl"
-#define BILL_MODEL				"models/survivors/survivor_namvet.mdl"
-#define TEAM_SPECTATOR		1
-#define TEAM_SURVIVOR		2
-#define TEAM_INFECTED		3
-#define MAX_ENTITIES		2048
-#define MAX_CHAT_LENGTH		1024
-#define COOPRECORD_DB				"db_season_coop"
-#define SURVRECORD_DB				"db_season_surv"
-#define PLUGIN_VERSION				"v3.4.6.4"
-#define PROFILE_VERSION				"v1.5"
-#define PLUGIN_CONTACT				"github.com/exskye/"
-#define PLUGIN_NAME					"RPG Construction Set"
-#define PLUGIN_DESCRIPTION			"Fully-customizable and modular RPG, like the one for Atari."
-#define CONFIG_EVENTS				"rpg/events.cfg"
-#define CONFIG_MAINMENU				"rpg/mainmenu.cfg"
-#define CONFIG_SURVIVORTALENTS		"rpg/talentmenu.cfg"
-#define CONFIG_POINTS				"rpg/points.cfg"
-#define CONFIG_MAPRECORDS			"rpg/maprecords.cfg"
-#define CONFIG_STORE				"rpg/store.cfg"
-#define CONFIG_TRAILS				"rpg/trails.cfg"
-#define CONFIG_PETS					"rpg/pets.cfg"
-#define CONFIG_WEAPONS				"rpg/weapondamages.cfg"
-#define CONFIG_COMMONAFFIXES		"rpg/commonaffixes.cfg"
-#define CONFIG_CLASSNAMES			"rpg/classnames.cfg"
-#define CONFIG_HANDICAP				"rpg/handicap.cfg"
-#define LOGFILE						"rum_rpg.txt"
-#define JETPACK_AUDIO				"ambient/gas/steam2.wav"
-#define MODIFIER_HEALING			0
-#define MODIFIER_TANKING			1
-#define MODIFIER_DAMAGE				2	// not really used...
-
+#define NICK_MODEL						"models/survivors/survivor_gambler.mdl"
+#define ROCHELLE_MODEL					"models/survivors/survivor_producer.mdl"
+#define COACH_MODEL						"models/survivors/survivor_coach.mdl"
+#define ELLIS_MODEL						"models/survivors/survivor_mechanic.mdl"
+#define ZOEY_MODEL						"models/survivors/survivor_teenangst.mdl"
+#define FRANCIS_MODEL					"models/survivors/survivor_biker.mdl"
+#define LOUIS_MODEL						"models/survivors/survivor_manager.mdl"
+#define BILL_MODEL						"models/survivors/survivor_namvet.mdl"
+#define TEAM_SPECTATOR					1
+#define TEAM_SURVIVOR					2
+#define TEAM_INFECTED					3
+#define MAX_ENTITIES					2048
+#define MAX_CHAT_LENGTH					1024
+#define COOPRECORD_DB					"db_season_coop"
+#define SURVRECORD_DB					"db_season_surv"
+#define PLUGIN_VERSION					"v3.4.6.5"
+#define PROFILE_VERSION					"v1.5"
+#define PLUGIN_CONTACT					"github.com/exskye/"
+#define PLUGIN_NAME						"RPG Construction Set"
+#define PLUGIN_DESCRIPTION				"Fully-customizable and modular RPG, like the one for Atari."
+#define CONFIG_EVENTS					"rpg/events.cfg"
+#define CONFIG_MAINMENU					"rpg/mainmenu.cfg"
+#define CONFIG_SURVIVORTALENTS			"rpg/talentmenu.cfg"
+#define CONFIG_POINTS					"rpg/points.cfg"
+#define CONFIG_MAPRECORDS				"rpg/maprecords.cfg"
+#define CONFIG_STORE					"rpg/store.cfg"
+#define CONFIG_TRAILS					"rpg/trails.cfg"
+#define CONFIG_PETS						"rpg/pets.cfg"
+#define CONFIG_WEAPONS					"rpg/weapondamages.cfg"
+#define CONFIG_COMMONAFFIXES			"rpg/commonaffixes.cfg"
+#define CONFIG_CLASSNAMES				"rpg/classnames.cfg"
+#define CONFIG_HANDICAP					"rpg/handicap.cfg"
+#define LOGFILE							"rum_rpg.txt"
+#define JETPACK_AUDIO					"ambient/gas/steam2.wav"
+#define MODIFIER_HEALING				0
+#define MODIFIER_TANKING				1
+#define MODIFIER_DAMAGE					2	// not really used...
 #define SURVIVOR_STATE_IGNORE			0
 #define SURVIVOR_STATE_ENSNARED			1
 #define SURVIVOR_STATE_INCAPACITATED	2
@@ -46,6 +45,22 @@
 //	================================
 #define DEBUG     					false
 /*	================================
+
+ Version 3.4.6.5
+ - Witches will now startle when taking bullet damage.
+ - Optimizations to certain intensive calls;
+	void ForcedWeakness(client) integrated into SetClientTalentStrength as this is the only time the value can change.
+		added a new variable bForcedWeakness[client] to hold the value of the call.
+ - Survivor bot data will no longer save if there is an idle player attached to the bot.
+ - A bug causing a player to take over a survivor bots data, overwriting their own data... has been patched.
+ - Players who are defibbed back to life have their penalized score, bonus experience multiplier, and handicaps restored. Their lost experience, if applicable, is not restored.
+ - Players can now starting with a variable incap health percentage in config.cfg.
+	"incap health start?"									"0.5" // default if not present is 0.5 or 50%. If it's set to 100%, incap health regen will tick once and auto-res the player.
+ - Added another config.cfg addition to load custom witch settings, but regardless of the key name, it can be used to load ANY other config for custom settings, etc.
+	"custom witch config?"									"witch.cfg"	// if the set config cannot be found, nothing happens; no foul.
+ - Fixed a bug where abilities (such as basilisk armor or last chance) could make a player immune to damage. This will now cap based on the following (not new) variable in the config.cfg:
+	"max damage resistance?"								"0.9"	// if this key is not present, the default is 0.9.
+ - Survivors receive a brief (one frame) invulnerability period when entering incap state now.
 
  Version 3.4.6.4
  - Added first iteration of gear comparator when considering whether to equip a new augment.
@@ -664,6 +679,11 @@ public Plugin myinfo = {
 #define HITGROUP_HEAD		1
 #define HITGROUP_OTHER		0
 
+float fIncapHealthStartPercentage;
+Handle tempStorage;
+char witchSettingsOverride[64];
+int iCurrentIncapCount[MAXPLAYERS + 1];
+Handle ListOfWitchesWhoHaveBeenShot;
 Handle ClientsPermittedToLoad;
 bool b_IsIdle[MAXPLAYERS + 1];
 Handle OnDeathHandicapValues[MAXPLAYERS + 1];
@@ -852,7 +872,8 @@ bool b_IsFloating[MAXPLAYERS + 1];
 //new Float:JumpPosition[MAXPLAYERS + 1][2][3];
 float LastDeathTime[MAXPLAYERS + 1];
 float SurvivorEnrage[MAXPLAYERS + 1][2];
-bool bHasWeakness[MAXPLAYERS + 1];
+int bHasWeakness[MAXPLAYERS + 1];
+bool bForcedWeakness[MAXPLAYERS + 1];
 int HexingContribution[MAXPLAYERS + 1];
 int BuffingContribution[MAXPLAYERS + 1];
 int HealingContribution[MAXPLAYERS + 1];
@@ -1153,7 +1174,8 @@ Handle MenuStructure[MAXPLAYERS + 1];
 Handle TankState_Array[MAXPLAYERS + 1];
 bool bIsGiveIncapHealth[MAXPLAYERS + 1];
 Handle TheLeaderboards[MAXPLAYERS + 1];
-Handle TheLeaderboardsData[MAXPLAYERS + 1];
+Handle TheLeaderboardsDataFirst[MAXPLAYERS + 1];
+Handle TheLeaderboardsDataSecond[MAXPLAYERS + 1];
 int TheLeaderboardsPage[MAXPLAYERS + 1];// 10 entries at a time, until the end of time.
 bool bIsMyRanking[MAXPLAYERS + 1];
 int TheLeaderboardsPageSize[MAXPLAYERS + 1];
@@ -1647,8 +1669,8 @@ stock void CMD_OpenRPGMenu(int client) {
 
 public void OnPluginStart() {
 	OnMapStartFunc(); // The very first thing that must happen before anything else happens.
-	CreateConVar("skyrpg_version", PLUGIN_VERSION, "version header", CVAR_SHOW);
-	SetConVarString(FindConVar("skyrpg_version"), PLUGIN_VERSION);
+	CreateConVar("rpgmaker_version", PLUGIN_VERSION, "version of RPGMaker 2 Construction Kit");
+	SetConVarString(FindConVar("rpgmaker_version"), PLUGIN_VERSION);
 	g_Steamgroup = FindConVar("sv_steamgroup");
 	SetConVarFlags(g_Steamgroup, GetConVarFlags(g_Steamgroup) & ~FCVAR_NOTIFY);
 	g_svCheats = FindConVar("sv_cheats");
@@ -1780,6 +1802,8 @@ stock void UnhookAll() {
 }
 
 public int ReadyUp_TrueDisconnect(int client) {
+	if (b_IsLoaded[client]) SavePlayerData(client, true);
+	b_IsLoaded[client] = false;		// only set to false if a REAL player leaves - this way bots don't repeatedly load their data.
 	if (IsFakeClient(client)) return;
 	IsClearedToLoad(client, _, true);
 	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
@@ -1792,14 +1816,12 @@ public int ReadyUp_TrueDisconnect(int client) {
 	b_IsLoading[client] = false;
 	b_HardcoreMode[client] = false;
 	//WipeDebuffs(_, client, true);
-	if (b_IsLoaded[client]) SavePlayerData(client, true);
 	IsPlayerDebugMode[client] = 0;
 	CleanseStack[client] = 0;
 	CounterStack[client] = 0.0;
 	MultiplierStack[client] = 0;
 	LoadTarget[client] = -1;
 	ImmuneToAllDamage[client] = false;
-	b_IsLoaded[client] = false;		// only set to false if a REAL player leaves - this way bots don't repeatedly load their data.
 	bIsSettingsCheck = true;
 }
 
@@ -1905,6 +1927,9 @@ stock CreateAllArrays() {
 	if (SetNodesValues == INVALID_HANDLE) SetNodesValues = CreateArray(16);
 	if (playerCustomEntitiesCreated == INVALID_HANDLE) playerCustomEntitiesCreated = CreateArray(16);
 	if (ClientsPermittedToLoad == INVALID_HANDLE) ClientsPermittedToLoad = CreateArray(16);
+	if (ListOfWitchesWhoHaveBeenShot == INVALID_HANDLE) ListOfWitchesWhoHaveBeenShot = CreateArray(8);
+	if (tempStorage == INVALID_HANDLE) tempStorage = CreateArray(16);
+	ResizeArray(tempStorage, MAXPLAYERS + 1);
 	for (int i = 1; i <= MAXPLAYERS; i++) {
 		itemToDisassemble[i] = -1;
 		augmentParts[i] = 0;
@@ -1971,7 +1996,8 @@ stock CreateAllArrays() {
 		if (TalentTreeKeys[i] == INVALID_HANDLE) TalentTreeKeys[i] = CreateArray(16);
 		if (TalentTreeValues[i] == INVALID_HANDLE) TalentTreeValues[i] = CreateArray(16);
 		if (TheLeaderboards[i] == INVALID_HANDLE) TheLeaderboards[i] = CreateArray(16);
-		if (TheLeaderboardsData[i] == INVALID_HANDLE) TheLeaderboardsData[i] = CreateArray(16);
+		if (TheLeaderboardsDataFirst[i] == INVALID_HANDLE) TheLeaderboardsDataFirst[i] = CreateArray(8);
+		if (TheLeaderboardsDataSecond[i] == INVALID_HANDLE) TheLeaderboardsDataSecond[i] = CreateArray(8);
 		if (TankState_Array[i] == INVALID_HANDLE) TankState_Array[i] = CreateArray(16);
 		if (PlayerInventory[i] == INVALID_HANDLE) PlayerInventory[i] = CreateArray(16);
 		if (PlayerEquipped[i] == INVALID_HANDLE) PlayerEquipped[i] = CreateArray(16);
@@ -2141,7 +2167,7 @@ stock CreateAllArrays() {
 		if (myUnlockedActivators[i] == INVALID_HANDLE) myUnlockedActivators[i] = CreateArray(16);
 		if (myUnlockedTargets[i] == INVALID_HANDLE) myUnlockedTargets[i] = CreateArray(16);
 		if (EquipAugmentPanel[i] == INVALID_HANDLE) EquipAugmentPanel[i] = CreateArray(16);
-		if (OnDeathHandicapValues[i] == INVALID_HANDLE) OnDeathHandicapValues[i] = CreateArray(16);
+		if (OnDeathHandicapValues[i] == INVALID_HANDLE) OnDeathHandicapValues[i] = CreateArray(8);
 	}
 	CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	b_FirstLoad = true;
@@ -2149,8 +2175,7 @@ stock CreateAllArrays() {
 
 stock OnMapStartFunc() {
 	if (!b_MapStart) {
-		b_MapStart								= true;
-
+		b_MapStart = true;
 		if (!b_FirstLoad) CreateAllArrays();
 		CreateTimer(10.0, Timer_GetCampaignName, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
@@ -2168,6 +2193,10 @@ public void OnMapStart() {
 	SetConVarInt(FindConVar("director_no_death_check"), 0);	// leave 0 until figure out why scenario_end doesn't work anymore.
 	SetConVarInt(FindConVar("sv_rescue_disabled"), 0);
 	SetConVarInt(FindConVar("z_common_limit"), 0);	// there are no commons until the round starts in all game modes to give players a chance to move.
+	if (!StrEqual(witchSettingsOverride, "-1")) {
+		ExecCheatCommand(_, "exec", witchSettingsOverride);
+		LogMessage("Loaded custom witch settings, %s.", witchSettingsOverride);
+	}
 	iTopThreat = 0;
 	// When the server restarts, for any reason, RPG will properly load.
 	//if (!b_FirstLoad) OnMapStartFunc();
@@ -2224,7 +2253,6 @@ public void OnMapStart() {
 }
 
 stock ResetValues(client) {
-
 	// Yep, gotta do this *properly*
 	b_HasDeathLocation[client] = false;
 }
@@ -2366,9 +2394,7 @@ public ReadyUp_ReadyUpStart() {
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsLegitimateClient(i)) {
 			if (CurrentMapPosition == 0 && b_IsLoaded[i] && GetClientTeam(i) == TEAM_SURVIVOR && ReadyUpGameMode != 3) GiveProfileItems(i);
-			//if (GetClientTeam(i) == TEAM_SURVIVOR) GiveProfileItems(i);
 			if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
-			//if (GetClientTeam(i) == TEAM_SURVIVOR && !b_IsLoaded[i]) IsClientLoadedEx(i);
 			staggerCooldownOnTriggers[i] = false;
 			ISBILED[i] = false;
 			iThreatLevel[i] = 0;
@@ -2404,20 +2430,12 @@ public Action Timer_Defibrillator(Handle timer, any client) {
 }
 
 public ReadyUpEnd_Complete() {
-	//PrintToChatAll("DOor opened");
-	//b_IsCheckpointDoorStartOpened = true;
-	//b_IsActiveRound = true;
 	if (b_IsRoundIsOver) {
 		b_IsRoundIsOver = false;
 		CreateTimer(30.0, Timer_CheckDifficulty, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CheckDifficulty();
 		b_IsMissionFailed = false;
-		//if (ReadyUp_GetGameMode() == 3) {
 		ClearArray(CommonAffixes);
-			//b_IsSurvivalIntermission = true;
-			//CreateTimer(5.0, Timer_AutoRes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		//}
-		//RoundTime					=	GetTime();
 		b_IsCheckpointDoorStartOpened = false;
 		for (int i = 1; i <= MaxClients; i++) {
 			if (IsLegitimateClient(i) && IsFakeClient(i) && !b_IsLoaded[i]) IsClientLoadedEx(i);
@@ -2427,7 +2445,7 @@ public ReadyUpEnd_Complete() {
 				if (!IsLegitimateClient(i)) continue;
 				staggerCooldownOnTriggers[i] = false;
 				ISBILED[i] = false;
-				bHasWeakness[i] = true;
+				bHasWeakness[i] = 0;
 				SurvivorEnrage[i][0] = 0.0;
 				SurvivorEnrage[i][1] = 0.0;
 				ISDAZED[i] = 0.0;
@@ -2525,22 +2543,20 @@ bool IsPlayerWithinBuffRange(client, char[] effectName) {
 			return true;
 		}
 	}
+
 	return false;	// client is not within range of this talent for any player on their team that has it.
 }
 
-bool ForcedWeakness(client) {
-	if (GetTalentPointsByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "weakness") > 0 ||
-		GetTalentPointsByKeyValue(client, SECONDARY_EFFECTS, "weakness") > 0) return true;
-	return false;
-}
+// void ForcedWeakness(client) {
+// 	if (GetTalentPointsByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "weakness") > 0 ||
+// 		GetTalentPointsByKeyValue(client, SECONDARY_EFFECTS, "weakness") > 0) bForcedWeakness[client] = true;
+// 	else bForcedWeakness[client] = false;
+// }
 
-stock bool PlayerHasWeakness(client) {
-	if (!IsLegitimateClientAlive(client) || !b_IsLoaded[client]) return false;
-	if (IsSpecialCommonInRange(client, 'w')) return true;
-	// if (IsClientInRangeSpecialAmmo(client, "W", true) == -2.0) return true;	// the player is not weak if inside cleansing ammo.*
-	if (ForcedWeakness(client)) return true;
-	if (GetIncapCount(client) >= iMaxIncap) return true;
-	return false;
+stock int PlayerHasWeakness(client) {
+	if (iCurrentIncapCount[client] >= iMaxIncap || IsSpecialCommonInRange(client, 'w')) return 1;
+	if (bForcedWeakness[client]) return 2;
+	return 0;
 }
 
 public ReadyUp_CheckpointDoorStartOpened() {
@@ -2552,6 +2568,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		bIsSettingsCheck = true;
 		IsEnrageNotified = false;
 		b_IsFinaleTanks = false;
+		ClearArray(ListOfWitchesWhoHaveBeenShot);
 		ClearArray(persistentCirculation);
 		ClearArray(CoveredInVomit);
 		ClearArray(RoundStatistics);
@@ -2570,6 +2587,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			SetMyWeapons(i);
 			if (IsFakeClient(i)) continue;
 			bIsMeleeCooldown[i] = false;
+			iCurrentIncapCount[i] = 0;
 			if (GroupMemberBonus > 0.0) {
 				if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
 				else PrintToChat(i, "%T", "group member benefit", i, orange, blue, GroupMemberBonus * 100.0, pct, green, blue);
@@ -3317,9 +3335,9 @@ stock CallRoundIsOver() {
 				//RoundExperienceMultiplier[i] += FinSurvBon;
 				float fExperienceBonus = fRoundExperienceBonus;
 				if (b_IsRescueVehicleArrived) fExperienceBonus += FinSurvBon;
-				if (fRoundExperienceBonus > 0.0) {
-					PrintToChatAll("%t", "living survivors experience bonus", orange, blue, orange, white, blue, fExperienceBonus * 100.0, white, pct, orange);
-				}
+				// if (fRoundExperienceBonus > 0.0) {
+				// 	PrintToChatAll("%t", "living survivors experience bonus", orange, blue, orange, white, blue, fExperienceBonus * 100.0, white, pct, orange);
+				// }
 				for (int i = 1; i <= MaxClients; i++) {
 					if (IsLegitimateClient(i)) {
 						ClearArray(WitchDamage[i]);
@@ -3332,7 +3350,11 @@ stock CallRoundIsOver() {
 						if (GetClientTeam(i) != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
 						if (Rating[i] < 0 && CurrentMapPosition != 1) VerifyMinimumRating(i);
 						if (RoundExperienceMultiplier[i] < 0.0) RoundExperienceMultiplier[i] = 0.0;
-						if (fExperienceBonus > 0.0) RoundExperienceMultiplier[i] += fExperienceBonus;
+						if (fExperienceBonus > 0.0) {
+							float scoreMult = (GetScoreMultiplier(i) * fExperienceBonus);
+							RoundExperienceMultiplier[i] += scoreMult;
+							PrintToChat(i, "%T", "living survivors experience bonus", i, orange, blue, orange, white, blue, scoreMult * 100.0, white, pct, orange);
+						}
 						//else PrintToChat(i, "no round bonus applied.");
 						AwardExperience(i, _, _, true);
 					}
@@ -3945,6 +3967,7 @@ stock LoadMainConfig() {
 	iAugmentTargetRerollCost			= GetConfigValueInt("augment target reroll cost?", 300);
 	iMultiplierForAugmentLootDrops		= GetConfigValueInt("augment score tier multiplier?", 2);
 	iAugmentsAffectCooldowns			= GetConfigValueInt("augment affects cooldowns?", 1);
+	fIncapHealthStartPercentage			= GetConfigValueFloat("incap health start?", 0.5);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
@@ -3954,6 +3977,7 @@ stock LoadMainConfig() {
 	GetConfigValue(defaultLoadoutWeaponPrimary, sizeof(defaultLoadoutWeaponPrimary), "default loadout primary weapon?");
 	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
 	GetConfigValue(serverKey, sizeof(serverKey), "server steam key?");
+	GetConfigValue(witchSettingsOverride, sizeof(witchSettingsOverride), "custom witch config?");
 	LogMessage("Main Config Loaded.");
 }
 
@@ -3999,7 +4023,7 @@ public Action CMD_AutoDismantle(client, args) {
 	else if (StrEqual(arg, "minor")) {
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
-		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `acteffects` = '-1' AND `tareffects` = '-1' AND `steam_id` = '%s';", TheDBPrefix, key);
+		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `isequipped` = '-1' AND `acteffects` = '-1' AND `tareffects` = '-1' AND `steam_id` = '%s';", TheDBPrefix, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
 
 		size = GetArraySize(myAugmentInfo[client]);
@@ -4024,7 +4048,7 @@ public Action CMD_AutoDismantle(client, args) {
 	else if (StrEqual(arg, "major")) {
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
-		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE (`acteffects` = '-1' AND `tareffects` != '-1' AND `steam_id` = '%s') OR (`acteffects` != '-1' AND `tareffects` = '-1' AND `steam_id` = '%s');", TheDBPrefix, key, key);
+		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE (`isequipped` = '-1' AND `acteffects` = '-1' AND `tareffects` != '-1' AND `steam_id` = '%s') OR (`isequipped` = '-1' AND `acteffects` != '-1' AND `tareffects` = '-1' AND `steam_id` = '%s');", TheDBPrefix, key, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
 		char othereffects[64];
 		size = GetArraySize(myAugmentInfo[client]);
@@ -4152,30 +4176,26 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	if (lootPool < 1) return;
 
 	int potentialItemRating = (potentialItemRatingOverride == 0) ? Rating[client] : potentialItemRatingOverride;
-	int count = 1;
-	while (count == 0 && potentialItemRating > iRatingRequiredForAugmentLootDrops || count < 3 && potentialItemRating > (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops) {
+	int thisAugmentRatingRequiredForNextTier = iRatingRequiredForAugmentLootDrops;
+	int count = 0;
+	while (potentialItemRating > thisAugmentRatingRequiredForNextTier) {
 		count++;
+		thisAugmentRatingRequiredForNextTier = (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
 	}
 	count--;
-	int thisAugmentRatingRequiredForNextTier = (count > 0) ? (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops : iRatingRequiredForAugmentLootDrops;
-	char augmentStrengthText[64];
-	int lootrolls[3];
-	int roll = GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating);
-	potentialItemRating -= roll;
-	count--;
-	thisAugmentRatingRequiredForNextTier = (count > 0) ? (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops : iRatingRequiredForAugmentLootDrops;
-	lootrolls[0] = roll;
 	int lootsize = 0;
+	int lootrolls[3];
+	potentialItemRating = (potentialItemRatingOverride == 0) ? Rating[client] : potentialItemRatingOverride;
+	thisAugmentRatingRequiredForNextTier = (count < 1) ? iRatingRequiredForAugmentLootDrops : (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
 	while (potentialItemRating > thisAugmentRatingRequiredForNextTier) {
-		if (lootsize < 2) lootsize++;
-		else break;
-		roll = GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating);
+		count--;
+		int roll = GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating);
 		potentialItemRating -= roll;
 		//potentialItemRating -= iRatingRequiredForAugmentLootDrops;
 		lootrolls[lootsize] = roll;
-		if (count == 0) break;
-		count--;
-		thisAugmentRatingRequiredForNextTier = (count > 0) ? (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops : iRatingRequiredForAugmentLootDrops;
+		thisAugmentRatingRequiredForNextTier = (count < 1) ? iRatingRequiredForAugmentLootDrops : (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
+		if (lootsize < 2 && potentialItemRating > thisAugmentRatingRequiredForNextTier) lootsize++;
+		else break;
 	}
 	ResizeArray(myAugmentIDCodes[client], size+1);
 	ResizeArray(myAugmentCategories[client], size+1);
@@ -4246,9 +4266,10 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		SetArrayString(myAugmentTargetEffects[client], size, "-1");
 		SetArrayCell(myAugmentInfo[client], size, -1, 5);
 	}
+	char augmentStrengthText[64];
 	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
 	if (augmentActivatorRating == -1 && augmentTargetRating == -1) {
-		Format(augmentStrengthText, 10, "minor");
+		Format(augmentStrengthText, 64, "minor");
 	}
 	else {
 		char majorname[64];

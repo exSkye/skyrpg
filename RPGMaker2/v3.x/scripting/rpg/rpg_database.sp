@@ -499,15 +499,6 @@ public void LoadLeaderboardsQuery(Handle owner, Handle hndl, const char[] error,
 		}*/
 
 		SQL_FetchString(hndl, 0, text, sizeof(text));
-		if (strlen(text) < 16) {
-
-			if (strlen(text) > 12) Format(text,sizeof(text), "%s\t", text);
-			else if (strlen(text) > 8) Format(text,sizeof(text), "%s\t\t\t", text);
-			else if (strlen(text) > 4) Format(text,sizeof(text), "%s\t\t\t\t\t\t", text);
-			else Format(text,sizeof(text), "%s\t\t\t\t\t\t\t", text);
-		}
-		Format(text, sizeof(text), "#%d %s", counter, text);
-
 		SetArrayString(LeadName, i, text);
 
 		Pint = SQL_FetchInt(hndl, 2);
@@ -1006,7 +997,7 @@ stock void SaveInfectedData(int client) {
 }
 
 stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlayer = false) {
-	if (!IsLegitimateClient(client)) return;
+	if (!IsLegitimateClient(client) || IsFakeClient(client) && HasIdlePlayer(client)) return;
 	bool IsLoadingData = b_IsLoading[client];
 	if (!IsLoadingData && !IsNewPlayer) {
 		LogMessage("Player Data saved for %N", client);
@@ -1915,6 +1906,7 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 
 	// b_IsLoaded[client] = true;
 	// b_IsLoading[client] = false;
+	iCurrentIncapCount[client] = 0;
 	b_IsLoadingTrees[client] = false;
 	bIsTalentTwo[client] = false;
 	FreeUpgrades[client]		=	MaximumPlayerUpgrades(client) - TotalPointsAssigned(client);
@@ -2012,12 +2004,21 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 	SurvivorStamina[client] = GetPlayerStamina(client);
 	SetMaximumHealth(client);
 	if (!b_IsActiveRound) GiveMaximumHealth(client);
+	if (GetTalentPointsByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "weakness") > 0 ||
+		GetTalentPointsByKeyValue(client, SECONDARY_EFFECTS, "weakness") > 0) bForcedWeakness[client] = true;
+	else bForcedWeakness[client] = false;
 }
 
 stock FormatPlayerName(client) {
 	char playerNameFormatted[512];
-	if (handicapLevel[client] < 1) Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
-	else Format(playerNameFormatted, 512, "[%d] [%d] %s", handicapLevel[client], PlayerLevel[client], baseName[client]);
+	if (!IsFakeClient(client)) {
+		if (handicapLevel[client] < 1) Format(playerNameFormatted, 512, "[%d] %s", PlayerLevel[client], baseName[client]);
+		else Format(playerNameFormatted, 512, "[%d] [%d] %s", handicapLevel[client], PlayerLevel[client], baseName[client]);
+	}
+	else {
+		if (handicapLevel[client] < 1) Format(playerNameFormatted, 512, "[BOT] [%d] %s", PlayerLevel[client], baseName[client]);
+		else Format(playerNameFormatted, 512, "[BOT] [%d] [%d] %s", handicapLevel[client], PlayerLevel[client], baseName[client]);
+	}
 	SetClientInfo(client, "name", playerNameFormatted);
 }
 
@@ -2143,9 +2144,15 @@ stock LoadStoreData(client, char[] key) {
 	}
 }*/
 
-public OnClientDisconnect(client)
-{
+public OnClientConnected(client) {
+	if (IsLegitimateClient(client) && !b_IsLoaded[client] && GetClientTeam(client) == TEAM_SURVIVOR) {
+		LogMessage("%N has connected to the server.", client);
+	}
+}
+
+public OnClientDisconnect(client) {
 	if (IsClientInGame(client)) {
+		if (IsFakeClient(client)) b_IsLoaded[client] = false;
 		// if (IsFakeClient(client)) {
 		// 	//LogMessage("bot removed, setting to not loaded.");
 		// 	b_IsLoaded[client] = false;
@@ -2286,6 +2293,7 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 	if (b_IsLoaded[client] && (!b_IsActiveRound || !IsClientIdle(client))) {//} && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
 		return;
 	}
+	LogMessage("storing %N's base name", client);
 	bTimersRunning[client] = false;
 	GetClientName(client, baseName[client], sizeof(baseName[]));
 	b_IsLoaded[client] = true;

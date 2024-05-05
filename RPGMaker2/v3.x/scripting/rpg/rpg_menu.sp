@@ -1785,21 +1785,15 @@ public Handle DisplayTheLeaderboards(client) {
 	char textFormatted[64];
 
 	if (TheLeaderboardsPageSize[client] > 0) {
-
-		Format(text, sizeof(text), "Name\t\t\t\t\t\t\tScore");
-		DrawPanelText(menu, text);
-
+		TheLeaderboardsDataFirst[client]		= GetArrayCell(TheLeaderboards[client], 0, 0);
+		TheLeaderboardsDataSecond[client]		= GetArrayCell(TheLeaderboards[client], 0, 1);
 		for (int i = 0; i < TheLeaderboardsPageSize[client]; i++) {
-
-			TheLeaderboardsData[client]		= GetArrayCell(TheLeaderboards[client], 0, 0);
-			GetArrayString(TheLeaderboardsData[client], i, tquery, sizeof(tquery));
+			GetArrayString(TheLeaderboardsDataFirst[client], i, tquery, sizeof(tquery));
 			Format(text, sizeof(text), "%s", tquery);
-
-			TheLeaderboardsData[client]		= GetArrayCell(TheLeaderboards[client], 0, 1);
-			GetArrayString(TheLeaderboardsData[client], i, tquery, sizeof(tquery));
-
+			GetArrayString(TheLeaderboardsDataSecond[client], i, tquery, sizeof(tquery));
 			AddCommasToString(StringToInt(tquery), textFormatted, sizeof(textFormatted));
-			Format(text, sizeof(text), "%s: \t%s", text, textFormatted);
+			if (!bIsMyRanking[client]) Format(text, sizeof(text), "#%d %s, %s", i+1, textFormatted, text);
+			else Format(text, sizeof(text), "#--- %s, %s", textFormatted, text);
 
 			DrawPanelText(menu, text);
 
@@ -2410,7 +2404,7 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 		float TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		float TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		TheAbilityMultiplier += TheAbilityMultiplierAlt;
-		if (TheAbilityMultiplier > 0.9) TheAbilityMultiplier = 0.9;
+		if (TheAbilityMultiplier > fMaxDamageResistance) TheAbilityMultiplier = fMaxDamageResistance;
 		iResult -= RoundToCeil(iResult * TheAbilityMultiplier);
 
 		TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
@@ -2447,12 +2441,12 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 		TheAbilityMultiplier = GetAbilityMultiplier(client, "X");
 		if (TheAbilityMultiplier > 0.0 && AltAbilityMultiplier > 0.0) TheAbilityMultiplier -= AltAbilityMultiplier;
 		else if (AltAbilityMultiplier > 0.0) TheAbilityMultiplier = 0.0 - AltAbilityMultiplier;
-		if (TheAbilityMultiplier >= 1.0) return -1;
-		else if (TheAbilityMultiplier > 0.0) {	// Damage received is reduced by the amount.
-			iResult -= RoundToCeil(iResult * TheAbilityMultiplier);
+		if (TheAbilityMultiplier > fMaxDamageResistance) TheAbilityMultiplier = fMaxDamageResistance;
+		if (TheAbilityMultiplier > 0.0) {	// Damage received is reduced by the amount.
+			iResult -= RoundToFloor(iResult * TheAbilityMultiplier);
 		}
 		else if (AltAbilityMultiplier > 0.0 && TheAbilityMultiplier != 0.0) {	// AbilityMultiplier will always be negative here.
-			iResult += RoundToCeil(iResult * (TheAbilityMultiplier * -1.0));
+			iResult += RoundToFloor(iResult * (TheAbilityMultiplier * -1.0));
 		}
 		iResult = RoundToCeil(CheckActiveAbility(client, iResult, 1));
 	}

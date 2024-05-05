@@ -1241,32 +1241,32 @@ public Action Timer_ImmunityExpiration(Handle timer, any client) {
 }
 
 stock Defibrillator(client, target = 0, bool IgnoreDistance = false) {
-
 	if (target > 0 && IsLegitimateClientAlive(target)) return;
-
-
+	int restore = (target == -1) ? 1 : 0;
+	if (restore == 1) target = 0;
 	// respawn people near the player.
 	int respawntarget = 0;
 	for (int i = 1; i <= MaxClients; i++) {
-
 		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
-
 			respawntarget = i;
 			break;
 		}
 	}
 	float Origin[3];
 	if (client > 0) GetClientAbsOrigin(client, Origin);
-
 	// target defaults to 0.
 	for (int i = target; i <= MaxClients; i++) {
-
 		if (IsLegitimateClient(i) && !IsPlayerAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR && (i != client || target == 0) && i != target) {
-
 			if (target > 0 && i != target) continue;
-
 			if (target == 0 && b_HasDeathLocation[i] && (IgnoreDistance || GetVectorDistance(Origin, DeathLocation[i]) < 256.0)) {
-
+				if (restore == 1) {
+					int oldrating = GetArrayCell(tempStorage, i, 0);
+					int oldhandicap = GetArrayCell(tempStorage, i, 1);
+					float oldmultiplier = GetArrayCell(tempStorage, i, 2);
+					Rating[i] = oldrating;
+					handicapLevel[i] = oldhandicap;
+					RoundExperienceMultiplier[i] = oldmultiplier;
+				}
 				PrintToChatAll("%t", "rise again", white, orange, white);
 				RespawnImmunity[i] = true;
 				MyRespawnTarget[i] = i;
@@ -1275,7 +1275,6 @@ stock Defibrillator(client, target = 0, bool IgnoreDistance = false) {
 				CreateTimer(3.0, Timer_ImmunityExpiration, i, TIMER_FLAG_NO_MAPCHANGE);
 			}
 			else if (target == 0 && !b_HasDeathLocation[i] && IsLegitimateClientAlive(respawntarget)) {
-
 				SDKCall(hRoundRespawn, i);
 				RespawnImmunity[i] = true;
 				MyRespawnTarget[i] = respawntarget;
@@ -1452,6 +1451,14 @@ public Action OnPlayerRunCmd(client, &buttons) {
 	}
 	else holdingFireCheckToggle(client);
 	bool isHoldingUseKey = (buttons & IN_USE) ? true : false;
+	// if (!isClientOnSolidGround) {
+	// 	Autoloot(client);
+	// }
+	// else 
+	if (isHoldingUseKey) {
+		IsPlayerTryingToPickupLoot(client);
+	}
+
 	if (isHoldingUseKey) {
 			// if (b_IsActiveRound && ReadyUpGameMode != 3) {
 			// 	if (StrContains(EName, "checkpoint", false) != -1) {
@@ -1461,7 +1468,6 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			// 		return Plugin_Changed;
 			// 	}
 			// }
-		IsPlayerTryingToPickupLoot(client);
 		if (b_IsRoundIsOver && (ReadyUpGameMode == 3 || StrContains(TheCurrentMap, "zerowarn", false) != -1)) {
 			char EName[64];
 			int entity = GetClientAimTarget(client, false);
@@ -1626,7 +1632,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 									AcceptEntityInput(weaponEntity, "Kill");
 								}
 								else if (theClientHasDefib) {
-									Defibrillator(client);
+									Defibrillator(client, -1);
 									AcceptEntityInput(weaponEntity, "Kill");
 								}
 								else if (theClientHasFirstAid) {
@@ -1641,9 +1647,6 @@ public Action OnPlayerRunCmd(client, &buttons) {
 							else {
 								ReviveDownedSurvivor(client);
 								OnPlayerRevived(client, client);
-								reviveOwner = GetEntPropEnt(client, Prop_Send, "m_reviveOwner");
-								if (IsLegitimateClientAlive(reviveOwner)) SetEntPropEnt(reviveOwner, Prop_Send, "m_reviveTarget", -1);
-								SetEntPropEnt(client, Prop_Send, "m_reviveOwner", -1);
 							}
 						}
 						else {

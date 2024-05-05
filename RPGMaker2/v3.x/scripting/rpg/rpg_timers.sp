@@ -1184,11 +1184,11 @@ public Action Timer_CheckIfHooked(Handle timer) {
 	if (CurRPG == -2) CurRPG = iRPGMode;
 	for (int i = 1; i <= MaxClients; i++) {
 		if (CurRPG < 1 || !IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-		if (bHasWeakness[i]) {
+		if (bHasWeakness[i] > 0) {
 			SetEntityRenderMode(i, RENDER_TRANSCOLOR);
 			SetEntityRenderColor(i, 0, 0, 0, 255);
-			if (GetIncapCount(i) < iMaxIncap) SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 0);
-			else SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
+			if (bHasWeakness[i] == 1) SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
+			else SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 0);
 			if (!IsFakeClient(i) && !bWeaknessAssigned[i]) {
 				EmitSoundToClient(i, "player/heartbeatloop.wav");
 				bWeaknessAssigned[i] = true;
