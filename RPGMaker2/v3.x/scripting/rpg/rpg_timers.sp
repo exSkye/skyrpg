@@ -62,22 +62,17 @@ stock void CheckDifficulty() {
 }
 
 stock void GiveProfileItems(int client) {
-	LogMessage("Giving first time load items...");
 	if (GetArraySize(hWeaponList[client]) == 2) {
 		char text[64];
 		GetArrayString(hWeaponList[client], 0, text, sizeof(text));
 		if (!StrEqual(text, "none")) {
-			LogMessage("giving player %s", text);
 			QuickCommandAccessEx(client, text, _, true);
 		}
-
 		GetArrayString(hWeaponList[client], 1, text, sizeof(text));
 		if (!StrEqual(text, "none")) {
-			LogMessage("giving player %s", text);
 			QuickCommandAccessEx(client, text, _, true);
 		}
 	}
-	LogMessage("If these items exist, they will be logged and given now.");
 }
 
 public Action Timer_GiveLaserBeam(Handle timer, any client) {
@@ -191,43 +186,6 @@ public Action Timer_TickingMine(Handle timer, any entity) {
 	return Plugin_Stop;
 }
 
-stock float GetTalentModifier(int client, int modifierType = MODIFIER_HEALING) {
-	if (modifierType == MODIFIER_HEALING) {
-		float healingBonus = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		healingBonus += GetAbilityStrengthByTrigger(client, _, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-
-		float healingPenalty = GetAbilityStrengthByTrigger(client, _, "lessHealsMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		healingPenalty += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-
-		if (healingBonus - healingPenalty < -0.9) healingBonus = -0.9;
-		else healingBonus -= healingPenalty;
-		return healingBonus;
-	}
-	else if (modifierType == MODIFIER_TANKING) {
-		float tankyBonus = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		tankyBonus += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-
-		float tankyPenalty = GetAbilityStrengthByTrigger(client, _, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		tankyPenalty += GetAbilityStrengthByTrigger(client, _, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-
-		if (tankyBonus - tankyPenalty > 0.9) tankyBonus = 0.9;
-		else tankyBonus -= tankyPenalty;
-		return tankyBonus;
-	}
-	else if (modifierType == MODIFIER_DAMAGE) {	// MODIFIER_DAMAGE
-		float damageBonus = GetAbilityStrengthByTrigger(client, _, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		damageBonus += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-
-		float damagePenalty = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		damagePenalty += GetAbilityStrengthByTrigger(client, _, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-
-		if (damageBonus - damagePenalty < -0.9) damageBonus = -0.9;
-		else damageBonus -= damagePenalty;
-		return damageBonus;
-	}
-	return 0.0;
-}
-
 public Action Timer_ShowHUD(Handle timer, any client) {
 	if (!b_IsActiveRound || !IsLegitimateClient(client)) return Plugin_Stop;
 	if (!IsPlayerAlive(client)) return Plugin_Continue;
@@ -258,15 +216,11 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 		GiveProfileItems(client);
 	}
 	if (playerTeam == TEAM_SURVIVOR && CurrentRPGMode >= 1) {
-		healregenamount = 0.0;				
+		healregenamount = 0.0;
 		mymaxhealth = GetMaximumHealth(client);
 		if (ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
 			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
-			// float mod = GetTalentModifier(client, MODIFIER_HEALING);
-			// if (mod != 0.0) healregenamount += mod;
 			if (healregenamount > 0.0) {
-				//PrintToChat(client, "heal regen for %3.3f", healregenamount);
-				//HealPlayer(client, client, healregenamount, 'h', true);
 				float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", false);
 				float clericRange = GetStrengthByKeyValueFloat(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", COHERENCY_RANGE);
 				if (clericHealPercentage > 0.0) {

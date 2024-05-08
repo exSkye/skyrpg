@@ -38,8 +38,6 @@ void MySQL_Init()
 		if (ReadyUp_GetGameMode() == 3) Format(RatingType, sizeof(RatingType), "%s", SURVRECORD_DB);
 		else Format(RatingType, sizeof(RatingType), "%s", COOPRECORD_DB);
 	}
-
-	//LogMessage("Setting hostname %s", Hostname);
 	ServerCommand("hostname %s", Hostname);
 	//SetSurvivorsAliveHostname();
 	SQL_TConnect(DBConnect, TheDBPrefix);
@@ -573,7 +571,6 @@ stock void ResetData(int client) {
 public Action Timer_CheckIfClientIsIdle(Handle timer, any client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
 	if (IsClientIdle(client)) return Plugin_Continue;
-	LogMessage("%N is no longer idle, loading data.", client);
 	b_IsIdle[client] = false;
 	ClearAndLoad(client, true);
 	return Plugin_Stop;
@@ -587,7 +584,6 @@ stock void ClearAndLoad(int client, bool IgnoreLoad = false) {
 	if (b_IsLoading[client] && !IgnoreLoad) return;
 	if (IsClientIdle(client)) {
 		if (!b_IsIdle[client]) {
-			LogMessage("%N is idling on a bot, waiting for them to take over.", client);
 			b_IsIdle[client] = true;
 			CreateTimer(1.0, Timer_CheckIfClientIsIdle, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
@@ -636,7 +632,6 @@ stock void ClearAndLoad(int client, bool IgnoreLoad = false) {
 		SetArrayString(a_Store_Player[client], i, "0");				// We clear all players arrays for the store.
 	}
 	char tquery[2048];
-	//LogMessage("Loading %N data", client);
 	char themenu[64];
 	GetConfigValue(themenu, sizeof(themenu), "sky points menu name?");
 	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `skylevel`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `restt`, `restexp`, `lpl`, `resr`, `survpoints`, `bec`, `rem`, `pri`, `xpdebt`, `upav`, `upawarded`, `%s`, `myrating %s`, `handicaplevel %s`, `lastserver`, `myseason`, `lvlpaused`, `itrails`, `pistol_xp`, `melee_xp`, `uzi_xp`, `shotgun_xp`, `sniper_xp`, `assault_xp`, `medic_xp`, `grenade_xp`, `augmentparts`, `dismantlescore`, `dismantleminor` FROM `%s` WHERE (`steam_id` = '%s');", themenu, RatingType, RatingType, RatingType, TheDBPrefix, key);
@@ -743,13 +738,8 @@ stock void ModifyCartelValue(int client, char[] thetalent, int thevalue) {
 	char text[512];
 
 	for (int i = 0; i < size; i++) {
-
-		CartelValueKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		CartelValueValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
-
 		if (GetArrayCell(CartelValueValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
-		if (GetArrayCell(CartelValueValues[client], IS_TALENT_TYPE) <= 0) continue;
-
 		GetArrayString(a_Database_Talents, i, text, sizeof(text));
 		if (!StrEqual(text, thetalent, false)) continue;
 		
@@ -780,8 +770,6 @@ stock void CreateNewPlayerEx(int client) {
 		SetArrayString(ActionBar[client], i, "none");
 		SetArrayCell(ActionBarMenuPos[client], i, -1);
 	}
-
-	LogMessage("No data rows for %N with steamid: %s, could be found, creating new player data.", client, key);
 	if (IsFakeClient(client)) PlayerLevel[client] = iBotPlayerStartingLevel;
 	else PlayerLevel[client]				=	iPlayerStartingLevel;
 	SetTotalExperienceByLevel(client, PlayerLevel[client]);
@@ -892,7 +880,6 @@ public void Query_CheckIfDataExists(Handle owner, Handle hndl, const char[] erro
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	}
-	LogMessage("Does data exist for %N?", client);
 	while (SQL_FetchRow(hndl)) {
 
 		//SQL_FetchString(hndl, 0, key, sizeof(key));
@@ -910,7 +897,6 @@ public void Query_CheckIfDataExists(Handle owner, Handle hndl, const char[] erro
 	}
 	else {
 		IsClearedToLoad(client, true);
-		LogMessage("%d Data rows found for %N with steamid: %s, loading player data.", count, client, key);
 		//b_IsLoading[client] = false;
 		ClearAndLoad(client, true);
 		//if (!IsFakeClient(client)) CheckServerLevelRequirements(client);
@@ -979,7 +965,6 @@ stock void CreateNewPlayer(int client) {
 		b_IsLoading[client] = false;
 		return;
 	}
-	LogMessage("Looking up player %N (%s) in Database before creating new data.", client, key);
 	Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 	SQL_TQuery(hDatabase, Query_CheckIfDataExists, tquery, client);
 }
@@ -1000,7 +985,6 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	if (!IsLegitimateClient(client) || IsFakeClient(client) && HasIdlePlayer(client)) return;
 	bool IsLoadingData = b_IsLoading[client];
 	if (!IsLoadingData && !IsNewPlayer) {
-		LogMessage("Player Data saved for %N", client);
 		//IsLoadingData = bIsTalentTwo[client];
 		//return;
 	}
@@ -1027,14 +1011,12 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 		// Oh well, now it's not.
 		return;
 	}
-	if (IsNewPlayer) {
-		LogMessage("Saving %N's player data for the first time.", client);
-	}
 	if (b_IsTrueDisconnect) {
-		if (b_IsActiveRound) {
+		if (bIsInCombat[client]) {
 			RoundExperienceMultiplier[client] = 0.0;
 			BonusContainer[client] = 0;
 		}
+		bIsInCombat[client] = false;
 		HealImmunity[client] = false;
 		b_IsLoading[client] = false;
 		bIsTalentTwo[client] = false;
@@ -1049,7 +1031,6 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	b_IsDirectorTalents[client] = false;
 
 	if (IsLoadingData) {
-		LogMessage("Client is loading Data, cannot save. %N", client);
 		return;
 	}
 	//bSaveData[client] = true;
@@ -1127,21 +1108,10 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	SQL_TQuery(hDatabase, QueryResults4, tquery, client);
 
 	for (int i = 0; i < size; i++) {
-		//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 		if (GetArrayCell(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
-		//if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is survivor class role?") == 1) continue;	// class roles aren't stored in the database in the same way that talents/CARTEL are.
 		GetArrayString(a_Database_Talents, i, text, sizeof(text));
 		talentlevel = GetArrayCell(a_Database_PlayerTalents[client], i);// GetArrayString(a_Database_PlayerTalents[client], i, text2, sizeof(text2));
-		// if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "talent type?") == 1) {
-
-		// 	talentexperience = GetArrayCell(a_Database_PlayerTalents_Experience[client], i);
-		// 	//GetArrayString(a_Database_PlayerTalents_Experience[client], i, text3, sizeof(text3));
-		
-		// 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d', `%s xp` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, text, talentexperience, key);
-		// 	SQL_TQuery(hDatabase, QueryResults5, tquery, client);
-		// }
-		// else {
 		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, text, talentlevel, key);
 		SQL_TQuery(hDatabase, QueryResults6, tquery, client);
 		//}
@@ -1242,7 +1212,6 @@ public Action Timer_LoadNewPlayer(Handle timer, any client) {
 		else if (GetClientTeam(client) == TEAM_SURVIVOR && !StrEqual(DefaultProfileName, "-1")) LoadProfileEx(client, DefaultProfileName);
 		else b_IsLoading[client] = false;
 	}
-	if (b_IsLoading[client]) LogMessage("Loading profile for new player %N", client);
 	return Plugin_Stop;
 }
 
@@ -1470,7 +1439,6 @@ public ReadProfiles_GenerateAll(Handle owner, Handle hndl, const char[] error, a
 }
 
 stock bool IsClearedToLoad(int client, bool insert = false, bool remove = false) {
-	LogMessage("Is %N authorized to load?", client);
 	char key[512];
 	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
@@ -1481,17 +1449,13 @@ stock bool IsClearedToLoad(int client, bool insert = false, bool remove = false)
 		GetArrayString(ClientsPermittedToLoad, i, steamid, sizeof(steamid));
 		if (!StrEqual(steamid, key)) continue;
 		if (remove) {
-			LogMessage("%N should have finished loading and is no longer authorized to load data.", client);
 			RemoveFromArray(ClientsPermittedToLoad, i);
 		}
-		else LogMessage("%N is authorized to load.", client);
 		return true;
 	}
 	if (insert) {
 		PushArrayString(ClientsPermittedToLoad, key);
-		LogMessage("%N is now authorized to load.", client);
 	}
-	else LogMessage("%N is not authorized to load.", client);
 	return false;
 }
 
@@ -1556,14 +1520,7 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 			iplayerSettingAutoDismantleScore[client] = SQL_FetchInt(hndl, 38);
 			iplayerDismantleMinorAugments[client] = SQL_FetchInt(hndl, 39);
 		}
-		LogMessage("%N has finished loading.", client);
 		if (PlayerLevel[client] > 0) {
-			if (CurrentMapPosition == 0) {
-				BonusContainer[client] = 0;
-				RoundExperienceMultiplier[client] = 0.0;
-				Points[client] = 0.0;
-				LogMessage("%N Bonus multiplier is reset.", client);
-			}
 			if (Rating[client] < 0) Rating[client] = 0;
 			if (!CheckServerLevelRequirements(client)) {
 				b_IsLoading[client] = false;
@@ -1627,7 +1584,6 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 		else {
 			ResetData(client);
 			b_IsLoading[client] = false;
-			LogMessage("%N loaded with a level <= 0, creating new player.", client);
 			CreateNewPlayer(client);
 		}
 		if (iRPGMode < 1) {
@@ -1670,12 +1626,6 @@ public void QueryResults_LoadTalentTrees(Handle owner, Handle hndl, const char[]
 	}
 	char text[512];
 	char tquery[1024];
-
-	//decl String:newplay[64];
-	//GetConfigValue(newplay, sizeof(newplay), "new player profile?");
-
-	//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, LoadPos[client], 0);
-	//TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, LoadPos[client], 1);
 
 	int talentlevel = 0;
 	char key[512];
@@ -1899,7 +1849,6 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 	}
 	if (ReadyUpGameMode != 3) CreateTimer(1.0, Timer_GiveProfileItems, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	SetClientTalentStrength(client);
-	LogMessage("Loaded data for %N", client);
 	PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
 	IsClearedToLoad(client, _, true);
 	//ChangeHook(client, true);
@@ -2050,11 +1999,8 @@ stock TotalPointsAssigned(client) {
 
 	int size = GetArraySize(a_Database_PlayerTalents[client]);
 	for (int i = 0; i < size; i++) {
-
 		//TalentsAssignedKeys[client]		= GetArrayCell(a_Menu_Talents, i, 0);
 		TalentsAssignedValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
-
-		if (GetArrayCell(TalentsAssignedValues[client], IS_TALENT_TYPE) == 1) continue;
 		//if (GetKeyValueInt(TalentsAssignedKeys[client], TalentsAssignedValues[client], "is survivor class role?") == 1) continue;
 		if (GetArrayCell(TalentsAssignedValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
 		currentValue = GetArrayCell(a_Database_PlayerTalents[client], i);
@@ -2144,15 +2090,12 @@ stock LoadStoreData(client, char[] key) {
 	}
 }*/
 
-public OnClientConnected(client) {
-	if (IsLegitimateClient(client) && !b_IsLoaded[client] && GetClientTeam(client) == TEAM_SURVIVOR) {
-		LogMessage("%N has connected to the server.", client);
-	}
-}
-
 public OnClientDisconnect(client) {
 	if (IsClientInGame(client)) {
-		if (IsFakeClient(client)) b_IsLoaded[client] = false;
+		if (IsFakeClient(client)) {
+			b_IsLoaded[client] = false;
+			SetClientInfo(client, "name", baseName[client]);
+		}
 		// if (IsFakeClient(client)) {
 		// 	//LogMessage("bot removed, setting to not loaded.");
 		// 	b_IsLoaded[client] = false;
@@ -2293,9 +2236,9 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 	if (b_IsLoaded[client] && (!b_IsActiveRound || !IsClientIdle(client))) {//} && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
 		return;
 	}
-	LogMessage("storing %N's base name", client);
 	bTimersRunning[client] = false;
-	GetClientName(client, baseName[client], sizeof(baseName[]));
+	if (!IsFakeClient(client)) GetClientName(client, baseName[client], sizeof(baseName[]));
+	else GetSurvivorBotName(client, baseName[client], sizeof(baseName[]));
 	b_IsLoaded[client] = true;
 	bIsGiveProfileItems[client] = false;
 
@@ -2380,7 +2323,6 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 
 		bIsEligibleMapAward[client] = true;
 	}
-	LogMessage("%N is in-game, starting Timer_LoadData", client);
 	CreateTimer(1.0, Timer_LoadData, client, TIMER_FLAG_NO_MAPCHANGE);
 	char thetext[64];
 	GetConfigValue(thetext, sizeof(thetext), "enter server flags?");
@@ -2417,7 +2359,6 @@ public Action Timer_LoadData(Handle timer, any client) {
 			GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 			if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 		}
-		LogMessage("Client is loaded, %N of %s", client, key);
 		SetPlayerDatabaseArray(client, true);
 		b_IsLoading[client] = false;
 		CreateNewPlayer(client);	// it only creates a new player if one doesn't exist.

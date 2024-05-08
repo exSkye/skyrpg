@@ -570,11 +570,11 @@
 	}
 	"compounding talent info"
 	{
-		"en"				"This node stacks with other nodes."
+		"en"				"This talent stacks with other talents."
 	}
 	"not compounding talent info"
 	{
-		"en"				"This nodes output is independent of other nodes."
+		"en"				"This talents output is independent of other talents."
 	}
 	"effect over time talent info"
 	{
@@ -665,43 +665,43 @@
 	"node locked by talents all (talentview)"
 	{
 		"#format"			"{1:s}"
-		"en"				"Node Locked (Req. ALL)\n{1}"
+		"en"				"Talent Locked (Req. ALL)\n{1}"
 	}
 	"node locked by talents multiple (talentview)"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"Node Locked (Req. {2})\n{1}"
+		"en"				"Talent Locked (Req. {2})\n{1}"
 	}
 	"node locked by talents single (talentview)"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"Node Locked (Req. {2})\n{1}"
+		"en"				"Talent Locked (Req. {2})\n{1}"
 	}
 	"node locked by talents last one (talentview)"
 	{
 		"#format"			"{1:s}"
-		"en"				"Node Locked (Req. below node)\n{1}"
+		"en"				"Talent Locked (Req. below Talent)\n{1}"
 	}
 	"node unlocked"
 	{
 		"#format"			"{1:s}"
-		"en"				"{1} (Unlocked)"//"{1} (Node unlocked)"
+		"en"				"{1} (Unlocked)"//"{1} (Talent unlocked)"
 	}
 	"ability locked translation"
 	{
-		"en"				"Node Locked"
+		"en"				"Talent Locked"
 	}
 	"ability unlocked translation"
 	{
-		"en"				"Node Unlocked"
+		"en"				"Talent Unlocked"
 	}
 	"unlock node translation"
 	{
-		"en"				"Unlock Node"
+		"en"				"Unlock Talent"
 	}
 	"lock node translation"
 	{
-		"en"				"Refund Node"
+		"en"				"Refund Talent"
 	}
 	"tree strength display"
 	{
@@ -786,7 +786,7 @@
 	}
 	"talent trees"
 	{
-		"en"				"Node Trees"
+		"en"				"View/Upgrade Talent Trees\nSpend your talent points here!"
 	}
 	"frontline"
 	{
@@ -1015,7 +1015,7 @@
 	}
 	"personal settings"
 	{
-		"en"				"Settings\nCreate/Save/Delete Profiles\nWeapons to receive on-load\nLevel/Enemy Info\nWeapon Proficiency Data"
+		"en"				"Settings\nCreate/Save/Delete Profiles\nSpawn Loadout\nLevel/Enemy Info\nWeapon Proficiency Data\nDisable Handicap"
 	}
 	"threat menu"
 	{
@@ -1139,9 +1139,13 @@
 	{
 		"en"				"Weapon Proficiency Data"
 	}
+	"disable handicap"
+	{
+		"en"				"Disable Handicap"
+	}
 	"talent trees"
 	{
-		"en"				"Node Trees"
+		"en"				"View/Upgrade Talent Trees\nSpend your talent points here!"
 	}
 	"the leaderboards"
 	{
@@ -1196,17 +1200,17 @@
 	"show tree layers"
 	{
 		"#format"			"{1:i},{2:i},{3:i},{4:i}"
-		"en"				"trees {1}({4} nodes, {2}/{3} nodes req.)"
+		"en"				"trees {1}({4} talents, {2}/{3} talents req.)"
 	}
 	"show tree layers single (locked)"
 	{
 		"#format"			"{1:i},{2:i},{3:i}"
-		"en"				"trees {1} locked({2} nodes, +{3} node req.)"
+		"en"				"trees {1} locked({2} talents, +{3} talent req.)"
 	}
 	"show tree layers (locked)"
 	{
 		"#format"			"{1:i},{2:i},{3:i}"
-		"en"				"trees {1} locked({2} nodes, +{3} nodes req.)"
+		"en"				"trees {1} locked({2} talents, +{3} talents req.)"
 	}
 	"layer move"
 	{
@@ -1841,22 +1845,22 @@
 	"RPG Header"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		"en"				"{1}\n \n{2} / {3} unlocked nodes\nYou can unlock {4} nodes"
+		"en"				"{1}\n \n{2} / {3} unlocked talents\nTalent Points: {4}"
 	}
 	"RPG Layer Eligible"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		//"en"				"{1}\n \n{3}/{4} required unlocks in Node Tree {2}."
-		"en"				"{1}\n \nNode Tree {2}:\n{3} / {4} req. nodes."
+		//"en"				"{1}\n \n{3}/{4} required unlocks in Talent Tree {2}."
+		"en"				"{1}\n \nTalent Tree {2}:\n{3} / {4} req. talents."
 	}
 	"RPG Layer Not Eligible"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"{1}\n \nNode Tree {2} is locked, but you can\nstill view this tree."
+		"en"				"{1}\n \nTalent Tree {2} is locked, but you can\nstill view this tree."
 	}
 	"attribute no layer progress"
 	{
-		"en"				"Attribute nodes do not contribute\nto unlocking the next layer."
+		"en"				"Attribute Talents do not contribute\nto unlocking the next talent layer."
 	}
 	"Class Level Text"
 	{
@@ -1893,7 +1897,7 @@
 	}
 	"RPG Menu"
 	{
-		"en"				"Node trees"
+		"en"				"View/Upgrade Talent Trees\nSpend your talent points here!"
 	}
 	"Buy Menu Option 1"
 	{
@@ -2773,7 +2777,7 @@
 	"living survivors experience bonus"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:3.3f},{7:s},{8:s},{9:s}"
-		"en"				"{1}All {2}living survivors {3}earn an additional {4}+{5}{6}{7}{8} {9}experience until they die."
+		"en"				"{1}Your {2}Survival EXP Bonus {3}increases by {4}+{5}{6}{7}{8}"
 	}
 	"team rating increase"
 	{
@@ -3211,7 +3215,7 @@
 	"prestige up available"
 	{
 		"#format"			"{1:i}"
-		"en"				"Prestige (Level Resets)\nYour level resets to 1 but you earn\nan additional {1} node unlocks!"
+		"en"				"Prestige (Level Resets)\nYour level resets to 1 but you earn\nan additional {1} talent unlocks!"
 	}
 	"prestige unavailable"
 	{
@@ -3244,7 +3248,7 @@
 	}
 	"health regen cooldown"
 	{
-		"en"				"Reduces the cooldown of all Regen nodes."
+		"en"				"Reduces the cooldown of all Regen talents."
 	}
 	"health regen adr cdr i"
 	{
@@ -3252,7 +3256,7 @@
 	}
 	"health regen adr i cooldown"
 	{
-		"en"				"Reduces the cooldown of all Regen nodes when you have [Ad]renaline."
+		"en"				"Reduces the cooldown of all Regen talents when you have [Ad]renaline."
 	}
 	"survivor cooldown info"
 	{
@@ -4259,7 +4263,7 @@
 	}
 	"focus info"
 	{
-		"en"				"Reduces cooldowns of all nodes."
+		"en"				"Reduces cooldowns of all talents."
 	}
 	"heal ammo ab"
 	{
@@ -5024,7 +5028,7 @@
 	}
 	"cooldown up i cooldown"
 	{
-		"en"				"Reduces the cooldown of all Tier-I nodes."
+		"en"				"Reduces the cooldown of all Tier-I talents."
 	}
 	"cooldown up cdr ii"
 	{
@@ -5032,7 +5036,7 @@
 	}
 	"cooldown up ii cooldown"
 	{
-		"en"				"Reduces the cooldown of all Tier-II nodes."
+		"en"				"Reduces the cooldown of all Tier-II talents."
 	}
 	"cooldown up cdr iii"
 	{
@@ -5040,7 +5044,7 @@
 	}
 	"cooldown up iii cooldown"
 	{
-		"en"				"Reduces the cooldown of all Tier-III nodes."
+		"en"				"Reduces the cooldown of all Tier-III talents."
 	}
 	"cooldown up cdr iv"
 	{
@@ -5048,7 +5052,7 @@
 	}
 	"cooldown up iv cooldown"
 	{
-		"en"				"Reduces the cooldown of all Tier-IV nodes."
+		"en"				"Reduces the cooldown of all Tier-IV talents."
 	}
 	"cooldown up cdr v"
 	{
@@ -5320,7 +5324,7 @@
 	}
 	"cooldown up v cooldown"
 	{
-		"en"				"Reduces the cooldown of all Tier-V nodes."
+		"en"				"Reduces the cooldown of all Tier-V talents."
 	}
 	"ability chance"
 	{
@@ -6473,12 +6477,12 @@
 	"Talent requirements are not met"
 	{
 		"#format"			"{1:s},{2:s}"
-		"en"				"{1}\nTalents required to unlock this node:\n{2}"
+		"en"				"{1}\nTalents required to unlock this talents:\n{2}"
 	}
 	"Talent Upgrade Title"
 	{
 		"#format"			"{1:s},{2:i}"
-		"en"				"{1} - Node Info"
+		"en"				"{1} - Talent Info"
 	}
 	"Talent Upgrade Title Free"
 	{
@@ -6502,22 +6506,22 @@
 	"Ability Info Raw"
 	{
 		"#format"			"{1:i},{2:i}"
-		"en"				"Node Bonus: {2}"
+		"en"				"Talent Bonus: {2}"
 	}
 	"Ability Info Raw Max"
 	{
 		"#format"			"{1:i}"
-		"en"				"Node Bonus: {1}"
+		"en"				"Talent Bonus: {1}"
 	}
 	"Ability Info Percent"
 	{
 		"#format"			"{1:3.3f},{2:s},{3:3.3f},{4:s}"
-		"en"				"Node Bonus: {3}{4}"
+		"en"				"Talent Bonus: {3}{4}"
 	}
 	"Ability Info Percent Max"
 	{
 		"#format"			"{1:3.3f},{2:s}"
-		"en"				"Node Bonus: {1}{2}"
+		"en"				"Talent Bonus: {1}{2}"
 	}
 	"Ability Info Time"
 	{
@@ -6546,17 +6550,17 @@
 	}
 	"Ability Info Aura"
 	{
-		"en"				"Node Bonus: {1}{2}\nRange:\nCooldown:\nUptime:"
+		"en"				"Talent Bonus: {1}{2}\nRange:\nCooldown:\nUptime:"
 	}
 	"Insert Talent Upgrade"
 	{
 		"#format"			"{1:i}"
-		"en"				"Unlock Node"
+		"en"				"Unlock Talent"
 	}
 	"Refund Talent Upgrade"
 	{
 		"#format"			"{1:i}"
-		"en"				"Refund Node Point"
+		"en"				"Refund Talent Point"
 	}
 	"profile editor"
 	{
@@ -6690,7 +6694,7 @@
 	}
 	"Spawn Loadout"
 	{
-		"en"				"Weapons to receive on-load\nThe Weapons/Gear you receive when the saferoom door opens."
+		"en"				"Spawn Loadout\nThe Weapons/Gear you receive when the saferoom door opens."
 	}
 	"Save Profile"
 	{

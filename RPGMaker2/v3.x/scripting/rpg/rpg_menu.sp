@@ -375,13 +375,9 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 
 			LoadPos[client]++;
 			while (LoadPos[client] < GetArraySize(a_Database_Talents)) {
-
-				//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, LoadPos[client], 0);
 				TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, LoadPos[client], 1);
 
-				if (GetArrayCell(TalentTreeValues[client], IS_TALENT_TYPE) == 1 ||
-					GetArrayCell(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1 ||
-					GetArrayCell(TalentTreeValues[client], ITEM_ITEM_ID) == 1) {
+				if (GetArrayCell(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) {
 
 					LoadPos[client]++;
 					continue;	// we don't load class attributes because we're loading another players talent specs. don't worry... we'll load the CARTEL for the user, after.
@@ -453,9 +449,6 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 			//MenuKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 			MenuValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
 			MenuSection[client]			= GetArrayCell(a_Menu_Talents, i, 2);
-			if (GetArrayCell(MenuValues[client], IS_TALENT_TYPE) == 1) continue;		// skips attributes.
-			//if (GetKeyValueInt(MenuKeys[client], MenuValues[client], "is ability?") == 1) continue;		// abilities used to be auto-unlocked, now they require a point.
-			if (GetArrayCell(MenuValues[client], ITEM_ITEM_ID) == 1) continue;
 
 			GetArrayString(MenuSection[client], 0, TalentName, sizeof(TalentName));
 
@@ -937,7 +930,6 @@ stock bool IsAbilityTalent(client, char[] TalentName, char[] SearchKey = "none",
 		IsAbilitySection[client]		= GetArrayCell(a_Menu_Talents, i, 2);
 		GetArrayString(IsAbilitySection[client], 0, text, sizeof(text));
 		if (!StrEqual(TalentName, text)) continue;
-		//IsAbilityKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		IsAbilityValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
 
 		if (pos == -1) {
@@ -1634,6 +1626,9 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 		}
 		else if (StrEqual(config, "proficiency", false)) {
 			LoadProficiencyData(client);
+		}
+		else if (StrEqual(config, "nohandicap", false) && handicapLevel[client] >= 0) {
+			handicapLevel[client] = -1;
 		}
 		/*else {
 
@@ -2709,13 +2704,9 @@ stock SaveProfileEx(client, char[] key, SaveType) {
 	for (int i = 0; i < size; i++) {
 
 		GetArrayString(a_Database_Talents, i, text, sizeof(text));
-		//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
 		TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 
-		if (GetArrayCell(TalentTreeValues[client], IS_TALENT_TYPE) == 1) continue;	// we don't save class attributes.
 		if (GetArrayCell(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
-		//if (GetKeyValueInt(TalentTreeKeys[client], TalentTreeValues[client], "is ability?") == 1) continue;
-		if (GetArrayCell(TalentTreeValues[client], ITEM_ITEM_ID) == 1) continue;
 
 		talentlevel = GetArrayCell(a_Database_PlayerTalents[client], i);// GetArrayString(a_Database_PlayerTalents[client], i, text2, sizeof(text2));
 		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, text, talentlevel, key);
@@ -2803,7 +2794,6 @@ stock BuildSubMenu(client, char[] MenuName, char[] ConfigName, char[] ReturnMenu
 	char TalentName[128];
 	char TalentName_Temp[128];
 	int isSubMenu = 0;
-	int TalentLevelRequired			=	0;
 	int PlayerTalentPoints			=	0;
 	//new AbilityInherited			=	0;
 	//new StorePurchaseCost			=	0;
@@ -2864,16 +2854,13 @@ stock BuildSubMenu(client, char[] MenuName, char[] ConfigName, char[] ReturnMenu
 		GetTranslationOfTalentName(client, TalentName, TalentName_Temp, sizeof(TalentName_Temp), true);
 		Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", TalentName_Temp, client);
 		isSubMenu = GetArrayCell(MenuValues[client], IS_SUB_MENU_OF_TALENTCONFIG);
-		TalentLevelRequired = GetArrayCell(MenuValues[client], TALENT_MINIMUM_LEVEL_REQ);
 		// isSubMenu 3 is for a different operation, we do || instead of &&
 		if (isSubMenu == 1 || isSubMenu == 2) {
 
 			// We strictly show the menu option.
-			if (isSubMenu == 1 && PlayerLevel[client] < TalentLevelRequired) Format(text, sizeof(text), "%T", "Submenu Locked", client, TalentName_Temp, TalentLevelRequired);
-			else Format(text, sizeof(text), "%T", "Submenu Available", client, TalentName_Temp);
+			Format(text, sizeof(text), "%T", "Submenu Available", client, TalentName_Temp);
 		}
 		else {
-			if (GetArrayCell(MenuValues[client], ITEM_ITEM_ID) == 1) continue;	// ignore items.
 			//AbilityInherited = GetKeyValueInt(MenuKeys[client], MenuValues[client], "ability inherited?");
 			//nodeUnlockCost = GetKeyValueInt(MenuKeys[client], MenuValues[client], "node unlock cost?", "1");	// we want to default the nodeUnlockCost to 1 if it's not set.
 			if (!b_IsDirectorTalents[client]) {
@@ -2908,25 +2895,20 @@ stock BuildSubMenu(client, char[] MenuName, char[] ConfigName, char[] ReturnMenu
 				}
 			}
 			else PlayerTalentPoints = GetTalentStrength(-1, TalentName);
-			if (GetArrayCell(MenuValues[client], IS_TALENT_TYPE) <= 0) {
-				if (bIsNotEligible) {
-					if (iShowLockedTalents == 0) continue;
-					if (requiredTalentsRequiredToUnlock > 1) {
-						if (requiredCopy == optionsRemaining) Format(text, sizeof(text), "%T", "node locked by talents all (treeview)", client, TalentName_Temp, sTalentsRequired);
-						else Format(text, sizeof(text), "%T", "node locked by talents multiple (treeview)", client, TalentName_Temp, sTalentsRequired, requiredTalentsRequiredToUnlock);
-					} else {
-						if (optionsRemaining == 1) Format(text, sizeof(text), "%T", "node locked by talents last one (treeview)", client, TalentName_Temp, sTalentsRequired);
-						else Format(text, sizeof(text), "%T", "node locked by talents single (treeview)", client, TalentName_Temp, sTalentsRequired, requiredTalentsRequiredToUnlock);
-					}
+			if (bIsNotEligible) {
+				if (iShowLockedTalents == 0) continue;
+				if (requiredTalentsRequiredToUnlock > 1) {
+					if (requiredCopy == optionsRemaining) Format(text, sizeof(text), "%T", "node locked by talents all (treeview)", client, TalentName_Temp, sTalentsRequired);
+					else Format(text, sizeof(text), "%T", "node locked by talents multiple (treeview)", client, TalentName_Temp, sTalentsRequired, requiredTalentsRequiredToUnlock);
+				} else {
+					if (optionsRemaining == 1) Format(text, sizeof(text), "%T", "node locked by talents last one (treeview)", client, TalentName_Temp, sTalentsRequired);
+					else Format(text, sizeof(text), "%T", "node locked by talents single (treeview)", client, TalentName_Temp, sTalentsRequired, requiredTalentsRequiredToUnlock);
 				}
-				else if (PlayerTalentPoints < 1) {
-					Format(text, sizeof(text), "%T", "node locked", client, TalentName_Temp, 1);
-				}
-				else Format(text, sizeof(text), "%T", "node unlocked", client, TalentName_Temp);
 			}
-			else {
-				Format(text, sizeof(text), "%T", TalentName_Temp, client);
+			else if (PlayerTalentPoints < 1) {
+				Format(text, sizeof(text), "%T", "node locked", client, TalentName_Temp, 1);
 			}
+			else Format(text, sizeof(text), "%T", "node unlocked", client, TalentName_Temp);
 		}
 		AddMenuItem(menu, text, text);
 	}
@@ -3039,25 +3021,17 @@ public BuildSubMenuHandle(Handle menu, MenuAction action, client, slot)
 				if (PlayerTalentPoints < 1) continue;
 			}
 			isSubMenu = GetArrayCell(MenuValues[client], IS_SUB_MENU_OF_TALENTCONFIG);
-			TalentLevelRequired = GetArrayCell(MenuValues[client], TALENT_MINIMUM_LEVEL_REQ);
 			//iSkyLevelReq	=	GetKeyValueInt(MenuKeys[client], MenuValues[client], "sky level requirement?");
 			//nodeUnlockCost = GetKeyValueInt(MenuKeys[client], MenuValues[client], "node unlock cost?", "1");
 			//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), MenuKeys[client], MenuValues[client], "talents required?");
 			//if (!TalentRequirementsMet(client, sTalentsRequired)) continue;
-			if (GetArrayCell(MenuValues[client], ITEM_ITEM_ID) == 1) continue;
 			pos++;
 			//FormatKeyValue(SurvEffects, sizeof(SurvEffects), MenuKeys[client], MenuValues[client], "survivor ability effects?");
 			if (pos == slot) break;
 		}
 
 		if (isSubMenu == 1 || isSubMenu == 2) {
-			if (PlayerLevel[client] < TalentLevelRequired) {
-				BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
-			}
-			else {
-				// If the player is eligible we open a new sub-menu.
-				BuildSubMenu(client, TalentName, MenuSelection[client], OpenedMenu[client]);
-			}
+			BuildSubMenu(client, TalentName, MenuSelection[client], OpenedMenu[client]);
 		}
 		else {
 			//PlayerTalentPoints = GetArrayCell(MyTalentStrength[client], i);
@@ -3108,6 +3082,43 @@ stock ShowTalentInfoScreen(client, char[] TalentName, Handle Keys, Handle Values
 	//else if (IsSpecialAmmo == 1 || IsAbilityType == 1) SendPanelToClientAndClose(TalentInfoScreen_Special(client), client, TalentInfoScreen_Special_Init, MENU_TIME_FOREVER);
 }
 
+stock float GetTalentModifier(int client, int modifierType = MODIFIER_HEALING) {
+	if (modifierType == MODIFIER_HEALING) {
+		float healingBonus = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		healingBonus += GetAbilityStrengthByTrigger(client, _, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		float healingPenalty = GetAbilityStrengthByTrigger(client, _, "lessHealsMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		healingPenalty += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		if (healingBonus - healingPenalty < -0.9) healingBonus = -0.9;
+		else healingBonus -= healingPenalty;
+		return healingBonus;
+	}
+	else if (modifierType == MODIFIER_TANKING) {
+		float tankyBonus = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		tankyBonus += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		float tankyPenalty = GetAbilityStrengthByTrigger(client, _, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		tankyPenalty += GetAbilityStrengthByTrigger(client, _, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		if (tankyBonus - tankyPenalty > 0.9) tankyBonus = 0.9;
+		else tankyBonus -= tankyPenalty;
+		return tankyBonus;
+	}
+	else if (modifierType == MODIFIER_DAMAGE) {	// MODIFIER_DAMAGE
+		float damageBonus = GetAbilityStrengthByTrigger(client, _, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		damageBonus += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		float damagePenalty = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		damagePenalty += GetAbilityStrengthByTrigger(client, _, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+
+		if (damageBonus - damagePenalty < -0.9) damageBonus = -0.9;
+		else damageBonus -= damagePenalty;
+		return damageBonus;
+	}
+	return 0.0;
+}
+
 stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = false, char[] pTalentNameOverride = "none", target = 0, iStrengthOverride = 0, bool skipGettingValues = false) {
 	float f_Strength	= 0.0;
 	char TalentNameOverride[64];
@@ -3135,6 +3146,18 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	int istrength = RoundToCeil(f_Strength);
 	float f_StrengthIncrement = (infotype == 2) ? GetArrayCell(Values, TALENT_ACTIVE_STRENGTH_VALUE) : (StrContains(sTalentStrengthType, ".") == -1) ? StringToInt(sTalentStrengthType) * 1.0 : StringToFloat(sTalentStrengthType);
 	if (istrength < 1 || infotype == 3 && f_StrengthIncrement <= 0.0) return 0.0;
+
+	int talentCategoryType = GetArrayCell(Values, ABILITY_CATEGORY);
+	if (talentCategoryType == 0) {
+		f_StrengthIncrement += (f_StrengthIncrement * GetTalentModifier(client, MODIFIER_HEALING));
+	}
+	else if (talentCategoryType == 1) {
+		f_StrengthIncrement += (f_StrengthIncrement * GetTalentModifier(client, MODIFIER_DAMAGE));
+	}
+	else if (talentCategoryType == 2) {
+		f_StrengthIncrement += (f_StrengthIncrement * GetTalentModifier(client, MODIFIER_TANKING));
+	}
+
 	float f_StrengthPoint = f_StrengthIncrement;
 	char text[64];
 	GetArrayString(Values, GOVERNING_ATTRIBUTE, text, sizeof(text));
@@ -3150,6 +3173,7 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	GetArrayString(Values, ACTIVATOR_ABILITY_EFFECTS, activatorEffects, 64);
 	char targetEffects[64];
 	GetArrayString(Values, TARGET_ABILITY_EFFECTS, targetEffects, 64);
+
 	int skipAugmentModifiers = GetArrayCell(Values, TALENT_NO_AUGMENT_MODIFIERS);
 	if (iAugmentsAffectCooldowns == 1 && skipAugmentModifiers != 1) {
 		float fCategoryAugmentBuff = GetCategoryAugmentBuff(client, TalentNameOverride, f_StrengthPoint);
@@ -3229,7 +3253,6 @@ public Handle TalentInfoScreen(client) {
 	if (!b_IsDirectorTalents[client]) TalentPointAmount = GetTalentStrength(client, TalentName);
 	else TalentPointAmount = GetTalentStrength(-1, TalentName);
 
-	int TalentType = GetArrayCell(PurchaseValues[client], IS_TALENT_TYPE);
 	int nodeUnlockCost = 1;
 
 	float s_TalentPoints = GetTalentInfo(client, PurchaseValues[client]);
@@ -3312,67 +3335,65 @@ public Handle TalentInfoScreen(client) {
 			int hideStrengthDisplayFromPlayer = GetArrayCell(PurchaseValues[client], HIDE_TALENT_STRENGTH_DISPLAY);
 			if (AbilityType < 0) AbilityType = 0;	// if someone forgets to set this, we have to set it to the default value.
 			//if (TalentPointAmount > 0) s_PenaltyPoint = 0.0;
-			if (TalentType <= 0 && !bIsAttribute) {
+			if (hideStrengthDisplayFromPlayer != 1) {
+				if (TalentPointAmount < 1) {
+					if (AbilityType == 0) Format(text, sizeof(text), "%T", "Ability Info Percent", client, s_TalentPoints * 100.0, pct, s_OtherPointNext * 100.0, pct);
+					else if (AbilityType == 1) Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
+					else if (AbilityType == 2) Format(text, sizeof(text), "%T", "Ability Info Distance", client, s_TalentPoints, s_OtherPointNext);
+					else if (AbilityType == 3) Format(text, sizeof(text), "%T", "Ability Info Raw", client, RoundToCeil(s_TalentPoints), RoundToCeil(s_OtherPointNext));
+				}
+				else {
+					if (AbilityType == 0) Format(text, sizeof(text), "%T", "Ability Info Percent Max", client, s_TalentPoints * 100.0, pct);
+					else if (AbilityType == 1) Format(text, sizeof(text), "%T", "Ability Info Time Max", client, i_AbilityTime);
+					else if (AbilityType == 2) Format(text, sizeof(text), "%T", "Ability Info Distance Max", client, s_TalentPoints);
+					else if (AbilityType == 3) Format(text, sizeof(text), "%T", "Ability Info Raw Max", client, RoundToCeil(s_TalentPoints));
+				}
+			}
+			else Format(text, sizeof(text), "");
+			// new Float:rollChance = GetArrayCell(PurchaseValues[client], TALENT_ROLL_CHANCE);
+			// if (rollChance > 0.0) {
+			// 	decl String:rollChanceText[64];
+			// 	Format(rollChanceText, sizeof(rollChanceText), "%T", "Roll Chance Talent Info", client, rollChance * 100.0, pct);
+			// 	Format(text, sizeof(text), "%s\n%s", rollChanceText, text);
+			// }
+			iContributionCategoryRequired = GetArrayCell(PurchaseValues[client], CONTRIBUTION_TYPE_CATEGORY);
+			if (iContributionCategoryRequired >= 0) {
+				char contributionRequired[64];
+				AddCommasToString(GetArrayCell(PurchaseValues[client], CONTRIBUTION_COST), contributionRequired, sizeof(contributionRequired));
 				if (hideStrengthDisplayFromPlayer != 1) {
-					if (TalentPointAmount < 1) {
-						if (AbilityType == 0) Format(text, sizeof(text), "%T", "Ability Info Percent", client, s_TalentPoints * 100.0, pct, s_OtherPointNext * 100.0, pct);
-						else if (AbilityType == 1) Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
-						else if (AbilityType == 2) Format(text, sizeof(text), "%T", "Ability Info Distance", client, s_TalentPoints, s_OtherPointNext);
-						else if (AbilityType == 3) Format(text, sizeof(text), "%T", "Ability Info Raw", client, RoundToCeil(s_TalentPoints), RoundToCeil(s_OtherPointNext));
-					}
-					else {
-						if (AbilityType == 0) Format(text, sizeof(text), "%T", "Ability Info Percent Max", client, s_TalentPoints * 100.0, pct);
-						else if (AbilityType == 1) Format(text, sizeof(text), "%T", "Ability Info Time Max", client, i_AbilityTime);
-						else if (AbilityType == 2) Format(text, sizeof(text), "%T", "Ability Info Distance Max", client, s_TalentPoints);
-						else if (AbilityType == 3) Format(text, sizeof(text), "%T", "Ability Info Raw Max", client, RoundToCeil(s_TalentPoints));
-					}
+					if (iContributionCategoryRequired == 0) Format(text, sizeof(text), "%s\nHealing Required: %s", text, contributionRequired);
+					else if (iContributionCategoryRequired == 1) Format(text, sizeof(text), "%s\nDamage Required: %s", text, contributionRequired);
+					else if (iContributionCategoryRequired == 2) Format(text, sizeof(text), "%s\nTanking Required: %s", text, contributionRequired);
 				}
-				else Format(text, sizeof(text), "");
-				// new Float:rollChance = GetArrayCell(PurchaseValues[client], TALENT_ROLL_CHANCE);
-				// if (rollChance > 0.0) {
-				// 	decl String:rollChanceText[64];
-				// 	Format(rollChanceText, sizeof(rollChanceText), "%T", "Roll Chance Talent Info", client, rollChance * 100.0, pct);
-				// 	Format(text, sizeof(text), "%s\n%s", rollChanceText, text);
-				// }
-				iContributionCategoryRequired = GetArrayCell(PurchaseValues[client], CONTRIBUTION_TYPE_CATEGORY);
-				if (iContributionCategoryRequired >= 0) {
-					char contributionRequired[64];
-					AddCommasToString(GetArrayCell(PurchaseValues[client], CONTRIBUTION_COST), contributionRequired, sizeof(contributionRequired));
-					if (hideStrengthDisplayFromPlayer != 1) {
-						if (iContributionCategoryRequired == 0) Format(text, sizeof(text), "%s\nHealing Required: %s", text, contributionRequired);
-						else if (iContributionCategoryRequired == 1) Format(text, sizeof(text), "%s\nDamage Required: %s", text, contributionRequired);
-						else if (iContributionCategoryRequired == 2) Format(text, sizeof(text), "%s\nTanking Required: %s", text, contributionRequired);
-					}
-					else {
-						if (iContributionCategoryRequired == 0) Format(text, sizeof(text), "Healing Required: %s", contributionRequired);
-						else if (iContributionCategoryRequired == 1) Format(text, sizeof(text), "Damage Required: %s", contributionRequired);
-						else if (iContributionCategoryRequired == 2) Format(text, sizeof(text), "Tanking Required: %s", contributionRequired);
-						DrawPanelText(menu, text);
-					}
-				}
-				if (hideStrengthDisplayFromPlayer != 1) DrawPanelText(menu, text);
-				//DrawPanelText(menu, TalentIdCode);
-				if (IsEffectOverTime) {
-					// Effects over time ALWAYS show the period of time.
-					if (TalentPointAmount < 1) Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
-					else Format(text, sizeof(text), "%T", "Ability Info Time Max", client, i_AbilityTime);
+				else {
+					if (iContributionCategoryRequired == 0) Format(text, sizeof(text), "Healing Required: %s", contributionRequired);
+					else if (iContributionCategoryRequired == 1) Format(text, sizeof(text), "Damage Required: %s", contributionRequired);
+					else if (iContributionCategoryRequired == 2) Format(text, sizeof(text), "Tanking Required: %s", contributionRequired);
 					DrawPanelText(menu, text);
 				}
-				float healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_ACT_REMAINING);
-				if (healthPercentageReqActRemaining > 0.0) {
-					Format(text, sizeof(text), "%T", "Activator Health Required", client, healthPercentageReqActRemaining * 100.0, pct);
-					DrawPanelText(menu, text);
-				}
-				healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_ACTIVATION_COST);
-				if (healthPercentageReqActRemaining > 0.0) {
-					Format(text, sizeof(text), "%T", "Activator Health Cost", client, healthPercentageReqActRemaining * 100.0, pct, RoundToCeil(healthPercentageReqActRemaining * GetMaximumHealth(client)));
-					DrawPanelText(menu, text);
-				}
-				healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], MULT_STR_NEARBY_DOWN_ALLIES);
-				if (healthPercentageReqActRemaining > 0.0) {
-					Format(text, sizeof(text), "%T", "Multiply Strength Nearby Downed Allies", client, healthPercentageReqActRemaining * 100.0, pct);
-					DrawPanelText(menu, text);
-				}
+			}
+			if (hideStrengthDisplayFromPlayer != 1) DrawPanelText(menu, text);
+			//DrawPanelText(menu, TalentIdCode);
+			if (IsEffectOverTime) {
+				// Effects over time ALWAYS show the period of time.
+				if (TalentPointAmount < 1) Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
+				else Format(text, sizeof(text), "%T", "Ability Info Time Max", client, i_AbilityTime);
+				DrawPanelText(menu, text);
+			}
+			float healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_REQ_ACT_REMAINING);
+			if (healthPercentageReqActRemaining > 0.0) {
+				Format(text, sizeof(text), "%T", "Activator Health Required", client, healthPercentageReqActRemaining * 100.0, pct);
+				DrawPanelText(menu, text);
+			}
+			healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], HEALTH_PERCENTAGE_ACTIVATION_COST);
+			if (healthPercentageReqActRemaining > 0.0) {
+				Format(text, sizeof(text), "%T", "Activator Health Cost", client, healthPercentageReqActRemaining * 100.0, pct, RoundToCeil(healthPercentageReqActRemaining * GetMaximumHealth(client)));
+				DrawPanelText(menu, text);
+			}
+			healthPercentageReqActRemaining = GetArrayCell(PurchaseValues[client], MULT_STR_NEARBY_DOWN_ALLIES);
+			if (healthPercentageReqActRemaining > 0.0) {
+				Format(text, sizeof(text), "%T", "Multiply Strength Nearby Downed Allies", client, healthPercentageReqActRemaining * 100.0, pct);
+				DrawPanelText(menu, text);
 			}
 		}
 		else {
@@ -3421,57 +3442,36 @@ public Handle TalentInfoScreen(client) {
 		}
 	}
 
-	if (TalentType <= 0 || AbilityTalent == 1) {
+	if (TalentPointAmount == 0) {
+		int ignoreLayerCount = (GetArrayCell(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 : (bIsAttribute) ? 1 : 0;
+		// GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, true) * fUpgradesRequiredPerLayer)
+		bool bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
+		if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 
-		if (TalentPointAmount == 0) {
-			int ignoreLayerCount = (GetArrayCell(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 : (bIsAttribute) ? 1 : 0;
-			// GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, true) * fUpgradesRequiredPerLayer)
-			bool bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
-			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
-
-			//decl String:sTalentsRequired[64];
-			char formattedTalentsRequired[64];
-			//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
-			int requirementsRemaining = GetArrayCell(PurchaseValues[client], NUM_TALENTS_REQ);
-			int requiredCopy = requirementsRemaining;
-			requirementsRemaining = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], formattedTalentsRequired, sizeof(formattedTalentsRequired), requirementsRemaining);
-			int optionsRemaining = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], _, -1);	// -1 for size gets the count remaining
-			if (bIsLayerEligible || requirementsRemaining >= 1) {
-				if (requirementsRemaining <= 0) Format(text, sizeof(text), "%T", "Insert Talent Upgrade", client, 1);
-				else if (requirementsRemaining >= 1) {
-					if (requirementsRemaining > 1) {
-						if (requiredCopy == optionsRemaining) Format(text, sizeof(text), "%T", "node locked by talents all (talentview)", client, formattedTalentsRequired);
-						else Format(text, sizeof(text), "%T", "node locked by talents multiple (talentview)", client, formattedTalentsRequired, requirementsRemaining);
-					} else {
-						if (optionsRemaining == 1) Format(text, sizeof(text), "%T", "node locked by talents last one (talentview)", client, formattedTalentsRequired);
-						else Format(text, sizeof(text), "%T", "node locked by talents single (talentview)", client, formattedTalentsRequired, requirementsRemaining);
-					}
+		//decl String:sTalentsRequired[64];
+		char formattedTalentsRequired[64];
+		//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
+		int requirementsRemaining = GetArrayCell(PurchaseValues[client], NUM_TALENTS_REQ);
+		int requiredCopy = requirementsRemaining;
+		requirementsRemaining = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], formattedTalentsRequired, sizeof(formattedTalentsRequired), requirementsRemaining);
+		int optionsRemaining = TalentRequirementsMet(client, PurchaseKeys[client], PurchaseValues[client], _, -1);	// -1 for size gets the count remaining
+		if (bIsLayerEligible || requirementsRemaining >= 1) {
+			if (requirementsRemaining <= 0) Format(text, sizeof(text), "%T", "Insert Talent Upgrade", client, 1);
+			else if (requirementsRemaining >= 1) {
+				if (requirementsRemaining > 1) {
+					if (requiredCopy == optionsRemaining) Format(text, sizeof(text), "%T", "node locked by talents all (talentview)", client, formattedTalentsRequired);
+					else Format(text, sizeof(text), "%T", "node locked by talents multiple (talentview)", client, formattedTalentsRequired, requirementsRemaining);
+				} else {
+					if (optionsRemaining == 1) Format(text, sizeof(text), "%T", "node locked by talents last one (talentview)", client, formattedTalentsRequired);
+					else Format(text, sizeof(text), "%T", "node locked by talents single (talentview)", client, formattedTalentsRequired, requirementsRemaining);
 				}
-				DrawPanelItem(menu, text);
 			}
-		}
-		else {
-			Format(text, sizeof(text), "%T", "Refund Talent Upgrade", client, 1);
 			DrawPanelItem(menu, text);
 		}
 	}
-	else if (TalentType > 0)  {
-
-		// draw the talent type 1 leveling information and a return option only.
-		int talentlevel = GetTalentLevel(client, TalentName);
-
-		int iTalentExperience = GetTalentLevel(client, TalentName, true);
-		char talentexperience[64];
-		AddCommasToString(iTalentExperience, talentexperience, sizeof(talentexperience));
-
-		int iTalentRequirement = CheckExperienceRequirementTalents(client, TalentName);
-		char talentrequirement[64];
-		AddCommasToString(iTalentRequirement, talentrequirement, sizeof(talentrequirement));
-
-		char theExperienceBar[64];
-		MenuExperienceBar(client, iTalentExperience, iTalentRequirement, theExperienceBar, sizeof(theExperienceBar));
-		Format(text, sizeof(text), "%T", "cartel experience screen", client, talentlevel, talentexperience, talentrequirement, TalentName_Temp, theExperienceBar);
-		DrawPanelText(menu, text);
+	else {
+		Format(text, sizeof(text), "%T", "Refund Talent Upgrade", client, 1);
+		DrawPanelItem(menu, text);
 	}
 	int talentCombatStatesAllowed = GetArrayCell(PurchaseValues[client], COMBAT_STATE_REQ);
 	if (talentCombatStatesAllowed >= 0) {
@@ -3754,10 +3754,10 @@ public Handle Augments_Equip(client) {
 
 		GetArrayString(equippedAugmentsIDCodes[client], i, itemCode, 64);
 		GetAugmentSurname(client, GetAugmentPos(client, itemCode), activatorText, 64, targetText, 64);
-		if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
-		else if (!StrEqual(activatorText, "-1") && !StrEqual(targetText, "-1")) Format(itemStr, 64, "%s %s", activatorText, targetText);
-		else if (!StrEqual(activatorText, "-1")) Format(itemStr, 64, "%s", activatorText);
-		else Format(itemStr, 64, "%s", targetText);
+		if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "Minor");
+		else if (!StrEqual(activatorText, "-1") && !StrEqual(targetText, "-1")) Format(itemStr, 64, "Perfect %s %s", activatorText, targetText);
+		else if (!StrEqual(activatorText, "-1")) Format(itemStr, 64, "Major %s", activatorText);
+		else Format(itemStr, 64, "Major %s", targetText);
 
 		Format(text, sizeof(text), "+%3.1f%s %s %s %s", (iItemLevel * fAugmentRatingMultiplier) * 100.0, pct, itemStr, menuText, baseMenuText[len]);
 		DrawPanelItem(menu, text);
@@ -3891,10 +3891,10 @@ stock void GetAugmentComparator(int client, int slot, char[] augmentName, char[]
 	char tarText[64];
 	GetAugmentSurname(client, slot, actText, 64, tarText, 64);
 
-	if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "minor");
-	else if (!StrEqual(actText, "-1") && !StrEqual(tarText, "-1")) Format(itemStr, 64, "%s %s", actText, tarText);
-	else if (!StrEqual(actText, "-1")) Format(itemStr, 64, "%s", actText);
-	else Format(itemStr, 64, "%s", tarText);
+	if (activatorRating < 1 && targetRating < 1) Format(itemStr, 64, "Minor");
+	else if (!StrEqual(actText, "-1") && !StrEqual(tarText, "-1")) Format(itemStr, 64, "Perfect %s %s", actText, tarText);
+	else if (!StrEqual(actText, "-1")) Format(itemStr, 64, "Major %s", actText);
+	else Format(itemStr, 64, "Major %s", tarText);
 	Format(text, sizeof(text), "%s %s %s Augment", itemStr, menuText, baseMenuText[len]);
 	Format(augmentName, 64, "%s", text);
 	if (justGetTalentName) Format(augmentCategory, 64, "%s %s", menuText, baseMenuText[len]);
@@ -4178,7 +4178,7 @@ stock void Reroll_Augment_Pay(int client) {
 	Format(text, sizeof(text), "%s\n \nReplace [ %s ] with [ %s ] ?", text, ((type == 0) ? augmentCategoryName : (type == 1) ? augmentActivatorName : augmentTargetName), buff);
 	ReplaceString(text, sizeof(text), "{PCT}", "%%", true);
 	SetMenuTitle(menu, text);
-	Format(text, sizeof(text), "Pay %d Scrap", ((type == 0) ? iAugmentCategoryRerollCost : (type == 1) ? iAugmentActivatorRerollCost : iAugmentTargetRerollCost));
+	Format(text, sizeof(text), "Confirm Reroll for %d Scrap", ((type == 0) ? iAugmentCategoryRerollCost : (type == 1) ? iAugmentActivatorRerollCost : iAugmentTargetRerollCost));
 	AddMenuItem(menu, text, text);
 
 	SetMenuExitBackButton(menu, true);
@@ -4641,8 +4641,6 @@ public TalentInfoScreen_Init (Handle topmenu, MenuAction action, client, param2)
 		int TalentStrength = GetTalentStrength(client, PurchaseTalentName[client]);
 		char TalentName[64];
 		Format(TalentName, sizeof(TalentName), "%s", PurchaseTalentName[client]);
-		int TalentType = GetArrayCell(PurchaseValues[client], IS_TALENT_TYPE);
-		int AbilityTalent = GetArrayCell(PurchaseValues[client], IS_TALENT_ABILITY);
 
 		//decl String:sTalentsRequired[64];
 		//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
@@ -4660,70 +4658,51 @@ public TalentInfoScreen_Init (Handle topmenu, MenuAction action, client, param2)
 			bIsLayerEligible = (requiredTalentsRequired < 1 && (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer))) ? true : false;
 			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
 		}
-		/*if (AbilityTalent == 1 && bActionBarMenuRequest) {
-
-			new ActionBarSize = GetArraySize(Handle:ActionBar[client]);
-
-			if (param2 > ActionBarSize) BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
-			else {
-
-				if (!SwapActions(client, PurchaseTalentName[client], param2 - 1)) SetArrayString(Handle:ActionBar[client], param2 - 1, PurchaseTalentName[client]);
-				SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
-			}
-			//SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
-		}*/
-		if (TalentType <= 0 || AbilityTalent == 1) {
-			switch (param2) {
-				case 1: {
-					if (bIsLayerEligible) {
-						if (TalentType <= 0) {
-							if (TalentStrength == 0) {
-								if (UpgradesAvailable[client] + FreeUpgrades[client] < nodeUnlockCost) BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
-								else if (isNodeCostMet && TalentStrength + 1 <= MaxPoints) {
-								//else if ((UpgradesAvailable[client] > 0 || FreeUpgrades[client] > 0) && TalentStrength + 1 <= MaxPoints) {
-									if (UpgradesAvailable[client] >= nodeUnlockCost) {
-										UpgradesAvailable[client] -= nodeUnlockCost;
-										PlayerLevelUpgrades[client]++;
-									}
-									else if (FreeUpgrades[client] >= nodeUnlockCost) FreeUpgrades[client] -= nodeUnlockCost;
-									else {
-										nodeUnlockCost -= FreeUpgrades[client];
-										UpgradesAvailable[client] -= nodeUnlockCost;
-									}
-									TryToTellPeopleYouUpgraded(client);
-									PlayerUpgradesTotal[client]++;
-									PurchaseTalentPoints[client]++;
-									AddTalentPoints(client, PurchaseTalentName[client], PurchaseTalentPoints[client]);
-									SetClientTalentStrength(client);
-									SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
-								}
+		switch (param2) {
+			case 1: {
+				if (bIsLayerEligible) {
+					if (TalentStrength == 0) {
+						if (UpgradesAvailable[client] + FreeUpgrades[client] < nodeUnlockCost) BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
+						else if (isNodeCostMet && TalentStrength + 1 <= MaxPoints) {
+						//else if ((UpgradesAvailable[client] > 0 || FreeUpgrades[client] > 0) && TalentStrength + 1 <= MaxPoints) {
+							if (UpgradesAvailable[client] >= nodeUnlockCost) {
+								UpgradesAvailable[client] -= nodeUnlockCost;
+								PlayerLevelUpgrades[client]++;
 							}
-							else if (!IsAmmoActive(client, PurchaseTalentName[client])) {
-								PlayerUpgradesTotal[client]--;
-								PurchaseTalentPoints[client]--;
-								FreeUpgrades[client] += nodeUnlockCost;
-								AddTalentPoints(client, PurchaseTalentName[client], PurchaseTalentPoints[client]);
-
-								// Check if locking this node makes them ineligible for deeper trees, and remove points
-								// in those talents if it's the case, locking the nodes.
-								GetLayerUpgradeStrength(client, currentLayer, true);
-								SetClientTalentStrength(client);
-								SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
+							else if (FreeUpgrades[client] >= nodeUnlockCost) FreeUpgrades[client] -= nodeUnlockCost;
+							else {
+								nodeUnlockCost -= FreeUpgrades[client];
+								UpgradesAvailable[client] -= nodeUnlockCost;
 							}
-						}
-						else {
-							BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
+							TryToTellPeopleYouUpgraded(client);
+							PlayerUpgradesTotal[client]++;
+							PurchaseTalentPoints[client]++;
+							AddTalentPoints(client, PurchaseTalentName[client], PurchaseTalentPoints[client]);
+							SetClientTalentStrength(client);
+							SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
 						}
 					}
-					else {
+					else if (!IsAmmoActive(client, PurchaseTalentName[client])) {
+						PlayerUpgradesTotal[client]--;
+						PurchaseTalentPoints[client]--;
+						FreeUpgrades[client] += nodeUnlockCost;
+						AddTalentPoints(client, PurchaseTalentName[client], PurchaseTalentPoints[client]);
 
-						BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
+						// Check if locking this node makes them ineligible for deeper trees, and remove points
+						// in those talents if it's the case, locking the nodes.
+						GetLayerUpgradeStrength(client, currentLayer, true);
+						SetClientTalentStrength(client);
+						SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
 					}
 				}
-				case 2: {
+				else {
 
 					BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
 				}
+			}
+			case 2: {
+
+				BuildSubMenu(client, OpenedMenu[client], MenuSelection[client]);
 			}
 		}
 	}
@@ -4927,8 +4906,6 @@ stock WipeTalentPoints(client) {
 	if (GetArraySize(a_Database_PlayerTalents[client]) != size) ResizeArray(a_Database_PlayerTalents[client], size);
 	int value = 0;
 	for (int i = 0; i < size; i++) {	// We only reset talents a player has points in, so locked talents don't become unlocked.
-		//TalentTreeKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
-		//TalentTreeValues[client]		= GetArrayCell(a_Menu_Talents, i, 1);
 		value = GetArrayCell(a_Database_PlayerTalents[client], i);
 		if (value > 0) SetArrayCell(a_Database_PlayerTalents[client], i, 0);
 	}
