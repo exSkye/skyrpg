@@ -95,6 +95,14 @@ stock int GetAnyPlayerNotMe(int client) {
 	return -1;
 }
 
+stock int FindAnyClient() {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i)) continue;
+		return i;
+	}
+	return -1;
+}
+
 /*
  *	Finds a random, non-infected client in-game.
  *	@return		client index if found.
@@ -442,12 +450,18 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
  		// Now, we increase their damage if they're in rage ammo, which is a separate thing, although it also provides the adrenaline buff.
 		if (fSurvivorBufferBonus > 0.0 && IsSpecialCommonInRange(client, 'b')) baseWeaponTemp += RoundToCeil(WeaponDamage * fSurvivorBufferBonus);
  		//if (IsClientInRangeSpecialAmmo(client, "a") == -2.0) baseWeaponTemp += RoundToCeil(WeaponDamage * IsClientInRangeSpecialAmmo(client, "a", false));
-		float ammoStr = IsClientInRangeSpecialAmmo(client, "d", false);
+		int weaponDamageExperienceCalculator = (!IsDataSheet) ? WeaponDamage : 0;
+		float ammoStr = IsClientInRangeSpecialAmmo(client, "d", _, _, weaponDamageExperienceCalculator);
  		if (ammoStr > 0.0) baseWeaponTemp += RoundToCeil(WeaponDamage * ammoStr);
-		ammoStr = IsClientInRangeSpecialAmmo(client, "E", false);
+		ammoStr = IsClientInRangeSpecialAmmo(client, "E", _, _, weaponDamageExperienceCalculator);
  		if (ammoStr > 0.0) baseWeaponTemp += RoundToCeil(WeaponDamage * ammoStr);
-		ammoStr = IsClientInRangeSpecialAmmo(target, "E", false);
+		ammoStr = IsClientInRangeSpecialAmmo(target, "E", _, _, weaponDamageExperienceCalculator);
  		if (ammoStr > 0.0) baseWeaponTemp += RoundToCeil(WeaponDamage * ammoStr);
+
+		if (!IsDataSheet) {
+			// some ammos don't increase damage directly HERE, but we still give experience benefits because they buffed damage elsewhere.
+			IsClientInRangeSpecialAmmo(client, "a", _, _, weaponDamageExperienceCalculator);
+		}
 		//}
 		//else
 		// if (damagetype == DMG_BURN) baseWeaponTemp += RoundToCeil(GetAbilityStrengthByTrigger(client, target, "G", _, WeaponDamage, _, _, "d", 1, true, _, _, _, damagetype, dontActivateTalentCooldown));	// THE 1 simply means that it adds the damagevalue before multiplying; if the player has no points in the talent, they do the base damage instead.
@@ -875,13 +889,6 @@ stock CheckTankSubroutine(tank, survivor = 0, damage = 0, bool TankIsVictim = fa
 	//new Float:IsSurvivorWeak = IsClientInRangeSpecialAmmo(survivor, "W");
 	//new Float:IsSurvivorReflect = 0.0;
 	bool IsSurvivorBiled = false;
-
-	if (IsLegitimateClientSurvivor && survivorTeam == TEAM_SURVIVOR) {
-
-		//IsClientInRangeSpecialAmmo(survivor, "R");
-		//IsCoveredInVomit(survivor);
-	}
-
 	if (!TankIsVictim) {
 
 		if (BurnState == 1) {
@@ -1105,12 +1112,23 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		if (!HasSeenCombat[victim]) HasSeenCombat[victim] = true;
 		if ((damagetype & DMG_CRUSH)) {
 			if (bIsCrushCooldown[victim]) {
-
 				damage_ignore = 0.0;
 				return Plugin_Handled;
 			}
-			bIsCrushCooldown[victim] = true;
-			CreateTimer(1.0, Timer_ResetCrushImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
+			else {
+				bIsCrushCooldown[victim] = true;
+				CreateTimer(1.0, Timer_ResetCrushImmunity, victim, TIMER_FLAG_NO_MAPCHANGE);
+
+				char crushedName[64];
+				GetClientName(victim, crushedName, sizeof(crushedName));
+
+				int crushDamage = RoundToCeil(damage_ignore);
+				TheAbilityMultiplier = GetAbilityMultiplier(victim, "F");
+				if (TheAbilityMultiplier > 0.0) crushDamage -= RoundToCeil(crushDamage * TheAbilityMultiplier);
+				SetClientTotalHealth(attacker, victim, crushDamage, _, true);
+				damage_ignore = 0.0;
+				return Plugin_Handled;
+			}
 		}
 		if (victimTeam == TEAM_SURVIVOR) {
 			/*	==============================================================================================
@@ -1150,7 +1168,7 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 					if (!IsSurvivalMode && RPGRoundTime() >= iEnrageTime) fDirectorPointAward *= fEnrageDirectorPoints;
 					if (fDirectorPointAward > 0.0) Points_Director += fDirectorPointAward;
 					// Reflect damage.
-					ammoStr = IsClientInRangeSpecialAmmo(victim, "R", false, _, i_WitchDamage * 1.0);
+					ammoStr = IsClientInRangeSpecialAmmo(victim, "R", _, _, i_WitchDamage);
 					if (ammoStr > 0.0) ReflectIncomingDamage = RoundToCeil(i_WitchDamage * ammoStr);
 					if (ReflectIncomingDamage > 0) AddWitchDamage(victim, attacker, ReflectIncomingDamage, _, _, survivorAmmotype, survivorHitgroup);
 					survivorIncomingDamage = i_WitchDamage;
@@ -1331,7 +1349,7 @@ stock int IfCommonInfectedIsAttackerDoStuff(attacker, victim, damagetype, surviv
 		}
 	}
 	int BuffDamage = 0;
-	ammoStr = IsClientInRangeSpecialAmmo(victim, "R", false, _, CommonsDamage * 1.0);
+	ammoStr = IsClientInRangeSpecialAmmo(victim, "R", _, _, CommonsDamage);
 	if (ammoStr > 0.0) BuffDamage = RoundToCeil(CommonsDamage * ammoStr);
 	if (BuffDamage > 0) {
 		if (!attackerIsSpecial) AddCommonInfectedDamage(victim, attacker, BuffDamage);
@@ -1381,7 +1399,7 @@ stock int IfInfectedIsAttackerDoStuff(attacker, victim) {
 	// TheAbilityMultiplier = GetAbilityStrengthByTrigger(victim, attacker, "lessTankyMoreHeals", _, totalIncomingDamage, _, _, "o", 2, true);
 	// if (TheAbilityMultiplier > 0.0) totalIncomingDamage += RoundToCeil(totalIncomingDamage * TheAbilityMultiplier);
 	int ReflectIncomingDamage = 0;
-	float ammoStr = IsClientInRangeSpecialAmmo(victim, "R", false, _, totalIncomingDamage * 1.0);
+	float ammoStr = IsClientInRangeSpecialAmmo(victim, "R", _, _, totalIncomingDamage);
 	if (!bIsInfectedSwarm && ammoStr > 0.0) ReflectIncomingDamage = RoundToCeil(totalIncomingDamage * ammoStr);
 	if (ReflectIncomingDamage > 0) AddSpecialInfectedDamage(victim, attacker, ReflectIncomingDamage);
 	if (IsSpecialCommonInRange(attacker, 'f')) DoBurn(attacker, victim, totalIncomingDamage);
@@ -1756,7 +1774,7 @@ stock AddSpecialCommonDamage(client, entity, playerDamage, bool IsStatusDamage =
 	return 1;
 }
 
-stock AwardExperience(client, type = 0, AMOUNT = 0, bool TheRoundHasEnded=false) {
+void AwardExperience(client, type = 0, AMOUNT = 0, bool TheRoundHasEnded=false) {
 
 	char pct[4];
 	Format(pct, sizeof(pct), "%");
@@ -1770,9 +1788,9 @@ stock AwardExperience(client, type = 0, AMOUNT = 0, bool TheRoundHasEnded=false)
 		return;
 	}
 
-	int InfectedBotLevelType = iBotLevelType;
+	//int InfectedBotLevelType = iBotLevelType;
 
-	if (!TheRoundHasEnded && AMOUNT > 0 && (bIsInCombat[client] || !bIsInCombat[client] || InfectedBotLevelType == 1 || b_IsFinaleActive || IsEnrageActive() || DoomTimer != 0)) {
+	if (!TheRoundHasEnded && AMOUNT > 0) {//} && (bIsInCombat[client] || InfectedBotLevelType == 1 || b_IsFinaleActive || IsEnrageActive() || DoomTimer != 0)) {
 
 		int bAMOUNT = AMOUNT;
 		// Commented here because we multiply by REM in the ReceivedInfectedDamageAward call.
@@ -1859,14 +1877,6 @@ stock GetPassiveStrength(client, char[] SearchKey, char[] TalentName, TheSize = 
 		}
 	}
 	return 0;
-}
-
-stock float GetPassiveInfo(client, target, Handle Keys, Handle Values, char[] TalentName, bool bIsCreateCooldown = false) {
-	float f_EachPoint	= GetTalentInfo(client, Values, 1, _, TalentName, target);
-	float f_Cooldown	= GetTalentInfo(client, Values, 3, _, TalentName, target);
-	float f_Strength			=	f_EachPoint;
-	if (bIsCreateCooldown && f_Cooldown > 0.00) CreateCooldown(client, GetTalentPosition(client, TalentName), f_Cooldown);
-	return f_Strength;
 }
 
 stock GetDatabasePosition(client, char[] TalentName) {
@@ -2075,13 +2085,19 @@ stock float GetInfectedAbilityStrengthByTrigger(activator, targetPlayer = 0, cha
 	float fTargetRange = (activator != targetPlayer) ? GetTargetRange(activator, targetPlayer) : -1.0;
 	bool activatorIsOnFire = (GetClientStatusEffect(activator, "burn") > 0) ? true : false;
 	bool activatorIsFakeClient = IsFakeClient(activator);
+	if (MyStatusEffects[activator] < 0) MyStatusEffects[activator] = 0;
 
 	//if (IsFakeClient(activator)) return 0.0;
 	for (int i = 0; i < ASize; i++) {
 		TriggerValues[activator]	= GetArrayCell(a_Menu_Talents, i, 1);
 		
 		int activatorClassesAllowed = GetArrayCell(TriggerValues[activator], ACTIVATOR_CLASS_REQ);
-		if (activatorClassesAllowed != -1 && !clientClassIsAllowed(activator, activatorClassesAllowed, activatorClass)) continue;
+		if (activatorClassesAllowed != -1 && !clientClassIsAllowed(activatorClassesAllowed, activatorClass)) continue;
+
+		if (bIsCompounding) {
+			int isThisTalentACompoundingTalent = GetArrayCell(TriggerValues[activator], COMPOUNDING_TALENT);
+			if (isThisTalentACompoundingTalent != 1) continue;
+		}
 
 		TriggerSection[activator]	= GetArrayCell(a_Menu_Talents, i, 2);
 		TriggerKeys[activator]		= GetArrayCell(a_Menu_Talents, i, 0);
@@ -2089,6 +2105,7 @@ stock float GetInfectedAbilityStrengthByTrigger(activator, targetPlayer = 0, cha
 		GetArrayString(TriggerSection[activator], 0, TalentName, sizeof(TalentName));
 		// infected bots always have a point in every talent.
 		int TheTalentStrength = (!activatorIsFakeClient) ? GetArrayCell(MyTalentStrength[activator], i) : 1;
+		if (TheTalentStrength < 1) continue;
 		bool bIsEffectOverTime = (GetArrayCell(TriggerValues[activator], TALENT_IS_EFFECT_OVER_TIME) == 1) ? true : false;
 		bool isEffectOverTimeActive = (!bIsEffectOverTime || !EffectOverTimeActive(activator, i)) ? false : true;
 		if (!isEffectOverTimeActive && !IsAbilityFound(activator, i, AbilityT)) continue;
@@ -2141,7 +2158,7 @@ stock float GetInfectedAbilityStrengthByTrigger(activator, targetPlayer = 0, cha
 			if (ISFROZEN[activator] == INVALID_HANDLE && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_FROZEN) == 1) continue;
 			if (!(activatorFlags & FL_INWATER) && GetArrayCell(TriggerValues[activator], ACTIVATOR_MUST_BE_DROWNING) == 1) continue;
 		}
-		float f_Strength	=	TheTalentStrength * 1.0;
+		float f_Strength	=	1.0;
 		int iInfectedInRange = 0;
 		char secondaryEffects[64];
 		GetArrayString(TriggerValues[activator], SECONDARY_EFFECTS, secondaryEffects, sizeof(secondaryEffects));
@@ -2232,41 +2249,40 @@ stock float GetInfectedAbilityStrengthByTrigger(activator, targetPlayer = 0, cha
 		}
 		if (iInfectedInRange > 0) p_Strength += (p_Strength * iInfectedInRange);
 		if (bIsCompounding) {
-			if (!bIsStatusEffects) t_Strength += p_Strength;
-			else t_Strength += (p_Strength * MyStatusEffects[activator]);
-		}
-		else {
-			if (!IsOverdriveStacks) {
-				if (GetArrayCell(TriggerValues[activator], IS_OWN_TALENT) == 1) {
-					char secondaryTrigger[64];
-					GetArrayString(TriggerValues[activator], SECONDARY_ABILITY_TRIGGER, secondaryTrigger, sizeof(secondaryTrigger));
-					if (bIsStatusEffects) p_Strength = (p_Strength * MyStatusEffects[activator]);
-					if (ResultType >= 1) {
-						if (!bDontActuallyActivate) {
-							if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
-							ActivateAbilityEx(activator, target, damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
-												GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
-												GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-												abilityTrigger, damagetype, _, activatorCallAbilityTrigger, entityIdToPassThrough, _, targetCallAbilityTrigger);
-						}
-					}
-					else {
-						if (!bDontActuallyActivate) {
-							if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
-							ActivateAbilityEx(activator, activator, damagevalue, activatoreffects, p_Strength, p_Time, target, _, isRawType,
-																		GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
-																		GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-																		abilityTrigger, damagetype, _, activatorCallAbilityTrigger, entityIdToPassThrough, _, targetCallAbilityTrigger);
-						}
-					}
-				}
-			}
-			else {
-
+			if (p_Strength > 0.0) {
 				if (!bIsStatusEffects) t_Strength += p_Strength;
 				else t_Strength += (p_Strength * MyStatusEffects[activator]);
 			}
-			if ((!bDontActuallyActivate || bCooldownAlwaysActivates) && f_Cooldown > 0.0) CreateCooldown(activator, GetTalentPosition(activator, TalentName), f_Cooldown);
+		}
+		else {
+			char secondaryTrigger[64];
+			GetArrayString(TriggerValues[activator], SECONDARY_ABILITY_TRIGGER, secondaryTrigger, sizeof(secondaryTrigger));
+			if (bIsStatusEffects) p_Strength = (p_Strength * MyStatusEffects[activator]);
+			if (ResultType >= 1) {
+				if (!bDontActuallyActivate) {
+					if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
+					ActivateAbilityEx(activator, target, damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
+										GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
+										GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
+										abilityTrigger, damagetype, _, activatorCallAbilityTrigger, entityIdToPassThrough, _, targetCallAbilityTrigger);
+				}
+			}
+			else {
+				if (!bDontActuallyActivate) {
+					if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
+					ActivateAbilityEx(activator, activator, damagevalue, activatoreffects, p_Strength, p_Time, target, _, isRawType,
+																GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
+																GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
+																abilityTrigger, damagetype, _, activatorCallAbilityTrigger, entityIdToPassThrough, _, targetCallAbilityTrigger);
+				}
+			}
+		}
+		if (!bDontActuallyActivate || bCooldownAlwaysActivates) {
+			// certain ammos need to reward buffing/hexing experience at this time.
+			if (bHasWeakness[activator] == 2 && GetArrayCell(TriggerValues[activator], REQ_WEAKNESS) == 1) {
+				IsClientInRangeSpecialAmmo(activator, "W", _, _, RoundToCeil(p_Strength * damagevalue));
+			}
+			if (f_Cooldown > 0.0) CreateCooldown(activator, GetTalentPosition(activator, TalentName), f_Cooldown);
 		}
 		p_Strength = 0.0;
 		p_Time = 0.0;
@@ -2409,17 +2425,16 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		// infected bots always have a point in every talent.
 		int TheTalentStrength = GetArrayCell(MyTalentStrength[activator], i);
 		if (TheTalentStrength < 1) continue;
-		TheTalentStrength = 1;//continue;//{	// Infected bot controllers only
-			// if (targetIsSurvivor) {
-			// 	TheTalentStrength = 1;
-			// 	iStrengthOverride = TheTalentStrength;
-			// }
-		//}
+
 		TriggerKeys[activator]		= GetArrayCell(a_Menu_Talents, i, 0);
 		TriggerValues[activator]	= GetArrayCell(a_Menu_Talents, i, 1);
+		if (bIsCompounding) {
+			int isThisTalentACompoundingTalent = GetArrayCell(TriggerValues[activator], COMPOUNDING_TALENT);
+			if (isThisTalentACompoundingTalent != 1) continue;
+		}
 
 		int activatorClassesAllowed = GetArrayCell(TriggerValues[activator], ACTIVATOR_CLASS_REQ);
-		if (activatorClassesAllowed != -1 && !clientClassIsAllowed(activator, activatorClassesAllowed, activatorClass)) continue;
+		if (activatorClassesAllowed != -1 && !clientClassIsAllowed(activatorClassesAllowed, activatorClass)) continue;
 
 		// We need to check if this is an effect over time first because active effects have to skip the trigger check to be always active.
 		bool bIsEffectOverTime = (GetArrayCell(TriggerValues[activator], TALENT_IS_EFFECT_OVER_TIME) == 1) ? true : false;
@@ -2428,8 +2443,9 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		if (countAllTalentsRegardlessOfState == 0 && !isEffectOverTimeActive && IsAbilityCooldown(activator, TalentName)) continue;
 
 		bool bIsEffectOverTimeIgnoresClass = (!isEffectOverTimeActive || GetArrayCell(TriggerValues[activator], IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES) != 1) ? false : true;
+
 		int targetClassesAllowed = GetArrayCell(TriggerValues[activator], TARGET_CLASS_REQ);
-		if (targetClassesAllowed != -1 && !bIsEffectOverTimeIgnoresClass && !clientClassIsAllowed(activator, targetClassesAllowed, targetClass)) continue;
+		if (targetClassesAllowed != -1 && !bIsEffectOverTimeIgnoresClass && (!isTargetLegitimate || !clientClassIsAllowed(targetClassesAllowed, targetClass))) continue;
 		
 		int isRawType = (GetArrayCell(TriggerValues[activator], ABILITY_TYPE) == 3) ? 1 : 0;
 		// overriding typeOfValuesToRetrieve in header skips this next statement
@@ -2523,10 +2539,12 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		}
 		//if (!IsStatusEffectFound(activator, TriggerKeys[activator], TriggerValues[activator])) continue;
 
-		float f_Strength	=	TheTalentStrength * 1.0;
+		float f_Strength	=	1.0;
 		//iStrengthOverride = 0;
 		//bIsCompounding = false;
 		int iSurvivorsInRange = 0;
+
+		// if bcompounding is enabled we need to make sure talents that are not compounding talents don't get calculated. right now they do.
 
 		/*if (GetKeyValueIntAtPos(TriggerValues[activator], COMPOUNDING_TALENT) == 1) {
 			bIsCompounding = true;
@@ -2668,7 +2686,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		//if (!bDontActuallyActivate
 		// we call the dontActuallyActivate functionality in actual damage calculations for certain events for better time complexity
 		// so we're now using countAllTalentsRegardlessOfState which is yet... another new argument for this call.
-		p_Strength += f_Strength;
+		p_Strength = f_Strength;
 		p_Time += f_Time;
 		// background talents toggle bDontActuallyActivate here, because we do still want them to go on cooldown, and if we set it before the CreateCooldown method is called, they will not go on cooldown.
 		// bDontActuallyActivate can be forcefully-called elsewhere, which is why it's ordered this way.
@@ -2705,7 +2723,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 			// If we only want the bonus to be applied when a minimum amount of time has passed...
 			fPlayerMaxZoomTime = GetArrayCell(TriggerValues[activator], STRENGTH_INCREASE_TIME_REQ);
 			// no minimum time is required	or	player meets or exceeds time requirement.
-			if (fPlayerMaxZoomTime <= 0.0 || playerZoomTime >= fPlayerMaxZoomTime) p_Strength += (p_Strength * (playerZoomTime / fMultiplyRange));
+			if (fPlayerMaxZoomTime <= 0.0 || playerZoomTime >= fPlayerMaxZoomTime) p_Strength += (f_Strength * (playerZoomTime / fMultiplyRange));
 			else {
 				// If the player doesn't meet the time requirement for this perk to give a bonus, we need to check if this is an x-increase over time perk, and don't fire if it is.
 				if (GetArrayCell(TriggerValues[activator], ZOOM_TIME_HAS_MINIMUM_REQ) == 1) continue;
@@ -2719,7 +2737,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 			// If we only want the bonus to be applied when a minimum amount of time has passed...
 			fPlayerMaxHoldingFireTime = GetArrayCell(TriggerValues[activator], STRENGTH_INCREASE_TIME_REQ);
 			// no minimum time is required	or	player meets or exceeds time requirement.
-			if (fPlayerMaxHoldingFireTime <= 0.0 || playerHoldingFireTime >= fPlayerMaxHoldingFireTime) p_Strength += (p_Strength * (playerHoldingFireTime / fMultiplyRange));
+			if (fPlayerMaxHoldingFireTime <= 0.0 || playerHoldingFireTime >= fPlayerMaxHoldingFireTime) p_Strength += (f_Strength * (playerHoldingFireTime / fMultiplyRange));
 			else {
 				// If the player doesn't meet the time requirement for this perk to give a bonus, we need to check if this is an x-increase over time perk, and don't fire if it is.
 				if (GetArrayCell(TriggerValues[activator], DAMAGE_TIME_HAS_MINIMUM_REQ) == 1) continue;
@@ -2731,46 +2749,44 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 			fPercentageHealthRequired = (fPercentageHealthRequiredMax > 0.0 && ((1.0 - fPercentageHealthRemaining) / fPercentageHealthRequired) > fPercentageHealthRequiredMax) ?	// 40% / 20% = 2.0 , if we set the max to 1.0 (to allow the buff just once:
 										fPercentageHealthRequiredMax :							// true (so we set the max to 1.0 as in our sample scenario)
 										((1.0 - fPercentageHealthRemaining) / fPercentageHealthRequired);	// false (but doesn't happen in our example scenario)
-			p_Strength += (p_Strength * fPercentageHealthRequired);
+			p_Strength += (f_Strength * fPercentageHealthRequired);
 		}
-		if (iSurvivorsInRange > 0) p_Strength += (p_Strength * iSurvivorsInRange);
+		if (iSurvivorsInRange > 0) p_Strength += (f_Strength * iSurvivorsInRange);
 		if (bIsCompounding) {
 			if (!bIsStatusEffects) t_Strength += p_Strength;
 			else t_Strength += (p_Strength * MyStatusEffects[activator]);
 		}
 		else {
 			if (!IsOverdriveStacks) {
-				if (GetArrayCell(TriggerValues[activator], IS_OWN_TALENT) == 1) {
-					char secondaryTrigger[64];
-					GetArrayString(TriggerValues[activator], SECONDARY_ABILITY_TRIGGER, secondaryTrigger, sizeof(secondaryTrigger));
-					if (bIsStatusEffects) p_Strength = (p_Strength * MyStatusEffects[activator]);
-					if (ResultType >= 1) {
-						if (!bDontActuallyActivate) {
-							if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
-							// If this is an effect over time
-							//if (!AllowEffectOverTimeToContinue(activator, TriggerValues[activator], TalentName, damagevalue, targeteffects, target, p_Strength)) continue;
-							// eotStrength = GetEffectOverTimeStrength(activator, targeteffects);
-							// if (eotStrength > 0.0) p_Strength *= eotStrength;
-							if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
-							ActivateAbilityEx(activator, ((enemyInCoherencyRangeIsTarget == 1 && enemyPlayerInRange > 0) ? enemyPlayerInRange : target), damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
-												GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
-												GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-												abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
-						}
+				char secondaryTrigger[64];
+				GetArrayString(TriggerValues[activator], SECONDARY_ABILITY_TRIGGER, secondaryTrigger, sizeof(secondaryTrigger));
+				if (bIsStatusEffects) p_Strength = (p_Strength * MyStatusEffects[activator]);
+				if (ResultType >= 1) {
+					if (!bDontActuallyActivate) {
+						if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
+						// If this is an effect over time
+						//if (!AllowEffectOverTimeToContinue(activator, TriggerValues[activator], TalentName, damagevalue, targeteffects, target, p_Strength)) continue;
+						// eotStrength = GetEffectOverTimeStrength(activator, targeteffects);
+						// if (eotStrength > 0.0) p_Strength *= eotStrength;
+						if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
+						ActivateAbilityEx(activator, ((enemyInCoherencyRangeIsTarget == 1 && enemyPlayerInRange > 0) ? enemyPlayerInRange : target), damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
+											GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
+											GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
+											abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 					}
-					else {
-						if (!bDontActuallyActivate) {
-							// If this is an effect over time
-							//if (!AllowEffectOverTimeToContinue(activator, TriggerValues[activator], TalentName, damagevalue, activatoreffects, target, p_Strength)) continue;
-							// eotStrength = GetEffectOverTimeStrength(activator, activatoreffects);
-							// if (eotStrength > 0.0) p_Strength *= eotStrength;
-							if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
-							if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
-							ActivateAbilityEx(activator, activator, damagevalue, activatoreffects, p_Strength, p_Time, target, _, isRawType,
-																		GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
-																		GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-																		abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
-						}
+				}
+				else {
+					if (!bDontActuallyActivate) {
+						// If this is an effect over time
+						//if (!AllowEffectOverTimeToContinue(activator, TriggerValues[activator], TalentName, damagevalue, activatoreffects, target, p_Strength)) continue;
+						// eotStrength = GetEffectOverTimeStrength(activator, activatoreffects);
+						// if (eotStrength > 0.0) p_Strength *= eotStrength;
+						if (!isEffectOverTimeActive && bIsEffectOverTime) EffectOverTimeActive(activator, i, GetEngineTime() + GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE));
+						if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
+						ActivateAbilityEx(activator, activator, damagevalue, activatoreffects, p_Strength, p_Time, target, _, isRawType,
+																	GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
+																	GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
+																	abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 					}
 				}
 			}
@@ -2779,7 +2795,13 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 				if (!bIsStatusEffects) t_Strength += p_Strength;
 				else t_Strength += (p_Strength * MyStatusEffects[activator]);
 			}
-			if ((!bDontActuallyActivate || bCooldownAlwaysActivates) && f_Cooldown > 0.0) CreateCooldown(activator, GetTalentPosition(activator, TalentName), f_Cooldown);
+		}
+		if (!bDontActuallyActivate || bCooldownAlwaysActivates) {
+			// certain ammos need to reward buffing/hexing experience at this time.
+			if (bHasWeakness[activator] == 2 && GetArrayCell(TriggerValues[activator], REQ_WEAKNESS) == 1) {
+				IsClientInRangeSpecialAmmo(activator, "W", _, _, RoundToCeil(p_Strength * damagevalue));
+			}
+			if (f_Cooldown > 0.0) CreateCooldown(activator, GetTalentPosition(activator, TalentName), f_Cooldown);
 		}
 		p_Strength = 0.0;
 		p_Time = 0.0;
@@ -2791,10 +2813,11 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		if (ResultType == 0 || ResultType == 2) return (t_Strength * damagevalue);
 		if (ResultType == 1) return (damagevalue + (t_Strength * damagevalue));
 	}
+	if (t_Strength < 0.0) t_Strength = 0.0;
 	return t_Strength;
 }
 
-stock bool clientClassIsAllowed(client, classCategoriesAllowed, classCategory) {
+stock bool clientClassIsAllowed(classCategoriesAllowed, classCategory) {
 	return classCategory & classCategoriesAllowed > 0;
 }
 
@@ -4187,7 +4210,7 @@ stock SetMaximumHealth(client) {
 	// health values are now only raw values.
 
 	if (!playerIsIncapacitated) {
-		float ammoStr = IsClientInRangeSpecialAmmo(client, "O", false, _, isRaw * 1.0);
+		float ammoStr = IsClientInRangeSpecialAmmo(client, "O", _, _, isRaw);
 		if (ammoStr > 0.0) isRaw += RoundToCeil(isRaw * ammoStr);
 	}
 	if (isRaw > 30000) isRaw = 30000;
@@ -4524,37 +4547,7 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 		//int activatorTeam = GetClientTeam(activator);
 
 		int iDamage = (isRaw == 1 || d_Damage == 0) ? RoundToCeil(g_TalentStrength) : RoundToCeil(d_Damage * g_TalentStrength);
-		//new oDamage = d_Damage;
 		int talentStr = RoundToCeil(g_TalentStrength);
-		//if (iDamage - d_Damage < 0) oDamage = 0;
-		// if (AoERange > 0.0) {
-		// 	new playersInAoERangeCount = 0;
-		// 	new Float:activatorPos[3];
-		// 	new Float:playersRangePos[3];
-		// 	GetClientAbsOrigin(activator, activatorPos);
-		// 	for (new i = 1; i <= MaxClients; i++) {
-		// 		if (i == activator || !IsLegitimateClientAlive(i) || GetClientTeam(i) == activatorTeam) continue;
-		// 		GetClientAbsOrigin(i, playersRangePos);
-		// 		if (GetVectorDistance(activatorPos, playersRangePos) <= AoERange) playersInAoERangeCount++;
-		// 	}
-		// 	if (playersInAoERangeCount > 0) {
-		// 		d_Damage /= playersInAoERangeCount;
-		// 		if (!StrEqual(AbilityTriggerIgnore, "aoegive")) GetAbilityStrengthByTrigger(activator, target, "aoegive", _, d_Damage, _, _, _, _, _, _, hitgroup, "aoegive", damagetype);
-		// 		for (new i = 1; i <= MaxClients; i++) {
-		// 			if (i == activator || !IsLegitimateClientAlive(i) || GetClientTeam(i) == activatorTeam) continue;
-		// 			GetClientAbsOrigin(i, playersRangePos);
-		// 			if (GetVectorDistance(activatorPos, playersRangePos) <= AoERange) {
-		// 				// loop the effect through anyone within range of it. because AoERange in this call is 0.0, it won't loop indefinitely.
-		// 				ActivateAbilityEx(activator, i, d_Damage, Effects, g_TalentStrength, g_TalentTime, victim, Trigger, isRaw, _, _, _, _, _, _, damagetype);
-		// 				if (!StrEqual(AbilityTriggerIgnore, "aoereceive")) GetAbilityStrengthByTrigger(i, target, "aoereceive", _, d_Damage, _, _, _, _, _, _, hitgroup, "aoereceive", damagetype);
-		// 			}
-		// 		}
-		// 		if (!StrEqual(secondaryEffects, "-1")) {
-		// 			ActivateAbilityEx(activator, target, d_Damage, secondaryEffects, g_TalentStrength, g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, _, _, damagetype);
-		// 		}
-		// 	}
-		// 	return;	// if it's an aoe effect we don't do anything for the activating player.
-		// }
 		int anyPlayerNotMe = GetAnyPlayerNotMe(target);
 		if (StrEqual(Effects, "vampire")) {
 			HealPlayer(activator, activator, g_TalentStrength, 'h', true);
@@ -4587,11 +4580,17 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 		// }
 		else if (StrEqual(Effects, "poisonclaw")) {
 			int acid = RoundToFloor(iDamage * (GetDifficultyRating(victim) * fAcidDamagePlayerLevel));
-			CreateAndAttachFlame(victim, acid * (GetClientStatusEffect(victim, "acid") + 1), 10.0, 0.5, FindInfectedClient(true), "acid");
+			AwardExperience(activator, HEXING_CONTRIBUTION, acid);
+
+			acid += acid * (GetClientStatusEffect(victim, "acid") + 1);
+			CreateAndAttachFlame(victim, acid, 10.0, 0.5, FindInfectedClient(true), "acid");
 		}
 		else if (StrEqual(Effects, "burnclaw")) {
 			int burn = RoundToFloor(iDamage * (GetDifficultyRating(victim) * fBurnPercentage));
-			CreateAndAttachFlame(victim, burn * (GetClientStatusEffect(victim, "burn") + 1), 10.0, 0.5, FindInfectedClient(true), "burn");
+			AwardExperience(activator, HEXING_CONTRIBUTION, burn);
+
+			burn += burn * (GetClientStatusEffect(victim, "burn") + 1);
+			CreateAndAttachFlame(victim, burn, 10.0, 0.5, FindInfectedClient(true), "burn");
 		}
 		else if (StrEqual(Effects, "maghalfempty")) {
 			// this goes up here and we're gonna recursively call for "d"
@@ -5007,6 +5006,38 @@ stock ConfirmExperienceActionTalents(client, bool WipeXP = false, bool TheRoundH
 			// you have lost x experience!
 		}
 	}
+}
+
+void SetProficiencyData(int client, int proficiencyType, int iLevelsToGive) {
+	if (proficiencyType < 0 || proficiencyType > 7) return;
+	int iExperienceEarned = 0;
+	int curLevel = 0;// GetProficiencyData(client, proficiencyType, _, _, true);
+	int targetLevel = iLevelsToGive;
+	while (curLevel < targetLevel) {
+ 		iExperienceEarned += iProficiencyStart + RoundToCeil(iProficiencyStart * (fProficiencyExperienceMultiplier * curLevel));
+		curLevel++;
+	}
+	if (proficiencyType == 0) pistolXP[client] = iExperienceEarned;
+	else if (proficiencyType == 1) meleeXP[client] = iExperienceEarned;
+	else if (proficiencyType == 2) uziXP[client] = iExperienceEarned;
+	else if (proficiencyType == 3) shotgunXP[client] = iExperienceEarned;
+	else if (proficiencyType == 4) sniperXP[client] = iExperienceEarned;
+	else if (proficiencyType == 5) assaultXP[client] = iExperienceEarned;
+	else if (proficiencyType == 6) medicXP[client] = iExperienceEarned;
+	else if (proficiencyType == 7) grenadeXP[client] = iExperienceEarned;
+
+	char proficiencyName[64];
+	char playerName[64];
+	GetClientName(client, playerName, sizeof(playerName));
+	if (proficiencyType == 0) Format(proficiencyName, sizeof(proficiencyName), "%t", "pistol proficiency up");
+	else if (proficiencyType == 1) Format(proficiencyName, sizeof(proficiencyName), "%t", "melee proficiency up");
+	else if (proficiencyType == 2) Format(proficiencyName, sizeof(proficiencyName), "%t", "uzi proficiency up");
+	else if (proficiencyType == 3) Format(proficiencyName, sizeof(proficiencyName), "%t", "shotgun proficiency up");
+	else if (proficiencyType == 4) Format(proficiencyName, sizeof(proficiencyName), "%t", "sniper proficiency up");
+	else if (proficiencyType == 5) Format(proficiencyName, sizeof(proficiencyName), "%t", "assault proficiency up");
+	else if (proficiencyType == 6) Format(proficiencyName, sizeof(proficiencyName), "%t", "medic proficiency up");
+	else if (proficiencyType == 7) Format(proficiencyName, sizeof(proficiencyName), "%t", "grenade proficiency up");
+	PrintToChatAll("%t", "proficiency level up", blue, playerName, white, orange, proficiencyName, white, blue, curLevel);
 }
 
 /*
@@ -5441,7 +5472,7 @@ public Action Timer_EntityOnFire(Handle timer) {
 			if (IsClientSurvivor ||
 				!IsSpecialCommonInRangeEx(Client, "jimmy") && StrContains(ModelName, "jimmy", false) == -1 && (Owner > 0 && IsFakeClient(Owner) || !IsSpecialCommonInRange(Client, 't'))) {
 				if (IsClientAlive) {
-					ammoStr = IsClientInRangeSpecialAmmo(Client, "D", false, _, t_Damage * 1.0);
+					ammoStr = IsClientInRangeSpecialAmmo(Client, "D", _, _, t_Damage);
 					if (ammoStr > 0.0) {
 						DamageShield = RoundToCeil(t_Damage * (1.0 - ammoStr));
 						if (DamageShield > 0) {
@@ -6444,7 +6475,7 @@ public Action Timer_SpecialAmmoData(Handle timer, any client) {
 			// 	}
 			// }
 		}
-		ammoStr = IsClientInRangeSpecialAmmo(client, DataAmmoEffect, false, _, bulletStrength * 1.0);
+		ammoStr = IsClientInRangeSpecialAmmo(client, DataAmmoEffect, _, _, bulletStrength);
 		if (ammoStr > 0.0) {
 			IsPlayerSameTeam = (client == dataClient || GetClientTeam(client) == GetClientTeam(dataClient)) ? true : false;
 
@@ -6474,234 +6505,6 @@ public Action Timer_SpecialAmmoData(Handle timer, any client) {
 	}
 	return Plugin_Continue;
 }
-/*public Action:Timer_SpecialAmmoData(Handle:timer) {
-
-	if (!b_IsActiveRound) {
-
-		ClearArray(Handle:SpecialAmmoData);
-		return Plugin_Stop;
-	}
-
-	static String:text[512];
-	static String:result[7][512];
-	static String:t_pos[3][512];
-	static Float:EntityPos[3];
-	//new Float:TargetPos[3];
-	static String:TalentInfo[4][512];
-	static client = 0;
-	static Float:f_TimeRemaining = 0.0;
-	//static Float:f_Interval = 0.0;
-	//static Float:f_Cooldown = 0.0;
-	//new size = GetArraySize(SpecialAmmoData);
-	static WorldEnt = -1;
-	static ent = -1;
-	static drawtarget = -1;
-	//new ammotarget = -1;
-	static String:DataAmmoEffect[10];
-	//LogMessage("Ammo size: %d", size);
-
-	static Float:AmmoStrength = 0.0;
-	//static ThePosition = -1;
-	//static Float:TheStrength = -1.0;
-	//static bool:hastargetfound = false;
-	for (new i = 1; i <= MaxClients; i++) {
-
-		if (IsLegitimateClientAlive(i)) CheckActiveAbility(i, -1, _, _, true);	// draws effects for any active ability.
-	}
-	static auraMenuPosition = 0;
-
-	for (new i = 0; i < GetArraySize(Handle:SpecialAmmoData); i++) {
-
-		AmmoStrength = 0.0;
-
-		Format(DataAmmoEffect, sizeof(DataAmmoEffect), "0");	// reset it after each go.
-
-		//hastargetfound = false;
-
-		GetArrayString(Handle:SpecialAmmoData, i, text, sizeof(text));
-		//LogMessage("Original: %s", text);
-		ExplodeString(text, "}", result, 7, 512);
-
-		WorldEnt = StringToInt(result[4]);
-
-		client = FindClientWithAuthString(result[2]);
-		//f_Interval -= 0.01;
-
-		if (!IsLegitimateClientAlive(client) || GetClientTeam(client) != TEAM_SURVIVOR) {
-
-			RemoveFromArray(Handle:SpecialAmmoData, i);
-			//if (i > 0) i--;
-			//size = GetArraySize(SpecialAmmoData);
-			//if (IsLegitimateClientAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR) CheckActiveAmmoCooldown(client, TalentInfo[0], true);// should the cooldown start when the first bullet expires, or when the first bullets first cooldown(interval) occurs? need to calculate. is it too spammy?
-			if (IsValidEntity(WorldEnt)) AcceptEntityInput(WorldEnt, "Kill");
-			continue;
-		}
-		drawtarget = StringToInt(result[6]);
-
-		ExplodeString(result[1], "{", TalentInfo, 4, 512);
-
-		if (IsSpellAnAura(client, TalentInfo[0])) {
-			GetClientAbsOrigin(client, EntityPos);
-			// auras follow players and are drawn on every tick. They can be VERY performance-intensive if higher tickrates are used (lower intervals / tick)
-			auraMenuPosition = GetMenuPosition(client, TalentInfo[0]);
-			for (new ii = 1; ii <= MaxClients; ii++) {
-				if (!IsLegitimateClient(ii) || IsFakeClient(ii)) continue;
-				DrawSpecialAmmoTarget(ii, auraMenuPosition, EntityPos[0], EntityPos[1], EntityPos[2], fSpecialAmmoInterval, client, TalentInfo[0], drawtarget);
-			}
-		}
-		else {
-			ExplodeString(result[0], " ", t_pos, 3, 512);
-			EntityPos[0] = StringToFloat(t_pos[0]);
-			EntityPos[1] = StringToFloat(t_pos[1]);
-			EntityPos[2] = StringToFloat(t_pos[2]);
-		}
-		// TalentInfo[0] = TalentName of ammo.
-		// TalentInfo[1] = Talent Strength (so use StringToInt)
-		// TalentInfo[2] = Talent Damage
-		// TalentInfo[3] = Talent Interval
-
-		//f_Interval = StringToFloat(TalentInfo[3]);
-
-		f_TimeRemaining = StringToFloat(result[3]) - fSpecialAmmoInterval;
-		//f_TimeRemaining -= 0.01;
-
-		//f_Cooldown = StringToFloat(result[5]);
-		GetSpecialAmmoEffect(DataAmmoEffect, sizeof(DataAmmoEffect), client, TalentInfo[0]);
-		//Format(DataAmmoEffect, sizeof(DataAmmoEffect), "%s", GetSpecialAmmoEffect(client, TalentInfo[0]));
-
-		//f_Interval = f_TimeRemaining;
-		//if (f_Interval > f_TimeRemaining) f_Interval = f_TimeRemaining;
-		if (f_TimeRemaining > 0.0) {
-
-			//ThePosition = GetTalentPosition(client, TalentInfo[0]);
-			//TheStrength = GetSpecialAmmoStrength(client, TalentInfo[0], 1);
-			
-			if (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, _, i) == -2.0) {
-
-				AmmoStrength			= (IsClientInRangeSpecialAmmo(client, DataAmmoEffect, false, _, StringToInt(TalentInfo[2]) * 1.0));
-				AmmoStrength			*= StringToInt(TalentInfo[2]);
-				if (AmmoStrength > 0.0) {
-
-					//if (StrContains(DataAmmoEffect, "b", true) == -1) AmmoStrength *= StringToInt(TalentInfo[2]);
-					//CreateCooldown(client, ThePosition, TheStrength);
-
-					if (StrContains(DataAmmoEffect, "b", true) != -1) BeanBagAmmo(client, AmmoStrength, client);
-					else if (StrContains(DataAmmoEffect, "a", true) != -1 && !HasAdrenaline(client)) SetAdrenalineState(client, f_TimeRemaining);
-					else if (StrContains(DataAmmoEffect, "x", true) != -1) ExplosiveAmmo(client, RoundToCeil(AmmoStrength), client);
-					else if (StrContains(DataAmmoEffect, "H", true) != -1) {
-
-						//LogToFile(LogPathDirectory, "Healing ammo %N for %3.3f (%d)", client, AmmoStrength, GetMaximumHealth(client));
-
-						HealingAmmo(client, RoundToCeil(AmmoStrength), client);
-					}
-					else if (StrContains(DataAmmoEffect, "F", true) != -1) {
-
-						if (ISEXPLODE[client] == INVALID_HANDLE) CreateAndAttachFlame(client, RoundToCeil(AmmoStrength), f_TimeRemaining, f_TimeRemaining);
-	 					else if (ISEXPLODE[client] != INVALID_HANDLE) CreateAndAttachFlame(client, RoundToCeil(AmmoStrength * TheScorchMult), f_TimeRemaining, f_TimeRemaining);
-					}
-					else if (StrContains(DataAmmoEffect, "B", true) != -1 && !ISBILED[client]) {
-						SDKCall(g_hCallVomitOnPlayer, client, client, true);
-						CreateTimer(15.0, Timer_RemoveBileStatus, client, TIMER_FLAG_NO_MAPCHANGE);
-						ISBILED[client] = true;
-					}
-				}
-			}
-			for (new ammotarget = 1; ammotarget <= MaxClients; ammotarget++) {
-
-				if (ammotarget != client && IsLegitimateClientAlive(ammotarget) && IsClientInRangeSpecialAmmo(ammotarget, DataAmmoEffect, _, i) == -2.0) {
-
-					AmmoStrength			= (IsClientInRangeSpecialAmmo(ammotarget, DataAmmoEffect, false, _, StringToInt(TalentInfo[2]) * 1.0));
-					AmmoStrength			*= StringToInt(TalentInfo[2]);
-
-					if (AmmoStrength <= 0.0) continue;
-
-					//CreateCooldown(ammotarget, ThePosition, TheStrength);
-					//if (StrContains(DataAmmoEffect, "b", true) == -1 && StrContains(DataAmmoEffect, "W", true) == -1) AmmoStrength *= StringToInt(TalentInfo[2]);
-
-					if (StrContains(DataAmmoEffect, "b", true) != -1) BeanBagAmmo(ammotarget, AmmoStrength, client);
-					else if ((GetClientTeam(ammotarget) == TEAM_SURVIVOR || IsSurvivorBot(ammotarget)) && StrContains(DataAmmoEffect, "a", true) != -1 && !HasAdrenaline(ammotarget)) SetAdrenalineState(ammotarget, f_TimeRemaining);
-					else if (GetClientTeam(ammotarget) == TEAM_INFECTED && StrContains(DataAmmoEffect, "x", true) != -1) ExplosiveAmmo(ammotarget, RoundToCeil(AmmoStrength), client);
-					else if ((GetClientTeam(ammotarget) == TEAM_SURVIVOR || IsSurvivorBot(ammotarget)) && StrContains(DataAmmoEffect, "H", true) != -1) HealingAmmo(ammotarget, RoundToCeil(AmmoStrength), client);
-					else if (GetClientTeam(ammotarget) == TEAM_INFECTED && StrContains(DataAmmoEffect, "h", true) != -1) LeechAmmo(ammotarget, RoundToCeil(AmmoStrength), client);
-					else if (StrContains(DataAmmoEffect, "F", true) != -1) {
-
-						DoBurn(client, ammotarget, RoundToCeil(AmmoStrength));
-					}
-					else if (StrContains(DataAmmoEffect, "B", true) != -1 && !ISBILED[ammotarget]) {
-						SDKCall(g_hCallVomitOnPlayer, ammotarget, client, true);
-						CreateTimer(15.0, Timer_RemoveBileStatus, ammotarget, TIMER_FLAG_NO_MAPCHANGE);
-						ISBILED[ammotarget] = true;
-					}
-					else if (StrContains(DataAmmoEffect, "C", true) != -1 && AmmoStrength <= 0.0) {
-				
-						if (IsClientStatusEffect(ammotarget, Handle:EntityOnFire)) {
-
-							TransferStatusEffect(ammotarget, Handle:EntityOnFire, client);
-						}
-					}
-					//hastargetfound = true;
-					//break;
-				}
-			}
-			if (StrContains(DataAmmoEffect, "x", true) != -1) {
-
-				CreateAmmoExplosion(client, EntityPos[0], EntityPos[1], EntityPos[2]);
-				//continue;
-			}
-			if (StrContains(DataAmmoEffect, "x", true) != -1 ||
-				StrContains(DataAmmoEffect, "h", true) != -1 ||
-				StrContains(DataAmmoEffect, "F", true) != -1) {
-
-				for (new zombie = 0; zombie < GetArraySize(Handle:CommonInfected); zombie++) {
-
-					ent = GetArrayCell(Handle:CommonInfected, zombie);
-					//if (!IsSpecialCommon(ent)) continue;
-					if (!IsCommonInfected(ent)) continue;	// || IsClientInRangeSpecialAmmo(ent, DataAmmoEffect, _, i) != -2.0) continue;
-					if (IsClientInRangeSpecialAmmo(ent, DataAmmoEffect, _, i) == -2.0) AmmoStrength			= (IsClientInRangeSpecialAmmo(ent, DataAmmoEffect, false, _, StringToInt(TalentInfo[2]) * 1.0)) * StringToInt(TalentInfo[2]);
-					else continue;
-					AmmoStrength			*= StringToInt(TalentInfo[2]);
-					if (AmmoStrength <= 0.0) continue;
-
-					if (StrContains(DataAmmoEffect, "x", true) != -1) {
-
-						ExplosiveAmmo(ent, RoundToCeil(AmmoStrength), client);
-						//break;
-					}
-					if (StrContains(DataAmmoEffect, "h", true) != -1) {
-
-						LeechAmmo(ent, RoundToCeil(AmmoStrength), client);
-						//break;
-					}
-					if (StrContains(DataAmmoEffect, "F", true) != -1) {
-
-						DoBurn(client, ent, RoundToCeil(AmmoStrength));
-
-						//CreateAndAttachFlame(ent, RoundToCeil(AmmoStrength), f_TimeRemaining, f_Interval);
-						//break;
-					}
-				}
-			}
-		}
-		else {
-
-			RemoveFromArray(Handle:SpecialAmmoData, i);
-			if (IsValidEntity(WorldEnt)) AcceptEntityInput(WorldEnt, "Kill");
-			continue;
-		}
-
-		for (new ii = 1; ii <= MaxClients; ii++) {
-
-			if (IsLegitimateClientAlive(ii) && strlen(MyAmmoEffects[ii]) > 0) Format(MyAmmoEffects[ii], sizeof(MyAmmoEffects[]), "");
-		}
-
-		//Format(text, sizeof(text), "%3.3f %3.3f %3.3f}%s{%d{%d{%3.2f}%s}%3.2f}%d}%3.2f}%d", EntityPos[0], EntityPos[1], EntityPos[2], TalentInfo[0], GetTalentStrength(client, TalentInfo[0]), StringToInt(TalentInfo[2]), f_Interval, result[2], f_TimeRemaining, WorldEnt, f_Cooldown, drawtarget);
-		Format(text, sizeof(text), "%3.3f %3.3f %3.3f}%s{%d{%d{%3.2f}%s}%3.2f}%d}%3.2f}%d", EntityPos[0], EntityPos[1], EntityPos[2], TalentInfo[0], GetTalentStrength(client, TalentInfo[0]), StringToInt(TalentInfo[2]), f_TimeRemaining, result[2], f_TimeRemaining, WorldEnt, f_TimeRemaining, drawtarget);
-		SetArrayString(Handle:SpecialAmmoData, i, text);
-		//LogMessage(text);
-		//size = GetArraySize(Handle:SpecialAmmoData);
-	}
-	return Plugin_Continue;
-}*/
 
 public Action Timer_StartPlayerTimers(Handle timer) {
 	if (!b_IsActiveRound) return Plugin_Stop;
@@ -6866,15 +6669,15 @@ stock bool IsAmmoEffectActive(client, char[] TalentName) {
 	return false;
 }
 
-stock CheckActiveAmmoCooldown(client, char[] TalentName, bool bIsCreateCooldown=false) {
+stock CheckActiveAmmoCooldown(client, char[] TalentName, bool bActivateCooldown=false) {
 
 	/*
 
 		The original function is below. Rewritten after adding new functionality to function as originally intended.
 	*/
 	if (!IsLegitimateClient(client)) return -1;
-	if (IsAmmoActive(client, TalentName)) return 2;	// even if bIsCreateCooldown, if it is on cooldown already, we don't create another cooldown.
-	else if (bIsCreateCooldown) IsAmmoActive(client, TalentName, GetSpecialAmmoStrength(client, TalentName, 1));
+	if (IsAmmoActive(client, TalentName)) return 2;	// even if bActivateCooldown, if it is on cooldown already, we don't create another cooldown.
+	else if (bActivateCooldown) IsAmmoActive(client, TalentName, GetSpecialAmmoStrength(client, TalentName, 1));
 	else return 1;
 	return 0;
 }
@@ -8319,29 +8122,27 @@ stock FindListPositionBySearchKey(char[] SearchKey, Handle h_SearchList, block =
 	return -1;
 }
 
-stock bool SurvivorsSaferoomWaiting() {
-
+bool SurvivorsSaferoomWaiting() {
 	int count = 0;
 	int numOfLivingHumanSurvivors = LivingHumanSurvivors();
 	if (numOfLivingHumanSurvivors < 1) return false;
 	for (int i = 1; i <= MaxClients; i++) {
-
 		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR && !IsFakeClient(i) && bIsInCheckpoint[i]) count++;
 	}
 	if (count >= numOfLivingHumanSurvivors) return true;
 	return false;
 }
 
-stock SurvivorBotsRegroup() {
-	float pos[3];
+void SurvivorBotsRegroup() {
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		float pos[3];
 		GetClientAbsOrigin(i, pos);
-		break;
-	}
-	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || !IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-		TeleportEntity(i, pos, NULL_VECTOR, NULL_VECTOR);
+		for (int j = 1; j <= MaxClients; j++) {
+			if (!IsLegitimateClient(j) || !IsFakeClient(j) || GetClientTeam(j) != TEAM_SURVIVOR) continue;
+			TeleportEntity(j, pos, NULL_VECTOR, NULL_VECTOR);
+		}
+		return;
 	}
 }
 
@@ -8518,7 +8319,13 @@ bool ForceClearSpecialCommon(entity, int client = 0, bool killMob = true) {
 		pos			= FindListPositionByEntity(entity, SpecialCommon[i]);
 		if (pos >= 0) RemoveFromArray(SpecialCommon[i], pos);
 	}
-	if (client == 0 && killMob && IsCommonInfected(entity)) AcceptEntityInput(entity, "BecomeRagdoll");
+	if (client == 0 && killMob && IsCommonInfected(entity)) {
+		if (!CommonInfectedModel(entity, FALLEN_SURVIVOR_MODEL)) AcceptEntityInput(entity, "BecomeRagdoll");
+		else {
+			SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
+			SetEntProp(entity, Prop_Data, "m_iHealth", 1);
+		}
+	}
 	return true;
 }
 
@@ -8863,11 +8670,11 @@ stock GetStatusEffects(client, EffectType = 0, char[] theStringToStoreItIn, theS
 			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bl]", theStringToStoreItIn);
 			iNumStatusEffects++;
 		}
-		// if (ISEXPLODE[client] != INVALID_HANDLE || IsClientInRangeSpecialAmmo(client, "x") == -2.0) {
+		if (ISEXPLODE[client] != INVALID_HANDLE || IsClientInRangeSpecialAmmo(client, "x") > 0.0) {
 
-		// 	Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ex]", theStringToStoreItIn);
-		// 	iNumStatusEffects++;
-		// }
+			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ex]", theStringToStoreItIn);
+			iNumStatusEffects++;
+		}
 		if (ISFROZEN[client] != INVALID_HANDLE) {
 
 			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Fr]", theStringToStoreItIn);
@@ -8917,7 +8724,8 @@ stock GetStatusEffects(client, EffectType = 0, char[] theStringToStoreItIn, theS
 		
 		if (bHasWeakness[client] > 0) {
 
-			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Wk]", theStringToStoreItIn);
+			if (bHasWeakness[client] < 3) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Wk]", theStringToStoreItIn);
+			else Format(theStringToStoreItIn, theSizeOfTheString, "%s[Shadow]", theStringToStoreItIn);
 			iNumStatusEffects++;
 		}
 		
@@ -10282,7 +10090,7 @@ stock SurvivorLevels() {
 	return fff;
 }
 
-stock bool IsLegitimateClient(client) {
+bool IsLegitimateClient(client) {
 
 	if (client < 1 || client > MaxClients || !IsClientConnected(client) || !IsClientInGame(client)) return false;
 	return true;
@@ -10494,6 +10302,7 @@ public ForceIncapSurvivor(client, attacker, healthvalue) {
 	ReadyUp_NtvStatistics(attacker, 4, 1);
 
 	SetEntProp(client, Prop_Send, "m_isIncapacitated", 1);
+	SetEntPropFloat(client, Prop_Send, "m_healthBufferTime", GetGameTime());
 	iThreatLevel[client] /= 2;
 	bIsGiveIncapHealth[client] = true;
 	SetMaximumHealth(client);
@@ -11148,6 +10957,23 @@ new entity = CreateEntityByName("prop_dynamic_override");
 	}
 */
 
+void ScenarioEnd(int client, const char[] s = "scenario_end") {
+	int iFlags = GetCommandFlags(s);
+	if (IsFakeClient(client)) {
+        SetCommandFlags(s, iFlags & ~FCVAR_CHEAT);
+        FakeClientCommand(client, "%s", s);
+        SetCommandFlags(s, iFlags);
+    }
+	else {
+        int uFlags = GetUserFlagBits(client);
+        SetUserFlagBits(client, ADMFLAG_ROOT);
+        SetCommandFlags(s, iFlags & ~FCVAR_CHEAT);
+        FakeClientCommand(client, "%s", s);
+        SetCommandFlags(s, iFlags);
+        SetUserFlagBits(client, uFlags);
+    }
+}
+
 void ExecCheatCommand(int client = 0, const char[] command, const char[] parameters = "") {
 	if (StrEqual(parameters, "ammo")) {
 		// we handle refilling ammo differently since we use custom values for reserve amount.
@@ -11159,7 +10985,6 @@ void ExecCheatCommand(int client = 0, const char[] command, const char[] paramet
 	if(client < 1) ServerCommand("%s %s",command,parameters);
 	else FakeClientCommand(client,"%s %s",command,parameters);
 	SetCommandFlags(command, iFlags);
-	//SetCommandFlags(command, iFlags|FCVAR_CHEAT);
 }
 
 stock bool IsClientActual(client) {
@@ -11264,22 +11089,17 @@ stock bool IsIncapacitated(client) {
 	return (GetEntProp(client, Prop_Send, "m_isIncapacitated") == 1) ? true : false;
 }
 
-stock void CreateItemDrop(owner, client) {
+stock void CreateItemDrop(int owner, int client) {
 	float Origin[3];
 	if (IsLegitimateClient(client)) GetClientAbsOrigin(client, Origin);
 	else GetEntPropVector(client, Prop_Send, "m_vecOrigin", Origin);
 
-	decl String:text[64];
+	char text[64];
 	GetClientAuthId(owner, AuthId_Steam2, text, 64);
 	Format(text, sizeof(text), "loot_%s", text);
-
-	new entity = CreateEntityByName("prop_physics_override");
+	int entity = CreateEntityByName("prop_physics_override");
 	DispatchKeyValue(entity, "targetname", text);
-	DispatchKeyValue(entity, "spawnflags", "1");
-	//DispatchKeyValue(entity, "glowstate", "3");
-	//DispatchKeyValue(entity, "glowrange", "512");
-
-	//DispatchKeyValue(entity, "glowcolor", "255 255 255 255");
+	DispatchKeyValue(entity, "spawnflags", "1029");
 	DispatchKeyValue(entity, "solid", "6");
 	DispatchKeyValue(entity, "model", sItemModel);
 	DispatchSpawn(entity);
@@ -11288,13 +11108,14 @@ stock void CreateItemDrop(owner, client) {
 	// SetEntityRenderColor(entity, 255, 255, 255, 255);
 	CreateTimer(fLootBagExpirationTimeInSeconds, Timer_DeleteLootBag, entity, TIMER_FLAG_NO_MAPCHANGE);
 
-	new Float:vel[3];
+	float vel[3];
 	vel[0] = GetRandomFloat(-10000.0, 1000.0);
 	vel[1] = GetRandomFloat(-1000.0, 1000.0);
 	vel[2] = GetRandomFloat(100.0, 1000.0);
 
 	Origin[2] += 32.0;
-	TeleportEntity(entity, Float:Origin, NULL_VECTOR, vel);
+	TeleportEntity(entity, Origin, NULL_VECTOR, vel);
+	//SetEntityMoveType(entity, MOVETYPE_VPHYSICS);
 }
 
 // stock void Autoloot(client) {
@@ -11324,21 +11145,6 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 		if (StrContains(entityClassname, "physics") == -1) return false;	// not a loot object
 		GetEntPropString(entity, Prop_Data, "m_iName", entityClassname, sizeof(entityClassname));
 		if (StrContains(entityClassname, "loot") == -1) return false;		// not specifically loot (we will change this to allow types later, maybe)
-		int invSize = GetArraySize(myAugmentIDCodes[client]);
-		/*
-			The inventory limit update was added AFTER players had already started obtaining augments.
-			To prevent bugs or other unwanted/unforseen effects, I've set this check to >= as it's
-			very likely there will be players OVER the limit.
-
-			You can still sell/equip/disassemble when over the limit.
-
-			The only thing you CAN'T do is obtain more augments.
-		*/
-		if (invSize >= iInventoryLimit){
-			Format(text, sizeof(text), "{O}YOUR INVENTORY IS FULL; %d of %d", invSize, iInventoryLimit);
-			Client_PrintToChat(client, true, text);
-			return false;
-		}
 		// okay, so it's a loot object. Is the player close enough to pick it up?
 		float myPos[3];
 		GetClientAbsOrigin(client, myPos);
@@ -11367,7 +11173,9 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 		if (StrContains(entityClassname, key) == -1) continue;
 		int size = GetArraySize(playerLootOnGround[i]);
 		if (size > 0) {
-			if (GetArraySize(myAugmentIDCodes[i]) < iInventoryLimit) GenerateAndGivePlayerAugment(i, GetArrayCell(playerLootOnGround[i], size-1), true);
+			if (GetArraySize(myAugmentIDCodes[i]) < iInventoryLimit) {
+				GenerateAndGivePlayerAugment(i, GetArrayCell(playerLootOnGround[i], size-1), true);
+			}
 			else {
 				augmentParts[i]++;
 				// Format(text, 64, "{O}Inventory Full; {G}+1 {O}scrap");

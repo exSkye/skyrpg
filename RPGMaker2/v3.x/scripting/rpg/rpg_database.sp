@@ -613,6 +613,8 @@ stock void ClearAndLoad(int client, bool IgnoreLoad = false) {
 	ClearArray(myAugmentActivatorEffects[client]);
 	ClearArray(myAugmentTargetEffects[client]);
 
+	SetPlayerDatabaseArray(client, true);
+
 	char text[64];
 	Format(text, sizeof(text), "none");
 	SetArrayString(hWeaponList[client], 0, text);
@@ -775,7 +777,16 @@ stock void CreateNewPlayerEx(int client) {
 	SetTotalExperienceByLevel(client, PlayerLevel[client]);
 	ChallengeEverything(client);
 	//FormatPlayerName(client);
-
+	pistolXP[client] = 0;
+	meleeXP[client] = 0;
+	uziXP[client] = 0;
+	shotgunXP[client] = 0;
+	sniperXP[client] = 0;
+	assaultXP[client] = 0;
+	medicXP[client] = 0;
+	grenadeXP[client] = 0;
+	augmentParts[client]			= 0;
+	handicapLevel[client]			= -1;
 	bIsNewPlayer[client]			= true;
 	b_IsLoading[client]				= false;
 	bIsTalentTwo[client]			= false;
@@ -1921,13 +1932,15 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 	ResizeArray(MyTalentStrengths[client], ASize);
 	char TalentName[64];
 	for (int i = 0; i < ASize; i++) {
+		// preset all talents to being unclaimed.
+		SetArrayCell(MyTalentStrengths[client], i, 0.0);
+		SetArrayCell(MyTalentStrengths[client], i, 0.0, 1);
+		SetArrayCell(MyTalentStrengths[client], i, 0.0, 2);
+		SetArrayCell(MyTalentStrength[client], i, 0);
+
 		PreloadTalentSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
 		GetArrayString(PreloadTalentSection[client], 0, TalentName, sizeof(TalentName));
 		if (!giveAccessToAllTalents && GetTalentStrength(client, TalentName) < 1) {
-			SetArrayCell(MyTalentStrengths[client], i, 0.0);
-			SetArrayCell(MyTalentStrengths[client], i, 0.0, 1);
-			SetArrayCell(MyTalentStrengths[client], i, 0.0, 2);
-			SetArrayCell(MyTalentStrength[client], i, 0);
 			continue;
 		}
 		PreloadTalentValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);

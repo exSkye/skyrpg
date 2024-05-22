@@ -26,7 +26,7 @@
 	"handicap level locked"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:s},{10:s}"
-		"en"				"{1}(locked): +{2}{3}/+{4}{5}❤, +{6}{7}loot, {10}{9} score (+{8} score req.)"
+		"en"				"{1}(locked): +{2}{3}/+{4}{5}❤, +{6}{7}loot, {10}{9} score"
 	}
 	"savior complex i"
 	{
@@ -2767,12 +2767,12 @@
 	"rating increase"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}+{2}{3} {4}score"
+		"en"				"{1}+{2}{3} {4}damage score"
 	}
 	"rating increase for tanking"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s}"
-		"en"				"{1}+{2}{3} {4}score (tanking)"
+		"en"				"{1}+{2}{3} {4}tanking score"
 	}
 	"living survivors experience bonus"
 	{

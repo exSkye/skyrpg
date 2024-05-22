@@ -13,7 +13,6 @@ public Action Timer_ZeroGravity(Handle timer, any client) {
 }
 
 public Action Timer_ResetCrushImmunity(Handle timer, any client) {
-
 	if (IsLegitimateClient(client)) bIsCrushCooldown[client] = false;
 	return Plugin_Stop;
 }
@@ -882,34 +881,6 @@ stock ResetCDImmunity(client) {
 	}
 }
 
-/*public Action:Timer_CreateCooldown(Handle:timer, Handle:packttt) {
-
-	ResetPack(packttt);
-	new client				=	ReadPackCell(packttt);
-	decl String:TalentName[64];
-	ReadPackString(packttt, TalentName, sizeof(TalentName));
-	new Float:f_Cooldown	= ReadPackFloat(packttt);
-
-	if (IsLegitimateClientAlive(client)) {
-
-		CreateCooldown(client, GetTalentPosition(client, TalentName), f_Cooldown);
-	}
-
-	return Plugin_Stop;
-}*/
-
-/*public Action:Timer_IsIncapacitated(Handle:timer, any:client) {
-	if (IsLegitimateClientAlive(client) && IsIncapacitated(client)) {
-		new attacker = L4D2_GetInfectedAttacker(client);
-		if (attacker == -1) GetAbilityStrengthByTrigger(client, attacker, "n", _, 0);
-		else {
-			GetAbilityStrengthByTrigger(attacker, client, "M");
-			GetAbilityStrengthByTrigger(client, attacker, "N");
-		}
-	}
-	return Plugin_Stop;
-}*/
-
 public Action Timer_Slow(Handle timer, any client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
 	if (!b_IsActiveRound || !IsPlayerAlive(client) || !ISSLOW[client]) {
@@ -986,9 +957,9 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 	CreateRing(client, flRangeMax, StAuraColour, StAuraPos);
 	CreateExplosion(client);
 	int ReflectDebuff = 0;
-	flStrengthTotal += (flStrengthTotal * IsClientInRangeSpecialAmmo(client, "d", false, _, flStrengthTotal));
-	flStrengthTotal += (flStrengthTotal * IsClientInRangeSpecialAmmo(client, "E", false, _, flStrengthTotal));
-	flStrengthTotal = (flStrengthTotal * (1.0 - IsClientInRangeSpecialAmmo(client, "D", false, _, flStrengthTotal)));
+	flStrengthTotal += flStrengthTotal * IsClientInRangeSpecialAmmo(client, "d", _, _, RoundToCeil(flStrengthTotal));
+	flStrengthTotal += flStrengthTotal * IsClientInRangeSpecialAmmo(client, "E", _, _, RoundToCeil(flStrengthTotal));
+	flStrengthTotal = flStrengthTotal * (1.0 - IsClientInRangeSpecialAmmo(client, "D", _, _, RoundToCeil(flStrengthTotal)));
 
 	int DamageValue = RoundToCeil(flStrengthTotal);
 	if (!IsFakeClient(client)) {
@@ -1014,10 +985,10 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 		//if (DamageValue > GetClientHealth(i)) IncapacitateOrKill(i);
 		//else SetEntityHealth(i, GetClientHealth(i) - DamageValue);
 		if (GetClientTeam(i) == TEAM_SURVIVOR && !isTargetClientABot) {
-			ammoStr = IsClientInRangeSpecialAmmo(i, "D", false, _, DamageValue * 1.0);
+			ammoStr = IsClientInRangeSpecialAmmo(i, "D", _, _, DamageValue);
 			if (ammoStr > 0.0) SetClientTotalHealth(client, i, RoundToCeil(DamageValue * (1.0 - ammoStr)));
 			else SetClientTotalHealth(client, i, DamageValue);
-			ammoStr = IsClientInRangeSpecialAmmo(i, "R", false, _, DamageValue * 1.0);
+			ammoStr = IsClientInRangeSpecialAmmo(i, "R", _, _, DamageValue);
 			if (ammoStr > 0.0) {
 
 				ReflectDebuff = RoundToCeil(DamageValue * ammoStr);
@@ -1028,7 +999,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 		else if (GetClientTeam(i) == TEAM_INFECTED) {
 
 			if (IsSpecialCommonInRange(i, 'd')) {
-				ammoStr = IsClientInRangeSpecialAmmo(client, "D", false, _, DamageValue * 1.0)
+				ammoStr = IsClientInRangeSpecialAmmo(client, "D", _, _, DamageValue);
 				if (ammoStr > 0.0) {
 
 					ReflectDebuff = RoundToCeil(DamageValue * (1.0 - ammoStr));
@@ -1111,23 +1082,15 @@ public Action Timer_CheckIfHooked(Handle timer) {
 	if (RoundSeconds % HostNameTime == 0) {
 		PrintToChatAll("%t", "playing in server name", orange, blue, Hostname, orange, blue, MenuCommand, orange);
 	}
-	//if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
+	if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
 	if (ScenarioEndConditionsMet()) {
-		// scenario will not end if there are bots alive because dead players can take control of them.
-		b_IsMissionFailed = true;
-		CallRoundIsOver();
-		// if (StrContains(TheCurrentMap, "helms", false) != -1) {
-		// 	PrintToChatAll("\x04Due to VScripts issue, this map must be restarted to prevent a server crash - Restarting in 1 second.");
-		// 	LogMessage("Restarting %s map to avoid VScripts crash.", TheCurrentMap);
-		// 	// need to force-teleport players here on new spawn: 4087.998291 11974.557617 -269.968750
-		// 	CreateTimer(1.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
-		// }
-		//else ExecCheatCommand(_, "scenario_end");
-		// else {
-		// 	//L4D_RestartScenarioFromVote(TheCurrentMap);
-		// 	//ReadyUp_RoundRestartedByVote();	// new native to let readyup know the round ended in a different way.
-		// }
-		return Plugin_Stop;
+		int c = FindAnyClient();
+		if (c > 0) {
+			b_IsMissionFailed = true;
+			ScenarioEnd(c);
+			CallRoundIsOver();
+			return Plugin_Stop;
+		}
 	}
 	static char text[64];
 	int secondsUntilEnrage = GetSecondsUntilEnrage();
@@ -1141,10 +1104,10 @@ public Action Timer_CheckIfHooked(Handle timer) {
 		if (bHasWeakness[i] > 0) {
 			SetEntityRenderMode(i, RENDER_TRANSCOLOR);
 			SetEntityRenderColor(i, 0, 0, 0, 255);
-			if (bHasWeakness[i] == 1) SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
+			if (bHasWeakness[i] < 3) SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 1);
 			else SetEntProp(i, Prop_Send, "m_bIsOnThirdStrike", 0);
 			if (!IsFakeClient(i) && !bWeaknessAssigned[i]) {
-				EmitSoundToClient(i, "player/heartbeatloop.wav");
+				//EmitSoundToClient(i, "player/heartbeatloop.wav");
 				bWeaknessAssigned[i] = true;
 			}
 		}
@@ -1258,8 +1221,7 @@ public Action Timer_SettingsCheck(Handle timer) {
 		return Plugin_Continue;
 	}
 
-	int handicapBonus = TotalHandicapLevel();
-	int RaidLevelCounter = RaidCommonBoost() + handicapBonus;
+	int RaidLevelCounter = RaidCommonBoost();
 	bool bIsEnrage = false;
 
 	if (!bIsSettingsCheck) return Plugin_Continue;
@@ -1269,7 +1231,7 @@ public Action Timer_SettingsCheck(Handle timer) {
 
 	if (bIsEnrage) RaidLevelCounter = RoundToCeil(fEnrageMultiplier * RaidLevelCounter);
 	int CommonAllowed = AllowedCommons + RaidLevelCounter;
-	if (CommonAllowed <= iCommonsLimitUpper + handicapBonus) SetConVarInt(FindConVar("z_common_limit"), CommonAllowed);
+	if (CommonAllowed <= iCommonsLimitUpper) SetConVarInt(FindConVar("z_common_limit"), CommonAllowed);
 	else SetConVarInt(FindConVar("z_common_limit"), iCommonsLimitUpper);
 	if (iTankRush != 1) SetConVarInt(FindConVar("z_reserved_wanderers"), RaidLevelCounter);
 	else {
@@ -1286,14 +1248,14 @@ public Action Timer_SettingsCheck(Handle timer) {
 	return Plugin_Continue;
 }
 
-int TotalHandicapLevel() {
-	int count = 0;
-	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || IsFakeClient(i) || handicapLevel[i] < 1) continue;
-		count += handicapLevel[i];
-	}
-	return count;
-}
+// int TotalHandicapLevel() {
+// 	int count = 0;
+// 	for (int i = 1; i <= MaxClients; i++) {
+// 		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || IsFakeClient(i) || handicapLevel[i] < 1) continue;
+// 		count += handicapLevel[i];
+// 	}
+// 	return count;
+// }
 
 bool IsSurvivorsHealthy() {
 
@@ -1568,7 +1530,6 @@ public Action Timer_ThreatSystem(Handle timer) {
 
 public Action Timer_DirectorPurchaseTimer(Handle timer) {
 	static Counter										=	-1;
-	static float DirectorHandicap						=	-1.0;
 	static float DirectorDelay							=	0.0;
 	if (!b_IsActiveRound) {
 		Counter											=	-1;
@@ -1613,18 +1574,6 @@ public Action Timer_DirectorPurchaseTimer(Handle timer) {
 			}
 		}
 	}
-	/*if (HumanPlayersInGame() < 1) {
-
-		Counter = -1;
-		CallRoundIsOver();
-		return Plugin_Stop;
-	}*/
-	if (DirectorHandicap == -1.0) {
-		DirectorHandicap = fDirectorThoughtHandicap;
-		DirectorDelay	 = fDirectorThoughtDelay - (LivingSerfs * DirectorHandicap);
-		if (DirectorDelay < fDirectorThoughtProcessMinimum) DirectorDelay = fDirectorThoughtProcessMinimum;
-	}
-
 	if (Counter == -1 || b_IsSurvivalIntermission || LivingSerfs < 1) {
 
 		Counter = RoundToCeil(currentTime + DirectorDelay);
@@ -1637,7 +1586,7 @@ public Action Timer_DirectorPurchaseTimer(Handle timer) {
 	}
 	//PrintToChatAll("%t", "Director Think Process", orange, white);
 
-	DirectorDelay	 = fDirectorThoughtDelay - (LivingSerfs * DirectorHandicap);
+	DirectorDelay	 = (fDirectorThoughtHandicap > 0.0) ? fDirectorThoughtDelay - (LivingSerfs * fDirectorThoughtHandicap) : fDirectorThoughtDelay;
 	if (DirectorDelay < fDirectorThoughtProcessMinimum) DirectorDelay = fDirectorThoughtProcessMinimum;
 	Counter = RoundToCeil(currentTime + DirectorDelay);
 

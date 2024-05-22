@@ -144,14 +144,8 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 	if (StrEqual(event_name, "player_left_start_area") && IsLegitimateClientAttacker) {
 		if (attackerTeam == TEAM_SURVIVOR) {
 			//if (IsFakeClientAttacker && attackerTeam == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
-			if (b_IsInSaferoom[attacker] && RoundExperienceMultiplier[attacker] > 0.0) {
+			if (b_IsInSaferoom[attacker]) {
 				b_IsInSaferoom[attacker] = false;
-				//PrintToChat(attacker, "%T", "bonus container locked", attacker, orange, blue);
-				char saferoomName[64];
-				GetClientName(attacker, saferoomName, sizeof(saferoomName));
-				char pct[4];
-				Format(pct, sizeof(pct), "%");
-				PrintToChatAll("%t", "round bonus multiplier", blue, saferoomName, white, orange, (1.0 + RoundExperienceMultiplier[attacker]) * 100.0, orange, pct, white);
 			}
 		}
 	}
@@ -672,7 +666,8 @@ stock bool GetActiveSpecialAmmoType(client, effect) {
 	If ammoposition is >= 0 AND GetStatus is enabled, it will return only for the ammo in question.
 */
 
-stock float IsClientInRangeSpecialAmmo(client, char[] EffectT, bool GetStatusOnly=true, AmmoPosition=-1, float baseeffectvalue=0.0, realowner=0) {
+stock float IsClientInRangeSpecialAmmo(client, char[] EffectT, AmmoPosition = -1, int realowner = 0, int experienceCalculator = 0) {
+	if (client < 1) return 0.0;
 	if (GetArraySize(SpecialAmmoData) < 1) return 0.0;
 	float EntityPos[3];
 	char TalentInfo[4][512];
@@ -692,7 +687,7 @@ stock float IsClientInRangeSpecialAmmo(client, char[] EffectT, bool GetStatusOnl
 	float ClientPos[3];
 	bool clientIsLegitimate = IsLegitimateClient(client);
 	//decl String:EffectT[4];
-	if (!clientIsLegitimate || !IsPlayerAlive(client)) return EffectStrength;
+	if (clientIsLegitimate && !IsPlayerAlive(client)) return EffectStrength;
 	if (clientIsLegitimate) GetClientAbsOrigin(client, ClientPos);
 	else {
 		GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
@@ -714,9 +709,9 @@ stock float IsClientInRangeSpecialAmmo(client, char[] EffectT, bool GetStatusOnl
 	//if (fAmmoRangeTalentBonus < 1.0) fAmmoRangeTalentBonus = 1.0;
 
 	//Format(EffectT, sizeof(EffectT), "%c", effect);
-	for (int i = AmmoPosition; i < GetArraySize(SpecialAmmoData); i++) {
-		if (i < 0) i = 0;
-		if (AmmoPosition != -1 && i != AmmoPosition) continue;
+	for (int i = (AmmoPosition >= 0) ? AmmoPosition : 0; i < GetArraySize(SpecialAmmoData); i++) {
+		//if (i < 0) i = 0;
+		if (AmmoPosition >= 0 && i != AmmoPosition) continue;
 		// TalentInfo[0] = TalentName of ammo.
 		// TalentInfo[1] = Talent Strength (so use StringToInt)
 		// TalentInfo[2] = Talent Damage
@@ -736,9 +731,6 @@ stock float IsClientInRangeSpecialAmmo(client, char[] EffectT, bool GetStatusOnl
 		EntityPos[1] = GetArrayCell(SpecialAmmoData, i, 1);
 		EntityPos[2] = GetArrayCell(SpecialAmmoData, i, 2);
 		if (GetVectorDistance(ClientPos, EntityPos) > (t_Range / 2)) continue;
-		// if (GetStatusOnly) {
-		// 	return -2.0;		// -2.0 is a special designation.
-		// }
 
 		if (realowner == 0 || realowner == owner) {
 
@@ -747,6 +739,14 @@ stock float IsClientInRangeSpecialAmmo(client, char[] EffectT, bool GetStatusOnl
 
 			if (EffectStrength == 0.0) EffectStrength = EffectStrengthValue;
 			else EffectStrengthBonus += EffectMultiplierValue;
+			if (experienceCalculator > 0) {
+				// the owner of this ammo that is buffing a player that has benefitted from it and is not just idling inside its field deserves to be rewarded
+				// so we're going to give them buffing experience.
+				int buffingExperienceToAwardTheOwner = RoundToCeil(experienceCalculator * EffectStrengthValue);
+				if (EffectStrengthBonus > 0.0) buffingExperienceToAwardTheOwner += RoundToCeil(experienceCalculator * EffectMultiplierValue);
+				if (!clientIsLegitimate || GetClientTeam(client) != GetClientTeam(owner)) AwardExperience(owner, HEXING_CONTRIBUTION, buffingExperienceToAwardTheOwner);
+				else AwardExperience(owner, BUFFING_CONTRIBUTION, buffingExperienceToAwardTheOwner);
+			}
 		}
 		if (AmmoPosition != -1) break;
 	}
@@ -823,12 +823,6 @@ stock bool UseAbility(client, target = -1, char[] TalentName, Handle Keys, Handl
 	int MyStamina = GetPlayerStamina(client);
 	int MyBonus = 0;
 	//new MyMaxHealth = GetMaximumHealth(client);
-	if (iSkyLevelMax > 0) {
-		int iSkyLevelRequirement = GetArrayCell(Values, ABILITY_SKY_LEVEL_REQ);
-		if (iSkyLevelRequirement < 0) iSkyLevelRequirement = 0;
-
-		if (SkyLevel[client] < iSkyLevelRequirement) return false;
-	}
 	GetArrayString(Values, ABILITY_TOGGLE_EFFECT, Effects, sizeof(Effects));
 	if (!StrEqual(Effects, "-1")) {
 		if (StrEqual(Effects, "stagger", true)) {
@@ -1034,7 +1028,7 @@ stock bool CastSpell(client, target = -1, char[] TalentName, float TargetPos[3],
 
 	for (int i = 1; i <= MaxClients; i++) {
 
-		if (IsLegitimateClient(i) && !IsFakeClient(i)) DrawSpecialAmmoTarget(i, _, _, ClientMenuPosition, TargetPos[0], TargetPos[1], TargetPos[2], f_Interval, client, TalentName, target);
+		if (IsLegitimateClient(i) && !IsFakeClient(i)) DrawSpecialAmmoTarget(i, ClientMenuPosition, TargetPos[0], TargetPos[1], TargetPos[2], f_Interval, client, TalentName, target);
 	}
 
 	int bulletStrength = GetBaseWeaponDamage(client, target, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET);
@@ -1133,43 +1127,18 @@ stock BeanBagAmmo(client, float force, TalentClient) {
 */
 
 // no one sees my special ammo because it should be drawing it based on MY size not theirs but it's drawing it based on theirs and if they have zero points in the talent then they can't see it.
-stock DrawSpecialAmmoTarget(TargetClient, bool IsDebugMode=false, bool IsValidTarget=false, CurrentPosEx=-1,
+stock DrawSpecialAmmoTarget(TargetClient, CurrentPos =- 1,
 							float PosX=0.0, float PosY=0.0, float PosZ=0.0,
 							float f_ActiveTime=0.0, owner=0, char[] TalentName ="none", Target = -1) {		// If we aren't actually drawing..? Stoned idea lost in thought but expanded somewhat not on the original path
 	int client = TargetClient;
 	if (owner != 0) client = owner;
 	if (iRPGMode <= 0) return -1;
-	int CurrentPos	= GetMenuPosition(client, TalentName);
-	bool i_IsDebugMode = false;
+	//int CurrentPos	= GetMenuPosition(client, TalentName);
 	DrawSpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, CurrentPos, 1);
-	if (CurrentPosEx == -1) {
-		bool IsTargetCommonInfected = IsCommonInfected(Target);
-		bool IsLegitimateClientTarget = IsLegitimateClientAlive(Target);
-		int targetTeam = -1;
-		if (IsLegitimateClientTarget) targetTeam = GetClientTeam(Target);
-		if (GetArrayCell(DrawSpecialAmmoValues[client], SPELL_HUMANOID_ONLY) == 1) {
-			//Humanoid Only could apply to a wide-range so we break it down here.
-			if (!IsTargetCommonInfected && !IsLegitimateClientTarget) i_IsDebugMode = true;
-		}
-		if (GetArrayCell(DrawSpecialAmmoValues[client], SPELL_INANIMATE_ONLY) == 1) {
-			//This is things like vehicles, dumpsters, and other objects that can one-shot your teammates.
-			if (IsTargetCommonInfected || IsLegitimateClientTarget) i_IsDebugMode = true;
-		}
-		if (GetArrayCell(DrawSpecialAmmoValues[client], SPELL_ALLOW_COMMONS) == 0 && IsTargetCommonInfected ||
-		GetArrayCell(DrawSpecialAmmoValues[client], SPELL_ALLOW_SPECIALS) == 0 && IsLegitimateClientTarget && targetTeam == TEAM_INFECTED ||
-		GetArrayCell(DrawSpecialAmmoValues[client], SPELL_ALLOW_SURVIVORS) == 0 && IsLegitimateClientTarget && targetTeam == TEAM_SURVIVOR) {
-			i_IsDebugMode = true;
-		}
-		if (i_IsDebugMode && !IsDebugMode) return 0;		// ie if an invalid target is highlighted and debug mode is disabled we don't draw and we don't tell the player anything.
-		if (IsValidTarget) {
-			if (i_IsDebugMode) return 0;
-			else return 1;
-		}
-	}
+
 	float AfxRange			= GetSpecialAmmoStrength(client, TalentName, 3);
 	float AfxRangeBonus = GetAbilityStrengthByTrigger(client, TargetClient, "aamRNG", _, 0, _, _, "d", 1, true);
 	if (AfxRangeBonus > 0.0) AfxRangeBonus *= (1.0 + AfxRangeBonus);
-	float HighlightTime = fAmmoHighlightTime;
 	char AfxDrawPos[64];
 	char AfxDrawColour[64];
 	int drawpos = TALENT_FIRST_RANDOM_KEY_POSITION;
@@ -1180,14 +1149,7 @@ stock DrawSpecialAmmoTarget(TargetClient, bool IsDebugMode=false, bool IsValidTa
 		drawcolor = FormatKeyValue(AfxDrawColour, sizeof(AfxDrawColour), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw colour?", _, _, drawcolor, false);
 		if (drawpos < 0 || drawcolor < 0) return -1;
 		//if (StrEqual(AfxDrawColour, "-1", false)) return -1;		// if there's no colour, we return otherwise you'll get errors like this: TE_Send Exception reported: No TempEntity call is in progress (return 0 here would cause endless loop set to -1 as it is ignored i broke the golden rule lul)
-		if (CurrentPosEx != -1) {
-			CreateRingSoloEx(-1, AfxRange, AfxDrawColour, AfxDrawPos, false, f_ActiveTime, TargetClient, PosX, PosY, PosZ);
-		}
-		else {
-
-			CreateRingSoloEx(Target, AfxRange, AfxDrawColour, AfxDrawPos, false, HighlightTime, TargetClient);
-			IsSpecialAmmoEnabled[client][3] = Target * 1.0;
-		}
+		CreateRingSoloEx(-1, AfxRange, AfxDrawColour, AfxDrawPos, false, f_ActiveTime, TargetClient, PosX, PosY, PosZ);
 		drawpos++;
 		drawcolor++;
 	}
@@ -2192,6 +2154,8 @@ stock GetRatingRewardForTanking(survivor, infected) {
 		else RatingMultiplier = fRatingMultTank;
 	}
 	damageReceived = RoundToCeil(damageReceived * fRatingMultTanking);
+	int damageReceivedRequired = RoundToCeil(GetMaximumHealth(survivor) * fTankingContribution);
+	if (damageReceived < damageReceivedRequired) return 0;
 	int maxScore = RoundToFloor(100.0 * RatingMultiplier);
 	if (damageReceived > maxScore) damageReceived = maxScore;
 	return damageReceived;
@@ -2283,6 +2247,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 		}
 	}
 	char ratingBonusText[64];
+	char ratingBonusTankText[64];
 	bool survivorsRequiredForBonusRating = (iLivingSurvivors > iTeamRatingRequired) ? true : false;
 	bool bSomeoneHurtThisInfected = false;
 	
@@ -2312,8 +2277,13 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 			else if (ClientType == 1) SurvivorDamage = GetArrayCell(WitchDamage[i], pos, 2);
 			else if (ClientType == 2) SurvivorDamage = GetArrayCell(SpecialCommon[i], pos, 2);
 			else if (ClientType == 3) SurvivorDamage = GetArrayCell(CommonInfected[i], pos, 2);
+			// to prevent abuse farming of higher handicap levels, players must contribute a certain percentage in at least one category.
 			float scoreMult = GetScoreMultiplier(i);
-			RatingBonus = RoundToCeil(GetRatingRewardForDamage(i, client) * scoreMult);
+			if (CheckTeammateDamages(client, i, true) < fDamageContribution) {
+				RatingBonus = 0;
+				SurvivorDamage = 0;
+			}
+			else RatingBonus = RoundToCeil(GetRatingRewardForDamage(i, client) * scoreMult);
 			RatingBonusTank = RoundToCeil(GetRatingRewardForTanking(i, client) * scoreMult);
 			if (RatingBonus < 1 && RatingBonusTank < 1) continue;
 			if (iAntiFarmMax > 0 && CheckKillPositions(i)) continue;
@@ -2323,32 +2293,45 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 			RollLoot(i, client);
 			if (!bSomeoneHurtThisInfected) bSomeoneHurtThisInfected = true;
 			CheckMinimumRate(i);
-			if (!IsFakeClient(i) && ClientType >= 0 && ClientType < 3 && PlayerLevel[i] >= iLevelRequiredToEarnScore) {
+			if (ClientType >= 0 && ClientType < 3 && (PlayerLevel[i] >= iLevelRequiredToEarnScore || handicapLevel[i] > 0)) {
 				if (!survivorsRequiredForBonusRating) {
 					if (RatingBonus > 0) {
-						AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
-						PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
+						if (ClientType < 2) {
+							AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
+							Format(ratingBonusText, sizeof(ratingBonusText), "%T", "rating increase", i, white, blue, ratingBonusText, orange);
+						}
 						Rating[i] += RatingBonus;
 					}
 					if (RatingBonusTank > 0) {
-						AddCommasToString(RatingBonusTank, ratingBonusText, sizeof(ratingBonusText));
-						PrintToChat(i, "%T", "rating increase for tanking", i, white, blue, ratingBonusText, orange);
+						if (ClientType < 2) {
+							AddCommasToString(RatingBonusTank, ratingBonusTankText, sizeof(ratingBonusTankText));
+							Format(ratingBonusTankText, sizeof(ratingBonusTankText), "%T", "rating increase for tanking", i, white, blue, ratingBonusTankText, orange);
+						}
 						Rating[i] += RatingBonusTank;
 					}
 				}
 				else {
 					if (RatingBonus > 0) {
 						RatingTeamBonus = RoundToCeil(RatingBonus * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-						AddCommasToString(RatingBonus+RatingTeamBonus, ratingBonusText, sizeof(ratingBonusText));
-						PrintToChat(i, "%T", "rating increase", i, white, blue, ratingBonusText, orange);
+						if (ClientType < 2) {
+							AddCommasToString(RatingBonus+RatingTeamBonus, ratingBonusText, sizeof(ratingBonusText));
+							Format(ratingBonusText, sizeof(ratingBonusText), "%T", "rating increase", i, white, blue, ratingBonusText, orange);
+						}
 						Rating[i] += RatingBonus;
 					}
 					if (RatingBonusTank > 0) {
 						RatingTeamBonusTank = RoundToCeil(RatingBonusTank * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-						AddCommasToString(RatingBonusTank+RatingTeamBonusTank, ratingBonusText, sizeof(ratingBonusText));
-						PrintToChat(i, "%T", "rating increase for tanking", i, white, blue, ratingBonusText, orange);
+						if (ClientType < 2) {
+							AddCommasToString(RatingBonusTank+RatingTeamBonusTank, ratingBonusTankText, sizeof(ratingBonusTankText));
+							Format(ratingBonusTankText, sizeof(ratingBonusTankText), "%T", "rating increase for tanking", i, white, blue, ratingBonusTankText, orange);
+						}
 						Rating[i] += RatingBonusTank;
 					}
+				}
+				if (!IsFakeClient(i) && ClientType < 2) {
+					if (RatingBonus > 0 && RatingBonusTank > 0) Format(ratingBonusText, sizeof(ratingBonusText), "%s, %s", ratingBonusText, ratingBonusTankText);
+					else if (RatingBonusTank > 0) Format(ratingBonusText, sizeof(ratingBonusText), "%s", ratingBonusTankText);
+					PrintToChat(i, "%s", ratingBonusText);
 				}
 			}
 			bIsSettingsCheck = true;		// whenever rating is earned for anything other than common infected kills, we want to check the settings to see if a boost to commons is necessary.
@@ -2367,7 +2350,7 @@ stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
 				SurvivorExperience = RoundToFloor(SurvivorDamage * ExperienceMultiplier);
 				SurvivorPoints = SurvivorDamage * PointsMultiplier;
 			}
-			if (ClientType != 3) {
+			if (ClientType != 3 && RatingBonusTank > 0) {
 				t_Contribution = CheckTankingDamage(client, i);
 				if (t_Contribution > 0) {
 					t_Contribution = RoundToCeil(t_Contribution * TankingMultiplier);
@@ -2589,12 +2572,6 @@ stock GetBulletOrMeleeHealAmount(healer, target, damage, damagetype, int hitgrou
 	if (damagetype & DMG_BULLET || damagetype & DMG_SLASH || damagetype & DMG_CLUB) {
 		//GetBaseWeaponDamage(client, target, TargetPos[0], TargetPos[1], TargetPos[2], DMG_BULLET, _, true, hitgroup, isHealing);
 		int iHealerAmount = GetBaseWeaponDamage(healer, target, _, _, _, damagetype, _, _, hitgroup, true);
-		if (IsLegitimateClientAlive(target)) {
-			float TheAbilityMultiplier = GetAbilityMultiplier(target, "expo");
-			if (TheAbilityMultiplier > 0.0) iHealerAmount += RoundToCeil(iHealerAmount * TheAbilityMultiplier);
-			float healingBonus = GetTalentModifier(healer, MODIFIER_HEALING);
-			if (healingBonus > 0.0) iHealerAmount += RoundToCeil(iHealerAmount * healingBonus);
-		}
 		return iHealerAmount;
 	}
 	return 0;

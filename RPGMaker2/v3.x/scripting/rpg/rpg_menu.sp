@@ -2395,82 +2395,46 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 		}
 	}
 	if (request != 7 && request % 2 == 0) {
-		// show the damage increase/decrease if the player has associated talents doing so.
-		float TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		float TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		TheAbilityMultiplier += TheAbilityMultiplierAlt;
-		if (TheAbilityMultiplier > fMaxDamageResistance) TheAbilityMultiplier = fMaxDamageResistance;
-		iResult -= RoundToCeil(iResult * TheAbilityMultiplier);
-
-		TheAbilityMultiplier = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		TheAbilityMultiplierAlt = GetAbilityStrengthByTrigger(client, client, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
-		TheAbilityMultiplier += TheAbilityMultiplierAlt;
-		iResult += RoundToCeil(iResult * TheAbilityMultiplier);
-
-		int totalIncomingTemp = 0;
-		float ammoStr = IsClientInRangeSpecialAmmo(client, "E", false, _, iResult * 1.0);
-		if (ammoStr > 0.0) totalIncomingTemp = RoundToCeil(iResult * ammoStr);
-		if (totalIncomingTemp > 0) iResult += totalIncomingTemp;
+		float damageReductionPenaltyMultiplier = 0.0;	// the lesstanky, lessdamage, lessheals, etc. talents are proficiencies so they ignore cooldowns and always get calculated
+		damageReductionPenaltyMultiplier += GetAbilityStrengthByTrigger(client, client, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		damageReductionPenaltyMultiplier += GetAbilityStrengthByTrigger(client, client, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+														// "exposed" debuff, currently present on the knife ability.
+		damageReductionPenaltyMultiplier += GetAbilityMultiplier(client, "expo");
+		// Special ammo "E" is the berserk ammo.
+		float ammoStr = IsClientInRangeSpecialAmmo(client, "E");
+		if (ammoStr > 0.0) {
+			damageReductionPenaltyMultiplier += ammoStr;
+		}
 		if (IsLegitimateClient(attacker)) {
-			ammoStr = IsClientInRangeSpecialAmmo(attacker, "E", false, _, iResult * 1.0);
-			if (ammoStr > 0.0) totalIncomingTemp = RoundToCeil(iResult * ammoStr);
-			if (totalIncomingTemp > 0) iResult += totalIncomingTemp;
-		}
-		if (attacker > 0) {
-			int damageReduction = RoundToCeil(GetAbilityStrengthByTrigger(client, attacker, "L", _, iResult, _, _, "o", 2, true));
-			if (damageReduction > 0) {
-				int maxDamageReduction = RoundToFloor(iResult * fMaxDamageResistance);
-				if (damageReduction > maxDamageReduction) damageReduction = maxDamageReduction;
-				GetAbilityStrengthByTrigger(client, attacker, "L", _, iResult);
-				iResult -= damageReduction; // true means we just get the result and don't execute the ability.
+			ammoStr = IsClientInRangeSpecialAmmo(attacker, "E");
+			if (ammoStr > 0.0) {
+				damageReductionPenaltyMultiplier += ammoStr;
 			}
 		}
-		int DamageShield = 0;
-		ammoStr = IsClientInRangeSpecialAmmo(client, "D", false, _, iResult * 1.0);
-		if (ammoStr > 0.0) DamageShield = RoundToCeil(iResult * ammoStr);
-		if (DamageShield > 0) {
-			iResult -= DamageShield;
-			if (iResult < 0) return 0;
+		int damageTakenToAdd = (damageReductionPenaltyMultiplier > 0.0) ? RoundToFloor(iResult * damageReductionPenaltyMultiplier) : 0;
+
+		float damageReductionMultiplier = 0.0;
+		damageReductionMultiplier += GetAbilityStrengthByTrigger(client, client, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		damageReductionMultiplier += GetAbilityStrengthByTrigger(client, client, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
+		damageReductionMultiplier += GetAbilityStrengthByTrigger(client, attacker, "L", _, 0, _, _, "o", 2, true);
+		// Special ammo "D" is the shield ammo.
+		ammoStr = IsClientInRangeSpecialAmmo(client, "D");
+		if (ammoStr > 0.0) {
+			damageReductionMultiplier += ammoStr;
 		}
-		float AltAbilityMultiplier = GetAbilityMultiplier(client, "expo");
-		TheAbilityMultiplier = GetAbilityMultiplier(client, "X");
-		if (TheAbilityMultiplier > 0.0 && AltAbilityMultiplier > 0.0) TheAbilityMultiplier -= AltAbilityMultiplier;
-		else if (AltAbilityMultiplier > 0.0) TheAbilityMultiplier = 0.0 - AltAbilityMultiplier;
-		if (TheAbilityMultiplier > fMaxDamageResistance) TheAbilityMultiplier = fMaxDamageResistance;
-		if (TheAbilityMultiplier > 0.0) {	// Damage received is reduced by the amount.
-			iResult -= RoundToFloor(iResult * TheAbilityMultiplier);
+		// Ability multiplier "X" is currently for last chance and basilisk armor, or any other damage reduction abilities.
+		damageReductionMultiplier += GetAbilityMultiplier(client, "X");
+		if (damageReductionMultiplier > fMaxDamageResistance) {
+			// prevent damage taken from being reduced to 0 (if desired) but by default the limit is 90%
+			damageReductionMultiplier = fMaxDamageResistance;
 		}
-		else if (AltAbilityMultiplier > 0.0 && TheAbilityMultiplier != 0.0) {	// AbilityMultiplier will always be negative here.
-			iResult += RoundToFloor(iResult * (TheAbilityMultiplier * -1.0));
-		}
+		int damageTakenToRemove = (damageReductionMultiplier > 0.0) ? RoundToFloor(iResult * damageReductionMultiplier) : 0;
+		iResult += damageTakenToAdd;
+		iResult -= damageTakenToRemove;
 		iResult = RoundToCeil(CheckActiveAbility(client, iResult, 1));
+		if (iResult < 1) iResult = 1;
 	}
-	//result 7 returns damage shield values. result 8(which is even so no check required) returns damage reduction ability strength.
-	/*if (zombieclass != 0 && (request % 2 == 0 || request == 7)) {
-		new DamageShield = 0;
-		new Float:DamageShieldMult = (IsClientInRangeSpecialAmmo(client, "D") == -2.0) ? IsClientInRangeSpecialAmmo(client, "D", false, _, iResult * 1.0) : 0.0;
-
-		if (DamageShieldMult > 0.0) DamageShield = RoundToCeil(iResult * DamageShieldMult);
-		if (request == 7) {	// Damage Shield percentage reduction in the string and the raw value reduced in the return value.
-			if (DamageShield > 0) Format(stringRef, theSize, "%3.3f", DamageShieldMult * 100.0);
-			return DamageShield;
-		}
-		iResult -= DamageShield;
-		if (request == 8) {
-			if (AbilityMultiplier > 0.0) {
-				Format(stringRef, theSize, "%3.3f", AbilityMultiplier * 100.0);
-				return RoundToCeil(iResult * AbilityMultiplier);
-			}
-			return 0;
-		}
-		iResult -= RoundToCeil(iResult * AbilityMultiplier);
-	}*/
-
-
-	//if (request % 2 == 0) Format(stringRef, theSize, "%3.3f", fResult);
-	//else Format(stringRef, theSize, "%d", iResult);
 	AddCommasToString(iResult, stringRef, theSize);
-	//Format(stringRef, theSize, "%s", AddCommasToString(iResult));
 	return iResult;
 }
 
@@ -3083,6 +3047,7 @@ stock ShowTalentInfoScreen(client, char[] TalentName, Handle Keys, Handle Values
 }
 
 stock float GetTalentModifier(int client, int modifierType = MODIFIER_HEALING) {
+	float talentModifier = 1.0;
 	if (modifierType == MODIFIER_HEALING) {
 		float healingBonus = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		healingBonus += GetAbilityStrengthByTrigger(client, _, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
@@ -3090,9 +3055,8 @@ stock float GetTalentModifier(int client, int modifierType = MODIFIER_HEALING) {
 		float healingPenalty = GetAbilityStrengthByTrigger(client, _, "lessHealsMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		healingPenalty += GetAbilityStrengthByTrigger(client, _, "lessHealsMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 
-		if (healingBonus - healingPenalty < -0.9) healingBonus = -0.9;
-		else healingBonus -= healingPenalty;
-		return healingBonus;
+		talentModifier += healingBonus;
+		talentModifier -= healingPenalty;
 	}
 	else if (modifierType == MODIFIER_TANKING) {
 		float tankyBonus = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
@@ -3101,9 +3065,8 @@ stock float GetTalentModifier(int client, int modifierType = MODIFIER_HEALING) {
 		float tankyPenalty = GetAbilityStrengthByTrigger(client, _, "lessTankyMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		tankyPenalty += GetAbilityStrengthByTrigger(client, _, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 
-		if (tankyBonus - tankyPenalty > 0.9) tankyBonus = 0.9;
-		else tankyBonus -= tankyPenalty;
-		return tankyBonus;
+		talentModifier += tankyBonus;
+		talentModifier -= tankyPenalty;
 	}
 	else if (modifierType == MODIFIER_DAMAGE) {	// MODIFIER_DAMAGE
 		float damageBonus = GetAbilityStrengthByTrigger(client, _, "lessTankyMoreDamage", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
@@ -3112,11 +3075,11 @@ stock float GetTalentModifier(int client, int modifierType = MODIFIER_HEALING) {
 		float damagePenalty = GetAbilityStrengthByTrigger(client, _, "lessDamageMoreHeals", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 		damagePenalty += GetAbilityStrengthByTrigger(client, _, "lessDamageMoreTanky", _, 0, _, _, "ignore", 2, true, _, _, _, _, 1);
 
-		if (damageBonus - damagePenalty < -0.9) damageBonus = -0.9;
-		else damageBonus -= damagePenalty;
-		return damageBonus;
+		talentModifier += damageBonus;
+		talentModifier -= damagePenalty;
 	}
-	return 0.0;
+	if (talentModifier < 0.1) return 0.1;
+	return talentModifier;
 }
 
 stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = false, char[] pTalentNameOverride = "none", target = 0, iStrengthOverride = 0, bool skipGettingValues = false) {
