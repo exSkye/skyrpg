@@ -232,14 +232,35 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_loot` ADD `tarrating` int(4) NOT NULL DEFAULT '-1';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
+
+		Format(tquery, sizeof(tquery), "CREATE TABLE IF NOT EXISTS `%s_profiles` (`steam_id` varchar(128) NOT NULL, PRIMARY KEY (`steam_id`)) ENGINE=InnoDB;", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` CHARACTER SET utf8 COLLATE utf8_general_ci;", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
 		
 		int counter = iActionBarSlots;
 		for (int i = 0; i < counter; i++) {
 			Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `aslot%d` VARCHAR(32) NOT NULL DEFAULT 'None';", TheDBPrefix, i+1);
 			SQL_TQuery(hDatabase, QueryResults, tquery);
+			Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` ADD `aslot%d` VARCHAR(32) NOT NULL DEFAULT 'None';", TheDBPrefix, i+1);
+			SQL_TQuery(hDatabase, QueryResults, tquery);
 		}
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `disab` INT(4) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` ADD `disab` INT(4) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+
+		
+		
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` ADD `primarywep` varchar(32) NOT NULL DEFAULT 'none';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` ADD `secondwep` varchar(32) NOT NULL DEFAULT 'none';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` ADD `talent points` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` ADD `total upgrades` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` ADD `free upgrades` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
 
 		/*new size			=	GetArraySize(a_Database_Talents);
 
@@ -271,7 +292,8 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		if (GenerateDB == 1) {
 
 			Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
-			//else Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s` int(32) NOT NULL DEFAULT '-1';", TheDBPrefix, text);
+			SQL_TQuery(hDatabase, QueryResults, tquery);
+			Format(tquery, sizeof(tquery), "ALTER TABLE `%s_profiles` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
 			SQL_TQuery(hDatabase, QueryResults, tquery);
 		}
 
@@ -653,7 +675,7 @@ public void Query_CheckIfProfileLimit(Handle owner, Handle hndl, const char[] er
 	GetConfigValue(thetext, sizeof(thetext), "donator package flag?");
 	if (IsGroupMember[client] || HasCommandAccess(client, thetext)) ProfileCountLimit = RoundToCeil(ProfileCountLimit * 2.0);
 	char tquery[1024];
-	char key[128];
+	char key[512];
 
 	while (SQL_FetchRow(hndl)) {
 
@@ -663,7 +685,7 @@ public void Query_CheckIfProfileLimit(Handle owner, Handle hndl, const char[] er
 			if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 			Format(key, sizeof(key), "%s%s+%s", key, PROFILE_VERSION, LoadoutName[client]);
 
-			Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
+			Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s_profiles` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 			SQL_TQuery(hDatabase, Query_CheckIfProfileExists, tquery, client);
 		}
 		else PrintToChat(client, "%T", "profile editor limit reached", client, orange);
@@ -806,7 +828,6 @@ stock void CreateNewPlayerEx(int client) {
 	FreeUpgrades[client]			=	0;
 	if (!IsFakeClient(client)) DefaultHealth[client]			=	iSurvivorBaseHealth;
 	else DefaultHealth[client]			= iSurvivorBotBaseHealth;
-	//PrintToChatAll("Setting %N to %d", client, PlayerLevel[client]);
 	GiveMaximumHealth(client);
 	Format(ActiveSpecialAmmo[client], sizeof(ActiveSpecialAmmo[]), "none");
 
@@ -877,23 +898,9 @@ public void Query_CheckIfDataExists(Handle owner, Handle hndl, const char[] erro
 		LogMessage("Query_ChecKIfDataExists Error: %s", error);
 		return;
 	}
-	char key[512];
-	char TheName[64];
 	int count	= 0;
 	if (!IsLegitimateClient(client)) return;
-	if (IsFakeClient(client)) {
-
-		GetSurvivorBotName(client, TheName, sizeof(TheName));
-		Format(key, sizeof(key), "%s%s", sBotTeam, TheName);
-	}
-	else {
-
-		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
-		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
-	}
 	while (SQL_FetchRow(hndl)) {
-
-		//SQL_FetchString(hndl, 0, key, sizeof(key));
 		count	= SQL_FetchInt(hndl, 0);
 	}
 	if (count < 1) {
@@ -1407,17 +1414,16 @@ public ReadProfiles_Generate(Handle owner, Handle hndl, const char[] error, any 
 
 	if (hndl != INVALID_HANDLE) {
 
-		char text[128];
+		char text[512];
 		char result[2][128];
 		char VersionNumber[64];
-		Format(VersionNumber, sizeof(VersionNumber), "SavedProfile%s", PROFILE_VERSION);
+		Format(VersionNumber, sizeof(VersionNumber), "%s", PROFILE_VERSION);
 
 		while (SQL_FetchRow(hndl)) {
 
 			SQL_FetchString(hndl, 0, text, sizeof(text));
 			ExplodeString(text, "+", result, 2, 128);
-			if (strlen(result[1]) >= 8 && StrContains(text, VersionNumber, true) != -1) {
-
+			if (strlen(result[1]) >= 3 && StrContains(text, VersionNumber, true) != -1) {
 				PushArrayString(PlayerProfiles[client], text);
 			}
 			if (SQL_MoreRows(hndl)) SQL_FetchMoreResults(hndl);
@@ -1430,16 +1436,16 @@ public ReadProfiles_GenerateAll(Handle owner, Handle hndl, const char[] error, a
 
 	if (hndl != INVALID_HANDLE) {
 
-		char text[128];
+		char text[512];
 		char result[2][128];
 		char VersionNumber[64];
-		Format(VersionNumber, sizeof(VersionNumber), "SavedProfile%s", PROFILE_VERSION);
+		Format(VersionNumber, sizeof(VersionNumber), "%s", PROFILE_VERSION);
 
 		while (SQL_FetchRow(hndl)) {
 
 			SQL_FetchString(hndl, 0, text, sizeof(text));
 			ExplodeString(text, "+", result, 2, 128);
-			if (StrContains(text, "default", false) == -1 && strlen(result[1]) >= 8 && StrContains(text, VersionNumber, true) != -1) {
+			if (StrContains(text, "default", false) == -1 && strlen(result[1]) >= 3 && StrContains(text, VersionNumber, true) != -1) {
 
 				PushArrayString(PlayerProfiles[client], text);
 			}
@@ -1746,7 +1752,7 @@ stock void LoadTalentTrees(client, char[] key, bool IsTalentTwo = false, char[] 
 		Format(tquery, sizeof(tquery), "%s, `disab`, `primarywep`, `secondwep`", tquery);
 
 		if (StrEqual(profilekey, "none")) Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
-		else Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, profilekey);
+		else Format(tquery, sizeof(tquery), "%s FROM `%s_profiles` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, profilekey);
 		SQL_TQuery(hDatabase, QueryResults_LoadActionBar, tquery, client);
 		LoadPos[client] = 0;
 	}
@@ -2356,22 +2362,7 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 public Action Timer_LoadData(Handle timer, any client) {
 
 	if (IsClientInGame(client)) {
-
 		ResetData(client);
-		char key[512];
-		char TheName[64];
-
-		//ChangeHook(client, true);
-
-		if (IsFakeClient(client)) {
-
-			GetSurvivorBotName(client, TheName, sizeof(TheName));
-			Format(key, sizeof(key), "%s%s", sBotTeam, TheName);
-		}
-		else {
-			GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
-			if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
-		}
 		SetPlayerDatabaseArray(client, true);
 		b_IsLoading[client] = false;
 		CreateNewPlayer(client);	// it only creates a new player if one doesn't exist.

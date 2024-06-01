@@ -170,48 +170,36 @@ stock bool HasTalentUpgrades(client, char[] TalentName) {
 }
 
 public Action CMD_LoadProfileEx(client, args) {
-
 	if (args < 1) {
-
-		PrintToChat(client, "!loadprofile <in-game user / steamid>");
+		PrintToChat(client, "!loadprofile \"<id>\"\n\x04the quotes are required.");
 		return Plugin_Handled;
 	}
 	char arg[512];
 	GetCmdArg(1, arg, sizeof(arg));
-
-	if (!bIsTalentTwo[client] && StrContains(arg, "STEAM", false) == -1) {	// they have named a user.
-
-		char TheName[512];
-		for (int i = 1; i <= MaxClients; i++) {
-
-			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
-
-			GetClientName(i, TheName, sizeof(TheName));
-			if (StrContains(arg, TheName, false) != -1) {
-
-				GetClientAuthId(i, AuthId_Steam2, arg, sizeof(arg));
-				break;
-			}
-		}
+	if (GetDelimiterCount(arg, "+") != 2) {
+		PrintToChat(client, "!loadprofile \"<id>\"\n\x04the quotes are required.");
+		return Plugin_Handled;
 	}
-	if (!StrEqual(serverKey, "-1")) Format(arg, sizeof(arg), "%s%s", serverKey, arg);
-	ReadProfiles(client, arg);
-	PrintToChat(client, "trying to load profile of steam id: %s", arg);
+
+	char result[3][64];
+	ExplodeString(arg, "+", result, 3, 64);
+
+	LoadProfileEx_Confirm(client, arg, result[1], true);
 	return Plugin_Handled;
 }
 
-stock LoadProfileEx(client, char[] key) {
-	if (LoadTarget[client] == -1 || IsLegitimateClient(LoadTarget[client]) && GetClientTeam(LoadTarget[client]) == TEAM_SURVIVOR) {
-		int targetClient = LoadTarget[client];
-		if (LoadTarget[client] == -1 || !IsLegitimateClient(LoadTarget[client])) targetClient = client;
-		LoadTarget[client] = -1;
-		if (b_IsLoaded[targetClient]) {
-			LoadProfileEx_Confirm(targetClient, key);
-		}
+stock LoadProfileEx(client, char[] key, char[] menuFacingProfileName = "none") {
+	int target = LoadTarget[client];
+	LoadTarget[client] = -1;
+	if (target == -1) target = client;
+	else if (!IsLegitimateClient(target) || GetClientTeam(target) != TEAM_SURVIVOR || !b_IsLoaded[target]) {
+		PrintToChat(client, "\x04Your load target is not valid.");
+		return;
 	}
+	LoadProfileEx_Confirm(target, key, menuFacingProfileName);
 }
 
-stock LoadProfileEx_Confirm(client, char[] key) {
+stock LoadProfileEx_Confirm(client, char[] key, char[] menuFacingProfileName = "none", bool isCommandLoad = false) {
 	if (!IsLegitimateClient(client) || StrEqual(key, "-1")) return;
 
 	char tquery[512];
@@ -224,10 +212,15 @@ stock LoadProfileEx_Confirm(client, char[] key) {
 
 	//if (HasCommandAccess(client, GetConfigValue("director talent flags?"))) PrintToChat(client, "%T", "loading profile ex", client, orange, key);
 	//else
-	if (!IsFakeClient(client)) PrintToChat(client, "%T", "loading profile", client, orange, green, key);
+	char myName[64];
+	GetClientName(client, myName, sizeof(myName));
+	if (!StrEqual(menuFacingProfileName, "none")) {
+		if (!isCommandLoad) PrintToChatAll("%t", "loading profile", blue, myName, white, blue, menuFacingProfileName, white, green, key, white);
+		else PrintToChatAll("%t", "loading profile command", blue, myName, white, blue, menuFacingProfileName, white, green, key, white);
+	}
 
 	//b_IsLoading[client] = false;
-	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `total upgrades` FROM `%s` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
+	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `total upgrades` FROM `%s_profiles` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 	// maybe set a value equal to the users steamid integer only, so if steam:0:1:23456, set the value of "client" equal to 23456 and then set the client equal to whatever client's steamid contains 23456?
 	//LogMessage("Loading %N data: %s", client, tquery);
 	SQL_TQuery(hDatabase, QueryResults_LoadEx, tquery, client);
@@ -292,18 +285,14 @@ public void QueryResults_LoadEx(Handle howner, Handle hndl, const char[] error, 
 	char key[64];
 	char text[64];
 	char result[3][64];
-
-	int owner = client;	// so if the load target is not the client we can track both.
 	bool rowsFound = false;
 	while (SQL_FetchRow(hndl))
 	{
 		SQL_FetchString(hndl, 0, key, sizeof(key));
 		rowsFound = true;	// not sure how else to verify this without running a count query first.
-		if (LoadTarget[owner] != owner && LoadTarget[owner] != -1 && (IsLegitimateClient(LoadTarget[owner]) && GetClientTeam(LoadTarget[owner]) != TEAM_INFECTED)) client = LoadTarget[owner];
 		if (!IsLegitimateClient(client)) return;
 
 		ExplodeString(key, "+", result, 3, 64);
-		if (!StrEqual(result[1], LoadoutName[owner], false)) Format(LoadoutName[client], sizeof(LoadoutName[]), "%s", result[1]);
 		PushArrayString(TempAttributes[client], key);
 		PushArrayCell(TempAttributes[client], SQL_FetchInt(hndl, 1));
 
@@ -315,6 +304,7 @@ public void QueryResults_LoadEx(Handle howner, Handle hndl, const char[] error, 
 	}
 	if (!rowsFound || !IsLegitimateClient(client)) {
 		b_IsLoading[client] = false;
+		if (!IsFakeClient(client)) PrintToChat(client, "\x04No profile could be found under that designation.\nCheck the syntax and try again.");
 		//LogMessage("Could not load the profile on target client forced by %N, exiting loading sequence.", client);
 		return;
 	}
@@ -325,7 +315,7 @@ public void QueryResults_LoadEx(Handle howner, Handle hndl, const char[] error, 
 	LoadPos[client] = 0;
 	if (!b_IsLoadingTrees[client]) b_IsLoadingTrees[client] = true;
 	GetArrayString(a_Database_Talents, 0, text, sizeof(text));
-	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `%s` FROM `%s` WHERE (`steam_id` = '%s');", text, TheDBPrefix, key);
+	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `%s` FROM `%s_profiles` WHERE (`steam_id` = '%s');", text, TheDBPrefix, key);
 	SQL_TQuery(hDatabase, QueryResults_LoadTalentTreesEx, tquery, client);
 }
 
@@ -387,7 +377,7 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 			if (LoadPos[client] < GetArraySize(a_Database_Talents)) {
 
 				GetArrayString(a_Database_Talents, LoadPos[client], text, sizeof(text));
-				Format(tquery, sizeof(tquery), "SELECT `steam_id`, `%s` FROM `%s` WHERE (`steam_id` = '%s');", text, TheDBPrefix, key);
+				Format(tquery, sizeof(tquery), "SELECT `steam_id`, `%s` FROM `%s_profiles` WHERE (`steam_id` = '%s');", text, TheDBPrefix, key);
 				SQL_TQuery(hDatabase, QueryResults_LoadTalentTreesEx, tquery, client);
 				return;
 			}
@@ -404,7 +394,7 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 					Format(tquery, sizeof(tquery), "%s, `aslot%d`", tquery, i+1);
 				}
 				Format(tquery, sizeof(tquery), "%s, `disab`, `primarywep`, `secondwep`", tquery);
-				Format(tquery, sizeof(tquery), "%s FROM `%s` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
+				Format(tquery, sizeof(tquery), "%s FROM `%s_profiles` WHERE (`steam_id` = '%s');", tquery, TheDBPrefix, key);
 				SQL_TQuery(hDatabase, QueryResults_LoadActionBar, tquery, client);
 				LoadPos[client] = 0;
 				return;
@@ -496,12 +486,12 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 	}
 }
 
-stock LoadProfile_Confirm(client, char[] ProfileName) {
+stock LoadProfile_Confirm(client, char[] ProfileName, char[] menuFacingProfileName) {
 
 	//new Handle:menu = CreateMenu(LoadProfile_ConfirmHandle);
 	//decl String:text[64];
 	//decl String:result[2][64];
-	LoadProfileEx(client, ProfileName);
+	LoadProfileEx(client, ProfileName, menuFacingProfileName);
 }
 
 stock LoadProfileEx_Request(client, target) {
@@ -651,9 +641,7 @@ public TargetSurvivorBotMenuHandle(Handle menu, MenuAction action, client, slot)
 		else {
 			if (IsLegitimateClient(target) && IsFakeClient(target) || HasCommandAccess(client, loadProfileOverrideFlags)) LoadTarget[client] = target;
 			else {
-
 				LoadProfileEx_Request(client, target);
-				ProfileEditorMenu(client);
 			}
 		}
 		ProfileEditorMenu(client);
@@ -679,7 +667,7 @@ stock ReadProfilesEx(client) {	// To view/load another users profile, we need to
 	Handle menu = CreateMenu(ReadProfilesMenuHandle);
 	ClearArray(RPGMenuPosition[client]);
 
-	char text[64];
+	char text[512];
 	char pos[10];
 	char result[3][64];
 
@@ -710,18 +698,21 @@ public ReadProfilesMenuHandle(Handle menu, MenuAction action, client, slot) {
 
 	if (action == MenuAction_Select) {
 
-		char text[64];
+		char text[512];
 		GetArrayString(RPGMenuPosition[client], slot, text, sizeof(text));
+		int pos = StringToInt(text);
 
 		//new target = client;
 		//if (LoadTarget[client] != -1 && LoadTarget[client] != client) target = LoadTarget[client]; 
 		// && (IsSurvivorBot(LoadTarget[client]) || !bIsInCombat[LoadTarget[client]]))
 
-		if (StringToInt(text) < GetArraySize(PlayerProfiles[client])) {
+		if (pos < GetArraySize(PlayerProfiles[client])) {
 			//(!bIsInCombat[client] || target != client) &&
 
-			GetArrayString(PlayerProfiles[client], StringToInt(text), text, sizeof(text));
-			LoadProfile_Confirm(client, text);
+			GetArrayString(PlayerProfiles[client], pos, text, sizeof(text));
+			char result[3][64];
+			ExplodeString(text, "+", result, 3, 64);
+			LoadProfile_Confirm(client, text, result[1]);
 		}
 		else ProfileEditorMenu(client);
 	}
@@ -1172,13 +1163,6 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 	}
 	else Format(MenuName, sizeof(MenuName), "%s", TheMenuName);
 	ShowPlayerLayerInformation[client] = (StrEqual(MenuName, "talentsmenu")) ? true : false;
-	//if (!StrEqual(MenuName, "talentsmenu")) ShowPlayerLayerInformation[client] = false;		// layer info is NEVER shown on the main menu.
-
-	//PrintToChatAll("Menu name: %s", MenuName);
-
-
-	// Format(LastOpenedMenu[client], sizeof(LastOpenedMenu[]), "%s", MenuName);
-	//VerifyUpgradeExperienceCost(client);
 	VerifyMaxPlayerUpgrades(client);
 	ClearArray(RPGMenuPosition[client]);
 
@@ -2469,7 +2453,7 @@ public void ProfileEditorMenu(client) {
 		LoadTarget[client] = -1;
 		Format(TheName, sizeof(TheName), "%T", "Yourself", client);
 	}
-	Format(text, sizeof(text), "%T", "Select Load Target", client, TheName);
+	Format(text, sizeof(text), "%T", "Select Load Target", client, text);
 	AddMenuItem(menu, text, text);
 	Format(text, sizeof(text), "%T", "Delete Profile", client);
 	AddMenuItem(menu, text, text);
@@ -2522,7 +2506,7 @@ stock DeleteProfile(client, bool DisplayToClient = true) {
 	GetClientAuthId(client, AuthId_Steam2, t_Loadout, sizeof(t_Loadout));
 	if (!StrEqual(serverKey, "-1")) Format(t_Loadout, sizeof(t_Loadout), "%s%s", serverKey, t_Loadout);
 	Format(t_Loadout, sizeof(t_Loadout), "%s+%s", t_Loadout, LoadoutName[client]);
-	Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `steam_id` LIKE '%sSavedProfile%s';", TheDBPrefix, t_Loadout, pct, pct, pct);
+	Format(tquery, sizeof(tquery), "DELETE FROM `%s_profiles` WHERE `steam_id` LIKE '%s%s' AND `steam_id` LIKE '%s%s';", TheDBPrefix, t_Loadout, pct, pct, pct);
 	//PrintToChat(client, tquery);
 	SQL_TQuery(hDatabase, QueryResults, tquery, client);
 	if (DisplayToClient) {
@@ -2536,7 +2520,9 @@ stock bool DeleteAllProfiles(client) {
 	char tquery[512];
 	char pct[4];
 	Format(pct, sizeof(pct), "%");
-	Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%sSavedProfile%s';", TheDBPrefix, pct, pct);
+	char key[64];
+	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+	Format(tquery, sizeof(tquery), "DELETE FROM `%s_profiles` WHERE `steam_id` LIKE '%s%s%s';", TheDBPrefix, pct, key, pct);
 	SQL_TQuery(hDatabase, QueryResults, tquery, client);
 	return true;
 }
@@ -2601,7 +2587,7 @@ stock SaveProfile(client, SaveType = 0) {	// 1 insert a new save, 2 overwrite an
 	}
 
 	char tquery[512];
-	char key[128];
+	char key[512];
 	char pct[4];
 	Format(pct, sizeof(pct), "%");
 
@@ -2613,20 +2599,20 @@ stock SaveProfile(client, SaveType = 0) {	// 1 insert a new save, 2 overwrite an
 		if (SaveType == 1) PrintToChat(client, "%T", "new save", client, orange, green, LoadoutName[client]);
 		else PrintToChat(client, "%T", "update save", client, orange, green, LoadoutName[client]);
 
-		if (StrContains(LoadoutName[client], "Lv.", false) == -1) Format(key, sizeof(key), "%s%s Lv.%d+SavedProfile%s", key, LoadoutName[client], TotalPointsAssigned(client), PROFILE_VERSION);
-		else Format(key, sizeof(key), "%s%s+SavedProfile%s", key, LoadoutName[client], PROFILE_VERSION);
+		if (StrContains(LoadoutName[client], "Lv.", false) == -1) Format(key, sizeof(key), "%s%s Lv.%d+%s", key, LoadoutName[client], TotalPointsAssigned(client), PROFILE_VERSION);
+		else Format(key, sizeof(key), "%s%s+%s", key, LoadoutName[client], PROFILE_VERSION);
 		SaveProfileEx(client, key, SaveType);
 	}
 	else {
 
-		Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s` WHERE `steam_id` LIKE '%s%s';", TheDBPrefix, key, pct);
+		Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s_profiles` WHERE `steam_id` LIKE '%s%s';", TheDBPrefix, key, pct);
 		SQL_TQuery(hDatabase, Query_CheckIfProfileLimit, tquery, client);
 	}
 }
 
 stock SaveProfileEx(client, char[] key, SaveType) {
 
-	char tquery[512];
+	char tquery[1024];
 	char text[512];
 	char ActionBarText[64];
 
@@ -2642,7 +2628,7 @@ stock SaveProfileEx(client, char[] key, SaveType) {
 	if (SaveType == 1) {
 
 		//	A save doesn't exist for this steamid so we create one before saving anything.
-		Format(tquery, sizeof(tquery), "INSERT INTO `%s` (`steam_id`) VALUES ('%s');", TheDBPrefix, key);
+		Format(tquery, sizeof(tquery), "INSERT INTO `%s_profiles` (`steam_id`) VALUES ('%s');", TheDBPrefix, key);
 		//PrintToChat(client, tquery);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
 	}
@@ -2657,12 +2643,12 @@ stock SaveProfileEx(client, char[] key, SaveType) {
 	}
 
 	//if (PlayerLevel[client] < 1) return;		// Clearly, their data hasn't loaded, so we don't save.
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `total upgrades` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, PlayerLevel[client] - UpgradesAvailable[client] - FreeUpgrades[client], key);
+	Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `total upgrades` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, PlayerLevel[client] - UpgradesAvailable[client] - FreeUpgrades[client], key);
 	//PrintToChat(client, tquery);
 	//LogMessage(tquery);
 	SQL_TQuery(hDatabase, QueryResults, tquery, client);
 
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `primarywep` = '%s', `secondwep` = '%s' WHERE `steam_id` = '%s';", TheDBPrefix, sPrimary, sSecondary, key);
+	Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `primarywep` = '%s', `secondwep` = '%s' WHERE `steam_id` = '%s';", TheDBPrefix, sPrimary, sSecondary, key);
 	SQL_TQuery(hDatabase, QueryResults, tquery, client);
 
 	for (int i = 0; i < size; i++) {
@@ -2673,7 +2659,7 @@ stock SaveProfileEx(client, char[] key, SaveType) {
 		if (GetArrayCell(TalentTreeValues[client], IS_SUB_MENU_OF_TALENTCONFIG) == 1) continue;
 
 		talentlevel = GetArrayCell(a_Database_PlayerTalents[client], i);// GetArrayString(a_Database_PlayerTalents[client], i, text2, sizeof(text2));
-		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `%s` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, text, talentlevel, key);
+		Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `%s` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, text, talentlevel, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
 	}
 
@@ -2682,10 +2668,10 @@ stock SaveProfileEx(client, char[] key, SaveType) {
 		GetArrayString(ActionBar[client], i, ActionBarText, sizeof(ActionBarText));
 		//if (StrEqual(ActionBarText, "none")) continue;
 		if (!IsAbilityTalent(client, ActionBarText) && (!IsTalentExists(ActionBarText) || GetTalentStrength(client, ActionBarText) < 1)) Format(ActionBarText, sizeof(ActionBarText), "none");
-		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `aslot%d` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, i+1, ActionBarText, key);
+		Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `aslot%d` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, i+1, ActionBarText, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 	}
-	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `disab` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, isDisab, key);
+	Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `disab` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, isDisab, key);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
 
 	LogMessage("Saving Profile %N where steamid: %s", client, key);
@@ -2705,18 +2691,18 @@ stock ReadProfiles(client, char[] target = "none") {
 	else Format(key, sizeof(key), "%s", target);
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	Format(key, sizeof(key), "%s+", key);
-	char tquery[128];
+	char tquery[512];
 	char pct[4];
 	Format(pct, sizeof(pct), "%");
 
 	int owner = client;
-	if (LoadTarget[owner] != -1 && LoadTarget[owner] != owner && (IsLegitimateClient(LoadTarget[owner]) && IsFakeClient(LoadTarget[owner]))) client = LoadTarget[owner];
+	if (LoadTarget[owner] != -1 && LoadTarget[owner] != owner && IsLegitimateClient(LoadTarget[owner])) client = LoadTarget[owner];
 
 	// If we want specialty servers that limit the # of upgrades that can be used (like a low level tutorial server)
 	int maxPlayerUpgrades = MaximumPlayerUpgrades(client);
 
-	if (!StrEqual(target, "all", false)) Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s%s' AND `total upgrades` <= '%d';", TheDBPrefix, key, pct, maxPlayerUpgrades);
-	else Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s` WHERE `steam_id` LIKE '%s+SavedProfile%s' AND `total upgrades` <= '%d';", TheDBPrefix, pct, PROFILE_VERSION, maxPlayerUpgrades);
+	if (!StrEqual(target, "all", false)) Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s_profiles` WHERE `steam_id` LIKE '%s%s' AND `total upgrades` <= '%d';", TheDBPrefix, key, pct, maxPlayerUpgrades);
+	else Format(tquery, sizeof(tquery), "SELECT `steam_id` FROM `%s_profiles` WHERE `steam_id` LIKE '%s+%s' AND `total upgrades` <= '%d';", TheDBPrefix, pct, PROFILE_VERSION, maxPlayerUpgrades);
 	//PrintToChat(client, tquery);
 	//decl String:tqueryE[512];
 	//SQL_EscapeString(Handle:hDatabase, tquery, tqueryE, sizeof(tqueryE));

@@ -1344,7 +1344,7 @@ stock int IfCommonInfectedIsAttackerDoStuff(attacker, victim, damagetype, surviv
 				GetCommonValueAtPos(deatheffectshappen, sizeof(deatheffectshappen), attacker, SUPER_COMMON_DEATH_EFFECT);
 				CreateDamageStatusEffect(attacker, _, victim, CommonsDamage);
 				CreateBomberExplosion(attacker, victim, deatheffectshappen);
-				ClearSpecialCommon(attacker, _, CommonsDamage);
+				ClearSpecialCommon(attacker, _, CommonsDamage, victim);
 			}
 		}
 	}
@@ -1760,17 +1760,6 @@ stock AddSpecialCommonDamage(client, entity, playerDamage, bool IsStatusDamage =
 			if (CheckTeammateDamagesEx(client, entity, playerDamage, _, ammotype, hitgroup) > 0) return playerDamage;
 		}
 	}
-	// else {
-	// 	damageTotal = GetArrayCell(Handle:SpecialCommon[client], my_pos, 1);
-	// 	SetArrayCell(Handle:SpecialCommon[client], my_pos, damageTotal + playerDamage, 1);
-	// }
-	//ThreatCalculator(client, playerDamage);
-	/*if (CheckIfEntityShouldDie(entity, client, playerDamage, IsStatusDamage) == 1) {
-		if (IsLegitimateClientAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR && IsIncapacitated(client)) {
-			GetAbilityStrengthByTrigger(client, entity, "K", FindZombieClass(client), playerDamage);
-		}
-		return (damageTotal + playerDamage);
-	}*/
 	return 1;
 }
 
@@ -2652,6 +2641,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 		if (requireEnemyInCoherencyRange == 1) {
 			enemyPlayerInRange = enemyInRange(activator, fCoherencyRange);
 			if (enemyPlayerInRange == -1) continue;
+			target = enemyPlayerInRange;
 		}
 
 		float multStrengthByNearbyEnsnaredAllies = GetArrayCell(TriggerValues[activator], MULT_STR_NEARBY_ENSNARED_ALLIES);
@@ -2769,7 +2759,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, char[] Abil
 						// eotStrength = GetEffectOverTimeStrength(activator, targeteffects);
 						// if (eotStrength > 0.0) p_Strength *= eotStrength;
 						if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
-						ActivateAbilityEx(activator, ((enemyInCoherencyRangeIsTarget == 1 && enemyPlayerInRange > 0) ? enemyPlayerInRange : target), damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
+						ActivateAbilityEx(activator, target, damagevalue, targeteffects, p_Strength, p_Time, target, _, isRawType,
 											GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffects,
 											GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
 											abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
@@ -4372,7 +4362,7 @@ stock WipeDamageAward(client) {
 	}
 }
 
-stock ReflectDamage(client, target, AttackDamage) {
+void ReflectDamage(int client, int target, int AttackDamage) {
 	int enemytype = -1;
 	int enemyteam = -1;
 	if (IsSpecialCommon(target)) enemytype = 1;
@@ -4384,10 +4374,7 @@ stock ReflectDamage(client, target, AttackDamage) {
 	}
 	if (enemytype == 1) AddSpecialCommonDamage(client, target, AttackDamage);
 	else if (enemytype == 0) AddCommonInfectedDamage(client, target, AttackDamage);
-	else if (enemytype == 2) {
-		if (FindListPositionByEntity(target, WitchList) < 0) OnWitchCreated(target);
-		AddWitchDamage(client, target, AttackDamage);
-	}
+	else if (enemytype == 2) AddWitchDamage(client, target, AttackDamage);
 	else if (enemytype == 3 && enemyteam == TEAM_INFECTED) AddSpecialInfectedDamage(client, target, AttackDamage);
 	if (enemytype > 0) {
 		if (LastAttackedUser[client] == target) ConsecutiveHits[client]++;
@@ -4396,13 +4383,13 @@ stock ReflectDamage(client, target, AttackDamage) {
 			ConsecutiveHits[client] = 0;
 		}
 	}
-	if (!IsLegitimateClient(target) || enemyteam == TEAM_INFECTED) {
+	if (enemytype < 3 || enemyteam == TEAM_INFECTED) {
 		CheckTeammateDamagesEx(client, target, AttackDamage);
 	}
 	if (iDisplayHealthBars == 1) DisplayInfectedHealthBars(client, target);
 }
 
-stock CheckTeammateDamagesEx(client, target, TotalDamage, bool bSpellDeath = false, ammotype = -1, hitgroup = -1) {
+int CheckTeammateDamagesEx(int client, int target, int TotalDamage, bool bSpellDeath = false, int ammotype = -1, int hitgroup = -1) {
 	if (TotalDamage < 1) return 0;
 	if (CheckTeammateDamages(target, client) >= 1.0 || CheckTeammateDamages(target, client, true) >= 1.0) {
 		char eName[64];
@@ -4414,7 +4401,7 @@ stock CheckTeammateDamagesEx(client, target, TotalDamage, bool bSpellDeath = fal
 		
 		// new shotgunPelletCount = GetShotgunPelletCount(client);
 		// shotgunPelletCount = (shotgunPelletCount > 0) ? TotalDamage * shotgunPelletCount : TotalDamage;
-		if (IsLegitimateClientAlive(target)) {
+		if (IsLegitimateClient(target)) {
 			if (FindZombieClass(target) == ZOMBIECLASS_TANK) {
 				GetClientName(target, eName, sizeof(eName));
 				PrintToChatAll("%t", "player damage to special", blue, cName, white, orange, eName, white, green, formattedDamage, white);
@@ -4520,10 +4507,10 @@ stock ForceClientJump(activator, float g_TalentStrength, victim = 0) {
 	}
 }
 
-stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_TalentStrength, float g_TalentTime, victim = 0,
-						char[] Trigger = "0", isRaw = 0, float AoERange = 0.0, char[] secondaryEffects = "-1",
-						float secondaryAoERange = 0.0, hitgroup = -1, char[] secondaryTrigger = "-1", char[] AbilityTriggerIgnore = "none",
-						damagetype = -1, char[] nameOfItemToGivePlayer = "-1", char[] activatorCallAbilityTrigger = "-1", entityIdToPassThrough = -1, float healthActivationCost = 0.0, char[] targetCallAbilityTrigger = "-1") {
+void ActivateAbilityEx(int activator, int target, int d_Damage, char[] Effects, float g_TalentStrength, float g_TalentTime, int victim = 0,
+						char[] Trigger = "0", int isRaw = 0, float AoERange = 0.0, char[] secondaryEffects = "-1",
+						float secondaryAoERange = 0.0, int hitgroup = -1, char[] secondaryTrigger = "-1", char[] AbilityTriggerIgnore = "none",
+						int damagetype = -1, char[] nameOfItemToGivePlayer = "-1", char[] activatorCallAbilityTrigger = "-1", int entityIdToPassThrough = -1, float healthActivationCost = 0.0, char[] targetCallAbilityTrigger = "-1") {
 	//return;
 
 	//PrintToChat(activator, "damage %d Effects: %s Strength: %3.2f", d_Damage, Effects, g_TalentStrength);
@@ -4680,7 +4667,6 @@ stock ActivateAbilityEx(activator, target, d_Damage, char[] Effects, float g_Tal
 			//DealAOEDamage(target, g_TalentStrength, AoERange);
 		}
 		else if (StrEqual(Effects, "R")) {
-
 			ReflectDamage(activator, target, iDamage);
 		}
 		else if (StrEqual(Effects, "s")) SlowPlayer(target, g_TalentStrength, g_TalentTime);
@@ -5250,7 +5236,7 @@ stock RemoveAllDebuffs(client, char[] debuffName) {
 		and the plugin will check every so often to see if a player has such an entity attached to them.
 		If they do, they'll burn. Players can have multiple of these, so it is dangerous.
 */
-stock CreateAndAttachFlame(client, damage = 0, float lifetime = 10.0, float tickInt = 1.0, owner = -1, char[] DebuffName = "burn", float tickIntContinued = -2.0) {
+void CreateAndAttachFlame(int client, int damage = 0, float lifetime = 10.0, float tickInt = 1.0, int owner = -1, char[] DebuffName = "burn", float tickIntContinued = -2.0) {
 	if (IsSurvivalMode && IsCommonInfected(client)) {
 		OnCommonInfectedCreated(client, true);
 		return;
@@ -7672,60 +7658,8 @@ stock AddWitchDamage(client, entity, playerDamageToWitch, bool IsStatusDamage = 
 		SetArrayCell(WitchDamage[client], my_pos, damageTotal + playerDamageToWitch, 1);
 	}
 	CheckTeammateDamagesEx(client, entity, playerDamageToWitch, _, ammotype, hitgroup);
-	//CheckIfEntityShouldDie(entity, client, playerDamageToWitch, IsStatusDamage);
-	/*if (playerDamageToWitch > 0 && CheckIfEntityShouldDie(entity, client, playerDamageToWitch, IsStatusDamage) == 1) {
-
-		return (damageTotal + playerDamageToWitch);
-	}*/
 	ThreatCalculator(client, playerDamageToWitch);
 	return 1;
-}
-
-stock CheckIfEntityShouldDie(victim, attacker, damage = 0, bool IsStatusDamage = false) {
-
-	if (CheckTeammateDamages(victim, attacker) >= 1.0 ||
-		CheckTeammateDamages(victim, attacker, true) >= 1.0) {
-
-		if (IsWitch(victim)) {
-			if (IsLegitimateClient(attacker)) {// && AllowShotgunToTriggerNodes(attacker)) {
-				GetAbilityStrengthByTrigger(attacker, victim, "witchkill", _, damage);
-			}
-			OnWitchCreated(victim, true, attacker);
-		}
-		else if (IsSpecialCommon(victim)) {
-
-			ClearSpecialCommon(victim, _, damage, attacker);
-			return 1;
-		}
-		else return 1;
-		if (IsStatusDamage) {
-
-			IgniteEntity(victim, 1.0);
-		}
-		else return 1;
-	}
-	else {
-
-		/*
-
-			So the player / common took damage.
-		*/
-		//if (IsWitch(victim)) SetInfectedHealth(victim, 5000);
-		if (IsSpecialCommon(victim)) {
-
-			char AuraEffs[10];
-			GetCommonValueAtPos(AuraEffs, sizeof(AuraEffs), victim, SUPER_COMMON_AURA_EFFECT);
-
-			// The bomber explosion initially targets itself so that the chain-reaction (if enabled) doesn't go indefinitely.
-			if (StrContains(AuraEffs, "f", true) != -1) {
-
-				//CreateDamageStatusEffect(victim);		// 0 is the default, which is fire.
-				//CreateExplosion(attacker);
-				CreateDamageStatusEffect(victim, _, attacker, damage);
-			}
-		}
-	}
-	return 0;
 }
 
 /*
@@ -7971,7 +7905,7 @@ stock GetCommonBaseHealth(client = 0) {
 	return (iCommonBaseHealth + RoundToCeil(iCommonBaseHealth * (ratingVal * fCommonLevelHealthMult)));
 }
 
-stock OnCommonInfectedCreated(entity, bool bIsDestroyed = false, finalkillclient=0, bool IsIgnite = false) {
+void OnCommonInfectedCreated(int entity, bool bIsDestroyed = false, int attacker = 0) {
 	if (!b_IsActiveRound) {
 		//if (IsCommonInfected(entity)) AcceptEntityInput(entity, "Kill");
 		return;
@@ -7985,13 +7919,9 @@ stock OnCommonInfectedCreated(entity, bool bIsDestroyed = false, finalkillclient
 			RemoveFromArray(CommonInfected[i], pos);
 		}
 		SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
-		//SDKUnhook(entity, SDKHook_TraceAttack, OnTraceAttack);
-		//if (IsLegitimateClient(finalkillclient)) SetArrayCell(Handle:RoundStatistics, 0, GetArrayCell(RoundStatistics, 0) + 1);
-		SetEntProp(entity, Prop_Data, "m_iHealth", 1);
-		if (IsIgnite) {
-			CalculateInfectedDamageAward(entity, finalkillclient);
-			IgniteEntity(entity, 1.0);
-		}
+		if (!CommonInfectedModel(entity, FALLEN_SURVIVOR_MODEL)) AcceptEntityInput(entity, "BecomeRagdoll");
+		else SetEntProp(entity, Prop_Data, "m_iHealth", 1);
+		if (attacker > 0) CalculateInfectedDamageAward(entity, attacker);
 	}
 	else {
 		// Add this common infected to every survivors data pool.
@@ -8320,11 +8250,9 @@ bool ForceClearSpecialCommon(entity, int client = 0, bool killMob = true) {
 		if (pos >= 0) RemoveFromArray(SpecialCommon[i], pos);
 	}
 	if (client == 0 && killMob && IsCommonInfected(entity)) {
+		SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
 		if (!CommonInfectedModel(entity, FALLEN_SURVIVOR_MODEL)) AcceptEntityInput(entity, "BecomeRagdoll");
-		else {
-			SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
-			SetEntProp(entity, Prop_Data, "m_iHealth", 1);
-		}
+		else SetEntProp(entity, Prop_Data, "m_iHealth", 1);
 	}
 	return true;
 }
@@ -8406,7 +8334,6 @@ stock OnEntityCreatedEx(entity, const char[] classname, bool creationOverride = 
 	if (creationOverride || IsCommonInfected(entity)) {
 		// SetInfectedHealth(entity, 500);
 		if (CreateCommonAffix(entity) == 0) {
-			//OnCommonInfectedCreated(entity, true);
 			if (GetArraySize(CommonInfectedQueue) > 0) {
 				char Model[64];
 				GetArrayString(CommonInfectedQueue, 0, Model, sizeof(Model));
@@ -8975,20 +8902,9 @@ stock DisplayHUD(client, statusType) {
 		if (enemytype != -1) {
 			if (iDisplayHealthBars == 1) DisplayInfectedHealthBars(client, enemycombatant);
 			if (enemytype == 3) Format(EnemyName, sizeof(EnemyName), "Common");
-			else if (enemytype == 0) {
-				GetCommonValueAtPos(EnemyName, sizeof(EnemyName), enemycombatant, SUPER_COMMON_NAME);
-				if (StrEqual(EnemyName, "-1")) {
-					OnCommonInfectedCreated(enemycombatant, true);
-					SDKUnhook(enemycombatant, SDKHook_OnTakeDamage, OnTakeDamage);
-					//SDKUnhook(enemycombatant, SDKHook_TraceAttack, OnTraceAttack);
-					AcceptEntityInput(enemycombatant, "Kill");
-				}
-			}
+			else if (enemytype == 0) GetCommonValueAtPos(EnemyName, sizeof(EnemyName), enemycombatant, SUPER_COMMON_NAME);
 			else if (enemytype == 1) Format(EnemyName, sizeof(EnemyName), "Witch");
-			else {
-				GetClientName(enemycombatant, EnemyName, sizeof(EnemyName));
-				//else GetSurvivorBotName(enemycombatant, EnemyName, sizeof(EnemyName));
-			}
+			else GetClientName(enemycombatant, EnemyName, sizeof(EnemyName));
 		}
 		else enemycombatant = -1;
 		Format(testelim, sizeof(testelim), " ");
@@ -10557,12 +10473,12 @@ stock bool FallingFromLedge(client) {
 	return (GetEntProp(client, Prop_Send, "m_isFallingFromLedge") == 1);
 }
 
-stock SetAdrenalineState(client, float time=10.0) {
+void SetAdrenalineState(int client, float time = 10.0) {
 
 	if (!HasAdrenaline(client)) SDKCall(g_hEffectAdrenaline, client, time);
 }
 
-stock GetClientTotalHealth(client) {
+int GetClientTotalHealth(int client) {
 
 	int SolidHealth			= GetClientHealth(client);
 	float TempHealth	= GetEntPropFloat(client, Prop_Send, "m_healthBuffer");
@@ -10572,7 +10488,7 @@ stock GetClientTotalHealth(client) {
 	else return RoundToCeil(TempHealth);
 }
  
-stock SetClientTotalHealth(attacker = -1, client, damage, bool IsSetHealthInstead = false, bool bIgnoreMultiplier = false) {
+void SetClientTotalHealth(int attacker = -1, int client, int damage, bool IsSetHealthInstead = false, bool bIgnoreMultiplier = false) {
 	if (ImmuneToAllDamage[client] || bIsGiveIncapHealth[client]) return;
 	float fHealthBuffer = 0.0;
 	int realDamage = 0;

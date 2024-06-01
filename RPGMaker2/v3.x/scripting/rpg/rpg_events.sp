@@ -1082,7 +1082,6 @@ stock DoBurn(attacker, victim, baseWeaponDamage) {
 			else AddSpecialCommonDamage(attacker, victim, baseWeaponDamage, true);
 		}
 		else {
-			IgniteEntity(victim, 10.0);
 			AddWitchDamage(attacker, victim, baseWeaponDamage, true);
 		}
 	}
@@ -2031,57 +2030,6 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0) {
 	}
 
 	if (client == target) CreateBomberExplosion(client, 0, Effects);
-		/*if (client == target) {
-
-			for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
-
-				ent = GetArrayCell(Handle:CommonInfected, i);
-				if (IsCommonInfected(ent)) {
-
-					GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
-					if (GetVectorDistance(SourcLoc, TargetPosition) <= (t_Range / 2)) {
-
-						CreateBomberExplosion(client, ent, Effects);
-					}
-				}
-			}
-			CreateBomberExplosion(client, 0, Effects);
-		}*/
-	/*else {
-
-		GetEntPropVector(client, Prop_Send, "m_vecOrigin", SourcLoc);
-
-		
-
-		//	The bomber target is 0, so we eliminate any common infected within range.
-		//	Don't worry - this function will have called and executed for all players in range before it gets here
-		//	thanks to the magic of single-threaded language.
-		
-		ent = -1;
-		for (new i = 0; i < GetArraySize(Handle:CommonInfected); i++) {
-
-			ent = GetArrayCell(Handle:CommonInfected, i);
-
-			if (IsCommonInfected(ent)) {
-
-				GetEntPropVector(ent, Prop_Send, "m_vecOrigin", TargetPosition);
-				if (GetVectorDistance(SourcLoc, TargetPosition) <= (AfxRangeMax / 2)) {
-
-					//AcceptEntityInput(ent, "Kill");
-					
-					//ent = FindListPositionByEntity(ent, Handle:CommonInfected);
-					//if (ent >= 0) RemoveFromArray(Handle:CommonInfected, ent);
-					//CalculateInfectedDamageAward(ent);
-					if ((StrContains(Effects, "e", true) != -1 || StrContains(Effects, "x", true) != -1) && !IsSpecialCommon(ent)) {
-
-						OnCommonInfectedCreated(ent, true);
-						if (i > 0) i--;
-					}
-					//if (StrContains(Effects, "B", true) != -1) SDKCall(g_hCallVomitOnPlayer, ent, client, true);
-				}
-			}
-		}
-	}*/
 }
 
 stock CheckMinimumRate(client) {
@@ -2161,7 +2109,7 @@ stock GetRatingRewardForTanking(survivor, infected) {
 	return damageReceived;
 }
 
-stock CalculateInfectedDamageAward(client, killerblow = 0, entityPos = -1) {
+void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos = -1) {
 	bool IsLegitimateClientClient = IsLegitimateClient(client);
 	int clientTeam = -1;
 	if (IsLegitimateClientClient) clientTeam = GetClientTeam(client);

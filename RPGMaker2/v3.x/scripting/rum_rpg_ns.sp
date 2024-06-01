@@ -15,7 +15,7 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v3.4.6.8"
+#define PLUGIN_VERSION					"v3.4.6.9"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"github.com/exskye/"
 #define PLUGIN_NAME						"RPG Construction Set"
@@ -48,6 +48,13 @@
 //	================================
 #define DEBUG     					false
 /*	================================
+ Version 3.4.6.9
+ - Rewrote the logic for loading profiles onto other players and onto bots
+ - Redesigned database structure for storing/loading saved profiles
+ - Redesigned the logic for the !loadprofile command.
+ - Optimizations for certain methods that see a lot of traffic.
+ - Redesigned how non-player infected enemies die and are removed.
+
  Version 3.4.6.8
  - The survivors' jetpack will not function when survivors are in the start or end of map safe rooms.
  - Survivors can now take CRUSH damage (damagetype 1 / DMG_CRUSH)
@@ -1169,8 +1176,8 @@ bool b_IsDirectorTalents[MAXPLAYERS + 1];
 //new LoadPos_Bots;
 int LoadPos[MAXPLAYERS + 1];
 int LoadPos_Director;
+ConVar g_Steamgroup;
 ConVar g_svCheats;
-ConVar g_Tags;
 ConVar g_Gamemode;
 int RoundTime;
 int g_iSprite = 0;
@@ -1679,10 +1686,10 @@ public void OnPluginStart() {
 	OnMapStartFunc(); // The very first thing that must happen before anything else happens.
 	CreateConVar("rpgmaker_version", PLUGIN_VERSION, "version of RPGMaker 2 Construction Kit");
 	SetConVarString(FindConVar("rpgmaker_version"), PLUGIN_VERSION);
+	g_Steamgroup = FindConVar("sv_steamgroup");
+	SetConVarFlags(g_Steamgroup, GetConVarFlags(g_Steamgroup) & ~FCVAR_NOTIFY);
 	g_svCheats = FindConVar("sv_cheats");
 	SetConVarFlags(g_svCheats, GetConVarFlags(g_svCheats) & ~FCVAR_NOTIFY);
-	g_Tags = FindConVar("sv_tags");
-	SetConVarFlags(g_Tags, GetConVarFlags(g_Tags) & ~FCVAR_NOTIFY);
 	g_Gamemode = FindConVar("mp_gamemode");
 	LoadTranslations("skyrpg.phrases");
 	BuildPath(Path_SM, ConfigPathDirectory, sizeof(ConfigPathDirectory), "configs/readyup/");
@@ -1980,7 +1987,7 @@ stock CreateAllArrays() {
 		if (MenuStructure[i] == INVALID_HANDLE) MenuStructure[i] = CreateArray(16);
 		if (TempAttributes[i] == INVALID_HANDLE) TempAttributes[i] = CreateArray(16);
 		if (TempTalents[i] == INVALID_HANDLE) TempTalents[i] = CreateArray(16);
-		if (PlayerProfiles[i] == INVALID_HANDLE) PlayerProfiles[i] = CreateArray(16);
+		if (PlayerProfiles[i] == INVALID_HANDLE) PlayerProfiles[i] = CreateArray(32);
 		if (SpecialAmmoEffectValues[i] == INVALID_HANDLE) SpecialAmmoEffectValues[i] = CreateArray(16);
 		if (ActiveAmmoCooldownKeys[i] == INVALID_HANDLE) ActiveAmmoCooldownKeys[i] = CreateArray(16);
 		if (ActiveAmmoCooldownValues[i] == INVALID_HANDLE) ActiveAmmoCooldownValues[i] = CreateArray(16);
@@ -2362,6 +2369,7 @@ public ReadyUp_ReadyUpStart() {
 		teleportIntoSaferoom[2] = -300.968750;
 		TeleportPlayers = true;
 	}
+
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsLegitimateClient(i)) {
 			if (CurrentMapPosition == 0 && b_IsLoaded[i] && GetClientTeam(i) == TEAM_SURVIVOR && ReadyUpGameMode != 3) GiveProfileItems(i);
@@ -2384,6 +2392,9 @@ public ReadyUp_ReadyUpStart() {
 			ClearArray(h_KilledPosition_X[i]);		// We clear all positions from the array.
 			ClearArray(h_KilledPosition_Y[i]);
 			ClearArray(h_KilledPosition_Z[i]);
+			if (!IsFakeClient(i)) continue;
+			if (b_IsLoaded[i]) GiveMaximumHealth(i);
+			else if (!b_IsLoading[i]) OnClientLoaded(i);
 		}
 	}
 	RefreshSurvivorBots();
@@ -2568,7 +2579,8 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			if (!AnyBotsOnSurvivorTeam && fSurvivorBotsNoneBonus > 0.0 && survivorCounter <= iSurvivorBotsBonusLimit) PrintToChat(i, "%T", "group no survivor bots bonus", i, blue, fSurvivorBotsNoneBonus * 100.0, pct, green, orange);
 			if (RoundExperienceMultiplier[i] > 0.0) PrintToChat(i, "%T", "survivalist bonus experience", i, blue, orange, green, RoundExperienceMultiplier[i] * 100.0, white, pct);
 		}
-		if (CurrentMapPosition != 0 || ReadyUpGameMode == 3) CheckDifficulty();
+		//if (CurrentMapPosition != 0 || ReadyUpGameMode == 3)
+		CheckDifficulty();
 		RoundTime					=	GetTime();
 		int ent = -1;
 		if (ReadyUpGameMode != 3) {
@@ -3329,7 +3341,8 @@ stock CallRoundIsOver() {
 					AcceptEntityInput(iChaseEnt[i], "Kill");
 					iChaseEnt[i] = -1;
 				}*/
-				if (b_IsMissionFailed && CurrentMapPosition != 1 || !IsFakeClient(i)) SavePlayerData(i);
+				//if (b_IsMissionFailed && CurrentMapPosition != 1 || !IsFakeClient(i))
+				SavePlayerData(i);
 			}
 		}
 		//CreateTimer(1.0, Timer_SaveAndClear, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -3361,13 +3374,6 @@ stock CallRoundIsOver() {
 		}
 	}
 }
-
-// we need to check the zombie class since the way I create special infected, they have the same team as survivors.
-// bool IsValidZombieClass(client) {	// 9 for survivor
-// 	int zombieclass = GetEntProp(client, Prop_Send, "m_zombieClass");
-// 	if (zombieclass >= 1 && zombieclass <= 8) return true;
-// 	return false;
-// }
 
 public Action Timer_ResetMap(Handle timer) {
 	//if (StrContains(TheCurrentMap, "helms", false) != -1) L4D_RestartScenarioFromVote(TheCurrentMap);
