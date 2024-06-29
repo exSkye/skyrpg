@@ -15,7 +15,7 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v3.4.6.9"
+#define PLUGIN_VERSION					"v3.4.7.4"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"github.com/exskye/"
 #define PLUGIN_NAME						"RPG Construction Set"
@@ -27,7 +27,6 @@
 #define CONFIG_MAPRECORDS				"rpg/maprecords.cfg"
 #define CONFIG_STORE					"rpg/store.cfg"
 #define CONFIG_TRAILS					"rpg/trails.cfg"
-#define CONFIG_PETS						"rpg/pets.cfg"
 #define CONFIG_WEAPONS					"rpg/weapondamages.cfg"
 #define CONFIG_COMMONAFFIXES			"rpg/commonaffixes.cfg"
 #define CONFIG_CLASSNAMES				"rpg/classnames.cfg"
@@ -48,6 +47,77 @@
 //	================================
 #define DEBUG     					false
 /*	================================
+ Version 3.4.7.4
+ - Optimizations, removing most ...Section[client] arraylists as they're deprecated.
+ - Code cleanup.
+
+ Version 3.4.7.3
+ - Added multiple new ammo circle-focused talents, to let players focus their specialty more towards a spell caster, should that be their wish.
+ - Added two new talent triggers:
+	"enterammo"		- when a player enters an ammo circle. if the value is set to "any" it triggers on-cooldown when the player enters any ammo circle when they weren't in one before.
+	"exitammo"		- when a player exits an ammo circle. if the value is set to "any" it triggers on-cooldown when the player exits an ammo circle, resulting in them not being in any more ammo circles.
+	If the field is set to a value other than "any" then the talent will only trigger if the ammo that triggers the state change (in an ammo or not) is that specific ammo type.
+ - Added talents for several previously-unused talent effects and one previously-unused ability trigger:
+	Trigger:
+					"spellbuff"
+	Effects:
+					"strengthup"
+					"activetime"
+					"staminacost"
+					"cooldown"
+					"range"
+	These 5 new effects show up on new talents in the default config, and as a result will show up on augments and existing augments, depending on if it's a perfect, or it's major type, will be able to reroll these new categories.
+ - Added support for buffing and healing score earning with two new config.cfg keys:
+	"rating multiplier buffing?"							"0.1"	// default values if the keys are omitted.
+	"rating multiplier healing?"							"0.1"
+ - Refactored HasTalentUpgrades(client, char[] TalentName) in rpg_menu.sp
+
+ Version 3.4.7.2
+ - Head shots on common infected will now instant kill the common infected, dealing damage equal to their remaining health.
+ - Common infected health bars will no longer appear.
+ - "enrage time?" set to "0" or less will disable the enrage timer.
+ - Patched a bug where action bar ability multipliers were incorrectly calculated. (Credit to Pez for this one)
+ - Another optimization pass for action bar abilities.
+ - Optimization pass for all abilities/spells, refactoring intensive method calls.
+ - Augment Score now shows on the inspect and equip/compare augment screens.
+ - Added support for the character sheet showing the players current average augment level with the {AUGAVGLVL} key for use in the translations file.
+ - All player data will properly reset when a player leaves, ensuring that no one else ever inherits any part of their data.
+ - Added support for individual enrage timers per map, using the syntax cvar "enrage time %s?" in your config.cfg where %s is the mapname - case-sensitive.
+ - Added support for FFA loot mode, where any players with FFA loot mode can loot other players bags for themselves, if the other player also has FFA loot on.
+	- Players can toggle their loot mode on and off by default in !rpg -> Settings
+ - Original owner of an augment is shown on the augment page. If you are the original owner, it will say "You" as the owner.
+	- Augments without an owner (from previous builds) will grandfather in and set the owner as whoever is currently holding them.
+	- If a player isn't the original owner and doesn't meet the requirement to equip the augment, the missing requirement will be shown to them.
+	- Players cannot loot/steal/pickup for the owner a loot bag if both players have FFA loot enabled, if the loot bag's loot score is below the player who is trying to pick it up's autodismantle threshold.
+ - Handicap Level, Augment (Avg) Level, and Talent Level all show in chat (HAT)
+ - Added !autodismantle perfect as an option; options are now clear/perfect/major/minor
+ - Patched an error that could cause a memory leak
+ - Fixed a bug where attributes were being calculated twice - they will now calculate their bonus to talents once.
+ - Added support for action bar talents being affected by augments, indirectly through new talent triggers that modify those talents.
+ - Optimized ammo talent methods; rewrote sections where unnecessary method calls were being used.
+ - Fixed a bug where non-compounding talent calls were not calling.
+ - Incorporated an unused, new method to compartmentalize multiple keys into a bit-shift call, freeing up 14 keys per talent, across 403 default talents, for over 4,800 freed keys, reducing memory use, and allowing for even more talents!
+	- Please see void SetClientEffectState(client) in rpg_wrappers.sp
+	- As part of this, added the "target status effect required?" key and redesigned the "activator status effect required?" key to also be bit-based.
+	BOTH KEYS USE THE FOLLOWING BITS:
+	1;		// ON FIRE		16;		// FROZEN		256;	// NOT BILED		4096;	// ON GROUND
+	2;		// ACID BURN	32;		// SCORCHED		512;	// ENSNARED			8192;	// FLYING
+	4;		// EXPLODING	64;		// STEAMING		1024;	// NOT ENSNARED		16384;	// CROUCHING
+	8;		// SLOWED		128;	// BILED		2048;	// DROWNING
+ - Fixed a bug where Infected Defender types were not always shielding other Infected from damage;
+ 	- Infected will be shielded from all damage, from all damage sources, including talents, even indirectly, if within range of Defender type Infected moving forward.
+ - A player can only reflect damage up to their maximum health, even if the enemy infected player were to hit them for more than that value.
+*****************FIREWORKS EMOJI*****************FIREWORKS EMOJI**********************FIREWORKS EMOJI***************************FIREWORKS EMOJI********************************
+ - All existing talents should now be fully-functional! Saving this version build and posting it so I have something to fall back on when I break it again!
+*****************FIREWORKS EMOJI*****************FIREWORKS EMOJI**********************FIREWORKS EMOJI***************************FIREWORKS EMOJI********************************
+
+ Version 3.4.7.1
+ - Fixed a bug where any damage dealt to standard common infected would kill it.
+ - Added new config.cfg key:
+   "invert walk and sprint?"	"1"		// -> Experimental mode, where walk and sprint are inverted; hold shift to sprint, but it comes at the cost of stamina. DOES NOT AFFECT SURVIVOR BOTS.
+
+ - Fixed a bug that was causing stamina-consuming abilities/spells/talents to require more stamina as cost than intended.
+
  Version 3.4.6.9
  - Rewrote the logic for loading profiles onto other players and onto bots
  - Redesigned database structure for storing/loading saved profiles
@@ -475,169 +545,160 @@ public Plugin myinfo = {
 #define PASSIVE_ABILITY							17
 #define REQUIRES_HEADSHOT						18
 #define REQUIRES_LIMBSHOT						19
-#define REQUIRES_CROUCHING						20
-#define ACTIVATOR_STAGGER_REQ					21
-#define TARGET_STAGGER_REQ						22
-#define CANNOT_TARGET_SELF						23
-#define MUST_BE_JUMPING_OR_FLYING				24
-#define VOMIT_STATE_REQ_ACTIVATOR				25
-#define VOMIT_STATE_REQ_TARGET					26
-#define REQ_ADRENALINE_EFFECT					27
-#define DISABLE_IF_WEAKNESS						28
-#define REQ_WEAKNESS							29
-#define TARGET_CLASS_REQ						30
-#define REQ_CONSECUTIVE_HITS					31
-#define BACKGROUND_TALENT						32
-#define STATUS_EFFECT_MULTIPLIER				33
-#define MULTIPLY_RANGE							34
-#define MULTIPLY_COMMONS						35
-#define MULTIPLY_SUPERS							36
-#define MULTIPLY_WITCHES						37
-#define MULTIPLY_SURVIVORS						38
-#define MULTIPLY_SPECIALS						39
-#define STRENGTH_INCREASE_ZOOMED				40
-#define STRENGTH_INCREASE_TIME_CAP				41
-#define STRENGTH_INCREASE_TIME_REQ				42
-#define ZOOM_TIME_HAS_MINIMUM_REQ				43
-#define HOLDING_FIRE_STRENGTH_INCREASE			44
-#define DAMAGE_TIME_HAS_MINIMUM_REQ				45
-#define HEALTH_PERCENTAGE_REQ_MISSING			46
-#define HEALTH_PERCENTAGE_REQ_MISSING_MAX		47
-#define SECONDARY_ABILITY_TRIGGER				48
-#define TARGET_IS_SELF							49
-#define PRIMARY_AOE								50
-#define SECONDARY_AOE							51
-#define GET_TALENT_NAME							52
-#define GET_TRANSLATION							53
-#define GOVERNING_ATTRIBUTE						54
-#define TALENT_TREE_CATEGORY					55
-#define PART_OF_MENU_NAMED						56
-#define GET_TALENT_LAYER						57
-#define IS_TALENT_ABILITY						58
-#define ACTION_BAR_NAME							59
-#define NUM_TALENTS_REQ							60
-#define TALENT_UPGRADE_STRENGTH_VALUE			61
-#define TALENT_COOLDOWN_STRENGTH_VALUE			62
-#define TALENT_ACTIVE_STRENGTH_VALUE			63
-#define COOLDOWN_GOVERNOR_OF_TALENT				64
-#define TALENT_STRENGTH_HARD_LIMIT				65
-#define TALENT_IS_EFFECT_OVER_TIME				66
-#define SPECIAL_AMMO_TALENT_STRENGTH			67
-#define LAYER_COUNTING_IS_IGNORED				68
-#define IS_ATTRIBUTE							69
-#define HIDE_TRANSLATION						70
-#define TALENT_ROLL_CHANCE						71
+#define ACTIVATOR_STAGGER_REQ					20
+#define TARGET_STAGGER_REQ						21
+#define CANNOT_TARGET_SELF						22
+#define REQ_ADRENALINE_EFFECT					23
+#define DISABLE_IF_WEAKNESS						24
+#define REQ_WEAKNESS							25
+#define TARGET_CLASS_REQ						26
+#define REQ_CONSECUTIVE_HITS					27
+#define BACKGROUND_TALENT						28
+#define STATUS_EFFECT_MULTIPLIER				29
+#define MULTIPLY_RANGE							30
+#define MULTIPLY_COMMONS						31
+#define MULTIPLY_SUPERS							32
+#define MULTIPLY_WITCHES						33
+#define MULTIPLY_SURVIVORS						34
+#define MULTIPLY_SPECIALS						35
+#define STRENGTH_INCREASE_ZOOMED				36
+#define STRENGTH_INCREASE_TIME_CAP				37
+#define STRENGTH_INCREASE_TIME_REQ				38
+#define ZOOM_TIME_HAS_MINIMUM_REQ				39
+#define HOLDING_FIRE_STRENGTH_INCREASE			40
+#define DAMAGE_TIME_HAS_MINIMUM_REQ				41
+#define HEALTH_PERCENTAGE_REQ_MISSING			42
+#define HEALTH_PERCENTAGE_REQ_MISSING_MAX		43
+#define SECONDARY_ABILITY_TRIGGER				44
+#define TARGET_IS_SELF							45
+#define PRIMARY_AOE								46
+#define SECONDARY_AOE							47
+#define GET_TALENT_NAME							48
+#define GET_TRANSLATION							49
+#define GOVERNING_ATTRIBUTE						50
+#define TALENT_TREE_CATEGORY					51
+#define PART_OF_MENU_NAMED						52
+#define GET_TALENT_LAYER						53
+#define IS_TALENT_ABILITY						54
+#define ACTION_BAR_NAME							55
+#define NUM_TALENTS_REQ							56
+#define TALENT_UPGRADE_STRENGTH_VALUE			57
+#define TALENT_COOLDOWN_STRENGTH_VALUE			58
+#define TALENT_ACTIVE_STRENGTH_VALUE			59
+#define COOLDOWN_GOVERNOR_OF_TALENT				60
+#define TALENT_STRENGTH_HARD_LIMIT				61
+#define TALENT_IS_EFFECT_OVER_TIME				62
+#define SPECIAL_AMMO_TALENT_STRENGTH			63
+#define LAYER_COUNTING_IS_IGNORED				64
+#define IS_ATTRIBUTE							65
+#define HIDE_TRANSLATION						66
+#define TALENT_ROLL_CHANCE						67
 // spells
-#define SPELL_INTERVAL_PER_POINT				72
-#define SPELL_INTERVAL_FIRST_POINT				73
-#define SPELL_RANGE_PER_POINT					74
-#define SPELL_RANGE_FIRST_POINT					75
-#define SPELL_STAMINA_PER_POINT					76
-#define SPELL_BASE_STAMINA_REQ					77
-#define SPELL_COOLDOWN_PER_POINT				78
-#define SPELL_COOLDOWN_FIRST_POINT				79
-#define SPELL_COOLDOWN_START					80
-#define SPELL_ACTIVE_TIME_PER_POINT				81
-#define SPELL_ACTIVE_TIME_FIRST_POINT			82
-#define SPELL_AMMO_EFFECT						83
-#define SPELL_EFFECT_MULTIPLIER					84
+#define SPELL_INTERVAL_PER_POINT				68
+#define SPELL_INTERVAL_FIRST_POINT				69
+#define SPELL_RANGE_PER_POINT					70
+#define SPELL_RANGE_FIRST_POINT					71
+#define SPELL_STAMINA_PER_POINT					72
+#define SPELL_BASE_STAMINA_REQ					73
+#define SPELL_COOLDOWN_PER_POINT				74
+#define SPELL_COOLDOWN_FIRST_POINT				75
+#define SPELL_COOLDOWN_START					76
+#define SPELL_ACTIVE_TIME_PER_POINT				77
+#define SPELL_ACTIVE_TIME_FIRST_POINT			78
+#define SPELL_AMMO_EFFECT						79
+#define SPELL_EFFECT_MULTIPLIER					80
 // abilities
-#define ABILITY_ACTIVE_EFFECT					85
-#define ABILITY_PASSIVE_EFFECT					86
-#define ABILITY_COOLDOWN_EFFECT					87
-#define ABILITY_IS_REACTIVE						88
-#define ABILITY_TEAMS_ALLOWED					89
-#define ABILITY_COOLDOWN_STRENGTH				90
-#define ABILITY_MAXIMUM_PASSIVE_MULTIPLIER		91
-#define ABILITY_MAXIMUM_ACTIVE_MULTIPLIER		92
-#define ABILITY_ACTIVE_STATE_ENSNARE_REQ		93
-#define ABILITY_ACTIVE_STRENGTH					94
-#define ABILITY_PASSIVE_IGNORES_COOLDOWN		95
-#define ABILITY_PASSIVE_STATE_ENSNARE_REQ		96
-#define ABILITY_PASSIVE_STRENGTH				97
-#define ABILITY_PASSIVE_ONLY					98
-#define ABILITY_IS_SINGLE_TARGET				99
-#define ABILITY_DRAW_DELAY						100
-#define ABILITY_ACTIVE_DRAW_DELAY				101
-#define ABILITY_PASSIVE_DRAW_DELAY				102
-#define ATTRIBUTE_MULTIPLIER					103
-#define ATTRIBUTE_USE_THESE_MULTIPLIERS			104
-#define ATTRIBUTE_BASE_MULTIPLIER				105
-#define ATTRIBUTE_DIMINISHING_MULTIPLIER		106
-#define ATTRIBUTE_DIMINISHING_RETURNS			107
-#define HUD_TEXT_BUFF_EFFECT_OVER_TIME			108
-#define IS_SUB_MENU_OF_TALENTCONFIG				109
-#define IS_AURA_INSTEAD							110
-#define EFFECT_COOLDOWN_TRIGGER					111
-#define EFFECT_INACTIVE_TRIGGER					112
-#define ABILITY_REACTIVE_TYPE					113
-#define ABILITY_ACTIVE_TIME						114
-#define ABILITY_REQ_NO_ENSNARE					115
-#define ABILITY_TOGGLE_EFFECT					116
-#define ABILITY_COOLDOWN						117
-#define EFFECT_ACTIVATE_PER_TICK				118
-#define EFFECT_SECONDARY_EPT_ONLY				119
-#define ABILITY_ACTIVE_END_ABILITY_TRIGGER		120
-#define ABILITY_COOLDOWN_END_TRIGGER			121
-#define ABILITY_DOES_DAMAGE						122
-#define TALENT_IS_SPELL							123
-#define ABILITY_TOGGLE_STRENGTH					124
-#define TARGET_AND_LAST_TARGET_CLASS_MATCH		125
-#define TARGET_RANGE_REQUIRED					126
-#define TARGET_RANGE_REQUIRED_OUTSIDE			127
-#define TARGET_MUST_BE_LAST_TARGET				128
-#define ACTIVATOR_MUST_BE_ON_FIRE				129
-#define ACTIVATOR_MUST_SUFFER_ACID_BURN			130
-#define ACTIVATOR_MUST_BE_EXPLODING				131
-#define ACTIVATOR_MUST_BE_SLOW					132
-#define ACTIVATOR_MUST_BE_FROZEN				133
-#define ACTIVATOR_MUST_BE_SCORCHED				134
-#define ACTIVATOR_MUST_BE_STEAMING				135
-#define ACTIVATOR_MUST_BE_DROWNING				136
-#define ACTIVATOR_MUST_HAVE_HIGH_GROUND			137
-#define TARGET_MUST_HAVE_HIGH_GROUND			138
-#define ACTIVATOR_TARGET_MUST_EVEN_GROUND		139
-#define TARGET_MUST_BE_IN_THE_AIR				140
-#define ABILITY_EVENT_TYPE						141
-#define LAST_KILL_MUST_BE_HEADSHOT				142
-#define MULT_STR_CONSECUTIVE_HITS				143
-#define MULT_STR_CONSECUTIVE_MAX				144
-#define MULT_STR_CONSECUTIVE_DIV				145
-#define CONTRIBUTION_TYPE_CATEGORY				146
-#define CONTRIBUTION_COST						147
-#define ITEM_NAME_TO_GIVE_PLAYER				148
-#define HIDE_TALENT_STRENGTH_DISPLAY			149
-#define ACTIVATOR_CALL_ABILITY_TRIGGER			150
-#define TALENT_WEAPON_SLOT_REQUIRED				151
-#define REQ_CONSECUTIVE_HEADSHOTS				152
-#define MULT_STR_CONSECUTIVE_HEADSHOTS			153
-#define MULT_STR_CONSECUTIVE_HEADSHOTS_MAX		154
-#define MULT_STR_CONSECUTIVE_HEADSHOTS_DIV		155
-#define IF_EOT_ACTIVE_ALLOW_ALL_WEAPONS			156
-#define IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS		157
-#define IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES			158
-#define ACTIVATOR_STATUS_EFFECT_REQUIRED		159
-#define HEALTH_PERCENTAGE_REQ_ACT_REMAINING 	160
-#define HEALTH_PERCENTAGE_ACTIVATION_COST		161
-#define MULT_STR_NEARBY_DOWN_ALLIES				162
-#define MULT_STR_NEARBY_ENSNARED_ALLIES			163
-#define TALENT_NO_AUGMENT_MODIFIERS				164
-#define TARGET_CALL_ABILITY_TRIGGER				165
-#define COHERENCY_TALENT_NEARBY_REQUIRED		166
-#define UNHURT_BY_SPECIALINFECTED_OR_WITCH		167
-#define SKIP_TALENT_FOR_AUGMENT_ROLL			168
-#define REQUIRE_ALLY_WITH_ADRENALINE			169
-#define REQUIRE_ALLY_BELOW_HEALTH_PERCENTAGE	170
-#define REQUIRE_ENSNARED_ALLY					171
-#define REQUIRE_TARGET_HAS_ENSNARED_ALLY		172
-#define REQUIRE_ENEMY_IN_COHERENCY_RANGE		173
-#define ENEMY_IN_COHERENCY_IS_TARGET			174
-#define REQUIRE_ALLY_ON_FIRE					175
-#define TALENT_MINIMUM_COOLDOWN_TIME			176
-#define ABILITY_CATEGORY						177
+#define ABILITY_ACTIVE_EFFECT					81
+#define ABILITY_PASSIVE_EFFECT					82
+#define ABILITY_COOLDOWN_EFFECT					83
+#define ABILITY_IS_REACTIVE						84
+#define ABILITY_TEAMS_ALLOWED					85
+#define ABILITY_COOLDOWN_STRENGTH				86
+#define ABILITY_MAXIMUM_PASSIVE_MULTIPLIER		87
+#define ABILITY_MAXIMUM_ACTIVE_MULTIPLIER		88
+#define ABILITY_ACTIVE_STATE_ENSNARE_REQ		89
+#define ABILITY_ACTIVE_STRENGTH					90
+#define ABILITY_PASSIVE_IGNORES_COOLDOWN		91
+#define ABILITY_PASSIVE_STATE_ENSNARE_REQ		92
+#define ABILITY_PASSIVE_STRENGTH				93
+#define ABILITY_PASSIVE_ONLY					94
+#define ABILITY_IS_SINGLE_TARGET				95
+#define ABILITY_DRAW_DELAY						96
+#define ABILITY_ACTIVE_DRAW_DELAY				97
+#define ABILITY_PASSIVE_DRAW_DELAY				98
+#define ATTRIBUTE_MULTIPLIER					99
+#define ATTRIBUTE_USE_THESE_MULTIPLIERS			100
+#define ATTRIBUTE_BASE_MULTIPLIER				101
+#define ATTRIBUTE_DIMINISHING_MULTIPLIER		102
+#define ATTRIBUTE_DIMINISHING_RETURNS			103
+#define HUD_TEXT_BUFF_EFFECT_OVER_TIME			104
+#define IS_SUB_MENU_OF_TALENTCONFIG				105
+#define IS_AURA_INSTEAD							106
+#define EFFECT_COOLDOWN_TRIGGER					107
+#define EFFECT_INACTIVE_TRIGGER					108
+#define ABILITY_REACTIVE_TYPE					109
+#define ABILITY_ACTIVE_TIME						110
+#define ABILITY_REQ_NO_ENSNARE					111
+#define ABILITY_TOGGLE_EFFECT					112
+#define ABILITY_COOLDOWN						113
+#define EFFECT_ACTIVATE_PER_TICK				114
+#define EFFECT_SECONDARY_EPT_ONLY				115
+#define ABILITY_ACTIVE_END_ABILITY_TRIGGER		116
+#define ABILITY_COOLDOWN_END_TRIGGER			117
+#define ABILITY_DOES_DAMAGE						118
+#define TALENT_IS_SPELL							119
+#define ABILITY_TOGGLE_STRENGTH					120
+#define TARGET_AND_LAST_TARGET_CLASS_MATCH		121
+#define TARGET_RANGE_REQUIRED					122
+#define TARGET_RANGE_REQUIRED_OUTSIDE			123
+#define TARGET_MUST_BE_LAST_TARGET				124
+#define ACTIVATOR_MUST_HAVE_HIGH_GROUND			125
+#define TARGET_MUST_HAVE_HIGH_GROUND			126
+#define ACTIVATOR_TARGET_MUST_EVEN_GROUND		127
+#define ABILITY_EVENT_TYPE						128
+#define LAST_KILL_MUST_BE_HEADSHOT				129
+#define MULT_STR_CONSECUTIVE_HITS				130
+#define MULT_STR_CONSECUTIVE_MAX				131
+#define MULT_STR_CONSECUTIVE_DIV				132
+#define CONTRIBUTION_TYPE_CATEGORY				133
+#define CONTRIBUTION_COST						134
+#define ITEM_NAME_TO_GIVE_PLAYER				135
+#define HIDE_TALENT_STRENGTH_DISPLAY			136
+#define ACTIVATOR_CALL_ABILITY_TRIGGER			137
+#define TALENT_WEAPON_SLOT_REQUIRED				138
+#define REQ_CONSECUTIVE_HEADSHOTS				139
+#define MULT_STR_CONSECUTIVE_HEADSHOTS			140
+#define MULT_STR_CONSECUTIVE_HEADSHOTS_MAX		141
+#define MULT_STR_CONSECUTIVE_HEADSHOTS_DIV		142
+#define IF_EOT_ACTIVE_ALLOW_ALL_WEAPONS			143
+#define IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS		144
+#define IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES			145
+#define ACTIVATOR_STATUS_EFFECT_REQUIRED		146
+#define HEALTH_PERCENTAGE_REQ_ACT_REMAINING 	147
+#define HEALTH_PERCENTAGE_ACTIVATION_COST		148
+#define MULT_STR_NEARBY_DOWN_ALLIES				149
+#define MULT_STR_NEARBY_ENSNARED_ALLIES			150
+#define TALENT_NO_AUGMENT_MODIFIERS				151
+#define TARGET_CALL_ABILITY_TRIGGER				152
+#define COHERENCY_TALENT_NEARBY_REQUIRED		153
+#define UNHURT_BY_SPECIALINFECTED_OR_WITCH		154
+#define SKIP_TALENT_FOR_AUGMENT_ROLL			155
+#define REQUIRE_ALLY_WITH_ADRENALINE			156
+#define REQUIRE_ALLY_BELOW_HEALTH_PERCENTAGE	157
+#define REQUIRE_ENSNARED_ALLY					158
+#define REQUIRE_TARGET_HAS_ENSNARED_ALLY		159
+#define REQUIRE_ENEMY_IN_COHERENCY_RANGE		160
+#define ENEMY_IN_COHERENCY_IS_TARGET			161
+#define REQUIRE_ALLY_ON_FIRE					162
+#define TALENT_MINIMUM_COOLDOWN_TIME			163
+#define ABILITY_CATEGORY						164
+#define TARGET_STATUS_EFFECT_REQUIRED			165
+#define ACTIVATOR_MUST_BE_IN_AMMO				166
+#define TARGET_MUST_BE_IN_AMMO					167
+#define TIME_SINCE_LAST_ACTIVATOR_ATTACK		168
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION		178
+#define TALENT_FIRST_RANDOM_KEY_POSITION		169
 #define SUPER_COMMON_MAX_ALLOWED				0
 #define SUPER_COMMON_AURA_EFFECT				1
 #define SUPER_COMMON_RANGE_MIN					2
@@ -697,7 +758,6 @@ public Plugin myinfo = {
 #define EVENT_IS_SHOVED							16
 #define EVENT_IS_BULLET_IMPACT					17
 #define EVENT_ENTERED_SAFEROOM					18
-
 // for handicap.cfg
 #define HANDICAP_TRANSLATION					0
 #define HANDICAP_DAMAGE							1
@@ -705,21 +765,32 @@ public Plugin myinfo = {
 #define HANDICAP_LOOTFIND						3
 #define HANDICAP_SCORE_REQUIRED					4
 #define HANDICAP_SCORE_MULTIPLIER				5
-
 // for easier tracking of hitgroups and insurance against inverting values while coding
 #define HITGROUP_LIMB		2
 #define HITGROUP_HEAD		1
 #define HITGROUP_OTHER		0
+// for easier tracking of contribution types
+#define CONTRIBUTION_AWARD_DAMAGE				0
+#define CONTRIBUTION_AWARD_TANKING				1
+#define CONTRIBUTION_AWARD_BUFFING				2
+#define CONTRIBUTION_AWARD_HEALING				3
 
+
+bool bClientIsInAnyAmmo[MAXPLAYERS + 1];
+float fUpdateClientInterval;
+float fAugmentLevelDifferenceForStolen;
+int playerCurrentAugmentAverageLevel[MAXPLAYERS + 1];
+int iDontAllowLootStealing[MAXPLAYERS + 1];
+Handle GetAbilitySection[MAXPLAYERS + 1];
+int clientEffectState[MAXPLAYERS + 1];
+int iExperimentalMode;
 float fDamageContribution;
 float fTankingContribution;
 Handle GetValueFloatArray[MAXPLAYERS + 1];
-Handle GetAbilityArray[MAXPLAYERS + 1];
 int iStuckDelayTime;
 int lastStuckTime[MAXPLAYERS + 1];
 float fIncapHealthStartPercentage;
 Handle tempStorage;
-char witchSettingsOverride[64];
 int iCurrentIncapCount[MAXPLAYERS + 1];
 Handle ListOfWitchesWhoHaveBeenShot;
 Handle ClientsPermittedToLoad;
@@ -1078,6 +1149,7 @@ Handle a_Database_Talents_Defaults;
 Handle a_Database_Talents_Defaults_Name;
 Handle MenuKeys[MAXPLAYERS + 1];
 Handle MenuValues[MAXPLAYERS + 1];
+Handle AbilityMultiplierCalculator[MAXPLAYERS + 1];
 Handle MenuSection[MAXPLAYERS + 1];
 Handle TriggerKeys[MAXPLAYERS + 1];
 Handle TriggerValues[MAXPLAYERS + 1];
@@ -1246,6 +1318,7 @@ float fDirectorThoughtProcessMinimum;
 int iSurvivalRoundTime;
 float fDazedDebuffEffect;
 int ConsumptionInt;
+float fStamJetpackInterval;
 float fStamSprintInterval;
 float fStamRegenTime;
 float fStamRegenTimeAdren;
@@ -1285,6 +1358,8 @@ float fRatingMultCommons;
 float fRatingMultTank;
 float fRatingMultWitch;
 float fRatingMultTanking;
+float fRatingMultBuffing;
+float fRatingMultHealing;
 float fTeamworkExperience;
 float fItemMultiplierLuck;
 float fItemMultiplierTeam;
@@ -1565,6 +1640,7 @@ Handle LootDropCategoryToBuffValues[MAXPLAYERS + 1];
 Handle myAugmentIDCodes[MAXPLAYERS + 1];
 Handle myAugmentCategories[MAXPLAYERS + 1];
 Handle myAugmentOwners[MAXPLAYERS + 1];
+Handle myAugmentOwnersName[MAXPLAYERS + 1];
 Handle myAugmentInfo[MAXPLAYERS + 1];
 int iAugmentLevelDivisor;
 float fAugmentRatingMultiplier;
@@ -1588,9 +1664,6 @@ char sCategoriesToIgnore[512];
 float fAntiFarmDistance;
 int iAntiFarmMax;
 Handle lootRollData[MAXPLAYERS + 1];
-int iNumOfEndMapLootRolls;
-int iAllPlayersEndMapLootRolls;
-float fEndMapLootRollsChance;
 int iLootBagsAreGenerated;
 float fLootBagExpirationTimeInSeconds;
 Handle playerLootOnGround[MAXPLAYERS + 1];
@@ -1704,7 +1777,6 @@ public void OnPluginStart() {
 	// These are mandatory because of quick commands, so I hardcode the entries.
 	RegConsoleCmd("autodismantle", CMD_AutoDismantle);
 	RegConsoleCmd("rollloot", CMD_RollLoot);
-	//RegConsoleCmd("loaddata", CMD_LoadData);
 	RegConsoleCmd("price", CMD_SetAugmentPrice);
 	RegConsoleCmd("say", CMD_ChatCommand);
 	RegConsoleCmd("say_team", CMD_TeamChatCommand);
@@ -1764,13 +1836,6 @@ public void OnPluginStart() {
 	staggerBuffer = CreateConVar("sm_vscript_res", "", "returns results from vscript check on stagger");
 }
 
-public Action CMD_LoadData(int client, int args) {
-	if (IsClearedToLoad(client)) return Plugin_Handled;
-	IsClearedToLoad(client, true);
-	ClearAndLoad(client, true);
-	return Plugin_Handled;
-}
-
 public Action CMD_WITCHESCOUNT(int client, int args) {
 	PrintToChat(client, "Witches: %d", GetArraySize(WitchList));
 	return Plugin_Handled;
@@ -1817,6 +1882,9 @@ stock void UnhookAll() {
 public int ReadyUp_TrueDisconnect(int client) {
 	if (b_IsLoaded[client]) SavePlayerData(client, true);
 	b_IsLoaded[client] = false;		// only set to false if a REAL player leaves - this way bots don't repeatedly load their data.
+	b_IsLoading[client] = false;
+	PlayerLevel[client] = 0;
+	Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
 	if (IsFakeClient(client)) return;
 	IsClearedToLoad(client, _, true);
 	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
@@ -1937,8 +2005,8 @@ stock CreateAllArrays() {
 		DisplayActionBar[i] = false;
 		ActionBarSlot[i] = -1;
 		b_IsIdle[i] = false;
+		if (GetAbilitySection[i] == INVALID_HANDLE) GetAbilitySection[i] = CreateArray(16);
 		if (GetValueFloatArray[i] == INVALID_HANDLE) GetValueFloatArray[i] = CreateArray(8);
-		if (GetAbilityArray[i] == INVALID_HANDLE) GetAbilityArray[i] = CreateArray(16);
 		if (CommonInfected[i] == INVALID_HANDLE) CommonInfected[i] = CreateArray(16);
 		if (possibleLootPool[i] == INVALID_HANDLE) possibleLootPool[i] = CreateArray(16);
 		if (currentEquippedWeapon[i] == INVALID_HANDLE) currentEquippedWeapon[i] = CreateTrie();
@@ -2016,6 +2084,7 @@ stock CreateAllArrays() {
 		if (SpecialCommon[i] == INVALID_HANDLE) SpecialCommon[i] = CreateArray(16);
 		if (MenuKeys[i] == INVALID_HANDLE) MenuKeys[i]								= CreateArray(16);
 		if (MenuValues[i] == INVALID_HANDLE) MenuValues[i]							= CreateArray(16);
+		if (AbilityMultiplierCalculator[i] == INVALID_HANDLE) AbilityMultiplierCalculator[i] = CreateArray(16);
 		if (MenuSection[i] == INVALID_HANDLE) MenuSection[i]							= CreateArray(16);
 		if (TriggerKeys[i] == INVALID_HANDLE) TriggerKeys[i]							= CreateArray(16);
 		if (TriggerValues[i] == INVALID_HANDLE) TriggerValues[i]						= CreateArray(16);
@@ -2122,6 +2191,7 @@ stock CreateAllArrays() {
 		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(16);
 		if (myAugmentCategories[i] == INVALID_HANDLE) myAugmentCategories[i] = CreateArray(16);
 		if (myAugmentOwners[i] == INVALID_HANDLE) myAugmentOwners[i] = CreateArray(16);
+		if (myAugmentOwnersName[i] == INVALID_HANDLE) myAugmentOwnersName[i] = CreateArray(16);
 		if (myAugmentInfo[i] == INVALID_HANDLE) myAugmentInfo[i] = CreateArray(16);
 		if (equippedAugments[i] == INVALID_HANDLE) equippedAugments[i] = CreateArray(16);
 		if (equippedAugmentsCategory[i] == INVALID_HANDLE) equippedAugmentsCategory[i] = CreateArray(16);
@@ -2192,16 +2262,11 @@ public void OnMapStart() {
 	PrecacheModel("models/props_interiors/toaster.mdl", true);
 	int modelprecacheSize = GetArraySize(ModelsToPrecache);
 	if (modelprecacheSize > 0) {
-		LogMessage("There are %d models to be precached.", modelprecacheSize);
 		for (int i = 0; i < modelprecacheSize; i++) {
 			char modelName[64];
 			GetArrayString(ModelsToPrecache, i, modelName, 64);
-			LogMessage("Checking if %s is precached...", modelName);
-			if (!IsModelPrecached(modelName)) {
-				LogMessage("Precaching %s", modelName);
-				PrecacheModel(modelName, true);
-			}
-			else LogMessage("MODEL ALREADY PRECACHED");
+			if (IsModelPrecached(modelName)) continue;
+			PrecacheModel(modelName, true);
 		}
 	}
 
@@ -2222,7 +2287,6 @@ public void OnMapStart() {
 	ClearArray(StaggeredTargets);
 	GetCurrentMap(TheCurrentMap, sizeof(TheCurrentMap));
 	Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "%srpg/%s.cfg", ConfigPathDirectory, TheCurrentMap);
-	//LogMessage("CONFIG_MAIN DEFAULT: %s", CONFIG_MAIN);
 	if (!FileExists(CONFIG_MAIN)) Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "rpg/config.cfg");
 	else Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "rpg/%s.cfg", TheCurrentMap);
 	UnhookAll();
@@ -2261,7 +2325,6 @@ stock CheckGamemode() {
 
 	if (!StrEqual(TheRequiredGamemode, "-1") && !StrEqual(TheGamemode, TheRequiredGamemode, false)) {
 		LogMessage("Gamemode did not match, changing to %s", TheRequiredGamemode);
-		PrintToChatAll("Gamemode did not match, changing to %s", TheRequiredGamemode);
 		SetConVarString(g_Gamemode, TheRequiredGamemode);
 		char TheMapname[64];
 		GetCurrentMap(TheMapname, sizeof(TheMapname));
@@ -2274,19 +2337,16 @@ bool SetTalentConfigs() {
 	//char result[64];
 	//int len = -1;
 	ClearArray(TalentMenuConfigs);
-	LogMessage("Trying to set config files %d.", size);
 	for (int i = 0; i < size; i++) {
 		char configname[64];
 		GetArrayString(MainKeys, i, configname, 64);
 		if (!StrEqual(configname, "talent config?")) continue;
 		GetArrayString(MainValues, i, configname, 64);
-		LogMessage("Storing %s", configname);
 		PushArrayString(TalentMenuConfigs, configname);
 	}
 	// ClearArray(SetKeys);
 	// ClearArray(SetVals);
 	if (GetArraySize(TalentMenuConfigs) > 0) return true;
-	LogMessage("No config files found.");
 	return false;
 }
 
@@ -2311,7 +2371,6 @@ public Action Timer_ExecuteConfig(Handle timer) {
 		for (int i = 0; i < GetArraySize(TalentMenuConfigs); i++) {
 			char configname[64];
 			GetArrayString(TalentMenuConfigs, i, configname, 64);
-			LogMessage("PARSING TALENT CONFIG: %s", configname);
 			ReadyUp_ParseConfig(configname);
 		}		
 		ReadyUp_ParseConfig(CONFIG_POINTS);
@@ -2319,7 +2378,6 @@ public Action Timer_ExecuteConfig(Handle timer) {
 		ReadyUp_ParseConfig(CONFIG_TRAILS);
 		ReadyUp_ParseConfig(CONFIG_MAINMENU);
 		ReadyUp_ParseConfig(CONFIG_WEAPONS);
-		ReadyUp_ParseConfig(CONFIG_PETS);
 		ReadyUp_ParseConfig(CONFIG_COMMONAFFIXES);
 		ReadyUp_ParseConfig(CONFIG_HANDICAP);
 		//ReadyUp_ParseConfig(CONFIG_CLASSNAMES);
@@ -2638,7 +2696,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		//CreateTimer(fSpecialAmmoInterval, Timer_ShowActionBar, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		if (iCommonAffixes > 0) {
 			ClearArray(CommonAffixes);
-			CreateTimer(2.0, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(1.0, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 		ClearRelevantData();
 		LastLivingSurvivor = 1;
@@ -2651,6 +2709,14 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		}
 		RefreshSurvivorBots();
 		if (iResetDirectorPointsOnNewRound == 1) Points_Director = 0.0;
+		char currentMapEnrageTimerText[64];
+		Format(currentMapEnrageTimerText, sizeof(currentMapEnrageTimerText), "enrage time %s?", TheCurrentMap);
+		int iEnrageTimeCurrentMap			= GetConfigValueInt(currentMapEnrageTimerText);
+		if (iEnrageTimeCurrentMap > 0) {
+			iEnrageTime							= iEnrageTimeCurrentMap;
+			iHideEnrageTimerUntilSecondsLeft	= iEnrageTime/3;
+		}
+		else LogMessage("No custom enrage timer cvar found in your config.cfg: %s", currentMapEnrageTimerText);
 		if (iEnrageTime > 0) {
 			TimeUntilEnrage(text, sizeof(text));
 			PrintToChatAll("%t", "time until things get bad", orange, green, text, orange);
@@ -2711,56 +2777,36 @@ stock CastActionEx(client, char[] t_actionpos = "none", TheSize, pos = -1) {
 	if (pos >= 0 && pos < ActionSlots) {
 		//pos--;	// shift down 1 for the array.
 		GetArrayString(ActionBar[client], pos, actionpos, sizeof(actionpos));
-		if (IsTalentExists(actionpos)) { //PrintToChat(client, "%T", "Action Slot Empty", client, white, orange, blue, pos+1);
-			int size =	GetArraySize(a_Menu_Talents);
-			int RequiresTarget = 0;
-			int AbilityTalent = 0;
-			float TargetPos[3];
-			char TalentName[64];
-			float visualDelayTime = 0.0;
-			char hitgroup[4];
-			for (int i = 0; i < size; i++) {
-				CastKeys[client]			= GetArrayCell(a_Menu_Talents, i, 0);
-				CastValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
-				CastSection[client]			= GetArrayCell(a_Menu_Talents, i, 2);
-				GetArrayString(CastSection[client], 0, TalentName, sizeof(TalentName));
-				if (!StrEqual(TalentName, actionpos)) continue;
-				AbilityTalent = GetArrayCell(CastValues[client], IS_TALENT_ABILITY);
-				if (GetArrayCell(CastValues[client], ABILITY_PASSIVE_ONLY) == 1) continue;
-				//if (AbilityTalent != 1 && GetTalentStrength(client, actionpos) < 1) {
-				if (AbilityTalent != 1 && GetArrayCell(MyTalentStrength[client], i) < 1) {
-					// talent exists but user has no points in it from a respec or whatever so we remove it.
-					// we don't tell them either, next time they use it they'll find out.
-					Format(actionpos, TheSize, "none");
-					SetArrayString(ActionBar[client], pos, actionpos);
-				}
-				else {
-					RequiresTarget = GetArrayCell(CastValues[client], ABILITY_IS_SINGLE_TARGET);
-					visualDelayTime = GetArrayCell(CastValues[client], ABILITY_DRAW_DELAY);
-					if (visualDelayTime < 1.0) visualDelayTime = 1.0;
-					if (RequiresTarget > 0) {
-						//GetClientAimTargetEx(client, actionpos, TheSize, true);
-						RequiresTarget = GetAimTargetPosition(client, TargetPos, hitgroup, 4);//StringToInt(actionpos);
-						if (IsLegitimateClientAlive(RequiresTarget)) {
-							if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos, visualDelayTime);
-							else UseAbility(client, RequiresTarget, TalentName, CastKeys[client], CastValues[client], TargetPos);
-						}
-					}
-					else {
-						GetAimTargetPosition(client, TargetPos, hitgroup, 4);
-						/*GetClientAimTargetEx(client, actionpos, TheSize);
-						ExplodeString(actionpos, " ", tTargetPos, 3, 64);
-						TargetPos[0] = StringToFloat(tTargetPos[0]);
-						TargetPos[1] = StringToFloat(tTargetPos[1]);
-						TargetPos[2] = StringToFloat(tTargetPos[2]);*/
-						if (AbilityTalent != 1) CastSpell(client, _, TalentName, TargetPos, visualDelayTime);
-						else {
-							CheckActiveAbility(client, pos, _, _, true, true);
-							UseAbility(client, _, TalentName, CastKeys[client], CastValues[client], TargetPos);
-						}
-					}
-				}
-				break;
+		int menuPos = GetArrayCell(ActionBarMenuPos[client], pos);
+		if (menuPos < 0 || GetArrayCell(MyTalentStrength[client], menuPos) < 1) return;
+		
+		CastValues[client]			= GetArrayCell(a_Menu_Talents, menuPos, 1);
+		if (GetArrayCell(CastValues[client], ABILITY_PASSIVE_ONLY) == 1) return;
+		int AbilityTalent = 0;
+		float TargetPos[3];
+		char TalentName[64];
+		GetArrayString(a_Database_Talents, menuPos, TalentName, sizeof(TalentName));
+
+		char hitgroup[4];
+		CastKeys[client]			= GetArrayCell(a_Menu_Talents, menuPos, 0);
+		//CastSection[client]			= GetArrayCell(a_Menu_Talents, i, 2);
+		AbilityTalent = GetArrayCell(CastValues[client], IS_TALENT_ABILITY);
+		int RequiresTarget = GetArrayCell(CastValues[client], ABILITY_IS_SINGLE_TARGET);
+		float visualDelayTime = GetArrayCell(CastValues[client], ABILITY_DRAW_DELAY);
+		if (visualDelayTime < 1.0) visualDelayTime = 1.0;
+		if (RequiresTarget > 0) {
+			RequiresTarget = GetAimTargetPosition(client, TargetPos, hitgroup, 4);
+			if (IsLegitimateClientAlive(RequiresTarget)) {
+				if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos, visualDelayTime);
+				else UseAbility(client, RequiresTarget, TalentName, CastKeys[client], CastValues[client], TargetPos);
+			}
+		}
+		else {
+			GetAimTargetPosition(client, TargetPos, hitgroup, 4);
+			if (AbilityTalent != 1) CastSpell(client, _, TalentName, TargetPos, visualDelayTime);
+			else {
+				CheckActiveAbility(client, pos, _, _, true, true);
+				UseAbility(client, _, TalentName, CastKeys[client], CastValues[client], TargetPos);
 			}
 		}
 	}
@@ -3315,7 +3361,6 @@ stock CallRoundIsOver() {
 						AwardExperience(i, _, _, true);
 					}
 				}
-				EndOfMapRollLoot();
 			}
 		}
 		int humanSurvivorsInGame = TotalHumanSurvivors();
@@ -3363,13 +3408,10 @@ stock CallRoundIsOver() {
 		ClearArray(EffectOverTime);
 		ClearArray(TimeOfEffectOverTime);
 		if (b_IsMissionFailed && StrContains(TheCurrentMap, "zerowarn", false) != -1) {
-			PrintToChatAll("\x04Due to VScripts issue, this map must be restarted to prevent a server crash.");
-			LogMessage("Restarting %s map to avoid VScripts crash.", TheCurrentMap);
 			// need to force-teleport players here on new spawn: 4087.998291 11974.557617 -269.968750
 			CreateTimer(5.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
 		}
 		else if (StrContains(TheCurrentMap, "helms", false) != -1) {
-			PrintToChatAll("\x04Due to VScripts issue, this map must be restarted to prevent a server crash...");
 			CreateTimer(3.0, Timer_ResetMap, _, TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
@@ -3397,7 +3439,6 @@ public ReadyUp_ParseConfigFailed(char[] config, char[] error) {
 		StrEqual(config, CONFIG_STORE) ||
 		StrEqual(config, CONFIG_TRAILS) ||
 		StrEqual(config, CONFIG_WEAPONS) ||
-		StrEqual(config, CONFIG_PETS) ||
 		StrEqual(config, CONFIG_COMMONAFFIXES) ||
 		StrEqual(config, CONFIG_HANDICAP)) {// ||
 		//StrEqual(config, CONFIG_CLASSNAMES)) {
@@ -3463,7 +3504,6 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		!StrEqual(configname, CONFIG_STORE) &&
 		!StrEqual(configname, CONFIG_TRAILS) &&
 		!StrEqual(configname, CONFIG_WEAPONS) &&
-		!StrEqual(configname, CONFIG_PETS) &&
 		!StrEqual(configname, CONFIG_COMMONAFFIXES) &&
 		!StrEqual(configname, CONFIG_HANDICAP)) return;// &&
 		//!StrEqual(configname, CONFIG_CLASSNAMES)) return;
@@ -3476,14 +3516,10 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		for (int i = 0; i < a_Size; i++) {
 			GetArrayString(key, i, s_key, sizeof(s_key));
 			GetArrayString(value, i, s_value, sizeof(s_value));
-			//LogMessage("\"%s\"\t\t\t\"%s\"", s_key, s_value);
 			PushArrayString(MainKeys, s_key);
 			PushArrayString(MainValues, s_value);
-			//LogMessage("\"%s\"\t\t\t\t\"%s\"", s_key, s_value);
-			if (StrEqual(s_key, "rpg mode?")) {
-				CurrentRPGMode = StringToInt(s_value);
-				LogMessage("=====\t\tRPG MODE SET TO %d\t\t=====", CurrentRPGMode);
-			}
+			if (!StrEqual(s_key, "rpg mode?")) continue;
+			CurrentRPGMode = StringToInt(s_value);
 		}
 		RegisterConsoleCommands();
 		return;
@@ -3500,7 +3536,6 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		else if (StrEqual(configname, CONFIG_MAINMENU)) ResizeArray(a_Menu_Main, keyCount);
 		else if (StrEqual(configname, CONFIG_EVENTS)) ResizeArray(a_Events, keyCount);
 		else if (StrEqual(configname, CONFIG_POINTS)) ResizeArray(a_Points, keyCount);
-		else if (StrEqual(configname, CONFIG_PETS)) ResizeArray(a_Pets, keyCount);
 		else if (StrEqual(configname, CONFIG_STORE)) ResizeArray(a_Store, keyCount);
 		else if (StrEqual(configname, CONFIG_TRAILS)) ResizeArray(a_Trails, keyCount);
 		else if (StrEqual(configname, CONFIG_WEAPONS)) ResizeArray(a_WeaponDamages, keyCount);
@@ -3513,7 +3548,6 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 	for (int i = 0; i < a_Size; i++) {
 		GetArrayString(key, i, s_key, sizeof(s_key));
 		GetArrayString(value, i, s_value, sizeof(s_value));
-		//LogMessage("\"%s\"\t\t\t\"%s\"", s_key, s_value);
 		if (!StrEqual(s_key, "EOM")) {
 			PushArrayString(TalentKeys, s_key);
 			PushArrayString(TalentValues, s_value);
@@ -3526,7 +3560,6 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		else if (StrEqual(configname, CONFIG_MAINMENU)) SetConfigArrays(configname, a_Menu_Main, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Menu_Main), lastPosition - counter);
 		else if (StrEqual(configname, CONFIG_EVENTS)) SetConfigArrays(configname, a_Events, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Events), lastPosition - counter);
 		else if (StrEqual(configname, CONFIG_POINTS)) SetConfigArrays(configname, a_Points, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Points), lastPosition - counter);
-		else if (StrEqual(configname, CONFIG_PETS)) SetConfigArrays(configname, a_Pets, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Pets), lastPosition - counter);
 		else if (StrEqual(configname, CONFIG_STORE)) SetConfigArrays(configname, a_Store, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Store), lastPosition - counter);
 		else if (StrEqual(configname, CONFIG_TRAILS)) SetConfigArrays(configname, a_Trails, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Trails), lastPosition - counter);
 		else if (StrEqual(configname, CONFIG_WEAPONS)) SetConfigArrays(configname, a_WeaponDamages, TalentKeys, TalentValues, TalentSections, GetArraySize(a_WeaponDamages), lastPosition - counter);
@@ -3537,14 +3570,10 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		lastPosition = i + 1;
 		if (configIsForTalents) {
 			talentsLoaded++;
-			LogMessage("# of talents loaded: %d (%s)", talentsLoaded, s_section);
 		}
 		ClearArray(TalentKeys);
 		ClearArray(TalentValues);
 		ClearArray(TalentSections);
-	}
-	if (configIsForTalents) {
-		LogMessage("TOTAL # of talents loaded: %d", talentsLoaded);
 	}
 
 	//CloseHandle(TalentKeys);
@@ -3598,7 +3627,6 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		Faster than searching every time.
 	*/
 	if (StrEqual(configname, CONFIG_COMMONAFFIXES) && GetArraySize(ModelsToPrecache) > 0) {
-		LogMessage("there are models to precache, setting a timer so we can reload the map. This should only occur once.");
 		CreateTimer(10.0, Timer_PrecacheReset, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
@@ -3615,17 +3643,6 @@ public Action Timer_PrecacheReset(Handle timer) {
 	We don't load other variables in this way because they are dynamically loaded and unloaded.
 */
 stock LoadMainConfig() {
-	// LogMessage("Loading Main Config.");
-	// char texty[512];
-	// char form[512];
-	// int a_Size			= GetArraySize(MainKeys);
-	// for (int i = 0; i < a_Size; i++) {
-	// 	GetArrayString(MainKeys, i, texty, sizeof(texty));
-	// 	GetArrayString(MainValues, i, form, sizeof(form));
-	// 	LogMessage("\"%s\"\t\t\t\"%s\"", texty, form);
-	// }
-
-
 	GetConfigValue(sServerDifficulty, sizeof(sServerDifficulty), "server difficulty?");
 	CheckDifficulty();
 	GetConfigValue(sDeleteBotFlags, sizeof(sDeleteBotFlags), "delete bot flags?");
@@ -3675,7 +3692,8 @@ stock LoadMainConfig() {
 	iSurvivalRoundTime					= GetConfigValueInt("survival round time?");
 	fDazedDebuffEffect					= GetConfigValueFloat("dazed debuff effect?");
 	ConsumptionInt						= GetConfigValueInt("stamina consumption interval?");
-	fStamSprintInterval					= GetConfigValueFloat("stamina sprint interval?");
+	fStamSprintInterval					= GetConfigValueFloat("stamina sprint interval?", 0.12);
+	fStamJetpackInterval				= GetConfigValueFloat("stamina jetpack interval?", 0.05);
 	fStamRegenTime						= GetConfigValueFloat("stamina regeneration time?");
 	fStamRegenTimeAdren					= GetConfigValueFloat("stamina regeneration time adren?");
 	fBaseMovementSpeed					= GetConfigValueFloat("base movement speed?");
@@ -3737,7 +3755,9 @@ stock LoadMainConfig() {
 	fRatingMultCommons					= GetConfigValueFloat("rating multiplier commons?");
 	fRatingMultTank						= GetConfigValueFloat("rating multiplier tank?");
 	fRatingMultWitch					= GetConfigValueFloat("rating multiplier witch?");
-	fRatingMultTanking					= GetConfigValueFloat("rating multiplier tanking?");
+	fRatingMultTanking					= GetConfigValueFloat("rating multiplier tanking?", 0.5);
+	fRatingMultBuffing					= GetConfigValueFloat("rating multiplier buffing?", 0.1);
+	fRatingMultHealing					= GetConfigValueFloat("rating multiplier healing?", 0.1);
 	fTeamworkExperience					= GetConfigValueInt("maximum teamwork experience?") * 1.0;
 	fItemMultiplierLuck					= GetConfigValueFloat("buy item luck multiplier?");
 	fItemMultiplierTeam					= GetConfigValueInt("buy teammate item multiplier?") * 1.0;
@@ -3879,9 +3899,6 @@ stock LoadMainConfig() {
 	fAugmentTierChance					= GetConfigValueFloat("augment tier chance?", 0.75);
 	fAntiFarmDistance					= GetConfigValueFloat("anti farm kill distance?");
 	iAntiFarmMax						= GetConfigValueInt("anti farm kill max locations?");
-	iNumOfEndMapLootRolls				= GetConfigValueInt("number of end of map rolls?", 1);
-	iAllPlayersEndMapLootRolls			= GetConfigValueInt("all players end of map rolls?", 0);
-	fEndMapLootRollsChance				= GetConfigValueFloat("end of map roll chance?", 1.0);
 	iLootBagsAreGenerated				= GetConfigValueInt("generate interactable loot bags?", 1);
 	fLootBagExpirationTimeInSeconds		= GetConfigValueFloat("loot bags disappear after this many seconds?", 10.0);
 	iExplosionBaseDamagePipe			= GetConfigValueInt("base pipebomb damage?", 500);
@@ -3908,7 +3925,9 @@ stock LoadMainConfig() {
 	iStuckDelayTime						= GetConfigValueInt("seconds between stuck command use?", 120);
 	fDamageContribution					= GetConfigValueFloat("damage contribution?", 0.1);
 	fTankingContribution				= GetConfigValueFloat("tanking contribution?", 0.5);
-	
+	iExperimentalMode					= GetConfigValueInt("invert walk and sprint?", 1);
+	fAugmentLevelDifferenceForStolen	= GetConfigValueFloat("equip stolen augment average range?", 0.1);
+	fUpdateClientInterval				= GetConfigValueFloat("update client data tickrate?", 0.5);
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
@@ -3917,8 +3936,6 @@ stock LoadMainConfig() {
 	GetConfigValue(defaultLoadoutWeaponPrimary, sizeof(defaultLoadoutWeaponPrimary), "default loadout primary weapon?");
 	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
 	GetConfigValue(serverKey, sizeof(serverKey), "server steam key?");
-	GetConfigValue(witchSettingsOverride, sizeof(witchSettingsOverride), "custom witch config?");
-
 	LogMessage("Main Config Loaded.");
 }
 
@@ -3927,9 +3944,7 @@ public Action CMD_AutoDismantle(client, args) {
 	if (handicapLevel[client] > 0) lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
 	if (args < 1) {
 		PrintToChat(client, "\x04!autodismantle <score>\n\x03augments that roll under this score will be auto-dismantled. \x04limit: \x03%d", BestRating[client] + lootFindBonus);
-		PrintToChat(client, "\x04!autodismantle clear - \x03Deletes \x04all augments \x03not equipped or favourited.");
-		PrintToChat(client, "\x04!autodismantle major - \x03Deletes all \x04major \x03augments not equipped or favourited.");
-		PrintToChat(client, "\x04!autodismantle minor - \x03Deletes all \x04minor \x03augments not equipped or favourited.");
+		PrintToChat(client, "\x04!autodismantle clear/perfect/major/minor - \x03Deletes \x04all/perfect/major/minor augments \x03not equipped or favourited.");
 		return Plugin_Handled;
 	}
 	char arg[64];
@@ -3953,6 +3968,7 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentIDCodes[client], i);
 			RemoveFromArray(myAugmentCategories[client], i);
 			RemoveFromArray(myAugmentOwners[client], i);
+			RemoveFromArray(myAugmentOwnersName[client], i);
 			RemoveFromArray(myAugmentInfo[client], i);
 			RemoveFromArray(myAugmentTargetEffects[client], i);
 			RemoveFromArray(myAugmentActivatorEffects[client], i);
@@ -3980,6 +3996,7 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentIDCodes[client], i);
 			RemoveFromArray(myAugmentCategories[client], i);
 			RemoveFromArray(myAugmentOwners[client], i);
+			RemoveFromArray(myAugmentOwnersName[client], i);
 			RemoveFromArray(myAugmentInfo[client], i);
 			refunded++;
 		}
@@ -4005,10 +4022,36 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentIDCodes[client], i);
 			RemoveFromArray(myAugmentCategories[client], i);
 			RemoveFromArray(myAugmentOwners[client], i);
+			RemoveFromArray(myAugmentOwnersName[client], i);
 			RemoveFromArray(myAugmentInfo[client], i);
 			refunded++;
 		}
 		PrintToChat(client, "\x04Deleted all \x03Major \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
+		augmentParts[client] += refunded;
+	}
+	else if (StrEqual(arg, "perfect")) {
+		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `isequipped` = '-1' AND `acteffects` != '-1' AND `tareffects` != '-1' AND `steam_id` = '%s';", TheDBPrefix, key, key);
+		SQL_TQuery(hDatabase, QueryResults, tquery, client);
+		char othereffects[64];
+		size = GetArraySize(myAugmentInfo[client]);
+		for (int i = size-1; i >= 0; i--) {
+			isEquipped = GetArrayCell(myAugmentInfo[client], i, 3);
+			if (isEquipped != -1) continue;
+			GetArrayString(myAugmentTargetEffects[client], i, effects, sizeof(effects));
+			GetArrayString(myAugmentActivatorEffects[client], i, othereffects, sizeof(othereffects));
+			if (StrEqual(effects, "-1") || StrEqual(othereffects, "-1")) continue;
+			RemoveFromArray(myAugmentTargetEffects[client], i);
+			RemoveFromArray(myAugmentActivatorEffects[client], i);
+			RemoveFromArray(myAugmentIDCodes[client], i);
+			RemoveFromArray(myAugmentCategories[client], i);
+			RemoveFromArray(myAugmentOwners[client], i);
+			RemoveFromArray(myAugmentOwnersName[client], i);
+			RemoveFromArray(myAugmentInfo[client], i);
+			refunded++;
+		}
+		PrintToChat(client, "\x04Deleted all \x03Perfect \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
 		augmentParts[client] += refunded;
 	}
 	else {
@@ -4024,32 +4067,6 @@ public Action CMD_AutoDismantle(client, args) {
 public Action CMD_RollLoot(client, args) {
 	//GenerateAndGivePlayerAugment(client);
 	return Plugin_Handled;
-}
-
-stock EndOfMapRollLoot() {
-	if (iNumOfEndMapLootRolls < 1) return;
-	char sWhichPlayersToRollNotice[32];
-	if (iAllPlayersEndMapLootRolls == 1) Format(sWhichPlayersToRollNotice, 32, "survivors");
-	else Format(sWhichPlayersToRollNotice, 32, "living survivors");
-	PrintToChatAll("%t", "end of map augment rolls", blue, green, iNumOfEndMapLootRolls, blue, sWhichPlayersToRollNotice);
-	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR || IsFakeClient(i)) continue;
-		if (iAllPlayersEndMapLootRolls != 1 && !IsPlayerAlive(i)) continue;
-		if (GetArraySize(myAugmentIDCodes[i]) >= iInventoryLimit) {
-			PrintToChat(i, "\x04INVENTORY FULL - LOOT ROLL FORFEITED");
-			continue;
-		}
-		int numRollsRemainingThisPlayer = (GetArraySize(possibleLootPool[i]) < iPlayerStartingLevel) ? 0 : iNumOfEndMapLootRolls;
-		while (numRollsRemainingThisPlayer > 0) {
-			numRollsRemainingThisPlayer--;
-			if (fEndMapLootRollsChance < 1.0 && GetRandomInt(1, RoundToCeil(1.0 / fEndMapLootRollsChance)) > 1) continue;
-
-			// int min = (Rating[i] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[i];
-			// int max = (BestRating[i] > min) ? BestRating[i] : min+1;
-			int roll = (handicapLevel[i] > 0) ? GetArrayCell(HandicapSelectedValues[i], 2) + BestRating[i] : BestRating[i];
-			GenerateAndGivePlayerAugment(i, roll);
-		}
-	}
 }
 
 stock RollLoot(client, enemyClient) {
@@ -4100,7 +4117,7 @@ stock RollLoot(client, enemyClient) {
 	}
 }
 
-stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, bool isALootBag = false) {
+stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, bool isALootBag = false, char[] ownerSteamID = "none", char[] ownerName = "none") {
 	if (IsFakeClient(client)) return;
 	int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
 	int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
@@ -4147,6 +4164,7 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	ResizeArray(myAugmentIDCodes[client], size+1);
 	ResizeArray(myAugmentCategories[client], size+1);
 	ResizeArray(myAugmentOwners[client], size+1);
+	ResizeArray(myAugmentOwnersName[client], size+1);
 	ResizeArray(myAugmentInfo[client], size+1);
 	ResizeArray(myAugmentActivatorEffects[client], size+1);
 	ResizeArray(myAugmentTargetEffects[client], size+1);
@@ -4168,7 +4186,14 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	GetClientName(client, name, sizeof(name));
 
 	SetArrayString(myAugmentCategories[client], size, buffedCategory);
-	SetArrayString(myAugmentOwners[client], size, baseName[client]);
+
+	char key[64];
+	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+	if (StrEqual(ownerSteamID, "none")) {
+		Format(ownerSteamID, 64, "%s", key);
+	}
+	SetArrayString(myAugmentOwners[client], size, ownerSteamID);
+	SetArrayString(myAugmentOwnersName[client], size, baseName[client]);
 	SetArrayCell(myAugmentInfo[client], size, lootrolls[0]);	// item rating
 	SetArrayCell(myAugmentInfo[client], size, 0, 1);			// item cost
 	SetArrayCell(myAugmentInfo[client], size, 0, 2);			// is item for sale
@@ -4228,17 +4253,17 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		else if (!StrEqual(majorname, "-1")) Format(augmentStrengthText, 64, "{B}Major {O}%s", majorname);
 		else Format(augmentStrengthText, 64, "{B}Major {O}%s", perfectname);
 	}
-	Format(text, sizeof(text), "{B}%s {N}obtained a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
+	Format(text, sizeof(text), "{B}%s {N}{OBTAINTYPE} a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
+	if (StrEqual(ownerSteamID, key)) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "obtained", true);
+	else ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "stole", true);
 	ReplaceString(text, sizeof(text), "PCT", "%%", true);
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
 		Client_PrintToChat(i, true, text);
 	}
-	char key[64];
-	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	char tquery[512];
-	Format(tquery, sizeof(tquery), "INSERT INTO `%s_loot` (`steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`) VALUES ('%s', '%s', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%d');", TheDBPrefix, key, sItemCode, lootrolls[0], buffedCategory, 0, 0, -1, activatorEffects, augmentActivatorRating, targetEffects, augmentTargetRating);
+	Format(tquery, sizeof(tquery), "INSERT INTO `%s_loot` (`firstownername`, `firstowner`, `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`) VALUES ('%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%d');", TheDBPrefix, ownerName, ownerSteamID, key, sItemCode, lootrolls[0], buffedCategory, 0, 0, -1, activatorEffects, augmentActivatorRating, targetEffects, augmentTargetRating);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
 }
 
@@ -4246,7 +4271,6 @@ stock void GetUniqueAugmentLootDropItemCode(char[] sTime) {
 	FormatTime(sTime, 64, "%y%m%d%H%M%S", GetTime());
 	lootDropCounter++;
 	Format(sTime, 64, "%d%s%d", iUniqueServerCode, sTime, lootDropCounter);
-	LogMessage("itemcode is %s", sTime);
 }
 
 stock bool ArrayContains(Handle array, char[] val) {
@@ -4391,20 +4415,33 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	char value[64];
 	int a_Size = GetArraySize(Keys);
 	//setConfigArraysDebugger = true;
-	if (setConfigArraysDebugger) LogMessage("Config array size is %d", a_Size);
 	for (int i = 0; i < a_Size; i++) {
 
 		GetArrayString(Keys, i, key, sizeof(key));
 		GetArrayString(Values, i, value, sizeof(value));
-		if (setConfigArraysDebugger && configIsForTalents) LogMessage("key found: \"%s\"\t\t\"%s\"", key, value);
 		PushArrayString(TalentKey, key);
 		PushArrayString(TalentValue, value);
 	}
-	if (setConfigArraysDebugger && configIsForTalents) LogMessage("------------------------------------------------------------");
 	int pos = 0;
 	int sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
 	if (configIsForTalents) {
+		if (FindStringInArray(TalentKey, "time since last activator attack?") == -1) {
+			PushArrayString(TalentKey, "time since last activator attack?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "target must be in ammo?") == -1) {
+			PushArrayString(TalentKey, "target must be in ammo?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "activator must be in ammo?") == -1) {
+			PushArrayString(TalentKey, "activator must be in ammo?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "target status effect required?") == -1) {
+			PushArrayString(TalentKey, "target status effect required?");
+			PushArrayString(TalentValue, "-1");
+		}
 		if (FindStringInArray(TalentKey, "ability category?") == -1) {
 			PushArrayString(TalentKey, "ability category?");
 			PushArrayString(TalentValue, "-1");
@@ -4553,10 +4590,6 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			PushArrayString(TalentKey, "event type?");
 			PushArrayString(TalentValue, "-1");
 		}
-		if (FindStringInArray(TalentKey, "target must be in the air?") == -1) {
-			PushArrayString(TalentKey, "target must be in the air?");
-			PushArrayString(TalentValue, "-1");
-		}
 		if (FindStringInArray(TalentKey, "activator neither high or low ground?") == -1) {
 			PushArrayString(TalentKey, "activator neither high or low ground?");
 			PushArrayString(TalentValue, "-1");
@@ -4567,38 +4600,6 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 		}
 		if (FindStringInArray(TalentKey, "activator high ground?") == -1) {
 			PushArrayString(TalentKey, "activator high ground?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires activator drowning?") == -1) {
-			PushArrayString(TalentKey, "requires activator drowning?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires activator steaming?") == -1) {
-			PushArrayString(TalentKey, "requires activator steaming?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires activator scorched?") == -1) {
-			PushArrayString(TalentKey, "requires activator scorched?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires activator frozen?") == -1) {
-			PushArrayString(TalentKey, "requires activator frozen?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires activator slowed?") == -1) {
-			PushArrayString(TalentKey, "requires activator slowed?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires activator exploding?") == -1) {
-			PushArrayString(TalentKey, "requires activator exploding?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires activator acid burn?") == -1) {
-			PushArrayString(TalentKey, "requires activator acid burn?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires activator on fire?") == -1) {
-			PushArrayString(TalentKey, "requires activator on fire?");
 			PushArrayString(TalentValue, "-1");
 		}
 		if (FindStringInArray(TalentKey, "target must be last target?") == -1) {
@@ -5009,18 +5010,6 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			PushArrayString(TalentKey, "require adrenaline effect?");
 			PushArrayString(TalentValue, "-1");
 		}
-		if (FindStringInArray(TalentKey, "target vomit state required?") == -1) {
-			PushArrayString(TalentKey, "target vomit state required?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "vomit state required?") == -1) {
-			PushArrayString(TalentKey, "vomit state required?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "cannot be touching earth?") == -1) {
-			PushArrayString(TalentKey, "cannot be touching earth?");
-			PushArrayString(TalentValue, "-1");
-		}
 		if (FindStringInArray(TalentKey, "cannot target self?") == -1) {
 			PushArrayString(TalentKey, "cannot target self?");
 			PushArrayString(TalentValue, "-1");
@@ -5031,10 +5020,6 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 		}
 		if (FindStringInArray(TalentKey, "activator stagger required?") == -1) {
 			PushArrayString(TalentKey, "activator stagger required?");
-			PushArrayString(TalentValue, "-1");
-		}
-		if (FindStringInArray(TalentKey, "requires crouching?") == -1) {
-			PushArrayString(TalentKey, "requires crouching?");
 			PushArrayString(TalentValue, "-1");
 		}
 		if (FindStringInArray(TalentKey, "requires limbshot?") == -1) {
@@ -5151,58 +5136,54 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos == 17 && !StrEqual(text, "passive ability?") ||
 			pos == 18 && !StrEqual(text, "requires headshot?") ||
 			pos == 19 && !StrEqual(text, "requires limbshot?") ||
-			pos == 20 && !StrEqual(text, "requires crouching?") ||
-			pos == 21 && !StrEqual(text, "activator stagger required?") ||
-			pos == 22 && !StrEqual(text, "target stagger required?") ||
-			pos == 23 && !StrEqual(text, "cannot target self?") ||
-			pos == 24 && !StrEqual(text, "cannot be touching earth?") ||
-			pos == 25 && !StrEqual(text, "vomit state required?") ||
-			pos == 26 && !StrEqual(text, "target vomit state required?") ||
-			pos == 27 && !StrEqual(text, "require adrenaline effect?") ||
-			pos == 28 && !StrEqual(text, "disabled if weakness?") ||
-			pos == 29 && !StrEqual(text, "require weakness?") ||
-			pos == 30 && !StrEqual(text, "target class required?") ||
-			pos == 31 && !StrEqual(text, "require consecutive hits?") ||
-			pos == 32 && !StrEqual(text, "background talent?") ||
-			pos == 33 && !StrEqual(text, "status effect multiplier?") ||
-			pos == 34 && !StrEqual(text, "multiply range?") ||
-			pos == 35 && !StrEqual(text, "multiply commons?") ||
-			pos == 36 && !StrEqual(text, "multiply supers?") ||
-			pos == 37 && !StrEqual(text, "multiply witches?") ||
-			pos == 38 && !StrEqual(text, "multiply survivors?") ||
-			pos == 39 && !StrEqual(text, "multiply specials?") ||
-			pos == 40 && !StrEqual(text, "strength increase while zoomed?") ||
-			pos == 41 && !StrEqual(text, "strength increase time cap?") ||
-			pos == 42 && !StrEqual(text, "strength increase time required?") ||
-			pos == 43 && !StrEqual(text, "no effect if zoom time is not met?") ||
-			pos == 44 && !StrEqual(text, "strength increase while holding fire?") ||
-			pos == 45 && !StrEqual(text, "no effect if damage time is not met?") ||
-			pos == 46 && !StrEqual(text, "health percentage required missing?") ||
-			pos == 47 && !StrEqual(text, "health percentage required missing max?") ||
-			pos == 48 && !StrEqual(text, "secondary ability trigger?") ||
-			pos == 49 && !StrEqual(text, "target is self?") ||
-			pos == 50 && !StrEqual(text, "primary aoe?") ||
-			pos == 51 && !StrEqual(text, "secondary aoe?") ||
-			pos == 52 && !StrEqual(text, "talent name?") ||
-			pos == 53 && !StrEqual(text, "translation?") ||
-			pos == 54 && !StrEqual(text, "governing attribute?") ||
-			pos == 55 && !StrEqual(text, "talent tree category?") ||
-			pos == 56 && !StrEqual(text, "part of menu named?") ||
-			pos == 57 && !StrEqual(text, "layer?") ||
-			pos == 58 && !StrEqual(text, "is ability?") ||
-			pos == 59 && !StrEqual(text, "action bar name?") ||
-			pos == 60 && !StrEqual(text, "required talents required?") ||
-			pos == 61 && !StrEqual(text, "talent upgrade strength value?") ||
-			pos == 62 && !StrEqual(text, "talent cooldown strength value?") ||
-			pos == 63 && !StrEqual(text, "talent active time strength value?") ||
-			pos == 64 && !StrEqual(text, "governs cooldown of talent named?") ||
-			pos == 65 && !StrEqual(text, "talent hard limit?") ||
-			pos == 66 && !StrEqual(text, "is effect over time?") ||
-			pos == 67 && !StrEqual(text, "effect strength?") ||
-			pos == 68 && !StrEqual(text, "ignore for layer count?") ||
-			pos == 69 && !StrEqual(text, "is attribute?") ||
-			pos == 70 && !StrEqual(text, "hide translation?") ||
-			pos == 71 && !StrEqual(text, "roll chance?")) {
+			pos == 20 && !StrEqual(text, "activator stagger required?") ||
+			pos == 21 && !StrEqual(text, "target stagger required?") ||
+			pos == 22 && !StrEqual(text, "cannot target self?") ||
+			pos == 23 && !StrEqual(text, "require adrenaline effect?") ||
+			pos == 24 && !StrEqual(text, "disabled if weakness?") ||
+			pos == 25 && !StrEqual(text, "require weakness?") ||
+			pos == 26 && !StrEqual(text, "target class required?") ||
+			pos == 27 && !StrEqual(text, "require consecutive hits?") ||
+			pos == 28 && !StrEqual(text, "background talent?") ||
+			pos == 29 && !StrEqual(text, "status effect multiplier?") ||
+			pos == 30 && !StrEqual(text, "multiply range?") ||
+			pos == 31 && !StrEqual(text, "multiply commons?") ||
+			pos == 32 && !StrEqual(text, "multiply supers?") ||
+			pos == 33 && !StrEqual(text, "multiply witches?") ||
+			pos == 34 && !StrEqual(text, "multiply survivors?") ||
+			pos == 35 && !StrEqual(text, "multiply specials?") ||
+			pos == 36 && !StrEqual(text, "strength increase while zoomed?") ||
+			pos == 37 && !StrEqual(text, "strength increase time cap?") ||
+			pos == 38 && !StrEqual(text, "strength increase time required?") ||
+			pos == 39 && !StrEqual(text, "no effect if zoom time is not met?") ||
+			pos == 40 && !StrEqual(text, "strength increase while holding fire?") ||
+			pos == 41 && !StrEqual(text, "no effect if damage time is not met?") ||
+			pos == 42 && !StrEqual(text, "health percentage required missing?") ||
+			pos == 43 && !StrEqual(text, "health percentage required missing max?") ||
+			pos == 44 && !StrEqual(text, "secondary ability trigger?") ||
+			pos == 45 && !StrEqual(text, "target is self?") ||
+			pos == 46 && !StrEqual(text, "primary aoe?") ||
+			pos == 47 && !StrEqual(text, "secondary aoe?") ||
+			pos == 48 && !StrEqual(text, "talent name?") ||
+			pos == 49 && !StrEqual(text, "translation?") ||
+			pos == 50 && !StrEqual(text, "governing attribute?") ||
+			pos == 51 && !StrEqual(text, "talent tree category?") ||
+			pos == 52 && !StrEqual(text, "part of menu named?") ||
+			pos == 53 && !StrEqual(text, "layer?") ||
+			pos == 54 && !StrEqual(text, "is ability?") ||
+			pos == 55 && !StrEqual(text, "action bar name?") ||
+			pos == 56 && !StrEqual(text, "required talents required?") ||
+			pos == 57 && !StrEqual(text, "talent upgrade strength value?") ||
+			pos == 58 && !StrEqual(text, "talent cooldown strength value?") ||
+			pos == 59 && !StrEqual(text, "talent active time strength value?") ||
+			pos == 60 && !StrEqual(text, "governs cooldown of talent named?") ||
+			pos == 61 && !StrEqual(text, "talent hard limit?") ||
+			pos == 62 && !StrEqual(text, "is effect over time?") ||
+			pos == 63 && !StrEqual(text, "effect strength?") ||
+			pos == 64 && !StrEqual(text, "ignore for layer count?") ||
+			pos == 65 && !StrEqual(text, "is attribute?") ||
+			pos == 66 && !StrEqual(text, "hide translation?") ||
+			pos == 67 && !StrEqual(text, "roll chance?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -5213,58 +5194,58 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				continue;
 			}	// had to split this argument up due to internal compiler error on arguments exceeding 80
 			else if (
-			pos == 72 && !StrEqual(text, "interval per point?") ||
-			pos == 73 && !StrEqual(text, "interval first point?") ||
-			pos == 74 && !StrEqual(text, "range per point?") ||
-			pos == 75 && !StrEqual(text, "range first point value?") ||
-			pos == 76 && !StrEqual(text, "stamina per point?") ||
-			pos == 77 && !StrEqual(text, "base stamina required?") ||
-			pos == 78 && !StrEqual(text, "cooldown per point?") ||
-			pos == 79 && !StrEqual(text, "cooldown first point?") ||
-			pos == 80 && !StrEqual(text, "cooldown start?") ||
-			pos == 81 && !StrEqual(text, "active time per point?") ||
-			pos == 82 && !StrEqual(text, "active time first point?") ||
-			pos == 83 && !StrEqual(text, "ammo effect?") ||
-			pos == 84 && !StrEqual(text, "effect multiplier?") ||
-			pos == 85 && !StrEqual(text, "active effect?") ||
-			pos == 86 && !StrEqual(text, "passive effect?") ||
-			pos == 87 && !StrEqual(text, "cooldown effect?") ||
-			pos == 88 && !StrEqual(text, "reactive ability?") ||
-			pos == 89 && !StrEqual(text, "teams allowed?") ||
-			pos == 90 && !StrEqual(text, "cooldown strength?") ||
-			pos == 91 && !StrEqual(text, "maximum passive multiplier?") ||
-			pos == 92 && !StrEqual(text, "maximum active multiplier?") ||
-			pos == 93 && !StrEqual(text, "active requires ensnare?") ||
-			pos == 94 && !StrEqual(text, "active strength?") ||
-			pos == 95 && !StrEqual(text, "passive ignores cooldown?") ||
-			pos == 96 && !StrEqual(text, "passive requires ensnare?") ||
-			pos == 97 && !StrEqual(text, "passive strength?") ||
-			pos == 98 && !StrEqual(text, "passive only?") ||
-			pos == 99 && !StrEqual(text, "is single target?") ||
-			pos == 100 && !StrEqual(text, "draw delay?") ||
-			pos == 101 && !StrEqual(text, "draw effect delay?") ||
-			pos == 102 && !StrEqual(text, "passive draw delay?") ||
-			pos == 103 && !StrEqual(text, "attribute?") ||
-			pos == 104 && !StrEqual(text, "use these multipliers?") ||
-			pos == 105 && !StrEqual(text, "base multiplier?") ||
-			pos == 106 && !StrEqual(text, "diminishing multiplier?") ||
-			pos == 107 && !StrEqual(text, "diminishing returns?") ||
-			pos == 108 && !StrEqual(text, "buff bar text?") ||
-			pos == 109 && !StrEqual(text, "is sub menu?") ||
-			pos == 110 && !StrEqual(text, "is aura instead?") ||
-			pos == 111 && !StrEqual(text, "cooldown trigger?") ||
-			pos == 112 && !StrEqual(text, "inactive trigger?") ||
-			pos == 113 && !StrEqual(text, "reactive type?") ||
-			pos == 114 && !StrEqual(text, "active time?") ||
-			pos == 115 && !StrEqual(text, "cannot be ensnared?") ||
-			pos == 116 && !StrEqual(text, "toggle effect?") ||
-			pos == 117 && !StrEqual(text, "cooldown?") ||
-			pos == 118 && !StrEqual(text, "activate effect per tick?") ||
-			pos == 119 && !StrEqual(text, "secondary ept only?") ||
-			pos == 120 && !StrEqual(text, "active end ability trigger?") ||
-			pos == 121 && !StrEqual(text, "cooldown end ability trigger?") ||
-			pos == 122 && !StrEqual(text, "does damage?") ||
-			pos == 123 && !StrEqual(text, "special ammo?")) {
+			pos == 68 && !StrEqual(text, "interval per point?") ||
+			pos == 69 && !StrEqual(text, "interval first point?") ||
+			pos == 70 && !StrEqual(text, "range per point?") ||
+			pos == 71 && !StrEqual(text, "range first point value?") ||
+			pos == 72 && !StrEqual(text, "stamina per point?") ||
+			pos == 73 && !StrEqual(text, "base stamina required?") ||
+			pos == 74 && !StrEqual(text, "cooldown per point?") ||
+			pos == 75 && !StrEqual(text, "cooldown first point?") ||
+			pos == 76 && !StrEqual(text, "cooldown start?") ||
+			pos == 77 && !StrEqual(text, "active time per point?") ||
+			pos == 78 && !StrEqual(text, "active time first point?") ||
+			pos == 79 && !StrEqual(text, "ammo effect?") ||
+			pos == 80 && !StrEqual(text, "effect multiplier?") ||
+			pos == 81 && !StrEqual(text, "active effect?") ||
+			pos == 82 && !StrEqual(text, "passive effect?") ||
+			pos == 83 && !StrEqual(text, "cooldown effect?") ||
+			pos == 84 && !StrEqual(text, "reactive ability?") ||
+			pos == 85 && !StrEqual(text, "teams allowed?") ||
+			pos == 86 && !StrEqual(text, "cooldown strength?") ||
+			pos == 87 && !StrEqual(text, "maximum passive multiplier?") ||
+			pos == 88 && !StrEqual(text, "maximum active multiplier?") ||
+			pos == 89 && !StrEqual(text, "active requires ensnare?") ||
+			pos == 90 && !StrEqual(text, "active strength?") ||
+			pos == 91 && !StrEqual(text, "passive ignores cooldown?") ||
+			pos == 92 && !StrEqual(text, "passive requires ensnare?") ||
+			pos == 93 && !StrEqual(text, "passive strength?") ||
+			pos == 94 && !StrEqual(text, "passive only?") ||
+			pos == 95 && !StrEqual(text, "is single target?") ||
+			pos == 96 && !StrEqual(text, "draw delay?") ||
+			pos == 97 && !StrEqual(text, "draw effect delay?") ||
+			pos == 98 && !StrEqual(text, "passive draw delay?") ||
+			pos == 99 && !StrEqual(text, "attribute?") ||
+			pos == 100 && !StrEqual(text, "use these multipliers?") ||
+			pos == 101 && !StrEqual(text, "base multiplier?") ||
+			pos == 102 && !StrEqual(text, "diminishing multiplier?") ||
+			pos == 103 && !StrEqual(text, "diminishing returns?") ||
+			pos == 104 && !StrEqual(text, "buff bar text?") ||
+			pos == 105 && !StrEqual(text, "is sub menu?") ||
+			pos == 106 && !StrEqual(text, "is aura instead?") ||
+			pos == 107 && !StrEqual(text, "cooldown trigger?") ||
+			pos == 108 && !StrEqual(text, "inactive trigger?") ||
+			pos == 109 && !StrEqual(text, "reactive type?") ||
+			pos == 110 && !StrEqual(text, "active time?") ||
+			pos == 111 && !StrEqual(text, "cannot be ensnared?") ||
+			pos == 112 && !StrEqual(text, "toggle effect?") ||
+			pos == 113 && !StrEqual(text, "cooldown?") ||
+			pos == 114 && !StrEqual(text, "activate effect per tick?") ||
+			pos == 115 && !StrEqual(text, "secondary ept only?") ||
+			pos == 116 && !StrEqual(text, "active end ability trigger?") ||
+			pos == 117 && !StrEqual(text, "cooldown end ability trigger?") ||
+			pos == 118 && !StrEqual(text, "does damage?") ||
+			pos == 119 && !StrEqual(text, "special ammo?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -5275,60 +5256,55 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				continue;
 			}
 			else if (
-			pos == 124 && !StrEqual(text, "toggle strength?") ||
-			pos == 125 && !StrEqual(text, "target class must be last target class?") ||
-			pos == 126 && !StrEqual(text, "target range required?") ||
-			pos == 127 && !StrEqual(text, "target must be outside range required?") ||
-			pos == 128 && !StrEqual(text, "target must be last target?") ||
-			pos == 129 && !StrEqual(text, "requires activator on fire?") ||			// [Bu]
-			pos == 130 && !StrEqual(text, "requires activator acid burn?") ||		// [Ab]
-			pos == 131 && !StrEqual(text, "requires activator exploding?") ||		// [Ex]
-			pos == 132 && !StrEqual(text, "requires activator slowed?") ||			// [Sl]
-			pos == 133 && !StrEqual(text, "requires activator frozen?") ||			// [Fr]
-			pos == 134 && !StrEqual(text, "requires activator scorched?") ||		// [Sc]
-			pos == 135 && !StrEqual(text, "requires activator steaming?") ||		// [St]
-			pos == 136 && !StrEqual(text, "requires activator drowning?") ||		// [Wa]
-			pos == 137 && !StrEqual(text, "activator high ground?") ||
-			pos == 138 && !StrEqual(text, "target high ground?") ||
-			pos == 139 && !StrEqual(text, "activator neither high or low ground?") ||
-			pos == 140 && !StrEqual(text, "target must be in the air?") ||
-			pos == 141 && !StrEqual(text, "event type?") ||
-			pos == 142 && !StrEqual(text, "last hit must be headshot?") ||
-			pos == 143 && !StrEqual(text, "mult str by same hits?") ||
-			pos == 144 && !StrEqual(text, "mult str max same hits?") ||
-			pos == 145 && !StrEqual(text, "mult str div same hits?") ||
-			pos == 146 && !StrEqual(text, "contribution category required?") ||
-			pos == 147 && !StrEqual(text, "contribution cost required?") ||
-			pos == 148 && !StrEqual(text, "give player this item on trigger?") ||
-			pos == 149 && !StrEqual(text, "hide talent strength display?") ||
-			pos == 150 && !StrEqual(text, "activator ability trigger to call?") ||
-			pos == 151 && !StrEqual(text, "weapon slot required?") ||
-			pos == 152 && !StrEqual(text, "require consecutive headshots?") ||
-			pos == 153 && !StrEqual(text, "mult str by same headshots?") ||
-			pos == 154 && !StrEqual(text, "mult str max same headshots?") ||
-			pos == 155 && !StrEqual(text, "mult str div same headshots?") ||
-			pos == 156 && !StrEqual(text, "active effect allows all weapons?") ||
-			pos == 157 && !StrEqual(text, "active effect allows all hitgroups?") ||
-			pos == 158 && !StrEqual(text, "active effect allows all classes?") ||
-			pos == 159 && !StrEqual(text, "activator status effect required?") ||
-			pos == 160 && !StrEqual(text, "health percentage remaining required?") ||
-			pos == 161 && !StrEqual(text, "health cost on activation?") ||
-			pos == 162 && !StrEqual(text, "multiply strength downed allies?") ||
-			pos == 163 && !StrEqual(text, "multiply strength ensnared allies?") ||
-			pos == 164 && !StrEqual(text, "no augment modifiers?") ||
-			pos == 165 && !StrEqual(text, "target ability trigger to call?") ||
-			pos == 166 && !StrEqual(text, "must be within coherency of talent?") ||
-			pos == 167 && !StrEqual(text, "must be unhurt by si or witch?") ||
-			pos == 168 && !StrEqual(text, "skip talent for augment roll?") ||
-			pos == 169 && !StrEqual(text, "require ally with adrenaline?") ||
-			pos == 170 && !StrEqual(text, "require ally below health percentage?") ||
-			pos == 171 && !StrEqual(text, "require ensnared ally?") ||
-			pos == 172 && !StrEqual(text, "target must be ally ensnarer?") ||
-			pos == 173 && !StrEqual(text, "require enemy in coherency range?") ||
-			pos == 174 && !StrEqual(text, "enemy in coherency is target?") ||
-			pos == 175 && !StrEqual(text, "require ally on fire?") ||
-			pos == 176 && !StrEqual(text, "talent cooldown minimum value?") ||
-			pos == 177 && !StrEqual(text, "ability category?")) {
+			pos == 120 && !StrEqual(text, "toggle strength?") ||
+			pos == 121 && !StrEqual(text, "target class must be last target class?") ||
+			pos == 122 && !StrEqual(text, "target range required?") ||
+			pos == 123 && !StrEqual(text, "target must be outside range required?") ||
+			pos == 124 && !StrEqual(text, "target must be last target?") ||
+			pos == 125 && !StrEqual(text, "activator high ground?") ||
+			pos == 126 && !StrEqual(text, "target high ground?") ||
+			pos == 127 && !StrEqual(text, "activator neither high or low ground?") ||
+			pos == 128 && !StrEqual(text, "event type?") ||
+			pos == 129 && !StrEqual(text, "last hit must be headshot?") ||
+			pos == 130 && !StrEqual(text, "mult str by same hits?") ||
+			pos == 131 && !StrEqual(text, "mult str max same hits?") ||
+			pos == 132 && !StrEqual(text, "mult str div same hits?") ||
+			pos == 133 && !StrEqual(text, "contribution category required?") ||
+			pos == 134 && !StrEqual(text, "contribution cost required?") ||
+			pos == 135 && !StrEqual(text, "give player this item on trigger?") ||
+			pos == 136 && !StrEqual(text, "hide talent strength display?") ||
+			pos == 137 && !StrEqual(text, "activator ability trigger to call?") ||
+			pos == 138 && !StrEqual(text, "weapon slot required?") ||
+			pos == 139 && !StrEqual(text, "require consecutive headshots?") ||
+			pos == 140 && !StrEqual(text, "mult str by same headshots?") ||
+			pos == 141 && !StrEqual(text, "mult str max same headshots?") ||
+			pos == 142 && !StrEqual(text, "mult str div same headshots?") ||
+			pos == 143 && !StrEqual(text, "active effect allows all weapons?") ||
+			pos == 144 && !StrEqual(text, "active effect allows all hitgroups?") ||
+			pos == 145 && !StrEqual(text, "active effect allows all classes?") ||
+			pos == 146 && !StrEqual(text, "activator status effect required?") ||
+			pos == 147 && !StrEqual(text, "health percentage remaining required?") ||
+			pos == 148 && !StrEqual(text, "health cost on activation?") ||
+			pos == 149 && !StrEqual(text, "multiply strength downed allies?") ||
+			pos == 150 && !StrEqual(text, "multiply strength ensnared allies?") ||
+			pos == 151 && !StrEqual(text, "no augment modifiers?") ||
+			pos == 152 && !StrEqual(text, "target ability trigger to call?") ||
+			pos == 153 && !StrEqual(text, "must be within coherency of talent?") ||
+			pos == 154 && !StrEqual(text, "must be unhurt by si or witch?") ||
+			pos == 155 && !StrEqual(text, "skip talent for augment roll?") ||
+			pos == 156 && !StrEqual(text, "require ally with adrenaline?") ||
+			pos == 157 && !StrEqual(text, "require ally below health percentage?") ||
+			pos == 158 && !StrEqual(text, "require ensnared ally?") ||
+			pos == 159 && !StrEqual(text, "target must be ally ensnarer?") ||
+			pos == 160 && !StrEqual(text, "require enemy in coherency range?") ||
+			pos == 161 && !StrEqual(text, "enemy in coherency is target?") ||
+			pos == 162 && !StrEqual(text, "require ally on fire?") ||
+			pos == 163 && !StrEqual(text, "talent cooldown minimum value?") ||
+			pos == 164 && !StrEqual(text, "ability category?") ||
+			pos == 165 && !StrEqual(text, "target status effect required?") ||
+			pos == 166 && !StrEqual(text, "activator must be in ammo?") ||
+			pos == 167 && !StrEqual(text, "target must be in ammo?") ||
+			pos == 168 && !StrEqual(text, "time since last activator attack?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -5345,10 +5321,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			i == IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES || i == COMBAT_STATE_REQ || i == CONTRIBUTION_TYPE_CATEGORY ||
 			i == CONTRIBUTION_COST || i == TALENT_WEAPON_SLOT_REQUIRED || i == LAST_KILL_MUST_BE_HEADSHOT ||
 			i == TARGET_AND_LAST_TARGET_CLASS_MATCH || i == TARGET_RANGE_REQUIRED || i == TARGET_RANGE_REQUIRED_OUTSIDE ||
-			i == TARGET_MUST_BE_LAST_TARGET || i == TARGET_MUST_BE_IN_THE_AIR || i == TARGET_IS_SELF ||
-			i == ACTIVATOR_STATUS_EFFECT_REQUIRED || i == ACTIVATOR_MUST_BE_ON_FIRE || i == ACTIVATOR_MUST_SUFFER_ACID_BURN ||
-			i == ACTIVATOR_MUST_BE_EXPLODING || i == ACTIVATOR_MUST_BE_SLOW || i == ACTIVATOR_MUST_BE_FROZEN ||
-			i == ACTIVATOR_MUST_BE_SCORCHED || i == ACTIVATOR_MUST_BE_STEAMING || i == ACTIVATOR_MUST_BE_DROWNING ||
+			i == TARGET_MUST_BE_LAST_TARGET || i == TARGET_IS_SELF || i == ACTIVATOR_STATUS_EFFECT_REQUIRED  || i == TARGET_STATUS_EFFECT_REQUIRED ||
 			i == ACTIVATOR_MUST_HAVE_HIGH_GROUND || i == TARGET_MUST_HAVE_HIGH_GROUND || i == ACTIVATOR_TARGET_MUST_EVEN_GROUND ||
 			i == IF_EOT_ACTIVE_ALLOW_ALL_WEAPONS || i == WEAPONS_PERMITTED || i == HEALTH_PERCENTAGE_REQ ||
 			i == COHERENCY_RANGE || i == COHERENCY_MAX || i == COHERENCY_REQ ||
@@ -5360,9 +5333,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 			}
-			else if (i == REQUIRES_CROUCHING || i == ACTIVATOR_STAGGER_REQ || i == TARGET_STAGGER_REQ ||
-			i == CANNOT_TARGET_SELF || i == MUST_BE_JUMPING_OR_FLYING || i == VOMIT_STATE_REQ_ACTIVATOR ||
-			i == VOMIT_STATE_REQ_TARGET || i == REQ_ADRENALINE_EFFECT || i == DISABLE_IF_WEAKNESS ||
+			else if (i == ACTIVATOR_STAGGER_REQ || i == TARGET_STAGGER_REQ ||
+			i == CANNOT_TARGET_SELF || i == REQ_ADRENALINE_EFFECT || i == DISABLE_IF_WEAKNESS ||
 			i == REQ_WEAKNESS || i == REQ_CONSECUTIVE_HITS ||
 			i == REQ_CONSECUTIVE_HEADSHOTS || i == MULT_STR_CONSECUTIVE_HITS || i == MULT_STR_CONSECUTIVE_MAX ||
 			i == MULT_STR_CONSECUTIVE_DIV || i == MULT_STR_CONSECUTIVE_HEADSHOTS ||
@@ -5396,7 +5368,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 			}
-			else if (i == ABILITY_EVENT_TYPE || i == TALENT_IS_SPELL || i == NUM_TALENTS_REQ ||
+			else if (i == TIME_SINCE_LAST_ACTIVATOR_ATTACK || i == ABILITY_EVENT_TYPE || i == TALENT_IS_SPELL || i == NUM_TALENTS_REQ ||
 			i == HIDE_TALENT_STRENGTH_DISPLAY || i == HIDE_TRANSLATION || i == ABILITY_ACTIVE_DRAW_DELAY ||
 			i == ABILITY_PASSIVE_DRAW_DELAY || i == TALENT_ROLL_CHANCE || i == SPECIAL_AMMO_TALENT_STRENGTH ||
 			i == ABILITY_TOGGLE_STRENGTH || i == ABILITY_COOLDOWN || i == SPELL_EFFECT_MULTIPLIER || i == COMPOUNDING_TALENT ||
@@ -5407,10 +5379,6 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 			}
-		}
-		if (setConfigArraysDebugger) {
-			LogMessage("--------------------------------------------------------------");
-			LogMessage("# of keyvalues is %d", GetArraySize(TalentKey));
 		}
 		int ASize = GetArraySize(a_Menu_Talents);
 		for (int client = 1; client <= MAXPLAYERS; client++) {
@@ -5764,9 +5732,7 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
 				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 			}
-			//LogMessage("\"%s\"\t\t\"%s\"", tk, text);
 			if (StrContains(text, ".mdl") == -1) continue;
-			LogMessage("Found a model; %s", text);
 			PushArrayString(ModelsToPrecache, text);
 		}
 	}
@@ -5875,17 +5841,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 		}
 	}
 	GetArrayString(Section, 0, text, sizeof(text));
-	if (setConfigArraysDebugger) LogMessage("TalentName: %s", text);
 	PushArrayString(TalentSection, text);
-	/*if (StrEqual(Config, CONFIG_SURVIVORTALENTS) || StrEqual(Config, CONFIG_EVENTS)) {
-		LogMessage("%s", text);
-		sortSize = GetArraySize(TalentKey);
-		for (new i = 0; i < sortSize; i++) {
-			GetArrayString(TalentKey, i, key, sizeof(key));
-			GetArrayString(TalentValue, i, value, sizeof(value));
-			LogMessage("\t\"%s\"\t\t\"%s\"", key, value);
-		}
-	}*/
+
 	ResizeArray(Main, size + 1);
 	SetArrayCell(Main, size, TalentKey, 0);
 	SetArrayCell(Main, size, TalentValue, 1);

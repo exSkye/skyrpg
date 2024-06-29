@@ -189,14 +189,10 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 	if (!b_IsActiveRound || !IsLegitimateClient(client)) return Plugin_Stop;
 	if (!IsPlayerAlive(client)) return Plugin_Continue;
 
-	int playerTeam = -1;
-	int mymaxhealth = -1;
-	float healregenamount = 0.0;
 	char pct[10];
 	Format(pct, 10, "%");
-	int ThisRoundTime = -1;
-	ThisRoundTime = RPGRoundTime();
-	playerTeam = GetClientTeam(client);
+	int ThisRoundTime = RPGRoundTime();
+	int playerTeam = GetClientTeam(client);
 
 	if (PlayerLevel[client] > iMaxLevel) SetTotalExperienceByLevel(client, iMaxLevel, true);
 	TimePlayed[client]++;
@@ -215,31 +211,35 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 		GiveProfileItems(client);
 	}
 	if (playerTeam == TEAM_SURVIVOR && CurrentRPGMode >= 1) {
-		healregenamount = 0.0;
-		mymaxhealth = GetMaximumHealth(client);
-		if (ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
+		float healregenamount = 0.0;
+		int mymaxhealth = GetMaximumHealth(client);
+		if (iEnrageTime < 1 || ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
 			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
-			if (healregenamount > 0.0) {
-				float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", false);
-				float clericRange = GetStrengthByKeyValueFloat(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", COHERENCY_RANGE);
-				if (clericHealPercentage > 0.0) {
-					if (clericRange <= 0.0) clericRange = 512.0;
-					healregenamount *= clericHealPercentage;
-					if (healregenamount < 1.0) healregenamount = 1.1;
-					new playersInRange = 0;
-					new Float:clientPos[3];
-					GetClientAbsOrigin(client, clientPos);
-					for (new teammate = 1; teammate <= MaxClients; teammate++) {
-						if (teammate == client) continue;
-						if (!IsLegitimateClientAlive(teammate) || GetClientTeam(teammate) != TEAM_SURVIVOR) continue;
-						float teammatePos[3];
-						GetClientAbsOrigin(teammate, teammatePos);
-						if (GetVectorDistance(clientPos, teammatePos) > clericRange || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
-						playersInRange++;
-						HealPlayer(teammate, client, healregenamount, 'h', true);
-					}
-					if (playersInRange > 0) CreateRing(client, clericRange, "green", "32.0", false, 1.0);
+		}
+		float pacifisthealregenamount = GetAbilityStrengthByTrigger(client, _, "pacifist", _, 0, _, _, "h", _, _, 0);
+		healregenamount += pacifisthealregenamount;
+		int cohHealing = RoundToCeil(GetCoherencyStrength(client, ACTIVATOR_ABILITY_EFFECTS, "h", COHERENCY_RANGE));
+		if (cohHealing > 0) healregenamount += cohHealing;
+		if (healregenamount > 0.0) {
+			float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric");// not skip, going to try skipping.
+			float clericRange = GetStrengthByKeyValueFloat(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", COHERENCY_RANGE);
+			if (clericHealPercentage > 0.0 || pacifisthealregenamount > 0.0) {
+				if (clericRange <= 0.0) clericRange = 512.0;
+				healregenamount *= clericHealPercentage;
+				if (healregenamount < 1.0) healregenamount = 1.0;
+				new playersInRange = 0;
+				new Float:clientPos[3];
+				GetClientAbsOrigin(client, clientPos);
+				for (new teammate = 1; teammate <= MaxClients; teammate++) {
+					if (teammate == client) continue;
+					if (!IsLegitimateClientAlive(teammate) || GetClientTeam(teammate) != TEAM_SURVIVOR) continue;
+					float teammatePos[3];
+					GetClientAbsOrigin(teammate, teammatePos);
+					if (GetVectorDistance(clientPos, teammatePos) > clericRange || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
+					playersInRange++;
+					HealPlayer(teammate, client, healregenamount, 'h', true);
 				}
+				if (playersInRange > 0) CreateRing(client, clericRange, "green", "32.0", false, 1.0);
 			}
 		}
 		//ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
@@ -249,7 +249,7 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 	GetAbilityStrengthByTrigger(client, client, "p", _, _, _, _, _, _, _, 0); // percentage passives
 	RemoveStoreTime(client);
 	LastPlayLength[client]++;
-	if (ReadyUpGameMode != 3 && CurrentRPGMode >= 1 && ThisRoundTime >= iEnrageTime) {
+	if (iEnrageTime > 0 && ReadyUpGameMode != 3 && CurrentRPGMode >= 1 && ThisRoundTime >= iEnrageTime) {
 		if (SurvivorEnrage[client][1] == 0.0) {
 			EnrageBlind(client, 100);
 			SurvivorEnrage[client][1] = 1.0;
@@ -1082,7 +1082,7 @@ public Action Timer_CheckIfHooked(Handle timer) {
 	if (RoundSeconds % HostNameTime == 0) {
 		PrintToChatAll("%t", "playing in server name", orange, blue, Hostname, orange, blue, MenuCommand, orange);
 	}
-	if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
+	//if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
 	if (ScenarioEndConditionsMet()) {
 		int c = FindAnyClient();
 		if (c > 0) {
