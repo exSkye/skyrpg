@@ -650,8 +650,6 @@ stock void ClearAndLoad(int client, bool IgnoreLoad = false) {
 	ClearArray(myAugmentActivatorEffects[client]);
 	ClearArray(myAugmentTargetEffects[client]);
 
-	SetPlayerDatabaseArray(client, true);
-
 	char text[64];
 	Format(text, sizeof(text), "none");
 	SetArrayString(hWeaponList[client], 0, text);
@@ -1032,7 +1030,7 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	}
 	if (!b_IsLoaded[client]) return;
 	//if (GetClientTeam(client) == TEAM_SPECTATOR) return;
-	if (GetClientTeam(client) == TEAM_INFECTED) {
+	if (myCurrentTeam[client] == TEAM_INFECTED) {
 
 		SaveInfectedData(client);
 		return;
@@ -1156,8 +1154,9 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	for (int i = 0; i < ActionSlotSize; i++) {	// isnt looping?
 
 		GetArrayString(ActionBar[client], i, ActionBarText, sizeof(ActionBarText));
+		int menuPos = GetArrayCell(ActionBarMenuPos[client], i);
 		//if (StrEqual(ActionBarText, "none")) continue;
-		if (!IsAbilityTalent(client, ActionBarText) && (!IsTalentExists(ActionBarText) || GetTalentStrength(client, ActionBarText) < 1)) Format(ActionBarText, sizeof(ActionBarText), "none");
+		if (menuPos < 0 || !IsAbilityTalent(client, menuPos) && (!IsTalentExists(ActionBarText) || GetTalentStrength(client, ActionBarText) < 1)) Format(ActionBarText, sizeof(ActionBarText), "none");
 		Format(tquery, sizeof(tquery), "UPDATE `%s` SET `aslot%d` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, i+1, ActionBarText, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 	}
@@ -1178,7 +1177,7 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 	if (DisplayActionBar[client]) isDisab = 1;
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `disab` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, isDisab, key);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
-	if (GetClientTeam(client) == TEAM_SURVIVOR) {
+	if (myCurrentTeam[client] == TEAM_SURVIVOR) {
 		if (GetArraySize(hWeaponList[client]) < 2) {
 			ResizeArray(hWeaponList[client], 2);
 			int wepid = GetPlayerWeaponSlot(client, 0);
@@ -1241,9 +1240,9 @@ public Action Timer_LoadNewPlayer(Handle timer, any client) {
 	else {
 		b_IsLoading[client] = true;
 		LoadTarget[client] = -1;
-		if (IsFakeClient(client) && GetClientTeam(client) == TEAM_SURVIVOR && !StrEqual(DefaultBotProfileName, "-1")) LoadProfileEx(client, DefaultBotProfileName);
-		else if (GetClientTeam(client) == TEAM_INFECTED && !StrEqual(DefaultInfectedProfileName, "-1")) LoadProfileEx(client, DefaultInfectedProfileName);
-		else if (GetClientTeam(client) == TEAM_SURVIVOR && !StrEqual(DefaultProfileName, "-1")) LoadProfileEx(client, DefaultProfileName);
+		if (IsFakeClient(client) && myCurrentTeam[client] == TEAM_SURVIVOR && !StrEqual(DefaultBotProfileName, "-1")) LoadProfileEx(client, DefaultBotProfileName);
+		else if (myCurrentTeam[client] == TEAM_INFECTED && !StrEqual(DefaultInfectedProfileName, "-1")) LoadProfileEx(client, DefaultInfectedProfileName);
+		else if (myCurrentTeam[client] == TEAM_SURVIVOR && !StrEqual(DefaultProfileName, "-1")) LoadProfileEx(client, DefaultProfileName);
 		else b_IsLoading[client] = false;
 	}
 	return Plugin_Stop;
@@ -1669,7 +1668,7 @@ public void QueryResults_LoadTalentTrees(Handle owner, Handle hndl, const char[]
 	char key[512];
 	char TheName[64];
 	//new iLevel			= 0;
-	if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) {
+	if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && myCurrentTeam[client] != TEAM_SURVIVOR && IsFakeClient(client)) {
 		if (IsLegitimateClient(client)) {
 			bIsTalentTwo[client] = false;
 			b_IsLoading[client] = false;
@@ -1887,7 +1886,7 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 		char text[512];
 		char key[64];
 
-		if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
+		if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && myCurrentTeam[client] != TEAM_SURVIVOR && IsFakeClient(client)) return;
 		ClearEquippedAugmentData(client);
 		ClearLocalClientAugmentData(client);
 		while (SQL_FetchRow(hndl)) {
@@ -1954,7 +1953,7 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 			}
 			
 			//client = FindClientWithAuthString(key);
-			//if (client == -1 || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
+			//if (client == -1 || IsLegitimateClient(client) && myCurrentTeam[client] != TEAM_SURVIVOR && IsFakeClient(client)) return;
 		}
 	}
 	if (ReadyUpGameMode != 3) CreateTimer(1.0, Timer_GiveProfileItems, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -1997,7 +1996,7 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 	int ActionSlots = iActionBarSlots;
 	// bool IsFound = false;
 
-	if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
+	if (client == -1 || !IsLegitimateClient(client) || IsLegitimateClient(client) && myCurrentTeam[client] != TEAM_SURVIVOR && IsFakeClient(client)) return;
 	if (GetArraySize(ActionBar[client]) != ActionSlots) ResizeArray(ActionBar[client], ActionSlots);
 	if (GetArraySize(ActionBarMenuPos[client]) != ActionSlots) ResizeArray(ActionBarMenuPos[client], ActionSlots);
 
@@ -2005,7 +2004,7 @@ public void QueryResults_LoadActionBar(Handle owner, Handle hndl, const char[] e
 	while (SQL_FetchRow(hndl)) {
 		SQL_FetchString(hndl, 0, key, sizeof(key));
 		//client = FindClientWithAuthString(key);
-		//if (client == -1 || IsLegitimateClient(client) && GetClientTeam(client) != TEAM_SURVIVOR && IsFakeClient(client)) return;
+		//if (client == -1 || IsLegitimateClient(client) && myCurrentTeam[client] != TEAM_SURVIVOR && IsFakeClient(client)) return;
 		for (int i = 0; i < ActionSlots; i++) {
 			SQL_FetchString(hndl, i+1, text, sizeof(text));
 			SetArrayString(ActionBar[client], i, text);
@@ -2342,10 +2341,10 @@ stock IsClientLoadedEx(client) {
 
 	/*decl String:ClientName[64];
 	GetClientName(client, ClientName, sizeof(ClientName));*/
-	if (GetClientTeam(client) == TEAM_INFECTED && IsFakeClient(client)) return;	// only human players.
+	if (myCurrentTeam[client] == TEAM_INFECTED && IsFakeClient(client)) return;	// only human players.
 	//LogToFile(LogPathDirectory, "%N is loaded.", client);
 
-	/*if (!b_IsHooked[client] && GetClientTeam(client) == TEAM_SURVIVOR) {
+	/*if (!b_IsHooked[client] && myCurrentTeam[client] == TEAM_SURVIVOR) {
 
 		b_IsHooked[client] = true;
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
@@ -2362,8 +2361,15 @@ stock bool IsLoadingClientBaseNameDefault(client) {
 stock OnClientLoaded(client, bool IsHooked = false) {
 	//if (!IsClientConnected(client)) return;
 	if (b_IsLoaded[client] && (!b_IsActiveRound || !IsClientIdle(client))) {//} && (IsFakeClient(client) || StrContains(baseName[client], "[BOT]", true) == -1)) {
-		return;
+		char connectingClientSteamID[64];
+		GetClientAuthId(client, AuthId_Steam2, connectingClientSteamID, sizeof(connectingClientSteamID));
+		if (StrEqual(connectingClientSteamID, currentClientSteamID[client])) return;
+		// we only get here if there was a disconnect of some sort and someone loaded in with someone elses data.
+		DisconnectDataReset(client);
 	}
+	SetPlayerDatabaseArray(client, true);
+	GetClientAuthId(client, AuthId_Steam2, currentClientSteamID[client], sizeof(currentClientSteamID[]));
+	myCurrentTeam[client] = GetClientTeam(client);
 	bTimersRunning[client] = false;
 	if (!IsFakeClient(client)) GetClientName(client, baseName[client], sizeof(baseName[]));
 	else GetSurvivorBotName(client, baseName[client], sizeof(baseName[]));
@@ -2473,7 +2479,6 @@ public Action Timer_LoadData(Handle timer, any client) {
 
 	if (IsClientInGame(client)) {
 		ResetData(client);
-		SetPlayerDatabaseArray(client, true);
 		b_IsLoading[client] = false;
 		CreateNewPlayer(client);	// it only creates a new player if one doesn't exist.
 	}
@@ -2486,7 +2491,7 @@ public Action Timer_LoggedUsers(Handle timer, any client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
 	
 	//CheckGroupStatus(client);
-	if (IsPlayerAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
+	if (IsPlayerAlive(client) && myCurrentTeam[client] == TEAM_SURVIVOR) {
 
 		//VerifyAllActionBars(client);	// in case they don't have the gear anymore to support it?
 		//IsLogged(client, true);		// Only log them if the player isn't alive.
@@ -2537,7 +2542,7 @@ stock bool IsLogged(client, bool InsertID = false) {
 
 public Action CMD_RespawnYumYum(client, args) {
 
-	if (GetClientTeam(client) == TEAM_SURVIVOR && !IsPlayerAlive(client)) {
+	if (myCurrentTeam[client] == TEAM_SURVIVOR && !IsPlayerAlive(client)) {
 
 		for (int i = 1; i <= MaxClients; i++) {
 
@@ -2558,7 +2563,7 @@ stock FindARespawnTarget(client, sacrifice = -1) {
 		SDKCall(hRoundRespawn, client);
 		if (!IsLegitimateClient(sacrifice)) {
 			for (int i = 1; i <= MaxClients; i++) {
-				if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || i == client) continue;
+				if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR || i == client) continue;
 				MyRespawnTarget[client] = i;
 				break;
 			}

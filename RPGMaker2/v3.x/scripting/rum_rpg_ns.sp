@@ -15,7 +15,7 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v3.4.7.4"
+#define PLUGIN_VERSION					"v3.4.7.6"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"github.com/exskye/"
 #define PLUGIN_NAME						"RPG Construction Set"
@@ -47,6 +47,46 @@
 //	================================
 #define DEBUG     					false
 /*	================================
+ Version 3.4.7.6
+ - Optimized a lot of methods, leapfrogging references and memo's to reduce time complexity.
+ - Menu optimizations.
+ - Optimized methods associated with action bars talents; abilities/ammo circles;
+	- Reduced the # of calculations by eliminating unnecessary calls.
+ - Added support for the "holdFire" ability trigger. This triggers when a player is holding down their primary attack key.
+ - Added a new talent key, "weapon name required?" which WILL NOT be checked if "weapons permitted?" is not set to -1.
+	- Reason: There's no point in checking for a specific weapon required, if an entire category of weapons is specified as allowed.
+	- Note: any item considered a weapon can be specified; e.g. "weapon name required?" "first_aid" will cause the talent to require the player have the first aid in hand to activate.
+ - Added a redundancy to ensure that if a client joins on the id of a client who crashed, that it will NOT assume they are that client (a steamid check will now occur)
+ - All healing received by allies of the activator will now add experience to the activators Medic proficiency.
+ - The first page of the augment inventory now shows a players equipped augments, in order, before displaying non-equipped augments.
+
+ Version 3.4.7.5
+ - Cleaned-up/Refactored code, resulting in the removal of 1,500+ Arraylists.
+	- Some of these were being populated, some of these were not, but none of them were necessary thanks to recent updates to the core RPG framework.
+	- Most of these were kv-key lists
+		- Most keys no longer need to be stored, since I use a custom sort so that regardless of how talents are filled in the config files, they are always
+			formatted in the same way in the code, allowing me to do a FAST GetArrayCell(arraylist, POS_OF_RESULT_NEEDED) call as opposed to having to loop through
+			the keys to find the correct index EVERY time.
+		These get called from players hundreds or thousands of times per second.
+	or
+		- lists designed to grab the names of talents.
+
+	However, in recent updates, I began storing these names in a single arraylist that parallels the talentlist arraylist as the talents were streamed-in.
+	With the plugin stable, I felt it was a good time to clean some things up.
+ - Some more optimzations to other sections of code.
+ - Changes to loot pickup/theft code.
+ - More memoization! DP DP DP seriously this mod wouldn't be possible w/o it.
+ - Fixed an index oob error that could crash the server related to special infected bots.
+ - Ledged players can no longer self-revive themselves by holding the use key.
+ - Defibrillator override is only called when a player joins mid-round as the defibrillator fix extension functions properly on latest SM.
+ - Patched survivor bots so they can never be a higher level than "new bot player starting level?"
+ - Fallen survivors can drop defibrillators:
+	"fallen survivor defib drop chance base?"	"0.01"		// the base chance a fallen survivor will drop a defib on death.
+	"fallen survivor defib drop chance luck?	"0.01"		// multiplies this value against the player who killed the fallen survivor, then adds it to the base chance.
+ - Patched out a hardcode that prevented survivor bots from having their talents auto-reset if they were in violation of the talent tree requirements.
+	Talent tree requirements are now enforced on survivor bots.
+ - Fixed an issue where it would sometimes incorrectly represent the owner of the augment as the person holding the augment, and thus saying the player stole it from themselves.
+
  Version 3.4.7.4
  - Optimizations, removing most ...Section[client] arraylists as they're deprecated.
  - Code cleanup.
@@ -505,7 +545,6 @@
 #include <sdkhooks>
 #include <smlib>
 #include <left4dhooks>
-#include "l4d_stocks.inc"
 #undef REQUIRE_PLUGIN
 #include <readyup>
 #define REQUIRE_PLUGIN
@@ -696,9 +735,10 @@ public Plugin myinfo = {
 #define ACTIVATOR_MUST_BE_IN_AMMO				166
 #define TARGET_MUST_BE_IN_AMMO					167
 #define TIME_SINCE_LAST_ACTIVATOR_ATTACK		168
+#define WEAPON_NAME_REQUIRED					169
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION		169
+#define TALENT_FIRST_RANDOM_KEY_POSITION		170
 #define SUPER_COMMON_MAX_ALLOWED				0
 #define SUPER_COMMON_AURA_EFFECT				1
 #define SUPER_COMMON_RANGE_MIN					2
@@ -775,16 +815,20 @@ public Plugin myinfo = {
 #define CONTRIBUTION_AWARD_BUFFING				2
 #define CONTRIBUTION_AWARD_HEALING				3
 
-
+Handle augmentInventoryPosition[MAXPLAYERS + 1];
+char currentClientSteamID[MAXPLAYERS + 1][64];
+float fFallenSurvivorDefibChance;
+float fFallenSurvivorDefibChanceLuck;
+float fRewardPenaltyIfSurvivorBot;
+int myCurrentTeam[MAXPLAYERS + 1];
+Handle GetCoherencyValues[MAXPLAYERS + 1];
 bool bClientIsInAnyAmmo[MAXPLAYERS + 1];
 float fUpdateClientInterval;
 float fAugmentLevelDifferenceForStolen;
 int playerCurrentAugmentAverageLevel[MAXPLAYERS + 1];
 int iDontAllowLootStealing[MAXPLAYERS + 1];
-Handle GetAbilitySection[MAXPLAYERS + 1];
 int clientEffectState[MAXPLAYERS + 1];
 int iExperimentalMode;
-float fDamageContribution;
 float fTankingContribution;
 Handle GetValueFloatArray[MAXPLAYERS + 1];
 int iStuckDelayTime;
@@ -845,9 +889,7 @@ int iHealingPlayerInCombatPutInCombat;
 Handle TimeOfEffectOverTime;
 Handle EffectOverTime;
 Handle currentEquippedWeapon[MAXPLAYERS + 1];	// bullets fired from current weapon; variable needs to be renamed.
-Handle GetCategoryStrengthKeys[MAXPLAYERS + 1];
 Handle GetCategoryStrengthValues[MAXPLAYERS + 1];
-Handle GetCategoryStrengthSection[MAXPLAYERS + 1];
 bool bIsDebugEnabled = false;
 int pistolXP[MAXPLAYERS + 1];
 int meleeXP[MAXPLAYERS + 1];
@@ -911,18 +953,13 @@ char RatingType[64];
 bool bJumpTime[MAXPLAYERS + 1];
 float JumpTime[MAXPLAYERS + 1];
 Handle AbilityConfigValues[MAXPLAYERS + 1];
-Handle AbilityConfigSection[MAXPLAYERS + 1];
 bool IsGroupMember[MAXPLAYERS + 1];
 int IsGroupMemberTime[MAXPLAYERS + 1];
 Handle IsAbilityValues[MAXPLAYERS + 1];
-Handle IsAbilitySection[MAXPLAYERS + 1];
 Handle CheckAbilityKeys[MAXPLAYERS + 1];
 Handle CheckAbilityValues[MAXPLAYERS + 1];
-Handle CheckAbilitySection[MAXPLAYERS + 1];
 int StrugglePower[MAXPLAYERS + 1];
-Handle CastKeys[MAXPLAYERS + 1];
 Handle CastValues[MAXPLAYERS + 1];
-Handle CastSection[MAXPLAYERS + 1];
 int ActionBarSlot[MAXPLAYERS + 1];
 Handle ActionBarMenuPos[MAXPLAYERS + 1];
 Handle ActionBar[MAXPLAYERS + 1];
@@ -934,7 +971,6 @@ bool b_IsHooked[MAXPLAYERS + 1];
 int IsPvP[MAXPLAYERS + 1];
 bool bJetpack[MAXPLAYERS + 1];
 //new ServerLevelRequirement;
-Handle TalentsAssignedKeys[MAXPLAYERS + 1];
 Handle TalentsAssignedValues[MAXPLAYERS + 1];
 Handle CartelValueValues[MAXPLAYERS + 1];
 int ReadyUpGameMode;
@@ -986,21 +1022,15 @@ float ExplosionCounter[MAXPLAYERS + 1][2];
 Handle CoveredInVomit;
 bool AmmoTriggerCooldown[MAXPLAYERS + 1];
 Handle SpecialAmmoEffectValues[MAXPLAYERS + 1];
-Handle ActiveAmmoCooldownKeys[MAXPLAYERS +1];
 Handle ActiveAmmoCooldownValues[MAXPLAYERS + 1];
 Handle PlayActiveAbilities[MAXPLAYERS + 1];
 Handle PlayerActiveAmmo[MAXPLAYERS + 1];
-Handle SpecialAmmoKeys[MAXPLAYERS + 1];
-Handle SpecialAmmoValues[MAXPLAYERS + 1];
-Handle SpecialAmmoSection[MAXPLAYERS + 1];
 Handle DrawSpecialAmmoKeys[MAXPLAYERS + 1];
 Handle DrawSpecialAmmoValues[MAXPLAYERS + 1];
-Handle SpecialAmmoStrengthKeys[MAXPLAYERS + 1];
 Handle SpecialAmmoStrengthValues[MAXPLAYERS + 1];
 Handle WeaponLevel[MAXPLAYERS + 1];
 Handle ExperienceBank[MAXPLAYERS + 1];
 Handle MenuPosition[MAXPLAYERS + 1];
-Handle IsClientInRangeSAKeys[MAXPLAYERS + 1];
 Handle IsClientInRangeSAValues[MAXPLAYERS + 1];
 Handle SpecialAmmoData;
 Handle SpecialAmmoSave;
@@ -1010,9 +1040,6 @@ char ActiveSpecialAmmo[MAXPLAYERS + 1][64];
 float IsSpecialAmmoEnabled[MAXPLAYERS + 1][4];
 bool bIsInCombat[MAXPLAYERS + 1];
 float CombatTime[MAXPLAYERS + 1];
-Handle AKKeys[MAXPLAYERS + 1];
-Handle AKValues[MAXPLAYERS + 1];
-Handle AKSection[MAXPLAYERS + 1];
 bool bIsSurvivorFatigue[MAXPLAYERS + 1];
 int SurvivorStamina[MAXPLAYERS + 1];
 float SurvivorConsumptionTime[MAXPLAYERS + 1];
@@ -1038,14 +1065,8 @@ Handle a_CommonAffixes;			// the array holding the config data
 Handle a_HandicapLevels;		// handicap levels so we can customize them at any time in a config file and nothing has to be hard-coded.
 int UpgradesAwarded[MAXPLAYERS + 1];
 int UpgradesAvailable[MAXPLAYERS + 1];
-Handle InfectedAuraKeys[MAXPLAYERS + 1];
-Handle InfectedAuraValues[MAXPLAYERS + 1];
-Handle InfectedAuraSection[MAXPLAYERS + 1];
 bool b_IsDead[MAXPLAYERS + 1];
 int ExperienceDebt[MAXPLAYERS + 1];
-Handle TalentUpgradeKeys[MAXPLAYERS + 1];
-Handle TalentUpgradeValues[MAXPLAYERS + 1];
-Handle TalentUpgradeSection[MAXPLAYERS + 1];
 Handle InfectedHealth[MAXPLAYERS + 1];
 Handle SpecialCommon[MAXPLAYERS + 1];
 Handle WitchList;
@@ -1054,11 +1075,7 @@ Handle Give_Store_Keys;
 Handle Give_Store_Values;
 Handle Give_Store_Section;
 bool bIsMeleeCooldown[MAXPLAYERS + 1];
-//Handle a_Classnames;
 Handle a_WeaponDamages;
-Handle MeleeKeys[MAXPLAYERS + 1];
-Handle MeleeValues[MAXPLAYERS + 1];
-Handle MeleeSection[MAXPLAYERS + 1];
 char Public_LastChatUser[64];
 char Infected_LastChatUser[64];
 char Survivor_LastChatUser[64];
@@ -1096,23 +1113,16 @@ bool b_IsFinaleActive;
 int RoundDamage[MAXPLAYERS + 1];
 //int RoundDamageTotal;
 int SpecialsKilled;
-Handle MOTKeys[MAXPLAYERS + 1];
 Handle MOTValues[MAXPLAYERS + 1];
-Handle MOTSection[MAXPLAYERS + 1];
-Handle DamageKeys[MAXPLAYERS + 1];
 Handle DamageValues[MAXPLAYERS + 1];
 Handle DamageSection[MAXPLAYERS + 1];
 Handle BoosterKeys[MAXPLAYERS + 1];
 Handle BoosterValues[MAXPLAYERS + 1];
 Handle StoreChanceKeys[MAXPLAYERS + 1];
 Handle StoreChanceValues[MAXPLAYERS + 1];
-Handle StoreItemNameSection[MAXPLAYERS + 1];
-Handle StoreItemSection[MAXPLAYERS + 1];
 char PathSetting[64];
-Handle SaveSection[MAXPLAYERS + 1];
 int OriginalHealth[MAXPLAYERS + 1];
 bool b_IsLoadingStore[MAXPLAYERS + 1];
-Handle LoadStoreSection[MAXPLAYERS + 1];
 int FreeUpgrades[MAXPLAYERS + 1];
 Handle StoreTimeKeys[MAXPLAYERS + 1];
 Handle StoreTimeValues[MAXPLAYERS + 1];
@@ -1151,29 +1161,21 @@ Handle MenuKeys[MAXPLAYERS + 1];
 Handle MenuValues[MAXPLAYERS + 1];
 Handle AbilityMultiplierCalculator[MAXPLAYERS + 1];
 Handle MenuSection[MAXPLAYERS + 1];
-Handle TriggerKeys[MAXPLAYERS + 1];
 Handle TriggerValues[MAXPLAYERS + 1];
-Handle TriggerSection[MAXPLAYERS + 1];
 Handle PreloadTalentValues[MAXPLAYERS + 1];
-Handle PreloadTalentSection[MAXPLAYERS + 1];
 Handle MyTalentStrengths[MAXPLAYERS + 1];
 Handle MyTalentStrength[MAXPLAYERS + 1];
 Handle AbilityKeys[MAXPLAYERS + 1];
 Handle AbilityValues[MAXPLAYERS + 1];
-Handle AbilitySection[MAXPLAYERS + 1];
-Handle ChanceKeys[MAXPLAYERS + 1];
 Handle ChanceValues[MAXPLAYERS + 1];
-Handle ChanceSection[MAXPLAYERS + 1];
 Handle PurchaseKeys[MAXPLAYERS + 1];
 Handle PurchaseValues[MAXPLAYERS + 1];
 Handle EventSection;
 Handle HookSection;
 Handle CallKeys;
 Handle CallValues;
-//new Handle:CallSection;
 Handle DirectorKeys;
 Handle DirectorValues;
-//new Handle:DirectorSection;
 Handle DatabaseKeys;
 Handle DatabaseValues;
 Handle DatabaseSection;
@@ -1191,9 +1193,6 @@ Handle a_Database_PlayerTalents[MAXPLAYERS + 1];
 Handle a_Database_PlayerTalents_Experience[MAXPLAYERS + 1];
 Handle PlayerAbilitiesName;
 Handle PlayerAbilitiesCooldown[MAXPLAYERS + 1];
-//new Handle:PlayerAbilitiesImmune[MAXPLAYERS + 1][MAXPLAYERS + 1];
-Handle PlayerInventory[MAXPLAYERS + 1];
-Handle PlayerEquipped[MAXPLAYERS + 1];
 Handle a_DirectorActions;
 Handle a_DirectorActions_Cooldown;
 int PlayerLevel[MAXPLAYERS + 1];
@@ -1228,14 +1227,8 @@ int CommonKillsHeadshot[MAXPLAYERS + 1];
 char OpenedMenu_p[MAXPLAYERS + 1][512];
 char OpenedMenu[MAXPLAYERS + 1][512];
 int ExperienceOverall[MAXPLAYERS + 1];
-//new String:CurrentTalentLoading_Bots[128];
-//new Handle:a_Database_PlayerTalents_Bots;
-//new Handle:PlayerAbilitiesCooldown_Bots;				// Because [designation] = ZombieclassID
 int ExperienceLevel_Bots;
-//new ExperienceOverall_Bots;
-//new PlayerLevelUpgrades_Bots;
 int PlayerLevel_Bots;
-//new TotalTalentPoints_Bots;
 float Points_Director;
 Handle CommonInfectedQueue;
 int g_oAbility = 0;
@@ -1243,9 +1236,7 @@ Handle g_hIsStaggering = INVALID_HANDLE;
 Handle g_hSetClass = INVALID_HANDLE;
 Handle g_hCreateAbility = INVALID_HANDLE;
 Handle gd = INVALID_HANDLE;
-//new Handle:DirectorPurchaseTimer = INVALID_HANDLE;
 bool b_IsDirectorTalents[MAXPLAYERS + 1];
-//new LoadPos_Bots;
 int LoadPos[MAXPLAYERS + 1];
 int LoadPos_Director;
 ConVar g_Steamgroup;
@@ -1255,7 +1246,6 @@ int RoundTime;
 int g_iSprite = 0;
 int g_BeaconSprite = 0;
 int iNoSpecials;
-//new bool:b_FirstClientLoaded;
 bool b_HasDeathLocation[MAXPLAYERS + 1];
 bool b_IsMissionFailed;
 Handle CCASection;
@@ -1284,19 +1274,15 @@ Handle LoggedUsers;
 Handle TalentTreeValues[MAXPLAYERS + 1];
 Handle TalentExperienceValues[MAXPLAYERS + 1];
 Handle TalentActionValues[MAXPLAYERS + 1];
-Handle TalentActionSection[MAXPLAYERS + 1];
 bool bIsTalentTwo[MAXPLAYERS + 1];
 Handle CommonDrawKeys;
 Handle CommonDrawValues;
 bool bAutoRevive[MAXPLAYERS + 1];
 bool bIsClassAbilities[MAXPLAYERS + 1];
 bool bIsDisconnecting[MAXPLAYERS + 1];
-Handle LegitClassSection[MAXPLAYERS + 1];
 int LoadProfileRequestName[MAXPLAYERS + 1];
-//new String:LoadProfileRequest[MAXPLAYERS + 1];
 char TheCurrentMap[64];
 bool IsEnrageNotified;
-//new bool:bIsNewClass[MAXPLAYERS + 1];
 int ClientActiveStance[MAXPLAYERS + 1];
 Handle SurvivorsIgnored[MAXPLAYERS + 1];
 bool HasSeenCombat[MAXPLAYERS + 1];
@@ -1374,6 +1360,7 @@ char spmn[64];
 float fHealthSurvivorRevive;
 char RestrictedWeapons[1024];
 int iMaxLevel;
+int iMaxLevelBots;
 int iExperienceStart;
 float fExperienceMultiplier;
 char sBotTeam[64];
@@ -1409,7 +1396,6 @@ int iIgnoredRatingMax;
 int iInfectedLimit;
 float SurvivorExperienceMult;
 float SurvivorExperienceMultTank;
-//new Float:SurvivorExperienceMultHeal;
 float TheScorchMult;
 float TheInfernoMult;
 float fAdrenProgressMult;
@@ -1425,16 +1411,8 @@ char sDbLeaderboards[64];
 int iIsLifelink;
 char sItemModel[512];
 int iSurvivorGroupMinimum;
-/*new Float:fDropChanceSpecial;
-new Float:fDropChanceCommon;
-new Float:fDropChanceWitch;
-new Float:fDropChanceTank;
-new Float:fDropChanceInfected;*/
 Handle PreloadKeys;
 Handle PreloadValues;
-Handle ItemDropKeys;
-Handle ItemDropValues;
-Handle ItemDropSection;
 Handle persistentCirculation;
 int iEnrageAdvertisement;
 int iJoinGroupAdvertisement;
@@ -1462,14 +1440,8 @@ float LastAttackTime[MAXPLAYERS + 1];
 Handle hWeaponList[MAXPLAYERS + 1];
 int MyStatusEffects[MAXPLAYERS + 1];
 int iShowLockedTalents;
-//new Handle:GCMKeys[MAXPLAYERS + 1];
-//new Handle:GCMValues[MAXPLAYERS + 1];
-Handle PassiveStrengthKeys[MAXPLAYERS + 1];
 Handle PassiveStrengthValues[MAXPLAYERS + 1];
 Handle PassiveTalentName[MAXPLAYERS + 1];
-Handle UpgradeCategoryKeys[MAXPLAYERS + 1];
-Handle UpgradeCategoryValues[MAXPLAYERS + 1];
-Handle UpgradeCategoryName[MAXPLAYERS + 1];
 int iChaseEnt[MAXPLAYERS + 1];
 int iTeamRatingRequired;
 float fTeamRatingBonus;
@@ -1477,55 +1449,33 @@ float fRatingPercentLostOnDeath;
 int PlayerCurrentMenuLayer[MAXPLAYERS + 1];
 int iMaxLayers;
 Handle TranslationOTNValues[MAXPLAYERS + 1];
-Handle TranslationOTNSection[MAXPLAYERS + 1];
-Handle acdrKeys[MAXPLAYERS + 1];
 Handle acdrValues[MAXPLAYERS + 1];
-Handle acdrSection[MAXPLAYERS + 1];
-Handle GetLayerStrengthKeys[MAXPLAYERS + 1];
 Handle GetLayerStrengthValues[MAXPLAYERS + 1];
-Handle GetLayerStrengthSection[MAXPLAYERS + 1];
 int iCommonInfectedBaseDamage;
 int playerPageOfCharacterSheet[MAXPLAYERS + 1];
 int nodesInExistence;
 int iShowTotalNodesOnTalentTree;
 Handle PlayerEffectOverTime[MAXPLAYERS + 1];
 Handle PlayerEffectOverTimeEffects[MAXPLAYERS + 1];
-Handle CheckEffectOverTimeKeys[MAXPLAYERS + 1];
-Handle CheckEffectOverTimeValues[MAXPLAYERS + 1];
 float fSpecialAmmoInterval;
-//float fEffectOverTimeInterval;
-Handle FormatEffectOverTimeKeys[MAXPLAYERS + 1];
-Handle FormatEffectOverTimeValues[MAXPLAYERS + 1];
-Handle FormatEffectOverTimeSection[MAXPLAYERS + 1];
-Handle CooldownEffectTriggerKeys[MAXPLAYERS + 1];
 Handle CooldownEffectTriggerValues[MAXPLAYERS + 1];
-Handle IsSpellAnAuraKeys[MAXPLAYERS + 1];
 Handle IsSpellAnAuraValues[MAXPLAYERS + 1];
 float fStaggerTickrate;
 Handle StaggeredTargets;
 Handle staggerBuffer;
 bool staggerCooldownOnTriggers[MAXPLAYERS + 1];
-Handle CallAbilityCooldownTriggerKeys[MAXPLAYERS + 1];
 Handle CallAbilityCooldownTriggerValues[MAXPLAYERS + 1];
-Handle CallAbilityCooldownTriggerSection[MAXPLAYERS + 1];
-Handle GetIfTriggerRequirementsMetKeys[MAXPLAYERS + 1];
 Handle GetIfTriggerRequirementsMetValues[MAXPLAYERS + 1];
-Handle GetIfTriggerRequirementsMetSection[MAXPLAYERS + 1];
 bool ShowPlayerLayerInformation[MAXPLAYERS + 1];
-Handle GAMKeys[MAXPLAYERS + 1];
 Handle GAMValues[MAXPLAYERS + 1];
-Handle GAMSection[MAXPLAYERS + 1];
 char RPGMenuCommand[64];
 int RPGMenuCommandExplode;
 //new PrestigeLevel[MAXPLAYERS + 1];
 char DefaultProfileName[64];
 char DefaultBotProfileName[64];
 char DefaultInfectedProfileName[64];
-Handle GetGoverningAttributeKeys[MAXPLAYERS + 1];
 Handle GetGoverningAttributeValues[MAXPLAYERS + 1];
-Handle GetGoverningAttributeSection[MAXPLAYERS + 1];
 int iTanksAlwaysEnforceCooldown;
-Handle WeaponResultKeys[MAXPLAYERS + 1];
 Handle WeaponResultValues[MAXPLAYERS + 1];
 Handle WeaponResultSection[MAXPLAYERS + 1];
 bool shotgunCooldown[MAXPLAYERS + 1];
@@ -1539,15 +1489,10 @@ int iExperienceDebtEnabled;
 float fExperienceDebtPenalty;
 int iShowDamageOnActionBar;
 int iDefaultIncapHealth;
-Handle GetTalentValueSearchKeys[MAXPLAYERS + 1];
 Handle GetTalentValueSearchValues[MAXPLAYERS + 1];
-Handle GetTalentValueSearchSection[MAXPLAYERS + 1];
 Handle GetTalentStrengthSearchValues[MAXPLAYERS + 1];
-Handle GetTalentStrengthSearchSection[MAXPLAYERS + 1];
 int iSkyLevelNodeUnlocks;
-Handle GetTalentKeyValueKeys[MAXPLAYERS + 1];
 Handle GetTalentKeyValueValues[MAXPLAYERS + 1];
-Handle GetTalentKeyValueSection[MAXPLAYERS + 1];
 Handle ApplyDebuffCooldowns[MAXPLAYERS + 1];
 int iCanSurvivorBotsBurn;
 char defaultLoadoutWeaponPrimary[64];
@@ -1567,7 +1512,6 @@ float fSurvivorBotsNoneBonus;
 bool bTimersRunning[MAXPLAYERS + 1];
 int iShowAdvertToNonSteamgroupMembers;
 int displayBuffOrDebuff[MAXPLAYERS + 1];
-Handle TalentAtMenuPositionSection[MAXPLAYERS + 1];
 int iStrengthOnSpawnIsStrength;
 Handle SetNodesKeys;
 Handle SetNodesValues;
@@ -1718,6 +1662,7 @@ public Action CMD_IAmStuck(int client, int args) {
 		Format(text, sizeof(text), "\x04You can't use this command right now.");
 		if (timeremaining > 0) Format(text, sizeof(text), "%s \x04You must wait \x03%d \x04second(s).", text, timeremaining);
 	}
+
 	return Plugin_Handled;
 }
 
@@ -1881,7 +1826,14 @@ stock void UnhookAll() {
 
 public int ReadyUp_TrueDisconnect(int client) {
 	if (b_IsLoaded[client]) SavePlayerData(client, true);
-	b_IsLoaded[client] = false;		// only set to false if a REAL player leaves - this way bots don't repeatedly load their data.
+	// only set to false if a REAL player leaves - this way bots don't repeatedly load their data.
+	b_IsLoaded[client] = false;
+	// the best redundancy check to tower over all others. no more collisions when a player connects on a client that is not yet timed out to a crashed player!
+	Format(currentClientSteamID[client], sizeof(currentClientSteamID[]), "-1");
+	DisconnectDataReset(client);
+}
+
+stock DisconnectDataReset(int client) {
 	b_IsLoading[client] = false;
 	PlayerLevel[client] = 0;
 	Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
@@ -1980,9 +1932,6 @@ stock CreateAllArrays() {
 	if (CommonDrawValues == INVALID_HANDLE) CommonDrawValues = CreateArray(16);
 	if (PreloadKeys == INVALID_HANDLE) PreloadKeys = CreateArray(16);
 	if (PreloadValues == INVALID_HANDLE) PreloadValues = CreateArray(16);
-	if (ItemDropKeys == INVALID_HANDLE) ItemDropKeys = CreateArray(16);
-	if (ItemDropValues == INVALID_HANDLE) ItemDropValues = CreateArray(16);
-	if (ItemDropSection == INVALID_HANDLE) ItemDropSection = CreateArray(16);
 	if (persistentCirculation == INVALID_HANDLE) persistentCirculation = CreateArray(16);
 	if (RandomSurvivorClient == INVALID_HANDLE) RandomSurvivorClient = CreateArray(16);
 	if (RoundStatistics == INVALID_HANDLE) RoundStatistics = CreateArray(16);
@@ -2005,80 +1954,51 @@ stock CreateAllArrays() {
 		DisplayActionBar[i] = false;
 		ActionBarSlot[i] = -1;
 		b_IsIdle[i] = false;
-		if (GetAbilitySection[i] == INVALID_HANDLE) GetAbilitySection[i] = CreateArray(16);
+		if (GetCoherencyValues[i] == INVALID_HANDLE) GetCoherencyValues[i] = CreateArray(16);
 		if (GetValueFloatArray[i] == INVALID_HANDLE) GetValueFloatArray[i] = CreateArray(8);
 		if (CommonInfected[i] == INVALID_HANDLE) CommonInfected[i] = CreateArray(16);
 		if (possibleLootPool[i] == INVALID_HANDLE) possibleLootPool[i] = CreateArray(16);
 		if (currentEquippedWeapon[i] == INVALID_HANDLE) currentEquippedWeapon[i] = CreateTrie();
-		if (GetCategoryStrengthKeys[i] == INVALID_HANDLE) GetCategoryStrengthKeys[i] = CreateArray(16);
 		if (GetCategoryStrengthValues[i] == INVALID_HANDLE) GetCategoryStrengthValues[i] = CreateArray(16);
-		if (GetCategoryStrengthSection[i] == INVALID_HANDLE) GetCategoryStrengthSection[i] = CreateArray(16);
-		if (PassiveStrengthKeys[i] == INVALID_HANDLE) PassiveStrengthKeys[i] = CreateArray(16);
 		if (PassiveStrengthValues[i] == INVALID_HANDLE) PassiveStrengthValues[i] = CreateArray(16);
 		if (PassiveTalentName[i] == INVALID_HANDLE) PassiveTalentName[i] = CreateArray(16);
-		if (UpgradeCategoryKeys[i] == INVALID_HANDLE) UpgradeCategoryKeys[i] = CreateArray(16);
-		if (UpgradeCategoryValues[i] == INVALID_HANDLE) UpgradeCategoryValues[i] = CreateArray(16);
-		if (UpgradeCategoryName[i] == INVALID_HANDLE) UpgradeCategoryName[i] = CreateArray(16);
 		if (TranslationOTNValues[i] == INVALID_HANDLE) TranslationOTNValues[i] = CreateArray(16);
-		if (TranslationOTNSection[i] == INVALID_HANDLE) TranslationOTNSection[i] = CreateArray(16);
 		if (hWeaponList[i] == INVALID_HANDLE) hWeaponList[i] = CreateArray(16);
 		if (LoadoutConfigKeys[i] == INVALID_HANDLE) LoadoutConfigKeys[i] = CreateArray(16);
 		if (LoadoutConfigValues[i] == INVALID_HANDLE) LoadoutConfigValues[i] = CreateArray(16);
 		if (LoadoutConfigSection[i] == INVALID_HANDLE) LoadoutConfigSection[i] = CreateArray(16);
 		if (ActiveStatuses[i] == INVALID_HANDLE) ActiveStatuses[i] = CreateArray(16);
 		if (AbilityConfigValues[i] == INVALID_HANDLE) AbilityConfigValues[i] = CreateArray(16);
-		if (AbilityConfigSection[i] == INVALID_HANDLE) AbilityConfigSection[i] = CreateArray(16);
 		if (IsAbilityValues[i] == INVALID_HANDLE) IsAbilityValues[i] = CreateArray(16);
-		if (IsAbilitySection[i] == INVALID_HANDLE) IsAbilitySection[i] = CreateArray(16);
 		if (CheckAbilityKeys[i] == INVALID_HANDLE) CheckAbilityKeys[i] = CreateArray(16);
 		if (CheckAbilityValues[i] == INVALID_HANDLE) CheckAbilityValues[i] = CreateArray(16);
-		if (CheckAbilitySection[i] == INVALID_HANDLE) CheckAbilitySection[i] = CreateArray(16);
-		if (CastKeys[i] == INVALID_HANDLE) CastKeys[i] = CreateArray(16);
 		if (CastValues[i] == INVALID_HANDLE) CastValues[i] = CreateArray(16);
-		if (CastSection[i] == INVALID_HANDLE) CastSection[i] = CreateArray(16);
 		if (ActionBar[i] == INVALID_HANDLE) ActionBar[i] = CreateArray(16);
 		if (ActionBarMenuPos[i] == INVALID_HANDLE) ActionBarMenuPos[i] = CreateArray(16);
-		if (TalentsAssignedKeys[i] == INVALID_HANDLE) TalentsAssignedKeys[i] = CreateArray(16);
 		if (TalentsAssignedValues[i] == INVALID_HANDLE) TalentsAssignedValues[i] = CreateArray(16);
 		if (CartelValueValues[i] == INVALID_HANDLE) CartelValueValues[i] = CreateArray(16);
-		if (LegitClassSection[i] == INVALID_HANDLE) LegitClassSection[i] = CreateArray(16);
 		if (TalentActionValues[i] == INVALID_HANDLE) TalentActionValues[i] = CreateArray(16);
-		if (TalentActionSection[i] == INVALID_HANDLE) TalentActionSection[i] = CreateArray(16);
 		if (TalentExperienceValues[i] == INVALID_HANDLE) TalentExperienceValues[i] = CreateArray(16);
 		if (TalentTreeValues[i] == INVALID_HANDLE) TalentTreeValues[i] = CreateArray(16);
 		if (TheLeaderboards[i] == INVALID_HANDLE) TheLeaderboards[i] = CreateArray(16);
 		if (TheLeaderboardsDataFirst[i] == INVALID_HANDLE) TheLeaderboardsDataFirst[i] = CreateArray(8);
 		if (TheLeaderboardsDataSecond[i] == INVALID_HANDLE) TheLeaderboardsDataSecond[i] = CreateArray(8);
 		if (TankState_Array[i] == INVALID_HANDLE) TankState_Array[i] = CreateArray(16);
-		if (PlayerInventory[i] == INVALID_HANDLE) PlayerInventory[i] = CreateArray(16);
-		if (PlayerEquipped[i] == INVALID_HANDLE) PlayerEquipped[i] = CreateArray(16);
 		if (MenuStructure[i] == INVALID_HANDLE) MenuStructure[i] = CreateArray(16);
 		if (TempAttributes[i] == INVALID_HANDLE) TempAttributes[i] = CreateArray(16);
 		if (TempTalents[i] == INVALID_HANDLE) TempTalents[i] = CreateArray(16);
 		if (PlayerProfiles[i] == INVALID_HANDLE) PlayerProfiles[i] = CreateArray(32);
 		if (SpecialAmmoEffectValues[i] == INVALID_HANDLE) SpecialAmmoEffectValues[i] = CreateArray(16);
-		if (ActiveAmmoCooldownKeys[i] == INVALID_HANDLE) ActiveAmmoCooldownKeys[i] = CreateArray(16);
 		if (ActiveAmmoCooldownValues[i] == INVALID_HANDLE) ActiveAmmoCooldownValues[i] = CreateArray(16);
 		if (PlayActiveAbilities[i] == INVALID_HANDLE) PlayActiveAbilities[i] = CreateArray(16);
 		if (PlayerActiveAmmo[i] == INVALID_HANDLE) PlayerActiveAmmo[i] = CreateArray(16);
-		if (SpecialAmmoKeys[i] == INVALID_HANDLE) SpecialAmmoKeys[i] = CreateArray(16);
-		if (SpecialAmmoValues[i] == INVALID_HANDLE) SpecialAmmoValues[i] = CreateArray(16);
-		if (SpecialAmmoSection[i] == INVALID_HANDLE) SpecialAmmoSection[i] = CreateArray(16);
 		if (DrawSpecialAmmoKeys[i] == INVALID_HANDLE) DrawSpecialAmmoKeys[i] = CreateArray(16);
 		if (DrawSpecialAmmoValues[i] == INVALID_HANDLE) DrawSpecialAmmoValues[i] = CreateArray(16);
-		if (SpecialAmmoStrengthKeys[i] == INVALID_HANDLE) SpecialAmmoStrengthKeys[i] = CreateArray(16);
 		if (SpecialAmmoStrengthValues[i] == INVALID_HANDLE) SpecialAmmoStrengthValues[i] = CreateArray(16);
 		if (WeaponLevel[i] == INVALID_HANDLE) WeaponLevel[i] = CreateArray(16);
 		if (ExperienceBank[i] == INVALID_HANDLE) ExperienceBank[i] = CreateArray(16);
 		if (MenuPosition[i] == INVALID_HANDLE) MenuPosition[i] = CreateArray(16);
-		if (IsClientInRangeSAKeys[i] == INVALID_HANDLE) IsClientInRangeSAKeys[i] = CreateArray(16);
 		if (IsClientInRangeSAValues[i] == INVALID_HANDLE) IsClientInRangeSAValues[i] = CreateArray(16);
-		if (InfectedAuraKeys[i] == INVALID_HANDLE) InfectedAuraKeys[i] = CreateArray(16);
-		if (InfectedAuraValues[i] == INVALID_HANDLE) InfectedAuraValues[i] = CreateArray(16);
-		if (InfectedAuraSection[i] == INVALID_HANDLE) InfectedAuraSection[i] = CreateArray(16);
-		if (TalentUpgradeKeys[i] == INVALID_HANDLE) TalentUpgradeKeys[i] = CreateArray(16);
-		if (TalentUpgradeValues[i] == INVALID_HANDLE) TalentUpgradeValues[i] = CreateArray(16);
-		if (TalentUpgradeSection[i] == INVALID_HANDLE) TalentUpgradeSection[i] = CreateArray(16);
 		if (InfectedHealth[i] == INVALID_HANDLE) InfectedHealth[i] = CreateArray(16);
 		if (WitchDamage[i] == INVALID_HANDLE) WitchDamage[i]	= CreateArray(16);
 		if (SpecialCommon[i] == INVALID_HANDLE) SpecialCommon[i] = CreateArray(16);
@@ -2086,30 +2006,20 @@ stock CreateAllArrays() {
 		if (MenuValues[i] == INVALID_HANDLE) MenuValues[i]							= CreateArray(16);
 		if (AbilityMultiplierCalculator[i] == INVALID_HANDLE) AbilityMultiplierCalculator[i] = CreateArray(16);
 		if (MenuSection[i] == INVALID_HANDLE) MenuSection[i]							= CreateArray(16);
-		if (TriggerKeys[i] == INVALID_HANDLE) TriggerKeys[i]							= CreateArray(16);
 		if (TriggerValues[i] == INVALID_HANDLE) TriggerValues[i]						= CreateArray(16);
-		if (TriggerSection[i] == INVALID_HANDLE) TriggerSection[i]						= CreateArray(16);
 		if (PreloadTalentValues[i] == INVALID_HANDLE) PreloadTalentValues[i]			= CreateArray(16);
-		if (PreloadTalentSection[i] == INVALID_HANDLE) PreloadTalentSection[i]			= CreateArray(16);
 		if (MyTalentStrengths[i] == INVALID_HANDLE) MyTalentStrengths[i]				= CreateArray(16);
 		if (MyTalentStrength[i] == INVALID_HANDLE) MyTalentStrength[i]					= CreateArray(16);
 		if (AbilityKeys[i] == INVALID_HANDLE) AbilityKeys[i]							= CreateArray(16);
 		if (AbilityValues[i] == INVALID_HANDLE) AbilityValues[i]						= CreateArray(16);
-		if (AbilitySection[i] == INVALID_HANDLE) AbilitySection[i]						= CreateArray(16);
-		if (ChanceKeys[i] == INVALID_HANDLE) ChanceKeys[i]							= CreateArray(16);
 		if (ChanceValues[i] == INVALID_HANDLE) ChanceValues[i]							= CreateArray(16);
 		if (PurchaseKeys[i] == INVALID_HANDLE) PurchaseKeys[i]						= CreateArray(16);
 		if (PurchaseValues[i] == INVALID_HANDLE) PurchaseValues[i]						= CreateArray(16);
-		if (ChanceSection[i] == INVALID_HANDLE) ChanceSection[i]						= CreateArray(16);
 		if (a_Database_PlayerTalents[i] == INVALID_HANDLE) a_Database_PlayerTalents[i]				= CreateArray(16);
 		if (a_Database_PlayerTalents_Experience[i] == INVALID_HANDLE) a_Database_PlayerTalents_Experience[i] = CreateArray(16);
 		if (PlayerAbilitiesCooldown[i] == INVALID_HANDLE) PlayerAbilitiesCooldown[i]				= CreateArray(16);
-		if (acdrKeys[i] == INVALID_HANDLE) acdrKeys[i] = CreateArray(16);
 		if (acdrValues[i] == INVALID_HANDLE) acdrValues[i] = CreateArray(16);
-		if (acdrSection[i] == INVALID_HANDLE) acdrSection[i] = CreateArray(16);
-		if (GetLayerStrengthKeys[i] == INVALID_HANDLE) GetLayerStrengthKeys[i] = CreateArray(16);
 		if (GetLayerStrengthValues[i] == INVALID_HANDLE) GetLayerStrengthValues[i] = CreateArray(16);
-		if (GetLayerStrengthSection[i] == INVALID_HANDLE) GetLayerStrengthSection[i] = CreateArray(16);
 		if (a_Store_Player[i] == INVALID_HANDLE) a_Store_Player[i]						= CreateArray(16);
 		if (StoreKeys[i] == INVALID_HANDLE) StoreKeys[i]							= CreateArray(16);
 		if (StoreValues[i] == INVALID_HANDLE) StoreValues[i]							= CreateArray(16);
@@ -2117,71 +2027,36 @@ stock CreateAllArrays() {
 		if (StoreMultiplierValues[i] == INVALID_HANDLE) StoreMultiplierValues[i]				= CreateArray(16);
 		if (StoreTimeKeys[i] == INVALID_HANDLE) StoreTimeKeys[i]						= CreateArray(16);
 		if (StoreTimeValues[i] == INVALID_HANDLE) StoreTimeValues[i]						= CreateArray(16);
-		if (LoadStoreSection[i] == INVALID_HANDLE) LoadStoreSection[i]						= CreateArray(16);
-		if (SaveSection[i] == INVALID_HANDLE) SaveSection[i]							= CreateArray(16);
 		if (StoreChanceKeys[i] == INVALID_HANDLE) StoreChanceKeys[i]						= CreateArray(16);
 		if (StoreChanceValues[i] == INVALID_HANDLE) StoreChanceValues[i]					= CreateArray(16);
-		if (StoreItemNameSection[i] == INVALID_HANDLE) StoreItemNameSection[i]					= CreateArray(16);
-		if (StoreItemSection[i] == INVALID_HANDLE) StoreItemSection[i]						= CreateArray(16);
 		if (TrailsKeys[i] == INVALID_HANDLE) TrailsKeys[i]							= CreateArray(16);
 		if (TrailsValues[i] == INVALID_HANDLE) TrailsValues[i]							= CreateArray(16);
-		if (DamageKeys[i] == INVALID_HANDLE) DamageKeys[i]						= CreateArray(16);
 		if (DamageValues[i] == INVALID_HANDLE) DamageValues[i]					= CreateArray(16);
 		if (DamageSection[i] == INVALID_HANDLE) DamageSection[i]				= CreateArray(16);
-		if (MOTKeys[i] == INVALID_HANDLE) MOTKeys[i] = CreateArray(16);
 		if (MOTValues[i] == INVALID_HANDLE) MOTValues[i] = CreateArray(16);
-		if (MOTSection[i] == INVALID_HANDLE) MOTSection[i] = CreateArray(16);
 		if (BoosterKeys[i] == INVALID_HANDLE) BoosterKeys[i]							= CreateArray(16);
 		if (BoosterValues[i] == INVALID_HANDLE) BoosterValues[i]						= CreateArray(16);
 		if (RPGMenuPosition[i] == INVALID_HANDLE) RPGMenuPosition[i]						= CreateArray(16);
 		if (h_KilledPosition_X[i] == INVALID_HANDLE) h_KilledPosition_X[i]				= CreateArray(16);
 		if (h_KilledPosition_Y[i] == INVALID_HANDLE) h_KilledPosition_Y[i]				= CreateArray(16);
 		if (h_KilledPosition_Z[i] == INVALID_HANDLE) h_KilledPosition_Z[i]				= CreateArray(16);
-		if (MeleeKeys[i] == INVALID_HANDLE) MeleeKeys[i]						= CreateArray(16);
-		if (MeleeValues[i] == INVALID_HANDLE) MeleeValues[i]					= CreateArray(16);
-		if (MeleeSection[i] == INVALID_HANDLE) MeleeSection[i]					= CreateArray(16);
 		if (RCAffixes[i] == INVALID_HANDLE) RCAffixes[i] = CreateArray(16);
-		if (AKKeys[i] == INVALID_HANDLE) AKKeys[i]						= CreateArray(16);
-		if (AKValues[i] == INVALID_HANDLE) AKValues[i]					= CreateArray(16);
-		if (AKSection[i] == INVALID_HANDLE) AKSection[i]					= CreateArray(16);
 		if (SurvivorsIgnored[i] == INVALID_HANDLE) SurvivorsIgnored[i] = CreateArray(16);
 		if (MyGroup[i] == INVALID_HANDLE) MyGroup[i] = CreateArray(16);
 		if (PlayerEffectOverTime[i] == INVALID_HANDLE) PlayerEffectOverTime[i] = CreateArray(16);
 		if (PlayerEffectOverTimeEffects[i] == INVALID_HANDLE) PlayerEffectOverTimeEffects[i] = CreateArray(16);
-		if (CheckEffectOverTimeKeys[i] == INVALID_HANDLE) CheckEffectOverTimeKeys[i] = CreateArray(16);
-		if (CheckEffectOverTimeValues[i] == INVALID_HANDLE) CheckEffectOverTimeValues[i] = CreateArray(16);
-		if (FormatEffectOverTimeKeys[i] == INVALID_HANDLE) FormatEffectOverTimeKeys[i] = CreateArray(16);
-		if (FormatEffectOverTimeValues[i] == INVALID_HANDLE) FormatEffectOverTimeValues[i] = CreateArray(16);
-		if (FormatEffectOverTimeSection[i] == INVALID_HANDLE) FormatEffectOverTimeSection[i] = CreateArray(16);
-		if (CooldownEffectTriggerKeys[i] == INVALID_HANDLE) CooldownEffectTriggerKeys[i] = CreateArray(16);
 		if (CooldownEffectTriggerValues[i] == INVALID_HANDLE) CooldownEffectTriggerValues[i] = CreateArray(16);
-		if (IsSpellAnAuraKeys[i] == INVALID_HANDLE) IsSpellAnAuraKeys[i] = CreateArray(16);
 		if (IsSpellAnAuraValues[i] == INVALID_HANDLE) IsSpellAnAuraValues[i] = CreateArray(16);
-		if (CallAbilityCooldownTriggerKeys[i] == INVALID_HANDLE) CallAbilityCooldownTriggerKeys[i] = CreateArray(16);
 		if (CallAbilityCooldownTriggerValues[i] == INVALID_HANDLE) CallAbilityCooldownTriggerValues[i] = CreateArray(16);
-		if (CallAbilityCooldownTriggerSection[i] == INVALID_HANDLE) CallAbilityCooldownTriggerSection[i] = CreateArray(16);
-		if (GetIfTriggerRequirementsMetKeys[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetKeys[i] = CreateArray(16);
 		if (GetIfTriggerRequirementsMetValues[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetValues[i] = CreateArray(16);
-		if (GetIfTriggerRequirementsMetSection[i] == INVALID_HANDLE) GetIfTriggerRequirementsMetSection[i] = CreateArray(16);
-		if (GAMKeys[i] == INVALID_HANDLE) GAMKeys[i] = CreateArray(16);
 		if (GAMValues[i] == INVALID_HANDLE) GAMValues[i] = CreateArray(16);
-		if (GAMSection[i] == INVALID_HANDLE) GAMSection[i] = CreateArray(16);
-		if (GetGoverningAttributeKeys[i] == INVALID_HANDLE) GetGoverningAttributeKeys[i] = CreateArray(16);
 		if (GetGoverningAttributeValues[i] == INVALID_HANDLE) GetGoverningAttributeValues[i] = CreateArray(16);
-		if (GetGoverningAttributeSection[i] == INVALID_HANDLE) GetGoverningAttributeSection[i] = CreateArray(16);
-		if (WeaponResultKeys[i] == INVALID_HANDLE) WeaponResultKeys[i] = CreateArray(16);
 		if (WeaponResultValues[i] == INVALID_HANDLE) WeaponResultValues[i] = CreateArray(16);
 		if (WeaponResultSection[i] == INVALID_HANDLE) WeaponResultSection[i] = CreateArray(16);
-		if (GetTalentValueSearchKeys[i] == INVALID_HANDLE) GetTalentValueSearchKeys[i] = CreateArray(16);
 		if (GetTalentValueSearchValues[i] == INVALID_HANDLE) GetTalentValueSearchValues[i] = CreateArray(16);
-		if (GetTalentValueSearchSection[i] == INVALID_HANDLE) GetTalentValueSearchSection[i] = CreateArray(16);
 		if (GetTalentStrengthSearchValues[i] == INVALID_HANDLE) GetTalentStrengthSearchValues[i] = CreateArray(16);
-		if (GetTalentStrengthSearchSection[i] == INVALID_HANDLE) GetTalentStrengthSearchSection[i] = CreateArray(16);
-		if (GetTalentKeyValueKeys[i] == INVALID_HANDLE) GetTalentKeyValueKeys[i] = CreateArray(16);
 		if (GetTalentKeyValueValues[i] == INVALID_HANDLE) GetTalentKeyValueValues[i] = CreateArray(16);
-		if (GetTalentKeyValueSection[i] == INVALID_HANDLE) GetTalentKeyValueSection[i] = CreateArray(16);
 		if (ApplyDebuffCooldowns[i] == INVALID_HANDLE) ApplyDebuffCooldowns[i] = CreateArray(16);
-		if (TalentAtMenuPositionSection[i] == INVALID_HANDLE) TalentAtMenuPositionSection[i] = CreateArray(16);
 		if (playerContributionTracker[i] == INVALID_HANDLE) {
 			playerContributionTracker[i] = CreateArray(16);
 			ResizeArray(playerContributionTracker[i], 4);
@@ -2220,6 +2095,7 @@ stock CreateAllArrays() {
 		if (myUnlockedTargets[i] == INVALID_HANDLE) myUnlockedTargets[i] = CreateArray(16);
 		if (EquipAugmentPanel[i] == INVALID_HANDLE) EquipAugmentPanel[i] = CreateArray(16);
 		if (OnDeathHandicapValues[i] == INVALID_HANDLE) OnDeathHandicapValues[i] = CreateArray(8);
+		if (augmentInventoryPosition[i] == INVALID_HANDLE) augmentInventoryPosition[i] = CreateArray(16);
 	}
 	CreateTimer(1.0, Timer_ExecuteConfig, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	b_FirstLoad = true;
@@ -2389,7 +2265,7 @@ public Action Timer_ExecuteConfig(Handle timer) {
 public Action Timer_AutoRes(Handle timer) {
 	if (b_IsCheckpointDoorStartOpened) return Plugin_Stop;
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+		if (IsLegitimateClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
 			if (!IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
 			else if (IsIncapacitated(i)) ExecCheatCommand(i, "give", "health");
 		}
@@ -2430,7 +2306,7 @@ public ReadyUp_ReadyUpStart() {
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsLegitimateClient(i)) {
-			if (CurrentMapPosition == 0 && b_IsLoaded[i] && GetClientTeam(i) == TEAM_SURVIVOR && ReadyUpGameMode != 3) GiveProfileItems(i);
+			if (CurrentMapPosition == 0 && b_IsLoaded[i] && myCurrentTeam[i] == TEAM_SURVIVOR && ReadyUpGameMode != 3) GiveProfileItems(i);
 			if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 			staggerCooldownOnTriggers[i] = false;
 			ISBILED[i] = false;
@@ -2497,7 +2373,7 @@ public ReadyUpEnd_Complete() {
 				SurvivorEnrage[i][0] = 0.0;
 				SurvivorEnrage[i][1] = 0.0;
 				ISDAZED[i] = 0.0;
-				if (GetClientTeam(i) == TEAM_SURVIVOR && b_IsLoaded[i]) {
+				if (myCurrentTeam[i] == TEAM_SURVIVOR && b_IsLoaded[i]) {
 					SurvivorStamina[i] = GetPlayerStamina(i) - 1;
 					SetMaximumHealth(i);
 				}
@@ -2580,7 +2456,7 @@ bool IsPlayerWithinBuffRange(client, char[] effectName) {
 	GetClientAbsOrigin(client, cpos);
 	for (int i = 1; i <= MaxClients; i++) {
 		// skip client, dead players, and players not on clients team
-		if (i == client || !IsLegitimateClientAlive(i) || GetClientTeam(i) != GetClientTeam(client)) continue;
+		if (i == client || !IsLegitimateClientAlive(i) || myCurrentTeam[i] != myCurrentTeam[client]) continue;
 		float ipos[3];
 		GetClientAbsOrigin(i, ipos);
 		for (int ii = 0; ii < size; ii++) {
@@ -2594,10 +2470,10 @@ bool IsPlayerWithinBuffRange(client, char[] effectName) {
 	return false;	// client is not within range of this talent for any player on their team that has it.
 }
 
-stock int PlayerHasWeakness(client) {
-	if (IsClientInRangeSpecialAmmo(client, "W")) return 2;
-	if (iCurrentIncapCount[client] >= iMaxIncap || IsSpecialCommonInRange(client, 'w')) return 1;
+stock int PlayerHasWeakness(client) {	// order of least-intensive calculations to most.
 	if (bForcedWeakness[client]) return 3;
+	if (iCurrentIncapCount[client] >= iMaxIncap || IsSpecialCommonInRange(client, 'w')) return 1;
+	if (IsClientInRangeSpecialAmmo(client, "W")) return 2;
 	return 0;
 }
 
@@ -2613,11 +2489,18 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		ClearArray(ListOfWitchesWhoHaveBeenShot);
 		ClearArray(persistentCirculation);
 		ClearArray(CoveredInVomit);
-		ClearArray(RoundStatistics);
-		ResizeArray(RoundStatistics, 5);
-		for (int i = 0; i < 5; i++) {
-			SetArrayCell(RoundStatistics, i, 0);
-			if (CurrentMapPosition == 0) SetArrayCell(RoundStatistics, i, 0, 1);	// first map of campaign, reset the total.
+		if (CurrentMapPosition == 0) {
+			ClearArray(RoundStatistics);
+			ResizeArray(RoundStatistics, 5);
+			for (int i = 0; i < 5; i++) {
+				SetArrayCell(RoundStatistics, i, 0);
+				SetArrayCell(RoundStatistics, i, 0, 1);	// first map of campaign, reset the total.
+			}
+		}
+		else {
+			for (int i = 0; i < 5; i++) {
+				SetArrayCell(RoundStatistics, i, 0);
+			}
 		}
 		char pct[4];
 		Format(pct, sizeof(pct), "%");
@@ -2671,7 +2554,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		//RoundDamageTotal			=	0;
 		b_IsFinaleActive			=	false;
 		for (int i = 1; i <= MaxClients; i++) {
-			if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+			if (IsLegitimateClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
 				if (!IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
 				VerifyMinimumRating(i);
 				HealImmunity[i] = false;
@@ -2772,11 +2655,8 @@ stock CMD_CastAction(client, args) {
 
 stock CastActionEx(client, char[] t_actionpos = "none", TheSize, pos = -1) {
 	int ActionSlots = iActionBarSlots;
-	char actionpos[64];
 	if (pos == -1) pos = StringToInt(t_actionpos[strlen(t_actionpos) - 1]) - 1;//StringToInt(actionpos[strlen(actionpos) - 1]);
 	if (pos >= 0 && pos < ActionSlots) {
-		//pos--;	// shift down 1 for the array.
-		GetArrayString(ActionBar[client], pos, actionpos, sizeof(actionpos));
 		int menuPos = GetArrayCell(ActionBarMenuPos[client], pos);
 		if (menuPos < 0 || GetArrayCell(MyTalentStrength[client], menuPos) < 1) return;
 		
@@ -2788,7 +2668,7 @@ stock CastActionEx(client, char[] t_actionpos = "none", TheSize, pos = -1) {
 		GetArrayString(a_Database_Talents, menuPos, TalentName, sizeof(TalentName));
 
 		char hitgroup[4];
-		CastKeys[client]			= GetArrayCell(a_Menu_Talents, menuPos, 0);
+		//CastKeys[client]			= GetArrayCell(a_Menu_Talents, menuPos, 0);
 		//CastSection[client]			= GetArrayCell(a_Menu_Talents, i, 2);
 		AbilityTalent = GetArrayCell(CastValues[client], IS_TALENT_ABILITY);
 		int RequiresTarget = GetArrayCell(CastValues[client], ABILITY_IS_SINGLE_TARGET);
@@ -2797,16 +2677,16 @@ stock CastActionEx(client, char[] t_actionpos = "none", TheSize, pos = -1) {
 		if (RequiresTarget > 0) {
 			RequiresTarget = GetAimTargetPosition(client, TargetPos, hitgroup, 4);
 			if (IsLegitimateClientAlive(RequiresTarget)) {
-				if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos, visualDelayTime);
-				else UseAbility(client, RequiresTarget, TalentName, CastKeys[client], CastValues[client], TargetPos);
+				if (AbilityTalent != 1) CastSpell(client, RequiresTarget, TalentName, TargetPos, visualDelayTime, menuPos);
+				else UseAbility(client, RequiresTarget, TalentName, CastValues[client], TargetPos, menuPos);
 			}
 		}
 		else {
 			GetAimTargetPosition(client, TargetPos, hitgroup, 4);
-			if (AbilityTalent != 1) CastSpell(client, _, TalentName, TargetPos, visualDelayTime);
+			if (AbilityTalent != 1) CastSpell(client, _, TalentName, TargetPos, visualDelayTime, menuPos);
 			else {
 				CheckActiveAbility(client, pos, _, _, true, true);
-				UseAbility(client, _, TalentName, CastKeys[client], CastValues[client], TargetPos);
+				UseAbility(client, _, TalentName, CastValues[client], TargetPos, menuPos);
 			}
 		}
 	}
@@ -2823,67 +2703,13 @@ stock MySurvivorCompanion(client) {
 
 	for (int i = 1; i <= MaxClients; i++) {
 
-		if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR && IsFakeClient(i)) {
+		if (IsLegitimateClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR && IsFakeClient(i)) {
 
 			GetEntPropString(i, Prop_Data, "m_iName", CompanionSteamId, sizeof(CompanionSteamId));
 			if (StrEqual(CompanionSteamId, SteamId, false)) return i;
 		}
 	}
 	return -1;
-}
-
-public Action CMD_CompanionOptions(client, args) {
-
-	/*if (GetClientTeam(client) != TEAM_SURVIVOR) return Plugin_Handled;
-	decl String:TheCommand[64], String:TheName[64], String:tquery[512], String:thetext[64], String:SteamId[64];
-	GetCmdArg(1, TheCommand, sizeof(TheCommand));
-	if (args > 1) {
-
-		new companion = MySurvivorCompanion(client);
-
-		if (companion == -1) {	// no companion active.
-
-			if (StrEqual(TheCommand, "create", false)) {	// creates a companion.
-
-				if (args == 2) {
-
-					GetCmdArg(2, TheName, sizeof(TheName));
-					ReplaceString(TheName, sizeof(TheName), "+", " ");
-
-					Format(CompanionNameQueue[client], sizeof(CompanionNameQueue[]), "%s", TheName);
-					GetClientAuthString(client, SteamId, sizeof(SteamId));
-
-					Format(tquery, sizeof(tquery), "SELECT COUNT(*) FROM `%s` WHERE `companionowner` = '%s';", TheDBPrefix, SteamId);
-					SQL_TQuery(hDatabase, Query_CheckCompanionCount, tquery, client);
-				}
-				else {
-
-					GetConfigValue(thetext, sizeof(thetext), "companion command?");
-					PrintToChat(client, "!%s create <name>", thetext);
-				}
-			}
-			else if (StrEqual(TheCommand, "load", false)) {	// opens the comapnion load menu.
-
-			}
-		}
-		else {	// player has a companion active.
-
-			if (StrEqual(TheCommand, "delete", false)) {	// we delete the companion.
-
-			}
-			else if (StrEqual(TheCommand, "edit", false)) {	// opens the talent menu for the companion.
-
-			}
-			else if (StrEqual(TheCommand, "save", false)) {	// saves the companion, you should always do this before loading a new one.
-
-			}
-		}
-	}
-	else {
-
-		// display the available commands to the user.
-	}*/
-	return Plugin_Handled;
 }
 
 public Action CMD_TogglePvP(client, args) {
@@ -3021,7 +2847,6 @@ stock GetTotalExperienceByLevel(newlevel) {
 }
 
 stock SetTotalExperienceByLevel(client, newlevel, bool giveMaxXP = false) {
-
 	int oldlevel = PlayerLevel[client];
 	ExperienceOverall[client] = 0;
 	ExperienceLevel[client] = 0;
@@ -3243,9 +3068,9 @@ public ReadyUp_RoundIsOver(gamemode) {
 	new LivingSurvs = TotalHumanSurvivors();
 	for (new i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i)) continue;
-		if (GetClientTeam(i) == TEAM_INFECTED && IsFakeClient(i)) continue;	// infected bots are skipped.
+		if (myCurrentTeam[i] == TEAM_INFECTED && IsFakeClient(i)) continue;	// infected bots are skipped.
 		//ToggleTank(i, true);
-		if (b_IsMissionFailed && LivingSurvs > 0 && GetClientTeam(i) == TEAM_SURVIVOR) {
+		if (b_IsMissionFailed && LivingSurvs > 0 && myCurrentTeam[i] == TEAM_SURVIVOR) {
 			RoundExperienceMultiplier[i] = 0.0;
 			// So, the round ends due a failed mission, whether it's coop or survival, and we reset all players ratings.
 			VerifyMinimumRating(i, true);
@@ -3349,13 +3174,16 @@ stock CallRoundIsOver() {
 						iThreatLevel[i] = 0;
 						bIsInCombat[i] = false;
 						fSlowSpeed[i] = 1.0;
-						if (GetClientTeam(i) != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
+						if (myCurrentTeam[i] != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
 						if (Rating[i] < 0 && CurrentMapPosition != 1) VerifyMinimumRating(i);
 						if (RoundExperienceMultiplier[i] < 0.0) RoundExperienceMultiplier[i] = 0.0;
 						if (fExperienceBonus > 0.0) {
-							float scoreMult = (GetScoreMultiplier(i) * fExperienceBonus);
-							RoundExperienceMultiplier[i] += scoreMult;
-							PrintToChat(i, "%T", "living survivors experience bonus", i, orange, blue, orange, white, blue, scoreMult * 100.0, white, pct, orange);
+							float scoreMult = GetScoreMultiplier(i);
+							if (scoreMult > 0.0) {
+								scoreMult = (scoreMult * fExperienceBonus);
+								RoundExperienceMultiplier[i] += scoreMult;
+								PrintToChat(i, "%T", "living survivors experience bonus", i, orange, blue, orange, white, blue, scoreMult * 100.0, white, pct, orange);
+							}
 						}
 						//else PrintToChat(i, "no round bonus applied.");
 						AwardExperience(i, _, _, true);
@@ -3369,10 +3197,10 @@ stock CallRoundIsOver() {
 		if (humanSurvivorsInGame > 0) {
 			for (int i = 1; i <= MaxClients; i++) {
 				if (!IsLegitimateClient(i)) continue;
-				if (GetClientTeam(i) == TEAM_INFECTED && IsFakeClient(i)) continue;	// infected bots are skipped.
+				if (myCurrentTeam[i] == TEAM_INFECTED && IsFakeClient(i)) continue;	// infected bots are skipped.
 				//ToggleTank(i, true);
 				if (b_IsMissionFailed) {
-					if (GetClientTeam(i) == TEAM_SURVIVOR) {
+					if (myCurrentTeam[i] == TEAM_SURVIVOR) {
 						RoundExperienceMultiplier[i] = 0.0;
 						// So, the round ends due a failed mission, whether it's coop or survival, and we reset all players ratings.
 						//VerifyMinimumRating(i, true);
@@ -3478,8 +3306,6 @@ stock RegisterConsoleCommands() {
 		GetConfigValue(thetext, sizeof(thetext), "abilitybar menu command?");
 		RegConsoleCmd(thetext, CMD_ActionBar);
 		//RegConsoleCmd("collect", CMD_CollectBonusExperience);
-		GetConfigValue(thetext, sizeof(thetext), "companion command?");
-		RegConsoleCmd(thetext, CMD_CompanionOptions);
 		GetConfigValue(thetext, sizeof(thetext), "load profile command?");
 		RegConsoleCmd(thetext, CMD_LoadProfileEx);
 		//RegConsoleCmd("backpack", CMD_Backpack);
@@ -3700,6 +3526,7 @@ stock LoadMainConfig() {
 	//fFatigueMovementSpeed				= GetConfigValueFloat("fatigue movement speed?");
 	iPlayerStartingLevel				= GetConfigValueInt("new player starting level?");
 	iBotPlayerStartingLevel				= GetConfigValueInt("new bot player starting level?");
+	if (iMaxLevelBots < iBotPlayerStartingLevel) iMaxLevelBots = iBotPlayerStartingLevel;
 	fOutOfCombatTime					= GetConfigValueFloat("out of combat time?");
 	iWitchDamageInitial					= GetConfigValueInt("witch damage initial?");
 	fWitchDamageScaleLevel				= GetConfigValueFloat("witch damage scale level?");
@@ -3772,6 +3599,7 @@ stock LoadMainConfig() {
 	fHealthSurvivorRevive				= GetConfigValueFloat("survivor revive health?");
 	GetConfigValue(RestrictedWeapons, sizeof(RestrictedWeapons), "restricted weapons?");
 	iMaxLevel							= GetConfigValueInt("max level?");
+	iMaxLevelBots						= GetConfigValueInt("max level bots?", -1);
 	iExperienceStart					= GetConfigValueInt("experience start?");
 	fExperienceMultiplier				= GetConfigValueFloat("requirement multiplier?");
 	GetConfigValue(sBotTeam, sizeof(sBotTeam), "survivor team?");
@@ -3923,11 +3751,14 @@ stock LoadMainConfig() {
 	iAugmentsAffectCooldowns			= GetConfigValueInt("augment affects cooldowns?", 1);
 	fIncapHealthStartPercentage			= GetConfigValueFloat("incap health start?", 0.5);
 	iStuckDelayTime						= GetConfigValueInt("seconds between stuck command use?", 120);
-	fDamageContribution					= GetConfigValueFloat("damage contribution?", 0.1);
 	fTankingContribution				= GetConfigValueFloat("tanking contribution?", 0.5);
 	iExperimentalMode					= GetConfigValueInt("invert walk and sprint?", 1);
 	fAugmentLevelDifferenceForStolen	= GetConfigValueFloat("equip stolen augment average range?", 0.1);
 	fUpdateClientInterval				= GetConfigValueFloat("update client data tickrate?", 0.5);
+	fRewardPenaltyIfSurvivorBot			= GetConfigValueFloat("reward penalty if target is survivor bot?", 0.1);
+	fFallenSurvivorDefibChance			= GetConfigValueFloat("fallen survivor defib drop chance base?", 0.01);
+	fFallenSurvivorDefibChanceLuck		= GetConfigValueFloat("fallen survivor defib drop chance luck?", 0.01);
+
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
 	GetConfigValue(DefaultProfileName, sizeof(DefaultProfileName), "new player profile?");
@@ -4189,11 +4020,8 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 
 	char key[64];
 	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
-	if (StrEqual(ownerSteamID, "none")) {
-		Format(ownerSteamID, 64, "%s", key);
-	}
 	SetArrayString(myAugmentOwners[client], size, ownerSteamID);
-	SetArrayString(myAugmentOwnersName[client], size, baseName[client]);
+	SetArrayString(myAugmentOwnersName[client], size, ownerName);
 	SetArrayCell(myAugmentInfo[client], size, lootrolls[0]);	// item rating
 	SetArrayCell(myAugmentInfo[client], size, 0, 1);			// item cost
 	SetArrayCell(myAugmentInfo[client], size, 0, 2);			// is item for sale
@@ -4254,8 +4082,11 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		else Format(augmentStrengthText, 64, "{B}Major {O}%s", perfectname);
 	}
 	Format(text, sizeof(text), "{B}%s {N}{OBTAINTYPE} a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
-	if (StrEqual(ownerSteamID, key)) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "obtained", true);
-	else ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "stole", true);
+	if (StrContains(ownerSteamID, key, false) != -1) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "obtained", true);
+	else {
+		ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "stole", true);
+		Format(text, sizeof(text), "%s {N}from {O}%s", text, ownerName);
+	}
 	ReplaceString(text, sizeof(text), "PCT", "%%", true);
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
@@ -4335,7 +4166,6 @@ stock void SetLootDropCategories(client) {
 //public Action:CMD_Backpack(client, args) { EquipBackpack(client); return Plugin_Handled; }
 public Action CMD_BuyMenu(client, args) {
 	if (iRPGMode < 0 || iRPGMode == 1 && b_IsActiveRound) return Plugin_Handled;
-	//if (StringToInt(GetConfigValue("rpg mode?")) != 1) 
 	BuildPointsMenu(client, "Buy Menu", "rpg/points.cfg");
 	return Plugin_Handled;
 }
@@ -4345,7 +4175,7 @@ public Action CMD_DataErase(client, args) {
 	if (args > 0 && HasCommandAccess(client, sDeleteBotFlags)) {
 		GetCmdArg(1, arg, sizeof(arg));
 		int targetclient = FindTargetClient(client, arg);
-		if (IsLegitimateClient(targetclient) && GetClientTeam(targetclient) != TEAM_INFECTED) DeleteAndCreateNewData(targetclient);
+		if (IsLegitimateClient(targetclient) && myCurrentTeam[targetclient] != TEAM_INFECTED) DeleteAndCreateNewData(targetclient);
 	}
 	else DeleteAndCreateNewData(client);
 	return Plugin_Handled;
@@ -4426,6 +4256,10 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	int sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
 	if (configIsForTalents) {
+		if (FindStringInArray(TalentKey, "weapon name required?") == -1) {
+			PushArrayString(TalentKey, "weapon name required?");
+			PushArrayString(TalentValue, "-1");
+		}
 		if (FindStringInArray(TalentKey, "time since last activator attack?") == -1) {
 			PushArrayString(TalentKey, "time since last activator attack?");
 			PushArrayString(TalentValue, "-1.0");
@@ -5304,7 +5138,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos == 165 && !StrEqual(text, "target status effect required?") ||
 			pos == 166 && !StrEqual(text, "activator must be in ammo?") ||
 			pos == 167 && !StrEqual(text, "target must be in ammo?") ||
-			pos == 168 && !StrEqual(text, "time since last activator attack?")) {
+			pos == 168 && !StrEqual(text, "time since last activator attack?") ||
+			pos == 169 && !StrEqual(text, "weapon name required?")) {
 				ResizeArray(TalentKey, sortSize+1);
 				ResizeArray(TalentValue, sortSize+1);
 				SetArrayString(TalentKey, sortSize, text);
@@ -5392,6 +5227,17 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 				SetArrayCell(MyTalentStrength[client], i, 0);
 			}
 		}
+
+		// for (int client = 1; client <= MAXPLAYERS; client++) {
+		// 	ResizeArray(PlayerAbilitiesCooldown[client], ASize);
+		// 	ResizeArray(a_Database_PlayerTalents[client], ASize);
+		// 	ResizeArray(a_Database_PlayerTalents_Experience[client], ASize);
+		// 	for (int i = 0; i < ASize; i++) {
+		// 		SetArrayCell(a_Database_PlayerTalents[client], i, 0);
+		// 		SetArrayString(PlayerAbilitiesCooldown[client], i, "0");
+		// 		SetArrayCell(a_Database_PlayerTalents_Experience[client], i, 0);
+		// 	}
+		// }
 	}
 	else if (StrEqual(Config, CONFIG_EVENTS)) {
 		if (FindStringInArray(TalentKey, "entered saferoom?") == -1) {

@@ -83,32 +83,6 @@ public Action Timer_GiveLaserBeam(Handle timer, any client) {
 	return Plugin_Stop;
 }
 
-/*public Action:Timer_DisplayHUD(Handle:timer) {
-
-	if (!b_IsActiveRound) return Plugin_Stop;
-	static iRotation = 0;
-	for (new i = 1; i <= MaxClients; i++) {
-
-		if (IsLegitimateClientAlive(i) && !IsFakeClient(i)) {
-
-			if (GetClientTeam(i) == TEAM_SURVIVOR) {
-
-				DisplayHUD(i, iRotation);
-				if (bIsGiveProfileItems[i]) {
-
-					bIsGiveProfileItems[i] = false;
-					GiveProfileItems(i);
-				}
-			}
-			else if (GetClientTeam(i) == TEAM_INFECTED) DisplayInfectedHUD(i, iRotation);
-		}
-	}
-	if (iRotation != 1) iRotation = 1;
-	else iRotation = 0;
-
-	return Plugin_Continue;
-}*/
-
 public Action Timer_CheckDifficulty(Handle timer) {
 	if (b_IsRoundIsOver) return Plugin_Stop;
 	CheckDifficulty();
@@ -156,7 +130,7 @@ public Action Timer_TickingMine(Handle timer, any entity) {
 			}
 			// specials
 			for (int si = 0; si <= MaxClients; si++) {
-				if (!IsLegitimateClientAlive(si) || GetClientTeam(si) != TEAM_INFECTED) continue;
+				if (!IsLegitimateClientAlive(si) || myCurrentTeam[si] != TEAM_INFECTED) continue;
 				GetEntPropVector(si, Prop_Send, "m_vecOrigin", commonPos);
 				if (GetVectorDistance(entityPos, commonPos) > AoESize/2.0) continue;
 				AddSpecialInfectedDamage(activator, si, damage);
@@ -192,7 +166,6 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 	char pct[10];
 	Format(pct, 10, "%");
 	int ThisRoundTime = RPGRoundTime();
-	int playerTeam = GetClientTeam(client);
 
 	if (PlayerLevel[client] > iMaxLevel) SetTotalExperienceByLevel(client, iMaxLevel, true);
 	TimePlayed[client]++;
@@ -210,29 +183,30 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 		bIsGiveProfileItems[client] = false;
 		GiveProfileItems(client);
 	}
-	if (playerTeam == TEAM_SURVIVOR && CurrentRPGMode >= 1) {
+	if (myCurrentTeam[client] == TEAM_SURVIVOR && CurrentRPGMode >= 1) {
 		float healregenamount = 0.0;
 		int mymaxhealth = GetMaximumHealth(client);
 		if (iEnrageTime < 1 || ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
+			// while this gets the value for healregenamount, it is ALSO triggering talents of "p" and result of "h" (regen)
 			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
 		}
 		float pacifisthealregenamount = GetAbilityStrengthByTrigger(client, _, "pacifist", _, 0, _, _, "h", _, _, 0);
 		healregenamount += pacifisthealregenamount;
-		int cohHealing = RoundToCeil(GetCoherencyStrength(client, ACTIVATOR_ABILITY_EFFECTS, "h", COHERENCY_RANGE));
-		if (cohHealing > 0) healregenamount += cohHealing;
+		float cohHealing = GetCoherencyStrength(client, ACTIVATOR_ABILITY_EFFECTS, "h", COHERENCY_RANGE);
+		if (cohHealing > 0.0) healregenamount += cohHealing;
 		if (healregenamount > 0.0) {
 			float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric");// not skip, going to try skipping.
 			float clericRange = GetStrengthByKeyValueFloat(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", COHERENCY_RANGE);
-			if (clericHealPercentage > 0.0 || pacifisthealregenamount > 0.0) {
+			if (clericHealPercentage > 0.0) {
 				if (clericRange <= 0.0) clericRange = 512.0;
 				healregenamount *= clericHealPercentage;
 				if (healregenamount < 1.0) healregenamount = 1.0;
-				new playersInRange = 0;
-				new Float:clientPos[3];
+				int playersInRange = 0;
+				float clientPos[3];
 				GetClientAbsOrigin(client, clientPos);
-				for (new teammate = 1; teammate <= MaxClients; teammate++) {
+				for (int teammate = 1; teammate <= MaxClients; teammate++) {
 					if (teammate == client) continue;
-					if (!IsLegitimateClientAlive(teammate) || GetClientTeam(teammate) != TEAM_SURVIVOR) continue;
+					if (!IsLegitimateClientAlive(teammate) || myCurrentTeam[teammate] != TEAM_SURVIVOR) continue;
 					float teammatePos[3];
 					GetClientAbsOrigin(teammate, teammatePos);
 					if (GetVectorDistance(clientPos, teammatePos) > clericRange || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
@@ -261,100 +235,19 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 	return Plugin_Continue;
 }
 
-
-
-// public Action Timer_ShowHUD(Handle timer) {
-// 	if (!b_IsActiveRound) {
-// 		return Plugin_Stop;
-// 	}
-// 	static playerTeam = -1;
-// 	static mymaxhealth = -1;
-// 	static float healregenamount = 0.0;
-// 	static char pct[10];
-// 	Format(pct, sizeof(pct), "%");
-// 	int ThisRoundTime = RPGRoundTime();
-// 	for (int client = 1; client <= MaxClients; client++) {
-// 		if (!IsLegitimateClient(client) || !IsPlayerAlive(client) || !b_IsLoaded[client]) continue;
-// 		playerTeam = GetClientTeam(client);
-// 		if (playerTeam == TEAM_SPECTATOR) continue;
-// 		if (PlayerLevel[client] > iMaxLevel) SetTotalExperienceByLevel(client, iMaxLevel, true);
-// 		TimePlayed[client]++;
-// 		//if (TotalHumanSurvivors() < 1) RoundTime++;	// we don't count time towards enrage if there are no human survivors.
-// 		//decl String:targetSteamID[64];
-// 		if (iShowAdvertToNonSteamgroupMembers == 1 && !IsGroupMember[client]) {
-// 			IsGroupMemberTime[client]++;
-// 			if (IsGroupMemberTime[client] % iJoinGroupAdvertisement == 0) {
-// 				PrintToChat(client, "%T", "join group advertisement", client, GroupMemberBonus * 100.0, pct, orange, blue, orange, blue, orange, blue, green, orange);
-// 			}
-// 		}
-// 		displayBuffOrDebuff[client] = (displayBuffOrDebuff[client] == 0) ? 1 : 0;
-// 		if (!IsFakeClient(client)) DisplayHUD(client, displayBuffOrDebuff[client]);
-// 		if (bIsGiveProfileItems[client]) {
-// 			bIsGiveProfileItems[client] = false;
-// 			GiveProfileItems(client);
-// 		}
-// 		if ((playerTeam == TEAM_SURVIVOR) && CurrentRPGMode >= 1) {
-// 			healregenamount = 0.0;				
-// 			mymaxhealth = GetMaximumHealth(client);
-// 			if (ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
-// 				healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, true, 0, _, _, _, _, true);	// activator, target, trigger ability, effects, zombieclass, damage
-// 				if (healregenamount > 0.0) {
-// 					HealPlayer(client, client, healregenamount, 'h', true);
-// 					float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric");
-// 					if (clericHealPercentage > 0.0) {
-// 						healregenamount *= clericHealPercentage;
-// 						int playersInRange = 0;
-// 						float clientPos[3];
-// 						GetClientAbsOrigin(client, clientPos);
-// 						for (int teammate = 1; teammate <= MaxClients; teammate++) {
-// 							if (teammate == client) continue;
-// 							if (!IsLegitimateClientAlive(teammate) || GetClientTeam(teammate) != TEAM_SURVIVOR) continue;
-// 							float teammatePos[3];
-// 							GetClientAbsOrigin(teammate, teammatePos);
-// 							if (GetVectorDistance(clientPos, teammatePos) > 384.0 || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
-// 							playersInRange++;
-// 							HealPlayer(teammate, client, healregenamount, 'h', true);
-// 						}
-// 						if (playersInRange > 0) CreateRing(client, 384.0, "green", "32.0", _, 0.5, _, true);
-// 					}
-// 				}
-// 			}
-// 			SetMaximumHealth(client);
-// 			//ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
-// 			if (GetClientHealth(client) > mymaxhealth) SetEntityHealth(client, mymaxhealth);
-// 		}
-// 		if (playerTeam != TEAM_SPECTATOR) {
-// 			//GetAbilityStrengthByTrigger(client, client, "p");	// raw passives
-// 			GetAbilityStrengthByTrigger(client, client, "p", _, _, _, _, _, _, _, 0); // percentage passives
-// 		}
-// 		RemoveStoreTime(client);
-// 		LastPlayLength[client]++;
-// 		if (ReadyUpGameMode != 3 && CurrentRPGMode >= 1 && ThisRoundTime >= iEnrageTime) {
-// 			if (SurvivorEnrage[client][1] == 0.0) {
-// 				EnrageBlind(client, 100);
-// 				SurvivorEnrage[client][1] = 1.0;
-// 			}
-// 			else {
-// 				SurvivorEnrage[client][1] = 0.0;
-// 			}
-// 		}
-// 	}
-// 	return Plugin_Continue;
-// }
-
 stock LedgedSurvivors() {
 
 	int count = 0;
 	for (int i = 1; i <= MaxClients; i++) {
 
-		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR && IsLedged(i)) count++;
+		if (IsLegitimateClientAlive(i) && myCurrentTeam[i] == TEAM_SURVIVOR && IsLedged(i)) count++;
 	}
 	return count;
 }
 
 stock bool NoLivingHumanSurvivors() {
 	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || IsFakeClient(i) || GetClientTeam(i) != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
+		if (!IsLegitimateClient(i) || IsFakeClient(i) || myCurrentTeam[i] != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
 		return false;
 	}
 	return true;
@@ -363,7 +256,7 @@ stock bool NoLivingHumanSurvivors() {
 stock bool NoHealthySurvivors(bool bMustNotBeABot = false) {
 
 	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClientAlive(i) || IsIncapacitated(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (!IsLegitimateClientAlive(i) || IsIncapacitated(i) || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
 		if (bMustNotBeABot && IsFakeClient(i)) continue;
 		return false;
 	}
@@ -375,14 +268,14 @@ stock HumanSurvivors() {
 	int count = 0;
 	for (int i = 1; i <= MaxClients; i++) {
 
-		if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) count++;
+		if (IsClientInGame(i) && !IsFakeClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR) count++;
 	}
 	return count;
 }
 
 public Action Timer_TeleportRespawn(Handle timer, any client) {
 
-	if (b_IsActiveRound && IsLegitimateClient(client) && GetClientTeam(client) == TEAM_SURVIVOR) {
+	if (b_IsActiveRound && IsLegitimateClient(client) && myCurrentTeam[client] == TEAM_SURVIVOR) {
 		//ChangeHook(client, true);
 
 		int target = MyRespawnTarget[client];
@@ -415,25 +308,6 @@ public Action Timer_DestroyCombustion(Handle timer, any entity)
 	AcceptEntityInput(entity, "Kill");
 	return Plugin_Stop;
 }
-
-/*public Action:Timer_DestroyDiscoveryItem(Handle:timer, any:entity) {
-
-	if (IsValidEntity(entity)) {
-
-		new client				= FindAnyRandomClient();
-
-		if (client == -1) return Plugin_Stop;
-
-		decl String:EName[64];
-		GetEntPropString(entity, Prop_Data, "m_iName", EName, sizeof(EName));
-		if (StrEqual(EName, "slate") || IsStoreItem(client, EName) || IsTalentExists(EName)) {
-
-			if (!AcceptEntityInput(entity, "Kill")) RemoveEdict(entity);
-		}
-	}
-
-	return Plugin_Stop;
-}*/
 
 public Action Timer_SlowPlayer(Handle timer, any client) {
 
@@ -479,7 +353,7 @@ stock GetTimePlayed(client, char[] s, size) {
 
 	for (new i = 1; i <= MaxClients; i++) {
 
-		if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_SPECTATOR) {
+		if (IsClientInGame(i) && !IsFakeClient(i) && myCurrentTeam[i] != TEAM_SPECTATOR) {
 
 			CheckSkyPointsAward(i);
 		}
@@ -737,7 +611,8 @@ public ReadyUp_FwdChangeTeam(client, team) {
 
 public Action Timer_ChangeTeamCheck(Handle timer, any client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
-	if (GetClientTeam(client) == TEAM_SURVIVOR) {
+	myCurrentTeam[client] = GetClientTeam(client);
+	if (myCurrentTeam[client] == TEAM_SURVIVOR) {
 		//ChangeHook(client, true);
 		if (!b_IsLoading[client] && !b_IsLoaded[client]) OnClientLoaded(client);
 	}
@@ -781,7 +656,7 @@ public Action Timer_DetectGroundTouch(Handle timer, any client) {
 
 	if (IsClientHuman(client) && IsPlayerAlive(client)) {
 
-		if (GetClientTeam(client) == TEAM_SURVIVOR && !(GetEntityFlags(client) & FL_ONGROUND) && b_IsJumping[client] && L4D2_GetInfectedAttacker(client) == -1 && !AnyTanksNearby(client)) return Plugin_Continue;
+		if (myCurrentTeam[client] == TEAM_SURVIVOR && !(GetEntityFlags(client) & FL_ONGROUND) && b_IsJumping[client] && L4D2_GetInfectedAttacker(client) == -1 && !AnyTanksNearby(client)) return Plugin_Continue;
 		b_IsJumping[client] = false;
 		ModifyGravity(client);
 	}
@@ -971,7 +846,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 	for (int i = 1; i <= MaxClients; i++) {
 
 		if (!IsLegitimateClientAlive(i) || i == client) continue;
-		if (GetClientTeam(i) == TEAM_SURVIVOR && PlayerLevel[i] < iLevelRequired) continue;	// we add infected later.
+		if (myCurrentTeam[i] == TEAM_SURVIVOR && PlayerLevel[i] < iLevelRequired) continue;	// we add infected later.
 
 		GetClientAbsOrigin(i, TargetPosition);
 		if (GetVectorDistance(ClientPosition, TargetPosition) > (flRangeMax / 2)) continue;
@@ -984,7 +859,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 
 		//if (DamageValue > GetClientHealth(i)) IncapacitateOrKill(i);
 		//else SetEntityHealth(i, GetClientHealth(i) - DamageValue);
-		if (GetClientTeam(i) == TEAM_SURVIVOR && !isTargetClientABot) {
+		if (myCurrentTeam[i] == TEAM_SURVIVOR && !isTargetClientABot) {
 			ammoStr = IsClientInRangeSpecialAmmo(i, "D", _, _, DamageValue);
 			if (ammoStr > 0.0) SetClientTotalHealth(client, i, RoundToCeil(DamageValue * (1.0 - ammoStr)));
 			else SetClientTotalHealth(client, i, DamageValue);
@@ -996,7 +871,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 				CreateAndAttachFlame(i, ReflectDebuff, 3.0, 0.5, i, "reflect");
 			}
 		}
-		else if (GetClientTeam(i) == TEAM_INFECTED) {
+		else if (myCurrentTeam[i] == TEAM_INFECTED) {
 
 			if (IsSpecialCommonInRange(i, 'd')) {
 				ammoStr = IsClientInRangeSpecialAmmo(client, "D", _, _, DamageValue);
@@ -1068,7 +943,7 @@ public Action Timer_CheckIfHooked(Handle timer) {
 			for (int i = 1; i <= MaxClients; i++) {
 
 				if (IsLegitimateClient(i)) {
-					if (GetClientTeam(i) == TEAM_SURVIVOR) {
+					if (myCurrentTeam[i] == TEAM_SURVIVOR) {
 						IsSpecialAmmoEnabled[i][0] = 0.0;
 						if (IsPlayerAlive(i)) AwardExperience(i, _, _, true);
 						else Defibrillator(i, _, true);
@@ -1100,7 +975,7 @@ public Action Timer_CheckIfHooked(Handle timer) {
 	}
 	if (CurRPG == -2) CurRPG = iRPGMode;
 	for (int i = 1; i <= MaxClients; i++) {
-		if (CurRPG < 1 || !IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (CurRPG < 1 || !IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
 		if (bHasWeakness[i] > 0) {
 			SetEntityRenderMode(i, RENDER_TRANSCOLOR);
 			SetEntityRenderColor(i, 0, 0, 0, 255);
@@ -1144,7 +1019,7 @@ public Action Timer_Doom(Handle timer) {
 
 		for (int i = 1; i <= MaxClients; i++) {
 
-			if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+			if (IsLegitimateClientAlive(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
 				HealingContribution[i] = 0;
 				PointsContribution[i] = 0.0;
 				TankingContribution[i] = 0;
@@ -1178,7 +1053,7 @@ public Action Timer_TankCooldown(Handle timer) {
 		f_TankCooldown									=	-1.0;
 		for (int i = 1; i <= MaxClients; i++) {
 
-			if (IsClientInGame(i) && !IsFakeClient(i) && (GetClientTeam(i) == TEAM_INFECTED || ReadyUp_GetGameMode() != 2)) {
+			if (IsClientInGame(i) && !IsFakeClient(i) && (myCurrentTeam[i] == TEAM_INFECTED || ReadyUp_GetGameMode() != 2)) {
 
 				PrintToChat(i, "%T", "Tank Cooldown Complete", i, orange, white);
 			}
@@ -1191,7 +1066,7 @@ public Action Timer_TankCooldown(Handle timer) {
 		Counter											=	0.0;
 		for (int i = 1; i <= MaxClients; i++) {
 
-			if (IsClientInGame(i) && !IsFakeClient(i) && (GetClientTeam(i) == TEAM_INFECTED || ReadyUp_GetGameMode() != 2)) {
+			if (IsClientInGame(i) && !IsFakeClient(i) && (myCurrentTeam[i] == TEAM_INFECTED || ReadyUp_GetGameMode() != 2)) {
 
 				PrintToChat(i, "%T", "Tank Cooldown Remaining", i, green, f_TankCooldown, white, orange, white);
 			}
@@ -1251,7 +1126,7 @@ public Action Timer_SettingsCheck(Handle timer) {
 // int TotalHandicapLevel() {
 // 	int count = 0;
 // 	for (int i = 1; i <= MaxClients; i++) {
-// 		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || IsFakeClient(i) || handicapLevel[i] < 1) continue;
+// 		if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR || IsFakeClient(i) || handicapLevel[i] < 1) continue;
 // 		count += handicapLevel[i];
 // 	}
 // 	return count;
@@ -1272,7 +1147,7 @@ bool IsSurvivorsHealthy() {
 
 	for (new i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClientAlive(i)) continue;
-		if (GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (myCurrentTeam[i] != TEAM_SURVIVOR) continue;
 		commonInfected = 0;
 		IsSpecialCommonInRange(i, 'x', _, _, commonInfected);			// kamikazi
 		if (commonInfected > 0) { // if it's a kamikazi, we force it to die, so it can trigger its effects on players in the vicinity.
@@ -1316,7 +1191,7 @@ public Action Timer_RespawnQueue(Handle timer) {
 
 	for (int i = 1; i <= MaxClients; i++) {
 
-		if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR || IsPlayerAlive(i)) continue;
+		if (!IsLegitimateClient(i) || myCurrentTeam[i] != TEAM_SURVIVOR || IsPlayerAlive(i)) continue;
 		if (TimeRemaining > 0) {
 
 			if (!IsFakeClient(i)) {
@@ -1374,7 +1249,7 @@ stock bool IsClientSorted(client) {
 public Action Timer_PlayTime(Handle timer) {
 	if (!b_IsActiveRound) return Plugin_Stop;
 	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || GetClientTeam(i) == TEAM_SPECTATOR) continue;
+		if (!IsLegitimateClient(i) || myCurrentTeam[i] == TEAM_SPECTATOR) continue;
 		TimePlayed[i]++;
 	}
 	return Plugin_Continue;
@@ -1390,7 +1265,7 @@ stock SortThreatMeter() {
 	int size = 0;
 	for (int i = 1; i <= MaxClients; i++) {
 
-		if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
 		cTotalClients++;
 	}
 	while (GetArraySize(hThreatSort) < cTotalClients) {
@@ -1398,7 +1273,7 @@ stock SortThreatMeter() {
 		cTopThreat = 0;
 		for (int i = 1; i <= MaxClients; i++) {
 
-			if (!IsLegitimateClientAlive(i) || GetClientTeam(i) != TEAM_SURVIVOR || IsClientSorted(i)) continue;
+			if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR || IsClientSorted(i)) continue;
 			if (iThreatLevel[i] > cTopThreat) {
 
 				cTopThreat = iThreatLevel[i];
@@ -1463,7 +1338,7 @@ public Action Timer_ThreatSystem(Handle timer) {
 
 		for (int i = 1; i <= MaxClients; i++) {
 
-			if (IsLegitimateClient(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+			if (IsLegitimateClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
 
 				if (!IsPlayerAlive(i)) {
 
@@ -1659,7 +1534,7 @@ stock ActiveTanks() {
 	int count = GetAlwaysTanks(iSurvivors);
 
 	for (int i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i) && GetClientTeam(i) == TEAM_INFECTED && IsPlayerAlive(i) && FindZombieClass(i) == ZOMBIECLASS_TANK) count++;
+		if (IsClientInGame(i) && myCurrentTeam[i] == TEAM_INFECTED && IsPlayerAlive(i) && FindZombieClass(i) == ZOMBIECLASS_TANK) count++;
 	}
 	return count;
 }
@@ -1822,7 +1697,7 @@ stock SpawnCommons(Client, Count, char[] Command, char[] Parameter, char[] Model
 stock FindAnotherSurvivor(client) {
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i)) continue;
-		if (GetClientTeam(i) != TEAM_SURVIVOR) continue;
+		if (myCurrentTeam[i] != TEAM_SURVIVOR) continue;
 		if (i == client) continue;
 		return i;
 	}
@@ -1842,7 +1717,7 @@ stock FindLivingSurvivor(bool noBOT = false) {
 	int livingSurvivors = LivingSurvivorCount();
 	for (int i = LastLivingSurvivor; i <= MaxClients && livingSurvivors > 0; i++) {
 
-		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR) {
+		if (IsLegitimateClientAlive(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
 			if (noBOT && IsFakeClient(i)) continue;
 
 			LastLivingSurvivor = i;
@@ -1859,7 +1734,7 @@ stock LivingSurvivorCount(ignore = -1) {
 	int Count = 0;
 	for (int i = 1; i <= MaxClients; i++) {
 
-		if (IsLegitimateClientAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR && (ignore == -1 || i != ignore)) Count++;
+		if (IsLegitimateClientAlive(i) && myCurrentTeam[i] == TEAM_SURVIVOR && (ignore == -1 || i != ignore)) Count++;
 	}
 	return Count;
 }

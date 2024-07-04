@@ -570,8 +570,8 @@
 	}
 	"augment restricted"
 	{
-		"#format"			"{1:s},{2:s}"
-		"en"				"Cannot equip\nYour max equippable avg augment level: {1}\nThis augment required avg augment level: {2}"
+		"#format"			"{1:s}"
+		"en"				"Cannot equip\nYour max equippable augment score: {1}"
 	}
 	"equip augment"
 	{
@@ -3413,13 +3413,21 @@
 	{
 		"en"				"Raises your overall Health pool when black & white."
 	}
+	"doctor path i"
+	{
+		"en"				"Doctor I"
+	}
+	"doctor path i info"
+	{
+		"en"				"Receive a medkit after using one."
+	}
 	"revivalist path i"
 	{
 		"en"				"Revivalist I"
 	}
 	"revivalist path i info"
 	{
-		"en"				"Sometimes you find extra supplies to give\nyour medkits an extra use."
+		"en"				"Receive a defibrillator after reviving a teammmate using one."
 	}
 	"pharmacist path i"
 	{
