@@ -6695,8 +6695,9 @@ bool AbilityIsInactiveAndOnCooldown(client, float fCooldownRemaining, char[] abi
 
 // by default this function does not handle instants, so we use an override to force it.
 stock float GetAbilityMultiplier(client, char[] abilityT, override = 0, char[] TalentName_t = "none") { // we need the option to force certain results in the menus (1) active (2) passive
+	int talentAmount = GetArraySize(a_Menu_Talents);
 	if (GetArraySize(ActionBarMenuPos[client]) != iActionBarSlots ||
-		GetArraySize(MyTalentStrength[client]) != GetArraySize(a_Menu_Talents)) return -1.0;
+		GetArraySize(MyTalentStrength[client]) != talentAmount) return -1.0;
 	float totalStrength = 0.0;
 	bool foundone = false;
 
@@ -6715,7 +6716,7 @@ stock float GetAbilityMultiplier(client, char[] abilityT, override = 0, char[] T
 		GetArrayString(ActionBar[client], i, TalentName, sizeof(TalentName));
 		if (StrEqual(TalentName, "none")) continue;
 		int pos = GetArrayCell(ActionBarMenuPos[client], i);//GetMenuPosition(client, TalentName);
-		if (pos < 0) continue;
+		if (pos < 0 || pos > talentAmount) continue;
 		if (StrEqual(TalentName_t, "none")) {
 			if (override == 0 && GetArrayCell(MyTalentStrength[client], pos) <= 0) continue;
 			//if (!IsAbilityEquipped(client, TalentName, pos)) continue;
@@ -10769,8 +10770,8 @@ stock void CreateItemDrop(int owner, int client) {
 	DispatchKeyValue(entity, "model", sItemModel);
 	DispatchSpawn(entity);
 
-	// SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
-	// SetEntityRenderColor(entity, 255, 255, 255, 255);
+	SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
+	SetEntityRenderColor(entity, 255, 0, 0, 255);
 	CreateTimer(fLootBagExpirationTimeInSeconds, Timer_DeleteLootBag, entity, TIMER_FLAG_NO_MAPCHANGE);
 
 	float vel[3];

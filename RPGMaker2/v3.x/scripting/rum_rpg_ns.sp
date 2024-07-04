@@ -15,9 +15,9 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v3.4.7.6"
+#define PLUGIN_VERSION					"v3.4.7.6.1"
 #define PROFILE_VERSION					"v1.5"
-#define PLUGIN_CONTACT					"github.com/exskye/"
+#define PLUGIN_CONTACT					"github.com/biaspark/"
 #define PLUGIN_NAME						"RPG Construction Set"
 #define PLUGIN_DESCRIPTION				"Fully-customizable and modular RPG, like the one for Atari."
 #define CONFIG_EVENTS					"rpg/events.cfg"
@@ -47,6 +47,9 @@
 //	================================
 #define DEBUG     					false
 /*	================================
+ Version 3.4.7.6.1
+ - Hotfix to patch an index out of bounds error in rpg_wrappers @ 6720 that I missed.
+ 
  Version 3.4.7.6
  - Optimized a lot of methods, leapfrogging references and memo's to reduce time complexity.
  - Menu optimizations.
