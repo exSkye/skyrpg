@@ -1,0 +1,11 @@
+﻿// The last 6 format variables are (from right to left)
+// lb, rb, white, blue, green, orange
+
+"Phrases"
+{
+	"next map in rotation"
+	{
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1}The next map will be {2}."
+	}
+}
