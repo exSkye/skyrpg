@@ -312,7 +312,7 @@ stock Now_IsLoadConfigForward() {
 }
 
 public OnPluginStart() {
-	CreateConVar("rum_readyup_version", PLUGIN_VERSION, "version header");
+	CreateConVar("readyup_version", PLUGIN_VERSION, "version header");
 	OFFSET_LOCKED = FindSendPropInfo("CPropDoorRotatingCheckpoint", "m_bLocked");
 	g_IsAllTalk = FindConVar("sv_alltalk");
 	g_IsGameMode = FindConVar("mp_gamemode");
@@ -1151,7 +1151,7 @@ public Action Timer_IsNewRound(Handle timer) {
 }
 
 public OnConfigsExecuted() {
-	SetConVarString(FindConVar("rum_readyup_version"), PLUGIN_VERSION);
+	SetConVarString(FindConVar("readyup_version"), PLUGIN_VERSION);
 	SetConVarInt(FindConVar("versus_force_start_time"), 99999);
 	BuildPath(Path_SM, s_Path, sizeof(s_Path), "configs/readyup/");
 	if (!DirExists(s_Path)) CreateDirectory(s_Path, 511);
