@@ -1232,8 +1232,10 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 				else Format(text, sizeof(text), "%T", "bullet trails (enabled)", client);
 			}
 			else if (StrEqual(configname, "lootmode toggle")) {
-				if (iDontAllowLootStealing[client] == 1) Format(text, sizeof(text), "%T", "ffa loot (disabled)", client);
-				else Format(text, sizeof(text), "%T", "ffa loot (enabled)", client);
+				if (iDontAllowLootStealing[client] == 3) Format(text, sizeof(text), "%T", "ffa loot (disabled)", client);
+				else if (iDontAllowLootStealing[client] == 2) Format(text, sizeof(text), "%T", "ffa loot (all)", client);
+				else if (iDontAllowLootStealing[client] == 1) Format(text, sizeof(text), "%T", "ffa loot (major)", client);
+				else if (iDontAllowLootStealing[client] == 0) Format(text, sizeof(text), "%T", "ffa loot (minor)", client);
 			}
 			else if (StrEqual(configname, "level up")) {
 
@@ -1454,8 +1456,8 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 			BuildMenu(client);
 		}
 		else if (StrEqual(config, "lootmode toggle", false)) {
-			if (iDontAllowLootStealing[client] == 0) iDontAllowLootStealing[client] = 1;
-			else iDontAllowLootStealing[client] = 0;
+			if (iDontAllowLootStealing[client] == 3) iDontAllowLootStealing[client] = 0;
+			else iDontAllowLootStealing[client]++;
 			BuildMenu(client);
 		}
 		else if (StrEqual(config, "inv_augments", false)) {
@@ -3770,6 +3772,12 @@ stock void GetAugmentComparator(int client, int slot, char[] augmentName, char[]
 	int iItemLevel = 0;
 	int activatorRating = -1;
 	int targetRating = -1;
+	if (isAugmentEquipped && slot >= GetArraySize(equippedAugments[client]) ||
+		!isAugmentEquipped && slot >= GetArraySize(myAugmentInfo[client])) {
+		// they cleared or something
+		BuildMenu(client);
+		return;
+	}
 
 	if (isAugmentEquipped) {
 		iItemLevel = GetArrayCell(equippedAugments[client], slot, 2);
@@ -3908,7 +3916,7 @@ stock EquipAugment_Confirm(int client, int pos) {
 	FormatPlayerName(client);
 }
 
-stock void GetAugmentSurname(int client, int pos, char[] surname, int surnameSize, char[] surname2, int surname2Size, bool:bFormatTranslation = true) {
+stock void GetAugmentSurname(int client, int pos, char[] surname, int surnameSize, char[] surname2, int surname2Size, bool bFormatTranslation = true) {
 	GetArrayString(myAugmentActivatorEffects[client], pos, surname, surnameSize);
 	if (!StrEqual(surname, "-1")) {
 		Format(surname, surnameSize, "%s major surname", surname);
@@ -3951,7 +3959,8 @@ public Handle Inspect_Augment(client, slot) {
 	if (!StrEqual(augmentTarget, "-1")) Format(text, sizeof(text), "%s\n%s", text, augmentTarget);
 	Format(text, sizeof(text), "%s\n \n", text);
 	DrawPanelText(menu, text);
-	int iThisAugmentLevel = GetArrayCell(myAugmentInfo[client], slot) / iAugmentLevelDivisor;
+	int currentCategoryScoreRoll = GetArrayCell(myAugmentInfo[client], slot);
+	int iThisAugmentLevel = currentCategoryScoreRoll / iAugmentLevelDivisor;
 	char myAugLevelFormatted[10];
 	AddCommasToString(iThisAugmentLevel, myAugLevelFormatted, sizeof(myAugLevelFormatted));
 	Format(text, sizeof(text), "Augment Score: %s", myAugLevelFormatted);
@@ -3992,6 +4001,37 @@ public Handle Inspect_Augment(client, slot) {
 		PushArrayString(EquipAugmentPanel[client], "reroll augment");
 		DrawPanelItem(menu, text);
 	}
+	int currentActivatorScoreRoll = GetArrayCell(myAugmentInfo[client], slot, 4);
+	int currentTargetScoreRoll = GetArrayCell(myAugmentInfo[client], slot, 5);
+	int maxCategoryScoreRoll = GetArrayCell(myAugmentInfo[client], slot, 6);
+	int maxActivatorScoreRoll = GetArrayCell(myAugmentInfo[client], slot, 7);
+	int maxTargetScoreRoll = GetArrayCell(myAugmentInfo[client], slot, 8);
+	// only show the upgrade screen if all 3 categories aren't fully-upgraded
+	// god help the soul that actually does this and blows through all those materials :rofl:
+	if (currentCategoryScoreRoll < maxCategoryScoreRoll || currentActivatorScoreRoll > 0 && currentActivatorScoreRoll < maxActivatorScoreRoll || currentTargetScoreRoll > 0 && currentTargetScoreRoll < maxTargetScoreRoll) {
+		char augmentNameCopy[64];
+		char augmentCategoryName[64];
+		char augmentActivatorName[64];
+		char augmentTargetName[64];
+		GetAugmentComparator(client, AugmentClientIsInspecting[client], augmentNameCopy, augmentCategoryName, augmentActivatorName, augmentTargetName, _, true);
+		char pct[4];
+		Format(pct, sizeof(pct), "%");
+		Format(text, sizeof(text), "%T", "upgrade augment", client);
+		PushArrayString(EquipAugmentPanel[client], "upgrade augment");
+		DrawPanelItem(menu, text);
+		if (currentCategoryScoreRoll < maxCategoryScoreRoll) {
+			Format(text, sizeof(text), "%s: +%3.1f%s up to +%3.1f%s", augmentCategoryName, (currentCategoryScoreRoll * fAugmentRatingMultiplier) * 100.0, pct, (maxCategoryScoreRoll * fAugmentRatingMultiplier) * 100.0, pct);
+			DrawPanelText(menu, text);
+		}
+		if (currentActivatorScoreRoll > 0 && currentActivatorScoreRoll < maxActivatorScoreRoll) {
+			Format(text, sizeof(text), "%s: +%3.1f%s up to +%3.1f%s", augmentActivatorName, (currentActivatorScoreRoll * fAugmentActivatorRatingMultiplier) * 100.0, pct, (maxActivatorScoreRoll * fAugmentActivatorRatingMultiplier) * 100.0, pct);
+			DrawPanelText(menu, text);
+		}
+		if (currentTargetScoreRoll > 0 && currentTargetScoreRoll < maxTargetScoreRoll) {
+			Format(text, sizeof(text), "%s: +%3.1f%s up to +%3.1f%s", augmentTargetName, (currentTargetScoreRoll * fAugmentTargetRatingMultiplier) * 100.0, pct, (maxTargetScoreRoll * fAugmentTargetRatingMultiplier) * 100.0, pct);
+			DrawPanelText(menu, text);
+		}
+	}
 	if (isEquipped < 0) {
 		if (isEquipped == -1) {
 			Format(text, sizeof(text), "%T", "lock augment", client);
@@ -4025,6 +4065,11 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 		GetArrayString(EquipAugmentPanel[client], param2-1, menuSelection, sizeof(menuSelection));
 		if (StrEqual(menuSelection, "req not met")) {
 			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
+		}
+		else if (StrEqual(menuSelection, "upgrade augment")) {
+			// until this is built, we just send the user back to the inspect page.
+			// i want to make sure it's tracking this data properly first.
+			SendPanelToClientAndClose(Upgrade_Augment(client), client, Upgrade_Augment_Handle, MENU_TIME_FOREVER);
 		}
 		else if (StrEqual(menuSelection, "equip augment")) SendPanelToClientAndClose(Augments_Equip(client), client, Augments_Equip_Init, MENU_TIME_FOREVER);
 		else if (StrEqual(menuSelection, "unequip augment")) {
@@ -4289,6 +4334,133 @@ public Reroll_Augment_Handle (Handle topmenu, MenuAction action, client, param2)
 			case 4:
 				SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
 		}
+	}
+}
+
+public Handle Upgrade_Augment(client) {
+	ClearArray(EquipAugmentPanel[client]);
+	Handle menu = CreatePanel();
+	char augmentName[64];
+	char augmentCategory[64], augmentCategoryName[64];
+	char augmentActivator[64], augmentActivatorName[64];
+	char augmentTarget[64], augmentTargetName[64];
+	GetAugmentComparator(client, AugmentClientIsInspecting[client], augmentName, augmentCategory, augmentActivator, augmentTarget);
+	GetAugmentComparator(client, AugmentClientIsInspecting[client], augmentName, augmentCategoryName, augmentActivatorName, augmentTargetName, _, true);
+	char text[512];
+	char scrap[64];
+	AddCommasToString(augmentParts[client], scrap, 64);
+	Format(text, sizeof(text), "Scrap: %s\n \n", scrap);
+	DrawPanelText(menu, text);
+
+	DrawPanelText(menu, augmentName);
+	DrawPanelText(menu, augmentCategory);
+	if (!StrEqual(augmentActivator, "-1")) DrawPanelText(menu, augmentActivator);
+	if (!StrEqual(augmentTarget, "-1")) DrawPanelText(menu, augmentTarget);
+	DrawPanelText(menu, "\n \n");
+
+	int currentCategoryScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client]);
+	int currentActivatorScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 4);
+	int currentTargetScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 5);
+	int maxCategoryScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 6);
+	int maxActivatorScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 7);
+	int maxTargetScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 8);
+	// only show the upgrade screen if all 3 categories aren't fully-upgraded
+	// god help the soul that actually does this and blows through all those materials :rofl:
+	if (currentCategoryScoreRoll < maxCategoryScoreRoll || currentActivatorScoreRoll > 0 && currentActivatorScoreRoll < maxActivatorScoreRoll || currentTargetScoreRoll > 0 && currentTargetScoreRoll < maxTargetScoreRoll) {
+		char pct[4];
+		Format(pct, sizeof(pct), "%");
+		if (currentCategoryScoreRoll < maxCategoryScoreRoll) {
+			Format(text, sizeof(text), "(%d scrap) Upgrade %s", iAugmentCategoryUpgradeCost, augmentCategoryName);
+			DrawPanelItem(menu, text);
+			Format(text, sizeof(text), "+%3.1f%s up to +%3.1f%s", ((currentCategoryScoreRoll + 1) * fAugmentRatingMultiplier) * 100.0, pct, (maxCategoryScoreRoll * fAugmentRatingMultiplier) * 100.0, pct);
+			DrawPanelText(menu, text);
+			PushArrayString(EquipAugmentPanel[client], "upgrade category");
+		}
+		if (currentActivatorScoreRoll > 0 && currentActivatorScoreRoll < maxActivatorScoreRoll) {
+			Format(text, sizeof(text), "(%d scrap) Upgrade %s", iAugmentActivatorUpgradeCost, augmentActivatorName);
+			DrawPanelItem(menu, text);
+			Format(text, sizeof(text), "+%3.1f%s up to +%3.1f%s", ((currentActivatorScoreRoll + 1) * fAugmentActivatorRatingMultiplier) * 100.0, pct, (maxActivatorScoreRoll * fAugmentActivatorRatingMultiplier) * 100.0, pct);
+			DrawPanelText(menu, text);
+			PushArrayString(EquipAugmentPanel[client], "upgrade activator");
+		}
+		if (currentTargetScoreRoll > 0 && currentTargetScoreRoll < maxTargetScoreRoll) {
+			Format(text, sizeof(text), "(%d scrap) Upgrade %s", iAugmentTargetUpgradeCost, augmentTargetName);
+			DrawPanelItem(menu, text);
+			Format(text, sizeof(text), "+%3.1f%s up to +%3.1f%s", ((currentTargetScoreRoll + 1) * fAugmentTargetRatingMultiplier) * 100.0, pct, (maxTargetScoreRoll * fAugmentTargetRatingMultiplier) * 100.0, pct);
+			DrawPanelText(menu, text);
+			PushArrayString(EquipAugmentPanel[client], "upgrade target");
+		}
+	}
+	Format(text, sizeof(text), "%T", "return to talent menu", client);
+	DrawPanelItem(menu, text);
+	PushArrayString(EquipAugmentPanel[client], "menu return");
+	return menu;
+}
+
+public Upgrade_Augment_Handle (Handle topmenu, MenuAction action, client, param2) {
+	if (action == MenuAction_Select) {
+		char menuSelection[64];
+		if (param2-1 >= GetArraySize(EquipAugmentPanel[client])) {
+			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
+			return;
+		}
+		GetArrayString(EquipAugmentPanel[client], param2-1, menuSelection, sizeof(menuSelection));
+
+		char sItemCode[512];
+		GetArrayString(myAugmentIDCodes[client], AugmentClientIsInspecting[client], sItemCode, sizeof(sItemCode));
+		int isEquipped = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 3);
+		bool bUpgradeHasOccurred = false;	// flag
+
+		char tquery[512];
+
+		if (StrEqual(menuSelection, "menu return")) {
+			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
+			return;
+		}
+		else if (StrEqual(menuSelection, "upgrade category")) {
+			if (augmentParts[client] >= iAugmentCategoryUpgradeCost) {
+				bUpgradeHasOccurred = true;
+				augmentParts[client] -= iAugmentCategoryUpgradeCost;
+				int currentCategoryScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client]);
+				int maxCategoryScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 6);
+				int catRoll = GetRandomInt(currentCategoryScoreRoll, maxCategoryScoreRoll);
+				SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], catRoll);
+				Format(tquery, sizeof(tquery), "UPDATE `%s_loot` SET `rating` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, catRoll, sItemCode);
+			}
+		}
+		else if (StrEqual(menuSelection, "upgrade activator")) {
+			if (augmentParts[client] >= iAugmentActivatorUpgradeCost) {
+				bUpgradeHasOccurred = true;
+				augmentParts[client] -= iAugmentActivatorUpgradeCost;
+				int currentActivatorScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 4);
+				int maxActivatorScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 7);
+				int actRoll = GetRandomInt(currentActivatorScoreRoll, maxActivatorScoreRoll);
+				SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], actRoll, 4);
+				Format(tquery, sizeof(tquery), "UPDATE `%s_loot` SET `actrating` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, actRoll, sItemCode);
+			}
+		}
+		else if (StrEqual(menuSelection, "upgrade target")) {
+			if (augmentParts[client] >= iAugmentTargetUpgradeCost) {
+				bUpgradeHasOccurred = true;
+				augmentParts[client] -= iAugmentTargetUpgradeCost;
+				int currentTargetScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 5);
+				int maxTargetScoreRoll = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 8);
+				int tarRoll = GetRandomInt(currentTargetScoreRoll, maxTargetScoreRoll);
+				SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], tarRoll, 5);
+				Format(tquery, sizeof(tquery), "UPDATE `%s_loot` SET `tarrating` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, tarRoll, sItemCode);
+			}
+		}
+
+		// just so I don't have to rewrite this code several times or move it somewhere else
+		if (bUpgradeHasOccurred) {
+			SQL_TQuery(hDatabase, QueryResults, tquery);
+			// if the augment we're modifying is equipped, we just unequip/re-equip the augment which will trigger updating the players stats.
+			if (isEquipped >= 0) {
+				UnequipAugment_Confirm(client, sItemCode);
+				EquipAugment_Confirm(client, isEquipped);
+			}
+		}
+		SendPanelToClientAndClose(Upgrade_Augment(client), client, Upgrade_Augment_Handle, MENU_TIME_FOREVER);
 	}
 }
 

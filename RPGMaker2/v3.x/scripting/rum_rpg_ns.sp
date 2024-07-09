@@ -15,7 +15,7 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v3.4.7.6.1"
+#define PLUGIN_VERSION					"v3.4.7.7"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"github.com/biaspark/"
 #define PLUGIN_NAME						"RPG Construction Set"
@@ -44,12 +44,29 @@
 #define HEALING_CONTRIBUTION			1
 #define BUFFING_CONTRIBUTION			2
 #define HEXING_CONTRIBUTION				3
+
 //	================================
 #define DEBUG     					false
 /*	================================
+ Version 3.4.7.7
+  - Fixed a crash that occurs when a player uses the !autodismantle command to clear their inventory, and then tries to inspect an augment that no longer exists.
+	- When the command is used, the main menu will be forced up on the players.
+  - Loot bags now spawn in different colors depending on rarity:
+	- green: minor
+	- blue:  major
+	- gold:  perfect
+  - Added the augment upgrade system! =)
+	- 3 new config.cfg keys:				The scrap cost to make a randomized upgrade attempt in any category by default.
+		"augment category upgrade cost?"	"50"
+		"augment activator upgrade cost?"	"50"
+		"augment target upgrade cost?"		"50"
+
+ Version 3.4.7.6.2
+  - Fixed a bug that was causing cleric talents to not fire because I had a typo in the GetAbilityStrengthByTrigger arguments.
+
  Version 3.4.7.6.1
  - Hotfix to patch an index out of bounds error in rpg_wrappers @ 6720 that I missed.
- 
+
  Version 3.4.7.6
  - Optimized a lot of methods, leapfrogging references and memo's to reduce time complexity.
  - Menu optimizations.
@@ -818,6 +835,9 @@ public Plugin myinfo = {
 #define CONTRIBUTION_AWARD_BUFFING				2
 #define CONTRIBUTION_AWARD_HEALING				3
 
+int iAugmentCategoryUpgradeCost;
+int iAugmentActivatorUpgradeCost;
+int iAugmentTargetUpgradeCost;
 Handle augmentInventoryPosition[MAXPLAYERS + 1];
 char currentClientSteamID[MAXPLAYERS + 1][64];
 float fFallenSurvivorDefibChance;
@@ -1611,9 +1631,9 @@ char sCategoriesToIgnore[512];
 float fAntiFarmDistance;
 int iAntiFarmMax;
 Handle lootRollData[MAXPLAYERS + 1];
-int iLootBagsAreGenerated;
 float fLootBagExpirationTimeInSeconds;
 Handle playerLootOnGround[MAXPLAYERS + 1];
+Handle playerLootOnGroundId[MAXPLAYERS + 1];
 int iExplosionBaseDamagePipe;
 int iExplosionBaseDamage;
 float fProficiencyLevelDamageIncrease;
@@ -2084,6 +2104,7 @@ stock CreateAllArrays() {
 		if (equippedAugmentsIDCodes[i] == INVALID_HANDLE) equippedAugmentsIDCodes[i] = CreateArray(16);
 		if (lootRollData[i] == INVALID_HANDLE) lootRollData[i] = CreateArray(16);
 		if (playerLootOnGround[i] == INVALID_HANDLE) playerLootOnGround[i] = CreateArray(16);
+		if (playerLootOnGroundId[i] == INVALID_HANDLE) playerLootOnGroundId[i] = CreateArray(16);
 		if (possibleLootPoolTarget[i] == INVALID_HANDLE) possibleLootPoolTarget[i] = CreateArray(16);
 		if (possibleLootPoolActivator[i] == INVALID_HANDLE) possibleLootPoolActivator[i] = CreateArray(16);
 		if (HandicapValues[i] == INVALID_HANDLE) HandicapValues[i] = CreateArray(16);
@@ -2906,12 +2927,10 @@ public Action CMD_SharePoints(client, args) {
 
 	int targetclient = FindTargetClient(client, arg);
 	if (!IsLegitimateClient(targetclient)) return Plugin_Handled;
-
 	char Name[MAX_NAME_LENGTH];
 	GetClientName(targetclient, Name, sizeof(Name));
 	char GiftName[MAX_NAME_LENGTH];
 	GetClientName(client, GiftName, sizeof(GiftName));
-
 	Points[client] -= SharePoints;
 	Points[targetclient] += SharePoints;
 
@@ -3106,6 +3125,7 @@ stock CallRoundIsOver() {
 			if (!IsLegitimateClient(i)) continue;
 			bTimersRunning[i] = false;
 			ClearArray(playerLootOnGround[i]);
+			ClearArray(playerLootOnGroundId[i]);
 			ClearArray(CommonInfected[i]);
 		}
 		if (b_IsActiveRound) b_IsActiveRound = false;
@@ -3730,7 +3750,6 @@ stock LoadMainConfig() {
 	fAugmentTierChance					= GetConfigValueFloat("augment tier chance?", 0.75);
 	fAntiFarmDistance					= GetConfigValueFloat("anti farm kill distance?");
 	iAntiFarmMax						= GetConfigValueInt("anti farm kill max locations?");
-	iLootBagsAreGenerated				= GetConfigValueInt("generate interactable loot bags?", 1);
 	fLootBagExpirationTimeInSeconds		= GetConfigValueFloat("loot bags disappear after this many seconds?", 10.0);
 	iExplosionBaseDamagePipe			= GetConfigValueInt("base pipebomb damage?", 500);
 	iExplosionBaseDamage				= GetConfigValueInt("base explosion damage for non pipebomb sources?", 500);
@@ -3761,6 +3780,9 @@ stock LoadMainConfig() {
 	fRewardPenaltyIfSurvivorBot			= GetConfigValueFloat("reward penalty if target is survivor bot?", 0.1);
 	fFallenSurvivorDefibChance			= GetConfigValueFloat("fallen survivor defib drop chance base?", 0.01);
 	fFallenSurvivorDefibChanceLuck		= GetConfigValueFloat("fallen survivor defib drop chance luck?", 0.01);
+	iAugmentCategoryUpgradeCost			= GetConfigValueInt("augment category upgrade cost?", 50);
+	iAugmentActivatorUpgradeCost		= GetConfigValueInt("augment activator upgrade cost?", 50);
+	iAugmentTargetUpgradeCost			= GetConfigValueInt("augment target upgrade cost?", 50);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
@@ -3777,7 +3799,7 @@ public Action CMD_AutoDismantle(client, args) {
 	int lootFindBonus = 0;
 	if (handicapLevel[client] > 0) lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
 	if (args < 1) {
-		PrintToChat(client, "\x04!autodismantle <score>\n\x03augments that roll under this score will be auto-dismantled. \x04limit: \x03%d", BestRating[client] + lootFindBonus);
+		PrintToChat(client, "\x04!autodismantle <score>\n\x03augments that roll under %d score will be auto-dismantled. \x04limit: \x03%d", iplayerSettingAutoDismantleScore[client], BestRating[client] + lootFindBonus);
 		PrintToChat(client, "\x04!autodismantle clear/perfect/major/minor - \x03Deletes \x04all/perfect/major/minor augments \x03not equipped or favourited.");
 		return Plugin_Handled;
 	}
@@ -3894,7 +3916,9 @@ public Action CMD_AutoDismantle(client, args) {
 			iplayerSettingAutoDismantleScore[client] = auto;
 			PrintToChat(client, "\x04I will auto dismantle any augments of \x03%d \x04score or lower.", iplayerSettingAutoDismantleScore[client]);
 		}
-	}
+		return Plugin_Handled;
+	}// if any dismantling occurs, we forcefully open the menu so they can't do anything in the inventory.
+	BuildMenu(client);
 	return Plugin_Handled;
 }
 
@@ -3905,8 +3929,10 @@ public Action CMD_RollLoot(client, args) {
 
 stock RollLoot(client, enemyClient) {
 	if (iLootEnabled == 0 || IsFakeClient(client) || Rating[client] < iRatingRequiredForAugmentLootDrops) return;
+	
 	int lootPoolSize = GetArraySize(possibleLootPool[client]);
 	if (lootPoolSize < iUpgradesRequiredForLoot) return;
+	
 	int zombieclass = FindZombieClass(enemyClient);
 	float fLootChance = (zombieclass == 10) ? fLootChanceCommons :					// common
 						(zombieclass == 9) ? fLootChanceSupers :					// super
@@ -3914,32 +3940,20 @@ stock RollLoot(client, enemyClient) {
 						(zombieclass == 8) ? fLootChanceTank :						// tank
 						(zombieclass > 0) ? fLootChanceSpecials : 0.0;				// special infected
 	if (fLootChance == 0.0) return;
+	
 	// in borderlands you have a low chance of getting loot, so they throw a ton of roll attempts at you.
 	// sometimes you get an overwhelming amount, sometimes you get one item, sometimes you get nothing.
 	int numOfRollsToAttempt = (zombieclass == 10) ? iNumLootDropChancesPerPlayer[0] :
-							  (zombieclass == 9) ? iNumLootDropChancesPerPlayer[1] :
-							  (zombieclass == 7) ? iNumLootDropChancesPerPlayer[3] :
-							  (zombieclass == 8) ? iNumLootDropChancesPerPlayer[4] : iNumLootDropChancesPerPlayer[2];
-	int lootFindBonus = 0;
-	if (handicapLevel[client] > 0) {
-		lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
-	}
+							(zombieclass == 9) ? iNumLootDropChancesPerPlayer[1] :
+							(zombieclass == 7) ? iNumLootDropChancesPerPlayer[3] :
+							(zombieclass == 8) ? iNumLootDropChancesPerPlayer[4] : iNumLootDropChancesPerPlayer[2];
 	int numOfAugmentPartsToReturn = 0;
 	for (int i = numOfRollsToAttempt; i > 0; i--) {
 		int roll = GetRandomInt(1, RoundToCeil(1.0 / fLootChance));
 		if (roll != 1) continue;
-		if (iLootBagsAreGenerated != 1) GenerateAndGivePlayerAugment(client);
-		else {
-			//int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
-			int min = Rating[client];
-			int max = (min + iRatingRequiredForAugmentLootDrops > BestRating[client]) ? min + iRatingRequiredForAugmentLootDrops : BestRating[client];
-			int itemScore = GetRandomInt(min,max+lootFindBonus);
-			if (itemScore < iplayerSettingAutoDismantleScore[client]) numOfAugmentPartsToReturn++;
-			else {
-				PushArrayCell(playerLootOnGround[client], itemScore);
-				CreateItemDrop(client, enemyClient);
-			}
-		}
+		
+		int result = GenerateAugment(client, enemyClient);
+		if (result == -2) numOfAugmentPartsToReturn++;
 	}
 	if (numOfAugmentPartsToReturn > 0) {
 		augmentParts[client] += numOfAugmentPartsToReturn;
@@ -3951,50 +3965,8 @@ stock RollLoot(client, enemyClient) {
 	}
 }
 
-stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, bool isALootBag = false, char[] ownerSteamID = "none", char[] ownerName = "none") {
-	if (IsFakeClient(client)) return;
-	int min = (Rating[client] < iRatingRequiredForAugmentLootDrops) ? iRatingRequiredForAugmentLootDrops : Rating[client];
-	int max = (BestRating[client] > min + iRatingRequiredForAugmentLootDrops) ? BestRating[client] : min + iRatingRequiredForAugmentLootDrops;
-	int lootFindBonus = 0;
-	if (forceAugmentItemLevel == 0) {
-		if (handicapLevel[client] > 0) {
-			lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
-		}
-	}
-	int potentialItemRatingOverride = (forceAugmentItemLevel > 0) ? forceAugmentItemLevel : GetRandomInt(min, max+lootFindBonus);
-	char text[512];
-
+stock void PickupAugment(int client, char[] ownerSteamID = "none", char[] ownerName = "none") {
 	int size = GetArraySize(myAugmentIDCodes[client]);
-	char buffedCategory[64];
-	int lootPool = GetArraySize(myLootDropCategoriesAllowed[client]);
-	if (lootPool < 1) return;
-
-	int potentialItemRating = (potentialItemRatingOverride == 0) ? Rating[client] : potentialItemRatingOverride;
-	int thisAugmentRatingRequiredForNextTier = iRatingRequiredForAugmentLootDrops;
-	int count = 0;
-	int scoreReserve[2];
-	while (potentialItemRating >= thisAugmentRatingRequiredForNextTier && count < 3) {
-		count++;
-		if (count == 3) break;
-		thisAugmentRatingRequiredForNextTier = (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
-		scoreReserve[count-1] = thisAugmentRatingRequiredForNextTier;
-	}
-	count--;
-	int lootsize = 0;
-	int lootrolls[3];
-	potentialItemRating = (potentialItemRatingOverride == 0) ? Rating[client] : potentialItemRatingOverride;
-	thisAugmentRatingRequiredForNextTier = (count < 1) ? iRatingRequiredForAugmentLootDrops : (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
-	while (potentialItemRating >= thisAugmentRatingRequiredForNextTier) {
-		count--;
-		int reserve = (count > 0) ? scoreReserve[count-1] : 0;
-		int roll = (thisAugmentRatingRequiredForNextTier < potentialItemRating - reserve) ? GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating) : GetRandomInt(thisAugmentRatingRequiredForNextTier, potentialItemRating - reserve);
-		potentialItemRating -= roll;
-		//potentialItemRating -= iRatingRequiredForAugmentLootDrops;
-		lootrolls[lootsize] = roll;
-		thisAugmentRatingRequiredForNextTier = (count < 1) ? iRatingRequiredForAugmentLootDrops : (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
-		if (lootsize < 2 && potentialItemRating >= thisAugmentRatingRequiredForNextTier) lootsize++;
-		else break;
-	}
 	ResizeArray(myAugmentIDCodes[client], size+1);
 	ResizeArray(myAugmentCategories[client], size+1);
 	ResizeArray(myAugmentOwners[client], size+1);
@@ -4003,74 +3975,81 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	ResizeArray(myAugmentActivatorEffects[client], size+1);
 	ResizeArray(myAugmentTargetEffects[client], size+1);
 
+	// [0] - category score roll
+	// [1] - category position
+	// [2] - activator score roll
+	// [3] - activator position
+	// [4] - target score roll
+	// [5] = target position
+	// [6] = handicap score bonus (used for upgrading later)
+	int pos = GetArraySize(playerLootOnGround[client])-1;
 	char sItemCode[64];
-	FormatTime(sItemCode, 64, "%y%m%d%H%M%S", GetTime());
-	lootDropCounter++;
-	Format(sItemCode, 64, "%d%s%d", iUniqueServerCode, sItemCode, lootDropCounter);
+	GetArrayString(playerLootOnGroundId[client], pos, sItemCode, sizeof(sItemCode));
 	SetArrayString(myAugmentIDCodes[client], size, sItemCode);
 
-	int pos = GetRandomInt(0, lootPool-1);
-	GetArrayString(myLootDropCategoriesAllowed[client], pos, buffedCategory, 64);
+	char buffedCategory[64];
+	GetArrayString(myLootDropCategoriesAllowed[client], GetArrayCell(playerLootOnGround[client], pos, 1), buffedCategory, 64);
 
 	char menuText[64];
 	int len = GetAugmentTranslation(client, buffedCategory, menuText);
 	Format(menuText, 64, "%T", menuText, client);
 
-	char name[64];
-	GetClientName(client, name, sizeof(name));
-
 	SetArrayString(myAugmentCategories[client], size, buffedCategory);
 
+	int augmentItemScore = GetArrayCell(playerLootOnGround[client], pos);
 	char key[64];
 	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 	SetArrayString(myAugmentOwners[client], size, ownerSteamID);
 	SetArrayString(myAugmentOwnersName[client], size, ownerName);
-	SetArrayCell(myAugmentInfo[client], size, lootrolls[0]);	// item rating
+	SetArrayCell(myAugmentInfo[client], size, augmentItemScore);	// item rating (cell 4 is activatorRating and cell5 is targetRating)
 	SetArrayCell(myAugmentInfo[client], size, 0, 1);			// item cost
 	SetArrayCell(myAugmentInfo[client], size, 0, 2);			// is item for sale
 	SetArrayCell(myAugmentInfo[client], size, -1, 3);			// which augment slot the item is equipped in - -1 for no slot.
 
 
-	int possibilities = RoundToCeil(1.0 / fAugmentTierChance);
-	int type = GetRandomInt(1, possibilities);
 	int augmentActivatorRating = -1;
 	int augmentTargetRating = -1;
 	char activatorEffects[64];
 	char targetEffects[64];
 
-	pos = GetRandomInt(0, GetArraySize(possibleLootPoolActivator[client])-1);
-	if (type == 1 && lootsize > 0 && pos < GetArraySize(myLootDropActivatorEffectsAllowed[client])) {
-		//pos = GetArrayCell(possibleLootPoolActivator[client], pos);
-		GetArrayString(myLootDropActivatorEffectsAllowed[client], pos, activatorEffects, 64);
+	int maxpossibleroll = GetArrayCell(playerLootOnGround[client], pos, 6);
+	SetArrayCell(myAugmentInfo[client], size, maxpossibleroll, 6);
+
+	int maxPossibleActivatorScore = 0;
+	int maxPossibleTargetScore = 0;
+
+	int apos = GetArrayCell(playerLootOnGround[client], pos, 3);
+	if (apos >= 0) {
+		GetArrayString(myLootDropActivatorEffectsAllowed[client], apos, activatorEffects, 64);
 		SetArrayString(myAugmentActivatorEffects[client], size, activatorEffects);
-		if (!StrEqual(activatorEffects, "-1")) {
-			augmentActivatorRating = lootrolls[1];
-			lootrolls[1] = lootrolls[2];
-		}
+		augmentActivatorRating = GetArrayCell(playerLootOnGround[client], pos, 2);
+		maxPossibleActivatorScore = GetArrayCell(playerLootOnGround[client], pos, 7);
+		SetArrayCell(myAugmentInfo[client], size, maxPossibleActivatorScore, 7);
 	}
 	else {
 		augmentActivatorRating = -1;
 		Format(activatorEffects, 64, "-1");
 		SetArrayString(myAugmentActivatorEffects[client], size, "-1");
-		if (lootsize > 1 && lootrolls[1] < lootrolls[2]) lootrolls[1] = lootrolls[2];
+		SetArrayCell(myAugmentInfo[client], size, -1, 7);
 	}
 	SetArrayCell(myAugmentInfo[client], size, augmentActivatorRating, 4);
-	type = GetRandomInt(1, possibilities);
-	pos = GetRandomInt(0, GetArraySize(possibleLootPoolTarget[client])-1);
-	if (type == 1 && lootsize > 1 && pos < GetArraySize(myLootDropTargetEffectsAllowed[client])) {
-		//pos = GetArrayCell(possibleLootPoolTarget[client], pos);
-		GetArrayString(myLootDropTargetEffectsAllowed[client], pos, targetEffects, 64);
+
+	int tpos = GetArrayCell(playerLootOnGround[client], pos, 5);
+	if (tpos >= 0) {
+		GetArrayString(myLootDropTargetEffectsAllowed[client], tpos, targetEffects, 64);
 		SetArrayString(myAugmentTargetEffects[client], size, targetEffects);
-		if (!StrEqual(targetEffects, "-1")) augmentTargetRating = lootrolls[1];
+		augmentTargetRating = GetArrayCell(playerLootOnGround[client], pos, 4);
+		maxPossibleTargetScore = GetArrayCell(playerLootOnGround[client], pos, 8);
+		SetArrayCell(myAugmentInfo[client], size, maxPossibleTargetScore, 8);
 	}
 	else {
 		augmentTargetRating = -1;
 		Format(targetEffects, 64, "-1");
 		SetArrayString(myAugmentTargetEffects[client], size, "-1");
-		SetArrayCell(myAugmentInfo[client], size, -1, 5);
+		SetArrayCell(myAugmentInfo[client], size, -1, 8);
 	}
-	char augmentStrengthText[64];
 	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
+	char augmentStrengthText[64];
 	if (augmentActivatorRating == -1 && augmentTargetRating == -1) {
 		Format(augmentStrengthText, 64, "{B}Minor");
 	}
@@ -4084,7 +4063,10 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 		else if (!StrEqual(majorname, "-1")) Format(augmentStrengthText, 64, "{B}Major {O}%s", majorname);
 		else Format(augmentStrengthText, 64, "{B}Major {O}%s", perfectname);
 	}
-	Format(text, sizeof(text), "{B}%s {N}{OBTAINTYPE} a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", name, (lootrolls[0] * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
+	char name[64];
+	GetClientName(client, name, sizeof(name));
+	char text[512];
+	Format(text, sizeof(text), "{B}%s {N}{OBTAINTYPE} a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", name, (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
 	if (StrContains(ownerSteamID, key, false) != -1) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "obtained", true);
 	else {
 		ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "stole", true);
@@ -4097,8 +4079,112 @@ stock void GenerateAndGivePlayerAugment(client, int forceAugmentItemLevel = 0, b
 	}
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 	char tquery[512];
-	Format(tquery, sizeof(tquery), "INSERT INTO `%s_loot` (`firstownername`, `firstowner`, `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`) VALUES ('%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%d');", TheDBPrefix, ownerName, ownerSteamID, key, sItemCode, lootrolls[0], buffedCategory, 0, 0, -1, activatorEffects, augmentActivatorRating, targetEffects, augmentTargetRating);
+	Format(tquery, sizeof(tquery), "INSERT INTO `%s_loot` (`firstownername`, `firstowner`, `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`, `maxscoreroll`, `maxactroll`, `maxtarroll`) VALUES ('%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%d', '%d', '%d', '%d');", TheDBPrefix, ownerName, ownerSteamID, key, sItemCode, augmentItemScore, buffedCategory, 0, 0, -1, activatorEffects, augmentActivatorRating, targetEffects, augmentTargetRating, maxpossibleroll, maxPossibleActivatorScore, maxPossibleTargetScore);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
+}
+
+stock int GenerateAugment(int client, int spawnTarget) {
+	if (IsFakeClient(client)) return 0;
+	int min = Rating[client];
+	int max = (min + iRatingRequiredForAugmentLootDrops > BestRating[client]) ? min + iRatingRequiredForAugmentLootDrops : BestRating[client];
+	int lootFindBonus = 0;
+	if (handicapLevel[client] > 0) {
+		lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
+	}
+	int potentialItemRating = GetRandomInt(min, max+lootFindBonus);
+	if (potentialItemRating < iplayerSettingAutoDismantleScore[client]) {
+		// we give the player augment parts instead because they don't want this item.
+		return -2;
+	}
+	int lootPool = GetArraySize(myLootDropCategoriesAllowed[client]);
+	if (lootPool < 1) return 0;
+	int thisAugmentRatingRequiredForNextTier = iRatingRequiredForAugmentLootDrops;
+	int count = 0;
+	int scoreReserve[2];
+	while (potentialItemRating >= thisAugmentRatingRequiredForNextTier && count < 3) {
+		count++;
+		if (count == 3) break;
+		thisAugmentRatingRequiredForNextTier = (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
+		scoreReserve[count-1] = thisAugmentRatingRequiredForNextTier;
+	}
+	count--;
+	int lootsize = 0;
+	int lootrolls[3];
+	int subScores[3];
+	thisAugmentRatingRequiredForNextTier = (count < 1) ? iRatingRequiredForAugmentLootDrops : (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
+	while (potentialItemRating >= thisAugmentRatingRequiredForNextTier) {
+		count--;
+		int reserve = (count > 0) ? scoreReserve[count-1] : 0;
+		int subMax = (thisAugmentRatingRequiredForNextTier < potentialItemRating - reserve) ? potentialItemRating : potentialItemRating - reserve;
+		int roll = GetRandomInt(thisAugmentRatingRequiredForNextTier, subMax);
+		potentialItemRating -= roll;
+		lootrolls[lootsize] = roll;
+		subScores[lootsize] = subMax;	// max score that can ever roll on this augment for this category.
+		thisAugmentRatingRequiredForNextTier = (count < 1) ? iRatingRequiredForAugmentLootDrops : (count * iMultiplierForAugmentLootDrops) * iRatingRequiredForAugmentLootDrops;
+		if (lootsize < 2 && potentialItemRating >= thisAugmentRatingRequiredForNextTier) lootsize++;
+		else break;
+	}
+	// [0] - category score roll
+	// [1] - category position
+	// [2] - activator score roll
+	// [3] - activator position
+	// [4] - target score roll
+	// [5] - target position
+	// [6] - max category score roll
+	// [7] - max activator score roll
+	// [8] - max target score roll
+	int size = GetArraySize(playerLootOnGround[client]);
+	ResizeArray(playerLootOnGround[client], size+1);
+	ResizeArray(playerLootOnGroundId[client], size+1);
+	SetArrayCell(playerLootOnGround[client], size, lootrolls[0]);
+	
+	// for the crafting update, tracking the max possible roll for this augment, so when a player decides to roll for upgrades
+	// they can't exceed what this items max roll originally would be.
+	// this means this system can be used to upgrade existing gear if nothing good is dropping, but doesn't eliminate the necessity
+	// of finding new loot at higher scores and handicaps.
+	SetArrayCell(playerLootOnGround[client], size, max+lootFindBonus, 6);
+	SetArrayCell(playerLootOnGround[client], size, -1, 7);
+	SetArrayCell(playerLootOnGround[client], size, -1, 8);
+
+	char sItemCode[64];
+	FormatTime(sItemCode, 64, "%y%m%d%H%M%S", GetTime());
+	lootDropCounter++;
+	Format(sItemCode, 64, "%d%s%d", iUniqueServerCode, sItemCode, lootDropCounter);
+	SetArrayString(playerLootOnGroundId[client], size, sItemCode);
+
+	int pos = GetRandomInt(0, lootPool-1);
+	SetArrayCell(playerLootOnGround[client], size, pos, 1);
+
+	int possibilities = RoundToCeil(1.0 / fAugmentTierChance);
+	int type = GetRandomInt(1, possibilities);
+	char activatorEffects[64];
+	char targetEffects[64];
+
+	pos = GetRandomInt(0, GetArraySize(possibleLootPoolActivator[client])-1);
+	if (type == 1 && lootsize > 0 && pos < GetArraySize(myLootDropActivatorEffectsAllowed[client])) {
+		GetArrayString(myLootDropActivatorEffectsAllowed[client], pos, activatorEffects, 64);
+		SetArrayCell(playerLootOnGround[client], size, lootrolls[1], 2);
+		SetArrayCell(playerLootOnGround[client], size, pos, 3);
+		SetArrayCell(playerLootOnGround[client], size, subScores[1], 7);
+	}
+	else {
+		SetArrayCell(playerLootOnGround[client], size, -1, 2);
+		SetArrayCell(playerLootOnGround[client], size, -1, 3);
+	}
+	type = GetRandomInt(1, possibilities);
+	pos = GetRandomInt(0, GetArraySize(possibleLootPoolTarget[client])-1);
+	if (type == 1 && lootsize > 1 && pos < GetArraySize(myLootDropTargetEffectsAllowed[client])) {
+		GetArrayString(myLootDropTargetEffectsAllowed[client], pos, targetEffects, 64);
+		SetArrayCell(playerLootOnGround[client], size, lootrolls[2], 4);
+		SetArrayCell(playerLootOnGround[client], size, pos, 5);
+		SetArrayCell(playerLootOnGround[client], size, subScores[2], 8);
+	}
+	else {
+		SetArrayCell(playerLootOnGround[client], size, -1, 4);
+		SetArrayCell(playerLootOnGround[client], size, -1, 5);
+	}
+	CreateItemDrop(client, spawnTarget);
+	return 1;
 }
 
 stock void GetUniqueAugmentLootDropItemCode(char[] sTime) {

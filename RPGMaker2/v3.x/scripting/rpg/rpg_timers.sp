@@ -184,42 +184,40 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 		GiveProfileItems(client);
 	}
 	if (myCurrentTeam[client] == TEAM_SURVIVOR && CurrentRPGMode >= 1) {
-		float healregenamount = 0.0;
 		int mymaxhealth = GetMaximumHealth(client);
-		if (iEnrageTime < 1 || ThisRoundTime < iEnrageTime && L4D2_GetInfectedAttacker(client) == -1) {
-			// while this gets the value for healregenamount, it is ALSO triggering talents of "p" and result of "h" (regen)
-			healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, _, 0);	// activator, target, trigger ability, effects, zombieclass, damage
-		}
-		float pacifisthealregenamount = GetAbilityStrengthByTrigger(client, _, "pacifist", _, 0, _, _, "h", _, _, 0);
-		healregenamount += pacifisthealregenamount;
+		float healregenamount = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, true, 1);	// activator, target, trigger ability, effects, zombieclass, damage
+		float healregenpercentageboost = GetAbilityStrengthByTrigger(client, _, "p", _, 0, _, _, "h", _, true, 2);
+		if (healregenpercentageboost > 0.0) healregenamount += (healregenamount * healregenpercentageboost);
 		float cohHealing = GetCoherencyStrength(client, ACTIVATOR_ABILITY_EFFECTS, "h", COHERENCY_RANGE);
 		if (cohHealing > 0.0) healregenamount += cohHealing;
 		if (healregenamount > 0.0) {
 			float clericHealPercentage = GetTalentStrengthByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "cleric");// not skip, going to try skipping.
 			float clericRange = GetStrengthByKeyValueFloat(client, ACTIVATOR_ABILITY_EFFECTS, "cleric", COHERENCY_RANGE);
-			if (clericHealPercentage > 0.0) {
-				if (clericRange <= 0.0) clericRange = 512.0;
-				healregenamount *= clericHealPercentage;
+			float pacifistHealAmountRaw = GetAbilityStrengthByTrigger(client, _, "pacifist", _, 0, _, _, "h", _, _, 1);
+			float pacifistHealAmountPer = GetAbilityStrengthByTrigger(client, _, "pacifist", _, 0, _, _, "h", _, _, 2);
+			if (pacifistHealAmountPer > 0.0) pacifistHealAmountRaw += (pacifistHealAmountRaw * pacifistHealAmountPer);
+			if (clericHealPercentage > 0.0 || pacifistHealAmountRaw > 0.0) {
+				if (clericRange <= 0.0) clericRange = 256.0;
+				if (clericHealPercentage > 0.0) healregenamount *= clericHealPercentage;
 				if (healregenamount < 1.0) healregenamount = 1.0;
-				int playersInRange = 0;
+				if (pacifistHealAmountRaw > 0.0) healregenamount += pacifistHealAmountRaw;
 				float clientPos[3];
 				GetClientAbsOrigin(client, clientPos);
 				for (int teammate = 1; teammate <= MaxClients; teammate++) {
-					if (teammate == client) continue;
-					if (!IsLegitimateClientAlive(teammate) || myCurrentTeam[teammate] != TEAM_SURVIVOR) continue;
+					if (teammate == client || !IsLegitimateClientAlive(teammate) || myCurrentTeam[client] != myCurrentTeam[teammate]) continue;
 					float teammatePos[3];
 					GetClientAbsOrigin(teammate, teammatePos);
 					if (GetVectorDistance(clientPos, teammatePos) > clericRange || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
-					playersInRange++;
 					HealPlayer(teammate, client, healregenamount, 'h', true);
 				}
-				if (playersInRange > 0) CreateRing(client, clericRange, "green", "32.0", false, 1.0);
+				CreateRing(client, clericRange, "green", "48.0", false, 0.5);
 			}
 		}
 		//ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
 		ModifyHealth(client);
 		if (GetClientHealth(client) > mymaxhealth) SetEntityHealth(client, mymaxhealth);
 	}
+	GetAbilityStrengthByTrigger(client, client, "pacifist", _, _, _, _, _, _, _, 0);
 	GetAbilityStrengthByTrigger(client, client, "p", _, _, _, _, _, _, _, 0); // percentage passives
 	RemoveStoreTime(client);
 	LastPlayLength[client]++;

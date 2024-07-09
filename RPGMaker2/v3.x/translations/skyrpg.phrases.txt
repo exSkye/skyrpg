@@ -621,6 +621,10 @@
 	{
 		"en"				"Unlock Augment"
 	}
+	"upgrade augment"
+	{
+		"en"				"Upgrade Augment"
+	}
 	"toggle lootmode"
 	{
 		"en"				"Toggle Lootmode"
@@ -1248,9 +1252,17 @@
 	{
 		"en"				"Loot Mode: Random Order\nYou cannot take other players loot\nand they cannot take yours."
 	}
-	"ffa loot (enabled)"
+	"ffa loot (all)"
 	{
-		"en"				"Loot Mode: FFA\nYou and other players with this loot\nmode can take each others loot bags."
+		"en"				"Loot Mode: FFA (all)\nYou can steal loot from players with FFA loot enabled.\nThey can steal all your bags."
+	}
+	"ffa loot (major)"
+	{
+		"en"				"Loot Mode: FFA (major)\nYou can steal loot from players with FFA loot enabled.\nThey can steal your minor and major bags."
+	}
+	"ffa loot (minor)"
+	{
+		"en"				"Loot Mode: FFA (minor)\nYou can steal loot from players with FFA loot enabled.\nThey can steal your minor bags."
 	}
 	"noob mode (disabled)"
 	{
@@ -3381,6 +3393,10 @@
 	{
 		"en"				"(Biled) Health II"
 	}
+	"survivor bile health iii"
+	{
+		"en"				"(Biled) Health III"
+	}
 	"survivor bile health info"
 	{
 		"en"				"Raises your overall Health pool when covered in boomer [Bi]le."
@@ -3392,6 +3408,10 @@
 	"survivor adren health ii"
 	{
 		"en"				"(Adren) Health II"
+	}
+	"survivor adren health iii"
+	{
+		"en"				"(Adren) Health III"
 	}
 	"survivor adren health info"
 	{
@@ -3408,6 +3428,10 @@
 	"survivor weak health iii"
 	{
 		"en"				"(B&W) Health III"
+	}
+	"survivor weak health iv"
+	{
+		"en"				"(B&W) Health IV"
 	}
 	"survivor weak health info"
 	{
@@ -4072,6 +4096,38 @@
 	"spellagency info"
 	{
 		"en"				"Increases the effect strength of ammo circles."
+	}
+	"rifle mastery i"
+	{
+		"en"				"Assault Rifle Mastery I"
+	}
+	"rifle mastery ii"
+	{
+		"en"				"Assault Rifle Mastery II"
+	}
+	"rifle mastery iii"
+	{
+		"en"				"Assault Rifle Mastery III"
+	}
+	"rifle mastery info"
+	{
+		"en"				"Increased damage with all assault rifles."
+	}
+	"shotgun mastery i"
+	{
+		"en"				"Shotgun Mastery I"
+	}
+	"shotgun mastery ii"
+	{
+		"en"				"Shotgun Mastery II"
+	}
+	"shotgun mastery iii"
+	{
+		"en"				"Shotgun Mastery III"
+	}
+	"shotgun mastery info"
+	{
+		"en"				"Increased damage with all shotguns."
 	}
 	"brainiac i"
 	{

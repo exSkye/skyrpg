@@ -3331,7 +3331,7 @@ stock bool FoundCooldownReduction(char[] TalentName, char[] CooldownList) {
 	return false;
 }
 
-stock FormatKeyValue(char[] TheValue, TheSize, Handle Keys, Handle Values, char[] SearchKey, char[] DefaultValue = "none", bool:bDebug = false, pos = 0, bool incrementPos = true) {
+stock int FormatKeyValue(char[] TheValue, TheSize, Handle Keys, Handle Values, char[] SearchKey, char[] DefaultValue = "none", bool bDebug = false, pos = 0, bool incrementPos = true) {
 
 	char key[512];
 
@@ -3351,7 +3351,7 @@ stock FormatKeyValue(char[] TheValue, TheSize, Handle Keys, Handle Values, char[
 	return -1;
 }
 
-stock float GetKeyValueFloat(Handle Keys, Handle Values, char[] SearchKey, char[] DefaultValue = "none", bool:bDebug = false, pos = 0) {
+stock float GetKeyValueFloat(Handle Keys, Handle Values, char[] SearchKey, char[] DefaultValue = "none", bool bDebug = false, pos = 0) {
 
 	char key[64];
 	if (pos > 0) pos++;
@@ -3389,7 +3389,7 @@ stock float GetKeyValueFloatAtPos(Handle Values, pos) {
 	return StringToFloat(key);
 }
 
-stock GetKeyValueInt(Handle Keys, Handle Values, char[] SearchKey, char[] DefaultValue = "none", bool:bDebug = false) {
+stock GetKeyValueInt(Handle Keys, Handle Values, char[] SearchKey, char[] DefaultValue = "none", bool bDebug = false) {
 
 	char key[64];
 
@@ -9900,7 +9900,7 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool bIsFalling 
 				int minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
 				if (Rating[client] < minimumRating) Rating[client] = minimumRating;
 
-				if (handicapLevel[client] > 0) {
+				if (handicapLevel[client] > 0 && handicapLevel[client] <= GetArraySize(a_HandicapLevels)) {
 					OnDeathHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
 					int scoreRequired	 = GetArrayCell(OnDeathHandicapValues[client], HANDICAP_SCORE_REQUIRED);
 					if (Rating[client] < scoreRequired) {
@@ -10770,8 +10770,24 @@ stock void CreateItemDrop(int owner, int client) {
 	DispatchKeyValue(entity, "model", sItemModel);
 	DispatchSpawn(entity);
 
+	int lootsize = GetArraySize(playerLootOnGround[owner])-1;
+	if (lootsize < 1) return;
+	int ascore = GetArrayCell(playerLootOnGround[owner], lootsize, 2);
+	int tscore = GetArrayCell(playerLootOnGround[owner], lootsize, 4);
+	if (ascore >= 0 && tscore >= 0) lootsize = 2;
+	else if (ascore >= 0 || tscore >= 0) lootsize = 1;
+	else lootsize = 0;
+
 	SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
-	SetEntityRenderColor(entity, 255, 0, 0, 255);
+	if (lootsize == 0) {	// green for minor
+		SetEntityRenderColor(entity, 0, 255, 0, 255);
+	}
+	else if (lootsize == 1) {	// blue for major
+		SetEntityRenderColor(entity, 0, 0, 255, 255);
+	}
+	else {	// gold for perfect
+		SetEntityRenderColor(entity, 255, 215, 0, 255);
+	}
 	CreateTimer(fLootBagExpirationTimeInSeconds, Timer_DeleteLootBag, entity, TIMER_FLAG_NO_MAPCHANGE);
 
 	float vel[3];
@@ -10847,9 +10863,27 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 		lootOwner = i;
 		break;
 	}
-	int clientToReceiveLoot = (iDontAllowLootStealing[client] == 1 || iDontAllowLootStealing[lootOwner] == 1) ? lootOwner : client;
 	int size = GetArraySize(playerLootOnGround[lootOwner]);
 	if (size < 1) return false;
+
+	int augmentActivatorRating = GetArrayCell(playerLootOnGround[lootOwner], size-1, 2);
+	int augmentTargetRating = GetArrayCell(playerLootOnGround[lootOwner], size-1, 4);
+
+	bool lootCanBeStolen = false;	// i know it starts false, i just prefer how it looks
+
+	if (client != lootOwner && iDontAllowLootStealing[client] < 3) { // if the client picking up the loot has any type of ffa loot enabled
+		if (iDontAllowLootStealing[lootOwner] == 2) {	// all tiers
+			lootCanBeStolen = true;
+		}
+		else if (iDontAllowLootStealing[lootOwner] == 1) { // only allow major/minor to be stolen
+			if (augmentActivatorRating < 1 || augmentTargetRating < 1) lootCanBeStolen = true;
+		}
+		else if (iDontAllowLootStealing[lootOwner] == 0) { // only allow minor loot to be stolen
+			if (augmentActivatorRating == -1 && augmentTargetRating == -1) lootCanBeStolen = true;
+		}
+	}
+
+	int clientToReceiveLoot = (!lootCanBeStolen) ? lootOwner : client;
 	int itemScoreRoll = GetArrayCell(playerLootOnGround[lootOwner], size-1);
 	if (itemScoreRoll < iplayerSettingAutoDismantleScore[clientToReceiveLoot]) {
 		// the only players this can be true for are the players who are not the loot owner, so we give it to the loot owner
@@ -10859,12 +10893,13 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 	if (GetArraySize(myAugmentIDCodes[clientToReceiveLoot]) < iInventoryLimit) {
 		char entityOwnername[64];
 		Format(entityOwnername, sizeof(entityOwnername), "%s", baseName[lootOwner]);
-		GenerateAndGivePlayerAugment(clientToReceiveLoot, GetArrayCell(playerLootOnGround[lootOwner], size-1), true, entityClassname, entityOwnername);
+		PickupAugment(clientToReceiveLoot, entityClassname, entityOwnername);
 	}
 	else {
 		augmentParts[lootOwner]++;
 	}
 	RemoveFromArray(playerLootOnGround[lootOwner], size-1);	// we remove the oldest loot drop stored for this player from their "queue"
+	RemoveFromArray(playerLootOnGroundId[lootOwner], size-1);
 	AcceptEntityInput(entity, "Kill");
 	return true;
 }

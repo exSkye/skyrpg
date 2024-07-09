@@ -234,7 +234,13 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_loot` ADD `tareffects` varchar(32) NOT NULL DEFAULT 'none';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
-		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_loot` ADD `tarrating` int(4) NOT NULL DEFAULT '-1';", TheDBPrefix);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_loot` ADD `tarrating` int(32) NOT NULL DEFAULT '-1';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_loot` ADD `maxscoreroll` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_loot` ADD `maxactroll` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s_loot` ADD `maxtarroll` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 
 		Format(tquery, sizeof(tquery), "CREATE TABLE IF NOT EXISTS `%s_profiles` (`steam_id` varchar(128) NOT NULL, PRIMARY KEY (`steam_id`)) ENGINE=InnoDB;", TheDBPrefix);
@@ -1784,7 +1790,7 @@ stock void LoadClientAugments(client) {
 	char tquery[512];
 	GetClientAuthId(client, AuthId_Steam2, key, 64);
 	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
-	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`, `firstowner`, `firstownername` FROM `%s_loot` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
+	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`, `firstowner`, `firstownername`, `maxscoreroll`, `maxactroll`, `maxtarroll` FROM `%s_loot` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
 	SQL_TQuery(hDatabase, QueryResults_LoadAugments, tquery, client);
 }
 
@@ -1939,6 +1945,13 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 			SetArrayCell(myAugmentInfo[client], size, targetEffectRating, 5);
 			SetArrayString(myAugmentTargetEffects[client], size, targetEffects);
 
+			int maxCategoryScoreRoll = SQL_FetchInt(hndl, 13);
+			SetArrayCell(myAugmentInfo[client], size, maxCategoryScoreRoll, 6);
+			int maxActivatorScoreRoll = SQL_FetchInt(hndl, 14);
+			SetArrayCell(myAugmentInfo[client], size, maxActivatorScoreRoll, 7);
+			int maxTargetScoreRoll = SQL_FetchInt(hndl, 15);
+			SetArrayCell(myAugmentInfo[client], size, maxTargetScoreRoll, 8);
+
 			if (isEquipped >= 0) {
 				SetArrayString(equippedAugmentsIDCodes[client], isEquipped, itemCode);
 				SetArrayCell(equippedAugments[client], isEquipped, itemCost, 1);
@@ -1959,6 +1972,7 @@ public void QueryResults_LoadAugments(Handle owner, Handle hndl, const char[] er
 	if (ReadyUpGameMode != 3) CreateTimer(1.0, Timer_GiveProfileItems, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	SetClientTalentStrength(client);
 	PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
+	myCurrentTeam[client] = GetClientTeam(client);
 	IsClearedToLoad(client, _, true);
 	//ChangeHook(client, true);
 
