@@ -177,6 +177,13 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 				ResetContributionTracker(attacker);
 			}
 			else {
+				int damagePos = FindListPositionByEntity(attacker, damageOfSpecialInfected);
+				if (damagePos == -1) {
+					damagePos = GetArraySize(damageOfSpecialInfected);
+					ResizeArray(damageOfSpecialInfected, damagePos+1);
+					SetArrayCell(damageOfSpecialInfected, damagePos, attacker);
+				}
+				SetArrayCell(damageOfSpecialInfected, damagePos, 0, 1);
 				DamageContribution[attacker] = 0;
 				//SetInfectedHealth(attacker, 99999);
 				if (!IsFakeClientAttacker) PlayerSpawnAbilityTrigger(attacker);
@@ -764,17 +771,14 @@ stock AdvertiseAction(client, char[] TalentName, bool isSpell = false) {
 	GetTranslationOfTalentName(client, TalentName, text, sizeof(text), _, true);
 	if (StrEqual(text, "-1")) GetTranslationOfTalentName(client, TalentName, text, sizeof(text), true);
 
-	GetClientName(client, Name, sizeof(Name));
-
-
-
+	GetFormattedPlayerName(client, Name, sizeof(Name));
+	char printer[512];
+	Format(TalentName_Temp, sizeof(TalentName_Temp), "%t", text);
+	if (isSpell) Format(printer, sizeof(printer), "%t", "player uses spell", Name, TalentName_Temp);
+	else Format(printer, sizeof(printer), "%t", "player uses ability", Name, TalentName_Temp);
 	for (int i = 1; i <= MaxClients; i++) {
-
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
-
-		Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", text, i);
-		if (isSpell) PrintToChat(i, "%T", "player uses spell", i, blue, Name, orange, green, TalentName_Temp, orange);
-		else PrintToChat(i, "%T", "player uses ability", i, blue, Name, orange, green, TalentName_Temp, orange);
+		Client_PrintToChat(i, true, printer);
 	}
 }
 
@@ -829,7 +833,7 @@ stock bool UseAbility(client, target = -1, char[] TalentName, Handle Values, flo
 		}
 		else if (StrEqual(Effects, "r", true)) {
 
-			if (!IsPlayerAlive(client) && b_HasDeathLocation[client]) {
+			if (!IsPlayerAlive(client) && b_HasDeathLocation[client] && GetTime() - clientDeathTime[client] < 60) {
 
 				RespawnImmunity[client] = true;
 				MyRespawnTarget[client] = -1;
@@ -837,12 +841,14 @@ stock bool UseAbility(client, target = -1, char[] TalentName, Handle Values, flo
 				CreateTimer(0.1, Timer_TeleportRespawn, client, TIMER_FLAG_NO_MAPCHANGE);
 				CreateTimer(0.1, Timer_GiveMaximumHealth, client, TIMER_FLAG_NO_MAPCHANGE);
 				CreateTimer(3.0, Timer_ImmunityExpiration, client, TIMER_FLAG_NO_MAPCHANGE);
+
 				int oldrating = GetArrayCell(tempStorage, client, 0);
 				int oldhandicap = GetArrayCell(tempStorage, client, 1);
 				float oldmultiplier = GetArrayCell(tempStorage, client, 2);
 				Rating[client] = oldrating;
 				handicapLevel[client] = oldhandicap;
 				RoundExperienceMultiplier[client] = oldmultiplier;
+
 				PrintToChatAll("%t", "rise again", white, orange, white);
 			}
 			else return false;
@@ -1489,16 +1495,15 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			JumpTime[client] = 0.0;
 		}
 		if (!IsLegitimateClientAlive(MyAttacker)) StrugglePower[client] = 0;
-		bool EnrageActivity = IsEnrageActive();
 
-		if (CombatTime[client] <= TheTime && bIsInCombat[client] && !EnrageActivity && (iPlayersLeaveCombatDuringFinales == 1 || !b_IsFinaleActive)) {
+		if (CombatTime[client] <= TheTime && bIsInCombat[client] && (iPlayersLeaveCombatDuringFinales == 1 || !b_IsFinaleActive)) {
 
 			bIsInCombat[client] = false;
 			iThreatLevel[client] = 0;
 			ResetContributionTracker(client);
 			if (!IsSurvivalMode) AwardExperience(client);
 		}
-		else if (CombatTime[client] > TheTime || EnrageActivity || b_IsFinaleActive) {
+		else if (CombatTime[client] > TheTime || b_IsFinaleActive && iPlayersLeaveCombatDuringFinales == 0) {
 			bIsInCombat[client] = true;
 		}
 		//if (GetClientTeam(client) == TEAM_INFECTED) SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
@@ -1591,7 +1596,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 								int healTarget = GetClientAimTarget(client);
 								if (!IsLegitimateClientAlive(healTarget) || myCurrentTeam[healTarget] != myCurrentTeam[client] || !ClientsWithinRange(client, healTarget, 96.0)) healTarget = client;
 								if (theClientHasPainPills) {
-									float fPainPillsHeal = GetTempHealth(healTarget) + (GetMaximumHealth(healTarget) * 0.3);
+									float fPainPillsHeal = GetTempHealth(healTarget) + (GetMaximumHealth(healTarget) * fPainPillsHealAmount);
 									HealPlayer(client, healTarget, fPainPillsHeal, 'h', true);//SetTempHealth(client, client, GetTempHealth(client) + (GetMaximumHealth(client) * 0.3), false);		// pills add 10% of your total health in temporary health.
 									AcceptEntityInput(weaponEntity, "Kill");
 									GetAbilityStrengthByTrigger(client, healTarget, "usepainpills", _, RoundToCeil(fPainPillsHeal));
@@ -1678,7 +1683,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 							}
 							else SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 							if (!bIsSurvivorFatigue[client]) SurvivorStamina[client] -= ConsumptionInt;
-							if (SurvivorStamina[client] <= 0) {
+							if (SurvivorStamina[client] <= 0 || IsJetpackBroken) {
 								bIsSurvivorFatigue[client] = true;
 								IsSpecialAmmoEnabled[client][0] = 0.0;
 								SurvivorStamina[client] = 0;
@@ -2056,6 +2061,9 @@ stock float GetScoreMultiplier(int client) {
 }
 
 stock GetRatingRewardForDamage(survivor, infected) {
+	float myDamageContribution = CheckTeammateDamages(infected, survivor, true);
+	if (myDamageContribution < fDamageContribution) return 0;
+	
 	int RatingRewardDamage = 0;
 	float RatingMultiplier = 0.0;
 	if (IsLegitimateClient(infected) && myCurrentTeam[infected] == TEAM_INFECTED) {
@@ -2066,9 +2074,47 @@ stock GetRatingRewardForDamage(survivor, infected) {
 	else if (IsSpecialCommon(infected)) RatingMultiplier = fRatingMultSupers;
 	else if (IsCommonInfected(infected)) RatingMultiplier = fRatingMultCommons;
 
-	RatingRewardDamage = RoundToFloor(CheckTeammateDamages(infected, survivor, true) * 100.0);
+	RatingRewardDamage = RoundToFloor(myDamageContribution * 100.0);
 	RatingRewardDamage = RoundToFloor(RatingRewardDamage * RatingMultiplier);
 	return RatingRewardDamage;
+}
+
+stock CheckTankingDamage(infected, client) {
+
+	int pos = -1;
+	int cDamage = 0;
+
+	bool bIsLegitimateClient;
+	bool bIsWitch;
+	bool bIsSpecialCommon;
+	bool bIsCommon;
+
+	if (IsLegitimateClient(infected)) {
+		pos = FindListPositionByEntity(infected, InfectedHealth[client]);
+		bIsLegitimateClient = true;
+	}
+	else if (IsWitch(infected)) {
+		pos = FindListPositionByEntity(infected, WitchDamage[client]);
+		bIsWitch = true;
+	}
+	else if (IsSpecialCommon(infected)) {
+		pos = FindListPositionByEntity(infected, SpecialCommon[client]);
+		bIsSpecialCommon = true;
+	}
+	else if (IsCommonInfected(infected)) {
+		pos = FindListPositionByEntity(infected, CommonInfected[client]);
+		bIsCommon = true;
+	}
+	// Have decided commons shouldn't award tanking damage; it's too easy to abuse.
+
+	if (pos < 0) return 0;
+
+	if (bIsLegitimateClient) cDamage = GetArrayCell(InfectedHealth[client], pos, 3);
+	else if (bIsWitch) cDamage = GetArrayCell(WitchDamage[client], pos, 3);
+	else if (bIsSpecialCommon) cDamage = GetArrayCell(SpecialCommon[client], pos, 3);
+	else if (bIsCommon) cDamage = GetArrayCell(CommonInfected[client], pos, 3);
+
+	return cDamage;
 }
 
 stock GetRatingRewardForTanking(survivor, infected) {
@@ -2114,16 +2160,15 @@ stock GetRatingRewardForTanking(survivor, infected) {
 		if (FindZombieClass(infected) != ZOMBIECLASS_TANK) RatingMultiplier = fRatingMultSpecials;
 		else RatingMultiplier = fRatingMultTank;
 	}
-	damageReceived = RoundToCeil(damageReceived * fRatingMultTanking);
 	int damageReceivedRequired = RoundToCeil(GetMaximumHealth(survivor) * fTankingContribution);
 	if (damageReceived < damageReceivedRequired) return 0;
+
 	int maxScore = RoundToFloor(100.0 * RatingMultiplier);
 	if (damageReceived > maxScore) damageReceived = maxScore;
 	return damageReceived;
 }
 
 stock GetRatingRewardForBuffing(survivor, infected) {
-	int damageReceived = 0;
 	float RatingMultiplier = 0.0;
 	int pos = -1;
 	bool bIsLegitimateClient;
@@ -2148,31 +2193,39 @@ stock GetRatingRewardForBuffing(survivor, infected) {
 	}
 	if (pos < 0) return 0;
 
+	int buffingDone = 0;
+	int tHealth = 0;
 	if (bIsWitch) {
-		damageReceived		= GetArrayCell(WitchDamage[survivor], pos, 7);
+		buffingDone		= GetArrayCell(WitchDamage[survivor], pos, 7);
+		tHealth			= GetArrayCell(WitchDamage[survivor], pos, 1);
 		RatingMultiplier = fRatingMultWitch;
 	}
 	else if (bIsSpecialCommon) {
-		damageReceived		= GetArrayCell(SpecialCommon[survivor], pos, 7);
+		buffingDone		= GetArrayCell(SpecialCommon[survivor], pos, 7);
+		tHealth			= GetArrayCell(SpecialCommon[survivor], pos, 1);
 		RatingMultiplier = fRatingMultSupers;
 	}
 	else if (bIsCommon) {
-		damageReceived		= GetArrayCell(CommonInfected[survivor], pos, 7);
+		buffingDone		= GetArrayCell(CommonInfected[survivor], pos, 7);
+		tHealth			= GetArrayCell(CommonInfected[survivor], pos, 1);
 		RatingMultiplier = fRatingMultCommons;
 	}
 	else if (bIsLegitimateClient) {
-		damageReceived		= GetArrayCell(InfectedHealth[survivor], pos, 7);
+		buffingDone		= GetArrayCell(InfectedHealth[survivor], pos, 7);
+		tHealth			= GetArrayCell(InfectedHealth[survivor], pos, 1);
 		if (FindZombieClass(infected) != ZOMBIECLASS_TANK) RatingMultiplier = fRatingMultSpecials;
 		else RatingMultiplier = fRatingMultTank;
 	}
-	damageReceived = RoundToCeil(damageReceived * fRatingMultBuffing);
-	int maxScore = RoundToFloor(100.0 * RatingMultiplier);
-	if (damageReceived > maxScore) damageReceived = maxScore;
-	return damageReceived;
+	float fBuffContribution = (buffingDone * 1.0) / (tHealth * 1.0);
+	if (fBuffContribution < fBuffingContribution) return 0;
+	if (fBuffContribution > 1.0) fBuffContribution = 1.0;
+	
+	int score = RoundToFloor((100.0 * RatingMultiplier) * fBuffContribution);
+	return score;
 }
 
 stock GetRatingRewardForHealing(survivor, infected) {
-	int damageReceived = 0;
+	int healingProvided = 0;
 	float RatingMultiplier = 0.0;
 	int pos = -1;
 	bool bIsLegitimateClient;
@@ -2197,27 +2250,47 @@ stock GetRatingRewardForHealing(survivor, infected) {
 	}
 	if (pos < 0) return 0;
 
+	int infectedDamageDealt = -1;
+
 	if (bIsWitch) {
-		damageReceived		= GetArrayCell(WitchDamage[survivor], pos, 8);
+		healingProvided		= GetArrayCell(WitchDamage[survivor], pos, 8);
 		RatingMultiplier = fRatingMultWitch;
+
+		infectedDamageDealt = FindListPositionByEntity(infected, damageOfWitch);
+		if (infectedDamageDealt == -1) return 0;
+		infectedDamageDealt = GetArrayCell(damageOfWitch, infectedDamageDealt, 1);
 	}
 	else if (bIsSpecialCommon) {
-		damageReceived		= GetArrayCell(SpecialCommon[survivor], pos, 8);
+		healingProvided		= GetArrayCell(SpecialCommon[survivor], pos, 8);
 		RatingMultiplier = fRatingMultSupers;
+
+		infectedDamageDealt = FindListPositionByEntity(infected, damageOfSpecialCommon);
+		if (infectedDamageDealt == -1) return 0;
+		infectedDamageDealt = GetArrayCell(damageOfSpecialCommon, infectedDamageDealt, 1);
 	}
 	else if (bIsCommon) {
-		damageReceived		= GetArrayCell(CommonInfected[survivor], pos, 8);
+		healingProvided		= GetArrayCell(CommonInfected[survivor], pos, 8);
 		RatingMultiplier = fRatingMultCommons;
+
+		infectedDamageDealt = FindListPositionByEntity(infected, damageOfCommonInfected);
+		if (infectedDamageDealt == -1) return 0;
+		infectedDamageDealt = GetArrayCell(damageOfCommonInfected, infectedDamageDealt, 1);
 	}
 	else if (bIsLegitimateClient) {
-		damageReceived		= GetArrayCell(InfectedHealth[survivor], pos, 8);
+		healingProvided		= GetArrayCell(InfectedHealth[survivor], pos, 8);
 		if (FindZombieClass(infected) != ZOMBIECLASS_TANK) RatingMultiplier = fRatingMultSpecials;
 		else RatingMultiplier = fRatingMultTank;
+
+		infectedDamageDealt = FindListPositionByEntity(infected, damageOfSpecialInfected);
+		if (infectedDamageDealt == -1) return 0;
+		infectedDamageDealt = GetArrayCell(damageOfSpecialInfected, infectedDamageDealt, 1);
 	}
-	damageReceived = RoundToCeil(damageReceived * fRatingMultHealing);
-	int maxScore = RoundToFloor(100.0 * RatingMultiplier);
-	if (damageReceived > maxScore) damageReceived = maxScore;
-	return damageReceived;
+	float fHealContribution = (healingProvided * 1.0) / (infectedDamageDealt * 1.0);
+	if (fHealContribution < fHealingContribution) return 0;
+	if (fHealContribution > 1.0) fHealContribution = 1.0;
+
+	int score = RoundToFloor((100.0 * RatingMultiplier) * fHealContribution);
+	return score;
 }
 
 void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos = -1) {
@@ -2230,6 +2303,10 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 					 (IsWitch(client)) ? 1 :
 					 (IsSpecialCommon(client)) ? 2 : 
 					 (IsCommonInfected(client)) ? 3 : -1;
+	if (ClientType == -1) {
+		LogMessage("Invalid clienttype");
+		return;
+	}
 	bool IsLegitimateClientKiller = IsLegitimateClient(killerblow);
 	int killerClientTeam = -1;
 	if (IsLegitimateClientKiller) killerClientTeam = myCurrentTeam[killerblow];
@@ -2294,15 +2371,17 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 		if (iClientTypeToDisplayOnKill == -1 || ClientType <= iClientTypeToDisplayOnKill) {
 			if (!IsLegitimateClientKiller) PrintToChatAll("%t", "killed special infected", orange, killedName, white);
 			else {
-				GetClientName(killerblow, killerName, sizeof(killerName));
-				PrintToChatAll("%t", "player killed special infected", blue, killerName, white, orange, killedName);
+				GetFormattedPlayerName(killerblow, killerName, sizeof(killerName));
+				char advertisement[512];
+				Format(advertisement, sizeof(advertisement), "%t", "player killed special infected", blue, killerName, white, orange, killedName);
+				for (int i = 1; i <= MaxClients; i++) {
+					if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+					Client_PrintToChat(i, true, advertisement);
+				}
+				//PrintToChatAll("%t", "player killed special infected", blue, killerName, white, orange, killedName);
 			}
 		}
 	}
-	char ratingBonusText[64];
-	char ratingBonusTankText[64];
-	char ratingBonusBuffingText[64];
-	char ratingBonusHealingText[64];
 	bool survivorsRequiredForBonusRating = (iLivingSurvivors > iTeamRatingRequired) ? true : false;
 	bool bSomeoneHurtThisInfected = false;
 	
@@ -2357,31 +2436,36 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 			if (RatingBonus > 0 || RatingBonusTank > 0 || RatingBonusBuffing > 0 || RatingBonusHealing > 0) RollLoot(i, client);
 			if (!bSomeoneHurtThisInfected) bSomeoneHurtThisInfected = true;
 			CheckMinimumRate(i);
-			if (ClientType >= 0 && ClientType < 3 && (PlayerLevel[i] >= iLevelRequiredToEarnScore || handicapLevel[i] > 0)) {
+			if (PlayerLevel[i] >= iLevelRequiredToEarnScore || handicapLevel[i] > 0) {
+				
+				char ratingBonusText[64];
+				char ratingBonusTankText[64];
+				char ratingBonusBuffingText[64];
+				char ratingBonusHealingText[64];
 				if (!survivorsRequiredForBonusRating) {
 					if (RatingBonus > 0) {
-						if (ClientType < 2) {
+						if (ClientType < iClientTypeToDisplayOnKill) {
 							AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
 							Format(ratingBonusText, sizeof(ratingBonusText), "%T", "rating increase", i, white, blue, ratingBonusText, orange);
 						}
 						Rating[i] += RatingBonus;
 					}
 					if (RatingBonusTank > 0) {
-						if (ClientType < 2) {
+						if (ClientType < iClientTypeToDisplayOnKill) {
 							AddCommasToString(RatingBonusTank, ratingBonusTankText, sizeof(ratingBonusTankText));
 							Format(ratingBonusTankText, sizeof(ratingBonusTankText), "%T", "rating increase for tanking", i, white, blue, ratingBonusTankText, orange);
 						}
 						Rating[i] += RatingBonusTank;
 					}
 					if (RatingBonusBuffing > 0) {
-						if (ClientType < 2) {
+						if (ClientType < iClientTypeToDisplayOnKill) {
 							AddCommasToString(RatingBonusBuffing, ratingBonusBuffingText, sizeof(ratingBonusBuffingText));
 							Format(ratingBonusBuffingText, sizeof(ratingBonusBuffingText), "%T", "rating increase for buffing", i, white, blue, ratingBonusBuffingText, orange);
 						}
 						Rating[i] += RatingBonusBuffing;
 					}
 					if (RatingBonusHealing > 0) {
-						if (ClientType < 2) {
+						if (ClientType < iClientTypeToDisplayOnKill) {
 							AddCommasToString(RatingBonusHealing, ratingBonusHealingText, sizeof(ratingBonusHealingText));
 							Format(ratingBonusHealingText, sizeof(ratingBonusHealingText), "%T", "rating increase for healing", i, white, blue, ratingBonusHealingText, orange);
 						}
@@ -2391,7 +2475,7 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 				else {
 					if (RatingBonus > 0) {
 						RatingTeamBonus = RoundToCeil(RatingBonus * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-						if (ClientType < 2) {
+						if (ClientType < iClientTypeToDisplayOnKill) {
 							AddCommasToString(RatingBonus+RatingTeamBonus, ratingBonusText, sizeof(ratingBonusText));
 							Format(ratingBonusText, sizeof(ratingBonusText), "%T", "rating increase", i, white, blue, ratingBonusText, orange);
 						}
@@ -2399,7 +2483,7 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 					}
 					if (RatingBonusTank > 0) {
 						RatingTeamBonusTank = RoundToCeil(RatingBonusTank * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-						if (ClientType < 2) {
+						if (ClientType < iClientTypeToDisplayOnKill) {
 							AddCommasToString(RatingBonusTank+RatingTeamBonusTank, ratingBonusTankText, sizeof(ratingBonusTankText));
 							Format(ratingBonusTankText, sizeof(ratingBonusTankText), "%T", "rating increase for tanking", i, white, blue, ratingBonusTankText, orange);
 						}
@@ -2407,7 +2491,7 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 					}
 					if (RatingBonusBuffing > 0) {
 						RatingTeamBonusBuffing = RoundToCeil(RatingBonusBuffing * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-						if (ClientType < 2) {
+						if (ClientType < iClientTypeToDisplayOnKill) {
 							AddCommasToString(RatingBonusBuffing+RatingTeamBonusBuffing, ratingBonusBuffingText, sizeof(ratingBonusBuffingText));
 							Format(ratingBonusBuffingText, sizeof(ratingBonusBuffingText), "%T", "rating increase for buffing", i, white, blue, ratingBonusBuffingText, orange);
 						}
@@ -2415,14 +2499,14 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 					}
 					if (RatingBonusHealing > 0) {
 						RatingTeamBonusHealing = RoundToCeil(RatingBonusHealing * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-						if (ClientType < 2) {
+						if (ClientType < iClientTypeToDisplayOnKill) {
 							AddCommasToString(RatingBonusHealing+RatingTeamBonusHealing, ratingBonusHealingText, sizeof(ratingBonusHealingText));
 							Format(ratingBonusHealingText, sizeof(ratingBonusHealingText), "%T", "rating increase for healing", i, white, blue, ratingBonusHealingText, orange);
 						}
 						Rating[i] += RatingBonusHealing;
 					}
 				}
-				if (!IsFakeClient(i) && ClientType < 2) {
+				if (!IsFakeClient(i) && ClientType < iClientTypeToDisplayOnKill) {
 					bool isModified = false;
 					char printer[512];
 					if (RatingBonus > 0) {
@@ -2445,7 +2529,7 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 					}
 					if (RatingBonusHealing > 0) {
 						if (isModified) Format(printer, sizeof(printer), "%s\n%s", printer, ratingBonusHealingText);
-						else Format(printer, sizeof(printer), "%s", ratingBonusTankText);
+						else Format(printer, sizeof(printer), "%s", ratingBonusHealingText);
 					}
 					if (isModified) PrintToChat(i, "%s", printer);
 				}
@@ -2571,6 +2655,15 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 
 			b_IsFinaleTanks = true;	// next time the event tank spawns, it will allow it to spawn multiple tanks.
 		}
+	}
+	int damagePos = (ClientType == 0) ? FindListPositionByEntity(client, damageOfSpecialInfected) :
+					(ClientType == 1) ? FindListPositionByEntity(client, damageOfWitch) :			// if below, ClientType = 3
+					(ClientType == 2) ? FindListPositionByEntity(client, damageOfSpecialCommon) : FindListPositionByEntity(client, damageOfCommonInfected);
+	if (damagePos >= 0) {
+		if (ClientType == 0) RemoveFromArray(damageOfSpecialInfected, damagePos);
+		else if (ClientType == 1) RemoveFromArray(damageOfWitch, damagePos);
+		else if (ClientType == 2) RemoveFromArray(damageOfSpecialCommon, damagePos);
+		else RemoveFromArray(damageOfCommonInfected, damagePos);
 	}
 }
 

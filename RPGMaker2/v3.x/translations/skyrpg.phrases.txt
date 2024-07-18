@@ -125,6 +125,14 @@
 	{
 		"en"				"Increase your explosive ammo/pipebomb/firework damage."
 	}
+	"healmelee perfect surname"
+	{
+		"en"				"Shaman"
+	}
+	"healmelee major surname"
+	{
+		"en"				"Shaman"
+	}
 	"cleric perfect surname"
 	{
 		"en"				"Clerics"
@@ -372,6 +380,10 @@
 	{
 		"en"				"Snipers Mark"
 	}
+	"healmelee augment info"
+	{
+		"en"				"Shaman"
+	}
 	"R perfect surname"
 	{
 		"en"				"Thorns"
@@ -450,7 +462,7 @@
 	}
 	"o augment info"
 	{
-		"en"				"Damage Reduction"
+		"en"				"DR"
 	}
 	"h augment info"
 	{
@@ -478,7 +490,7 @@
 	}
 	"cdr augment info"
 	{
-		"en"				"Cooldown Reduction"
+		"en"				"CDR"
 	}
 	"speed augment info"
 	{
@@ -566,7 +578,7 @@
 	}
 	"activetime augment info"
 	{
-		"en"				"Ammo Circle Active Time"
+		"en"				"Ammo Time"
 	}
 	"augment restricted"
 	{
@@ -631,7 +643,7 @@
 	}
 	"view augment inventory"
 	{
-		"en"				"Augments\n!autodismantle in chat for more info."
+		"en"				"Augments\nMy version of equipment/loot!\n!autodismantle in chat for more info."
 	}
 	"equip augment inventory"
 	{
@@ -875,7 +887,7 @@
 	}
 	"talent trees"
 	{
-		"en"				"View/Upgrade Talent Trees\nSpend your talent points here!"
+		"en"				"Talent Trees\nspend Talent Points here!"
 	}
 	"frontline"
 	{
@@ -1104,7 +1116,7 @@
 	}
 	"personal settings"
 	{
-		"en"				"Settings\nCreate/Save/Delete Profiles\nSpawn Loadout\nLevel/Enemy Info\nWeapon Proficiency Data\nDisable Handicap\nLoot Mode"
+		"en"				"Settings"
 	}
 	"threat menu"
 	{
@@ -1173,10 +1185,17 @@
 	{
 		"en"				"Yourself"
 	}
-	"playing in server name"
+	"server advertisement 1"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s}"
-		"en"				"{1}You are playing at {2}{3}\n{4}Say {5}!{6} {7}into chat to open the Control Panel"
+		"en"	"{O}You are playing at {B}{HOST}\nSay {O}!{B}{RPGCMD} {O}into chat to open the Control Panel!"
+	}
+	"server advertisement 2"
+	{
+		"en"	"{O}skyrpg discord: {B}discord.gg/YQqQU4gewu\n{O}skyrpg wiki: {B}http://skyrpg.org/wiki/"
+	}
+	"server advertisement 3"
+	{
+		"en"	"{O}Left 4 Discord, the largest {B}ACTIVE {O}L4D2 discord: {B}discord.gg/Left4Dead2"
 	}
 	"tellah"
 	{
@@ -1930,7 +1949,7 @@
 	"Player Level Text"
 	{
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s}"
-		"en"				"{3}xp{4}{5}xp\nTalent Lv. {1} ({2} max)\navg Augment Lv. {8}\nScore: {6}\nScrap: {7}"
+		"en"				"{3}xp{4}{5}xp\nScore: {6}\t\t Scrap: {7}\nTalent Lv.{1}/{2}\t Augment Lv.{8}"
 	}
 	"XP Level Cap"
 	{
@@ -1950,13 +1969,18 @@
 	"RPG Header"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		"en"				"{1}\n \n{2} / {3} unlocked talents\nTalent Points: {4}"
+		"en"				"{1}\nTalent points: {4}\t\tUnlocked: {2}/{3}"
+	}
+	"RPG Header minor"
+	{
+		"#format"			"{1:i},{2:i},{3:i}"
+		"en"				"Talent points: {3}\t\tUnlocked: {1}/{2}"
 	}
 	"RPG Layer Eligible"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
 		//"en"				"{1}\n \n{3}/{4} required unlocks in Talent Tree {2}."
-		"en"				"{1}\n \nTalent Tree {2}:\n{3} / {4} req. talents."
+		"en"				"{1}\nTalent Tree {2} talents required: {3}/{4}"
 	}
 	"RPG Layer Not Eligible"
 	{
@@ -2002,7 +2026,7 @@
 	}
 	"RPG Menu"
 	{
-		"en"				"View/Upgrade Talent Trees\nSpend your talent points here!"
+		"en"				"Talent Trees"
 	}
 	"Buy Menu Option 1"
 	{
@@ -6799,8 +6823,8 @@
 	}
 	"Player upgrades ability"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"{1}{2} {3}upgraded their {4}{5} {6}talent!"
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1} {B}upgraded their {G}{4} {B}talent!"
 	}
 	"Weapon Level Increase"
 	{
@@ -8429,13 +8453,13 @@
 	}
 	"player uses spell"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"{1}{2} {3}casts the {4}{5} {6}spell"
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1} {O}casts the spell {B}{2}"
 	}
 	"player uses ability"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"{1}{2} {3}uses the {4}{5} {6}ability"
+		"#format"			"{1:s},{2:s}"
+		"en"				"{1} {O}uses ability {B}{2}"
 	}
 	"handicap range"
 	{

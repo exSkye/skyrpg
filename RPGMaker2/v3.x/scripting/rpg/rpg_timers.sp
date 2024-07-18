@@ -612,7 +612,7 @@ public Action Timer_ChangeTeamCheck(Handle timer, any client) {
 	myCurrentTeam[client] = GetClientTeam(client);
 	if (myCurrentTeam[client] == TEAM_SURVIVOR) {
 		//ChangeHook(client, true);
-		if (!b_IsLoading[client] && !b_IsLoaded[client]) OnClientLoaded(client);
+		if (!b_IsLoaded[client]) OnClientLoaded(client);
 	}
 	//else ChangeHook(client);
 	return Plugin_Stop;
@@ -953,7 +953,18 @@ public Action Timer_CheckIfHooked(Handle timer) {
 		}
 	}
 	if (RoundSeconds % HostNameTime == 0) {
-		PrintToChatAll("%t", "playing in server name", orange, blue, Hostname, orange, blue, MenuCommand, orange);
+		char advertisement[512];
+		Format(advertisement, sizeof(advertisement), "server advertisement %d", iAdvertisementCounter+1);
+		Format(advertisement, sizeof(advertisement), "%t", advertisement);
+		ReplaceString(advertisement, sizeof(advertisement), "{HOST}", Hostname);
+		ReplaceString(advertisement, sizeof(advertisement), "{RPGCMD}", MenuCommand);
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+			Client_PrintToChat(i, true, advertisement);
+		}
+		if (iAdvertisementCounter + 1 == iNumAdvertisements) iAdvertisementCounter = 0;
+		else iAdvertisementCounter++;
+		//PrintToChatAll("%t", "playing in server name", orange, blue, Hostname, orange, blue, MenuCommand, orange);
 	}
 	//if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
 	if (ScenarioEndConditionsMet()) {
@@ -1095,18 +1106,18 @@ public Action Timer_SettingsCheck(Handle timer) {
 	}
 
 	int RaidLevelCounter = RaidCommonBoost();
-	bool bIsEnrage = false;
+	int EnrageBoost = (IsEnrageActive()) ? RoundToCeil(RaidLevelCounter * fEnrageMultiplier) : 0;
 
 	if (!bIsSettingsCheck) return Plugin_Continue;
 	bIsSettingsCheck = false;
 
-	bIsEnrage = IsEnrageActive();
-
-	if (bIsEnrage) RaidLevelCounter = RoundToCeil(fEnrageMultiplier * RaidLevelCounter);
-	int CommonAllowed = AllowedCommons + RaidLevelCounter;
+	int CommonAllowed = AllowedCommons + RaidLevelCounter + EnrageBoost;
 	if (CommonAllowed <= iCommonsLimitUpper) SetConVarInt(FindConVar("z_common_limit"), CommonAllowed);
 	else SetConVarInt(FindConVar("z_common_limit"), iCommonsLimitUpper);
-	if (iTankRush != 1) SetConVarInt(FindConVar("z_reserved_wanderers"), RaidLevelCounter);
+	if (iTankRush != 1) {
+		SetConVarInt(FindConVar("z_reserved_wanderers"), RaidLevelCounter + EnrageBoost);
+		SetConVarInt(FindConVar("director_always_allow_wanderers"), 1);
+	}
 	else {
 
 		//if (AllowedCommons + RaidLevelCounter)
@@ -1114,8 +1125,8 @@ public Action Timer_SettingsCheck(Handle timer) {
 		SetConVarInt(FindConVar("z_reserved_wanderers"), 0);
 		SetConVarInt(FindConVar("director_always_allow_wanderers"), 0);
 	}
-	SetConVarInt(FindConVar("z_mega_mob_size"), AllowedMegaMob + RaidLevelCounter);
-	SetConVarInt(FindConVar("z_mob_spawn_max_size"), AllowedMobSpawn + RaidLevelCounter);
+	SetConVarInt(FindConVar("z_mega_mob_size"), AllowedMegaMob + RaidLevelCounter + EnrageBoost);
+	SetConVarInt(FindConVar("z_mob_spawn_max_size"), AllowedMobSpawn + RaidLevelCounter + EnrageBoost);
 	SetConVarInt(FindConVar("z_mob_spawn_finale_size"), AllowedMobSpawnFinale + RaidLevelCounter);
 
 	return Plugin_Continue;
@@ -1600,10 +1611,9 @@ stock DirectorPurchase(Handle Keys, Handle Values, pos, char[] TalentName) {
 		}
 	}
 
-	/*if ((StrEqual(Command, "director_force_panic_event") || IsPlayerDrop) && b_IsFinaleActive) {
-
+	if (StrEqual(Command, "director_force_panic_event") && b_IsFinaleActive) {
 		return;
-	}*/
+	}
 	//if (!IsEnrageActive() && StrEqual(Command, "director_force_panic_event")) return;
 
 	if (Points_Director > 0.0) PointCost *= Points_Director;
@@ -1639,36 +1649,6 @@ stock DirectorPurchase(Handle Keys, Handle Values, pos, char[] TalentName) {
 		SpawnCommons(Client, Count, Command, Parameter, Model, IsPlayerDrop, superCommonType);
 	}
 }
-
-/*stock InsertInfected(survivor, infected) {
-
-	CreateListPositionByEntity(survivor, infected, InfectedHealth[survivor]);
-	new isArraySize = GetArraySize(Handle:InfectedHealth[survivor]);
-	new t_InfectedHealth = 0;
-	ResizeArray(Handle:InfectedHealth[survivor], isArraySize + 1);
-	SetArrayCell(Handle:InfectedHealth[survivor], isArraySize, infected, 0);
-
-	//An infected wasn't added on spawn to this player, so we add it now based on class.
-	if (FindZombieClass(infected) == ZOMBIECLASS_TANK) t_InfectedHealth = 4000;
-	else if (FindZombieClass(infected) == ZOMBIECLASS_HUNTER || FindZombieClass(infected) == ZOMBIECLASS_SMOKER) t_InfectedHealth = 250;
-	else if (FindZombieClass(infected) == ZOMBIECLASS_BOOMER) t_InfectedHealth = 50;
-	else if (FindZombieClass(infected) == ZOMBIECLASS_SPITTER) t_InfectedHealth = 100;
-	else if (FindZombieClass(infected) == ZOMBIECLASS_CHARGER) t_InfectedHealth = 600;
-	else if (FindZombieClass(infected) == ZOMBIECLASS_JOCKEY) t_InfectedHealth = 325;
-
-	decl String:ss_InfectedHealth[64];
-	Format(ss_InfectedHealth, sizeof(ss_InfectedHealth), "(%d) infected health bonus", FindZombieClass(infected));
-
-	if (StringToInt(GetConfigValue("infected bot level type?")) == 1) t_InfectedHealth += t_InfectedHealth * RoundToCeil(HumanSurvivorLevels() * StringToFloat(GetConfigValue(ss_InfectedHealth)));
-	else t_InfectedHealth += t_InfectedHealth * RoundToCeil(PlayerLevel[survivor] * StringToFloat(GetConfigValue(ss_InfectedHealth)));
-	if (HandicapLevel[survivor] > 0) t_InfectedHealth += t_InfectedHealth * RoundToCeil(HandicapLevel[survivor] * StringToFloat(GetConfigValue("handicap health increase?")));
-
-	SetArrayCell(Handle:InfectedHealth[survivor], isArraySize, t_InfectedHealth, 1);
-	SetArrayCell(Handle:InfectedHealth[survivor], isArraySize, 0, 2);
-	SetArrayCell(Handle:InfectedHealth[survivor], isArraySize, 0, 3);
-	if (isArraySize == 0) return -1;
-	return isArraySize;
-}*/
 
 stock SpawnCommons(Client, Count, char[] Command, char[] Parameter, char[] Model, IsPlayerDrop, char[] SuperCommon = "none") {
 

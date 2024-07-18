@@ -15,7 +15,7 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v3.4.7.7"
+#define PLUGIN_VERSION					"v3.4.7.8"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"github.com/biaspark/"
 #define PLUGIN_NAME						"RPG Construction Set"
@@ -44,10 +44,61 @@
 #define HEALING_CONTRIBUTION			1
 #define BUFFING_CONTRIBUTION			2
 #define HEXING_CONTRIBUTION				3
-
 //	================================
 #define DEBUG     					false
 /*	================================
+ Version 3.4.7.8
+  *** Augments in Profiles ***
+	- Augments will now be saved to profiles.
+		- When you delete an augment attached to a saved profile, the associated augment slot will be empty after the profile finishes loading.
+		- ALL AUGMENTS ARE UNEQUIPPED when loading a profile, so load your profiles, use !loadoutname <current active profile name> then equip your augments and save to have your augments attached to your saved profile.
+	- Augments that are saved to at least 1 profile will have the ! symbol at the end of their name.
+	- Augments can be attached to as many profiles as you want.
+	- The profiles the augments are attached to will be displayed on their profile inspection page.
+	- If you missed it above, YOU CAN DELETE AUGMENTS ATTACHED TO PROFILES
+	- Autodismantle CANNOT DELETE AUGMENTS ATTACHED TO PROFILES, but you can delete them manually.
+
+  - you will always load into every new round with your preset weapons, and your health fully-loaded.
+  	Whether you fail, complete the previous map, you will ALWAYS have everything pre-loaded.
+  - Patched a visual bug where when a player only received +healing rating that the bonus would incorrectly show the players tanking bonus, or nothing if there was no tanking bonus.
+  - Patched a bug where common infected were never giving score.
+	Regarding Common Infected:
+
+	With this update, all players who contribute towards infected common deaths will receive the score reward and assist/contribution experience for damage dealt and tanking received.
+	Previously, by design, only the player who landed the killing bow would receive rewards, since common health used to be a static, low value.
+	Now, since common infected health pools can reach into the thousands, everyone involved should be rewarded, when applicable.
+  - Loading a profile while a round is active will no longer give the survivor the weapons saved to that profile.
+  - Fixed a logic typo that caused survivor bots to reset when their level didn't = their starting level, instead of only when it was < their starting level.
+  - Patched a bug that caused spectating players on map swap to have their HAT levels double-printed.
+  - Patched a bug where players with no augments could not load a saved profile.
+  - Patched a bug where players names would have their HAT levels repeatedly added if they were in spectator.
+  - Redesigned menu formatting.
+  - Patched another bug associated with invalid infected being detected on player_spawn
+  - Fixed a typo preventing the jetpack from disabling, causing flying players to fall out of the sky like meteorites when tanks are nearby.
+  - Redesigned how the enrage functionality works; enrage multiplier ADDS to the common count, but does not affect finale multiplier or increase z_common_limit past the limit set in the config
+  - Patched loot drop pickup so that a player is picking up the correct bag every time.
+  - Survivors screens will slightly-shake when they take damage, overriding the normal take damage shake that this plugin prevents from occurring.
+	- unfortunately, adding support for the directional attack arrow upon damage taken __is not__ possible here.
+  - Patched a bug that caused action ability positions to be set to INTEGER.INTEGER_MAX on generation due to an inaccurate guard statement.
+  - Player names will be properly color-formatted when upgrading talents or killing infected.
+  - Patched a crash that could occur if a talent loaded then went on cooldown and then ended its cooldown before the players data had finished fully loading.
+  - Players who leave combat during finales or enrage on servers that allow it will now properly be rewarded any owed experience.
+  - Redesigned/recoded how healing, tanking, and buffing contribution is calculated.
+  - Added support for advertisements built into the RPG:
+	- {HOST} - replaces the string with the server hostname
+	- {RPGCMD} - replaces the string with the server's rpg menu command
+	name the translation "server advertisement #"
+	example:
+	"server advertisement 1"
+	{
+		"en"	"{O}You are playing at {B}{HOST}\nSay {O}!{B}{RPGCMD} {O}into chat to open the Control Panel!"
+	}
+
+	Because advertisements are using minimal code and the translation file in conjunction with smlib for colors, you have to specify in the config.cfg the # of advertisements, or it defaults to 0.
+	"number of advertisements?"								"0"
+	"delay in seconds between advertisements?"				"180"
+
+
  Version 3.4.7.7
   - Fixed a crash that occurs when a player uses the !autodismantle command to clear their inventory, and then tries to inspect an augment that no longer exists.
 	- When the command is used, the main menu will be forced up on the players.
@@ -835,6 +886,13 @@ public Plugin myinfo = {
 #define CONTRIBUTION_AWARD_BUFFING				2
 #define CONTRIBUTION_AWARD_HEALING				3
 
+int iNumAdvertisements = 0;
+int iAdvertisementCounter = 0;
+int clientDeathTime[MAXPLAYERS + 1];
+float fPainPillsHealAmount;
+char customProfileKey[MAXPLAYERS + 1][64];
+int augmentLoadPos[MAXPLAYERS + 1];
+bool bIsLoadingCustomProfile[MAXPLAYERS + 1];
 int iAugmentCategoryUpgradeCost;
 int iAugmentActivatorUpgradeCost;
 int iAugmentTargetUpgradeCost;
@@ -853,6 +911,9 @@ int iDontAllowLootStealing[MAXPLAYERS + 1];
 int clientEffectState[MAXPLAYERS + 1];
 int iExperimentalMode;
 float fTankingContribution;
+float fDamageContribution;
+float fHealingContribution;
+float fBuffingContribution;
 Handle GetValueFloatArray[MAXPLAYERS + 1];
 int iStuckDelayTime;
 int lastStuckTime[MAXPLAYERS + 1];
@@ -1090,6 +1151,10 @@ int UpgradesAwarded[MAXPLAYERS + 1];
 int UpgradesAvailable[MAXPLAYERS + 1];
 bool b_IsDead[MAXPLAYERS + 1];
 int ExperienceDebt[MAXPLAYERS + 1];
+Handle damageOfSpecialInfected;
+Handle damageOfWitch;
+Handle damageOfSpecialCommon;
+Handle damageOfCommonInfected;
 Handle InfectedHealth[MAXPLAYERS + 1];
 Handle SpecialCommon[MAXPLAYERS + 1];
 Handle WitchList;
@@ -1366,9 +1431,6 @@ float fRatingMultSupers;
 float fRatingMultCommons;
 float fRatingMultTank;
 float fRatingMultWitch;
-float fRatingMultTanking;
-float fRatingMultBuffing;
-float fRatingMultHealing;
 float fTeamworkExperience;
 float fItemMultiplierLuck;
 float fItemMultiplierTeam;
@@ -1386,6 +1448,7 @@ int iMaxLevel;
 int iMaxLevelBots;
 int iExperienceStart;
 float fExperienceMultiplier;
+float fExperienceMultiplierHardcore;
 char sBotTeam[64];
 int iNumAugments;
 int iActionBarSlots;
@@ -1410,7 +1473,6 @@ int RatingPerLevelSurvivorBots;
 int iCommonBaseHealth;
 float fCommonLevelHealthMult;
 int iServerLevelRequirement;
-int iRoundStartWeakness;
 float GroupMemberBonus;
 float FinSurvBon;
 int RaidLevMult;
@@ -1604,6 +1666,7 @@ Handle myLootDropCategoriesAllowed[MAXPLAYERS + 1];
 Handle myLootDropTargetEffectsAllowed[MAXPLAYERS + 1];
 Handle myLootDropActivatorEffectsAllowed[MAXPLAYERS + 1];
 Handle LootDropCategoryToBuffValues[MAXPLAYERS + 1];
+Handle myAugmentSavedProfiles[MAXPLAYERS + 1];
 Handle myAugmentIDCodes[MAXPLAYERS + 1];
 Handle myAugmentCategories[MAXPLAYERS + 1];
 Handle myAugmentOwners[MAXPLAYERS + 1];
@@ -1857,7 +1920,7 @@ public int ReadyUp_TrueDisconnect(int client) {
 }
 
 stock DisconnectDataReset(int client) {
-	b_IsLoading[client] = false;
+	b_IsLoaded[client] = false;
 	PlayerLevel[client] = 0;
 	Format(baseName[client], sizeof(baseName[]), "[RPG DISCO]");
 	if (IsFakeClient(client)) return;
@@ -1967,6 +2030,10 @@ stock CreateAllArrays() {
 	if (ClientsPermittedToLoad == INVALID_HANDLE) ClientsPermittedToLoad = CreateArray(16);
 	if (ListOfWitchesWhoHaveBeenShot == INVALID_HANDLE) ListOfWitchesWhoHaveBeenShot = CreateArray(8);
 	if (tempStorage == INVALID_HANDLE) tempStorage = CreateArray(16);
+	if (damageOfSpecialInfected == INVALID_HANDLE) damageOfSpecialInfected = CreateArray(16);
+	if (damageOfWitch == INVALID_HANDLE) damageOfWitch = CreateArray(16);
+	if (damageOfSpecialCommon == INVALID_HANDLE) damageOfSpecialCommon = CreateArray(16);
+	if (damageOfCommonInfected == INVALID_HANDLE) damageOfCommonInfected = CreateArray(16);
 	ResizeArray(tempStorage, MAXPLAYERS + 1);
 	for (int i = 1; i <= MAXPLAYERS; i++) {
 		itemToDisassemble[i] = -1;
@@ -2087,6 +2154,7 @@ stock CreateAllArrays() {
 		if (myLootDropCategoriesAllowed[i] == INVALID_HANDLE) myLootDropCategoriesAllowed[i] = CreateArray(16);
 		if (LootDropCategoryToBuffValues[i] == INVALID_HANDLE) LootDropCategoryToBuffValues[i] = CreateArray(16);
 		if (myAugmentIDCodes[i] == INVALID_HANDLE) myAugmentIDCodes[i] = CreateArray(16);
+		if (myAugmentSavedProfiles[i] == INVALID_HANDLE) myAugmentSavedProfiles[i] = CreateArray(16);
 		if (myAugmentCategories[i] == INVALID_HANDLE) myAugmentCategories[i] = CreateArray(16);
 		if (myAugmentOwners[i] == INVALID_HANDLE) myAugmentOwners[i] = CreateArray(16);
 		if (myAugmentOwnersName[i] == INVALID_HANDLE) myAugmentOwnersName[i] = CreateArray(16);
@@ -2330,7 +2398,9 @@ public ReadyUp_ReadyUpStart() {
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsLegitimateClient(i)) {
-			if (CurrentMapPosition == 0 && b_IsLoaded[i] && myCurrentTeam[i] == TEAM_SURVIVOR && ReadyUpGameMode != 3) GiveProfileItems(i);
+			if (b_IsLoaded[i] && myCurrentTeam[i] == TEAM_SURVIVOR && ReadyUpGameMode != 3) {
+				CreateTimer(1.0, Timer_Pregame, i, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			}
 			if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
 			staggerCooldownOnTriggers[i] = false;
 			ISBILED[i] = false;
@@ -2352,7 +2422,6 @@ public ReadyUp_ReadyUpStart() {
 			ClearArray(h_KilledPosition_Z[i]);
 			if (!IsFakeClient(i)) continue;
 			if (b_IsLoaded[i]) GiveMaximumHealth(i);
-			else if (!b_IsLoading[i]) OnClientLoaded(i);
 		}
 	}
 	RefreshSurvivorBots();
@@ -2370,6 +2439,7 @@ public Action Timer_Defibrillator(Handle timer, any client) {
 }
 
 public ReadyUpEnd_Complete() {
+
 	if (b_IsRoundIsOver) {
 		b_IsRoundIsOver = false;
 		CreateTimer(30.0, Timer_CheckDifficulty, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -2388,31 +2458,29 @@ public ReadyUpEnd_Complete() {
 				PrintToChatAll("%t", "round bonus multiplier", blue, saferoomName, white, orange, (1.0 + RoundExperienceMultiplier[i]) * 100.0, orange, pct, white);
 			}
 		}
-		if (iRoundStartWeakness == 1) {
-			for (int i = 1; i <= MaxClients; i++) {
-				if (!IsLegitimateClient(i)) continue;
-				staggerCooldownOnTriggers[i] = false;
-				ISBILED[i] = false;
-				bHasWeakness[i] = 0;
-				SurvivorEnrage[i][0] = 0.0;
-				SurvivorEnrage[i][1] = 0.0;
-				ISDAZED[i] = 0.0;
-				if (myCurrentTeam[i] == TEAM_SURVIVOR && b_IsLoaded[i]) {
-					SurvivorStamina[i] = GetPlayerStamina(i) - 1;
-					SetMaximumHealth(i);
-				}
-				else if (!b_IsLoading[i]) OnClientLoaded(i);
-				bIsSurvivorFatigue[i] = false;
-				LastWeaponDamage[i] = 1;
-				HealingContribution[i] = 0;
-				TankingContribution[i] = 0;
-				DamageContribution[i] = 0;
-				PointsContribution[i] = 0.0;
-				HexingContribution[i] = 0;
-				BuffingContribution[i] = 0;
-				b_IsFloating[i] = false;
-				SetMyWeapons(i);
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClient(i) || !b_IsLoaded[i]) continue;
+			staggerCooldownOnTriggers[i] = false;
+			ISBILED[i] = false;
+			bHasWeakness[i] = 0;
+			SurvivorEnrage[i][0] = 0.0;
+			SurvivorEnrage[i][1] = 0.0;
+			ISDAZED[i] = 0.0;
+			if (myCurrentTeam[i] == TEAM_SURVIVOR) {
+				SurvivorStamina[i] = GetPlayerStamina(i) - 1;
+				SetMaximumHealth(i);
+				GiveMaximumHealth(i);
 			}
+			bIsSurvivorFatigue[i] = false;
+			LastWeaponDamage[i] = 1;
+			HealingContribution[i] = 0;
+			TankingContribution[i] = 0;
+			DamageContribution[i] = 0;
+			PointsContribution[i] = 0.0;
+			HexingContribution[i] = 0;
+			BuffingContribution[i] = 0;
+			b_IsFloating[i] = false;
+			SetMyWeapons(i);
 		}
 	}
 }
@@ -2522,6 +2590,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			}
 		}
 		else {
+			if (GetArraySize(RoundStatistics) < 5) ResizeArray(RoundStatistics, 5);
 			for (int i = 0; i < 5; i++) {
 				SetArrayCell(RoundStatistics, i, 0);
 			}
@@ -2544,7 +2613,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			if (!AnyBotsOnSurvivorTeam && fSurvivorBotsNoneBonus > 0.0 && survivorCounter <= iSurvivorBotsBonusLimit) PrintToChat(i, "%T", "group no survivor bots bonus", i, blue, fSurvivorBotsNoneBonus * 100.0, pct, green, orange);
 			if (RoundExperienceMultiplier[i] > 0.0) PrintToChat(i, "%T", "survivalist bonus experience", i, blue, orange, green, RoundExperienceMultiplier[i] * 100.0, white, pct);
 		}
-		//if (CurrentMapPosition != 0 || ReadyUpGameMode == 3)
 		CheckDifficulty();
 		RoundTime					=	GetTime();
 		int ent = -1;
@@ -2578,12 +2646,13 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		//RoundDamageTotal			=	0;
 		b_IsFinaleActive			=	false;
 		for (int i = 1; i <= MaxClients; i++) {
-			if (IsLegitimateClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
-				if (!IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
-				VerifyMinimumRating(i);
-				HealImmunity[i] = false;
-				if (b_IsLoaded[i]) GiveMaximumHealth(i);
-				else if (!b_IsLoading[i]) OnClientLoaded(i);
+			if (!IsLegitimateClient(i) || !b_IsLoaded[i] || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
+			if (!IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
+			VerifyMinimumRating(i);
+			HealImmunity[i] = false;
+			if (b_IsLoaded[i]) {
+				SetMaximumHealth(i);
+				GiveMaximumHealth(i);
 			}
 		}
 		f_TankCooldown				=	-1.0;
@@ -2720,11 +2789,9 @@ stock CastActionEx(client, char[] t_actionpos = "none", TheSize, pos = -1) {
 }
 
 stock MySurvivorCompanion(client) {
-
 	char SteamId[64];
 	char CompanionSteamId[64];
 	GetClientAuthId(client, AuthId_Steam2, SteamId, sizeof(SteamId));
-
 	for (int i = 1; i <= MaxClients; i++) {
 
 		if (IsLegitimateClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR && IsFakeClient(i)) {
@@ -2821,8 +2888,12 @@ public Action CMD_GiveLevel(client, args) {
 }
 
 stock GetExperienceRequirement(newlevel) {
-	float fExpMult = fExperienceMultiplier * (newlevel - 1);
-	return iExperienceStart + RoundToCeil(iExperienceStart * fExpMult);
+	int baseExperienceCounter = (newlevel > iHardcoreMode) ? iHardcoreMode : newlevel;
+	int hardExperienceCounter = (newlevel > iHardcoreMode) ? newlevel - iHardcoreMode : 0;
+
+	float fExpMult = fExperienceMultiplier * (baseExperienceCounter - 1);
+	float fExpHard = fExperienceMultiplierHardcore * (hardExperienceCounter - 1);
+	return iExperienceStart + RoundToCeil(iExperienceStart * (fExpMult + fExpHard));
 }
 
 stock CheckExperienceRequirement(client, bool bot = false, iLevel = 0, previousLevelRequirement = 0) {
@@ -2832,15 +2903,25 @@ stock CheckExperienceRequirement(client, bool bot = false, iLevel = 0, previousL
 
 		experienceRequirement			=	iExperienceStart;
 		float experienceMultiplier	=	0.0;
+		float hardcoreMultiplier	=	0.0;
+
+		int baseExperienceCounter = (levelToCalculateFor > iHardcoreMode) ? iHardcoreMode : levelToCalculateFor;
+		int hardExperienceCounter = (levelToCalculateFor > iHardcoreMode) ? levelToCalculateFor - iHardcoreMode : 0;
+
 		if (iUseLinearLeveling == 1) {
-			experienceMultiplier 			=	fExperienceMultiplier * (levelToCalculateFor - 1);
-			experienceRequirement			=	iExperienceStart + RoundToCeil(iExperienceStart * experienceMultiplier);
+			experienceMultiplier 			=	fExperienceMultiplier * (baseExperienceCounter - 1);
+			hardcoreMultiplier				=	fExperienceMultiplierHardcore * (hardExperienceCounter - 1);
+			experienceRequirement			=	iExperienceStart + RoundToCeil(iExperienceStart * (experienceMultiplier + hardcoreMultiplier));
 		}
 		else if (previousLevelRequirement != 0) {
-			experienceRequirement			=	previousLevelRequirement + RoundToCeil(previousLevelRequirement * fExperienceMultiplier);
+			if (PlayerLevel[client] < iHardcoreMode) experienceRequirement			=	previousLevelRequirement + RoundToCeil(previousLevelRequirement * fExperienceMultiplier);
+			else experienceRequirement			=	previousLevelRequirement + RoundToCeil(previousLevelRequirement * fExperienceMultiplierHardcore);
 		}
 		else if (levelToCalculateFor > 1) {
-			for (int i = 1; i < levelToCalculateFor; i++) experienceRequirement		+=	RoundToCeil(experienceRequirement * fExperienceMultiplier);
+			for (int i = 1; i < levelToCalculateFor; i++) {
+				if (i < iHardcoreMode) experienceRequirement		+=	RoundToCeil(experienceRequirement * fExperienceMultiplier);
+				else experienceRequirement		+=	RoundToCeil(experienceRequirement * fExperienceMultiplierHardcore);
+			}
 		}
 	}
 	return experienceRequirement;
@@ -3188,11 +3269,16 @@ stock CallRoundIsOver() {
 				// if (fRoundExperienceBonus > 0.0) {
 				// 	PrintToChatAll("%t", "living survivors experience bonus", orange, blue, orange, white, blue, fExperienceBonus * 100.0, white, pct, orange);
 				// }
+				ClearArray(damageOfSpecialInfected);
+				ClearArray(damageOfWitch);
+				ClearArray(damageOfSpecialCommon);
+				ClearArray(damageOfCommonInfected);
 				for (int i = 1; i <= MaxClients; i++) {
 					if (IsLegitimateClient(i)) {
 						ClearArray(WitchDamage[i]);
 						ClearArray(InfectedHealth[i]);
 						ClearArray(SpecialCommon[i]);
+						ClearArray(CommonInfected[i]);
 						ImmuneToAllDamage[i] = false;
 						iThreatLevel[i] = 0;
 						bIsInCombat[i] = false;
@@ -3459,14 +3545,6 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 				}
 			}
 		}
-		/*
-		CloseHandle(Keys);
-		CloseHandle(Values);
-		CloseHandle(Section);*/
-		// We only attempt connection to the database in the instance that there are no open connections.
-		//if (hDatabase == INVALID_HANDLE) {
-		//	MySQL_Init();
-		//}
 	}
 	if (StrEqual(configname, CONFIG_EVENTS)) SubmitEventHooks(1);
 	ReadyUp_NtvGetHeader();
@@ -3486,6 +3564,7 @@ public Action Timer_PrecacheReset(Handle timer) {
 	ServerCommand("changelevel %s", cur);
 	return Plugin_Stop;
 }
+
 /*
 	These specific variables can be called the same way, every time, so we declare them globally.
 	These are all from the config.cfg (main config file)
@@ -3495,6 +3574,7 @@ stock LoadMainConfig() {
 	GetConfigValue(sServerDifficulty, sizeof(sServerDifficulty), "server difficulty?");
 	CheckDifficulty();
 	GetConfigValue(sDeleteBotFlags, sizeof(sDeleteBotFlags), "delete bot flags?");
+
 	iClientTypeToDisplayOnKill			= GetConfigValueInt("infected kill messages to display?", 0);
 	fProficiencyExperienceMultiplier 	= GetConfigValueFloat("proficiency requirement multiplier?");
 	fProficiencyExperienceEarned 		= GetConfigValueFloat("experience multiplier proficiency?");
@@ -3605,9 +3685,6 @@ stock LoadMainConfig() {
 	fRatingMultCommons					= GetConfigValueFloat("rating multiplier commons?");
 	fRatingMultTank						= GetConfigValueFloat("rating multiplier tank?");
 	fRatingMultWitch					= GetConfigValueFloat("rating multiplier witch?");
-	fRatingMultTanking					= GetConfigValueFloat("rating multiplier tanking?", 0.5);
-	fRatingMultBuffing					= GetConfigValueFloat("rating multiplier buffing?", 0.1);
-	fRatingMultHealing					= GetConfigValueFloat("rating multiplier healing?", 0.1);
 	fTeamworkExperience					= GetConfigValueInt("maximum teamwork experience?") * 1.0;
 	fItemMultiplierLuck					= GetConfigValueFloat("buy item luck multiplier?");
 	fItemMultiplierTeam					= GetConfigValueInt("buy teammate item multiplier?") * 1.0;
@@ -3625,12 +3702,12 @@ stock LoadMainConfig() {
 	iMaxLevelBots						= GetConfigValueInt("max level bots?", -1);
 	iExperienceStart					= GetConfigValueInt("experience start?");
 	fExperienceMultiplier				= GetConfigValueFloat("requirement multiplier?");
+	fExperienceMultiplierHardcore		= GetConfigValueFloat("requirement multiplier hardcore?");
 	GetConfigValue(sBotTeam, sizeof(sBotTeam), "survivor team?");
 	iActionBarSlots						= GetConfigValueInt("action bar slots?");
 	iNumAugments						= GetConfigValueInt("augment slots?", 3);
 	GetConfigValue(MenuCommand, sizeof(MenuCommand), "rpg menu command?");
 	ReplaceString(MenuCommand, sizeof(MenuCommand), ",", " or ", true);
-	HostNameTime						= GetConfigValueInt("display server name time?");
 	DoomSUrvivorsRequired				= GetConfigValueInt("doom survivors ignored?");
 	DoomKillTimer						= GetConfigValueInt("doom kill timer?");
 	fVersusTankNotice					= GetConfigValueFloat("versus tank notice?");
@@ -3646,7 +3723,6 @@ stock LoadMainConfig() {
 	fWitchHealthMult					= GetConfigValueFloat("level witch multiplier?");
 	iCommonBaseHealth					= GetConfigValueInt("common base health?");
 	fCommonLevelHealthMult				= GetConfigValueFloat("common level health?");
-	iRoundStartWeakness					= GetConfigValueInt("weakness on round start?");
 	GroupMemberBonus					= GetConfigValueFloat("steamgroup bonus?");
 	RaidLevMult							= GetConfigValueInt("raid level multiplier?");
 	iIgnoredRating						= GetConfigValueInt("rating to ignore?");
@@ -3773,7 +3849,10 @@ stock LoadMainConfig() {
 	iAugmentsAffectCooldowns			= GetConfigValueInt("augment affects cooldowns?", 1);
 	fIncapHealthStartPercentage			= GetConfigValueFloat("incap health start?", 0.5);
 	iStuckDelayTime						= GetConfigValueInt("seconds between stuck command use?", 120);
-	fTankingContribution				= GetConfigValueFloat("tanking contribution?", 0.5);
+	fTankingContribution				= GetConfigValueFloat("tanking contribution?", 1.0);
+	fDamageContribution					= GetConfigValueFloat("damage contribution?", 0.2);
+	fHealingContribution				= GetConfigValueFloat("healing contribution?", 0.15);
+	fBuffingContribution				= GetConfigValueFloat("buffing contribution?", 0.3);
 	iExperimentalMode					= GetConfigValueInt("invert walk and sprint?", 1);
 	fAugmentLevelDifferenceForStolen	= GetConfigValueFloat("equip stolen augment average range?", 0.1);
 	fUpdateClientInterval				= GetConfigValueFloat("update client data tickrate?", 0.5);
@@ -3783,6 +3862,9 @@ stock LoadMainConfig() {
 	iAugmentCategoryUpgradeCost			= GetConfigValueInt("augment category upgrade cost?", 50);
 	iAugmentActivatorUpgradeCost		= GetConfigValueInt("augment activator upgrade cost?", 50);
 	iAugmentTargetUpgradeCost			= GetConfigValueInt("augment target upgrade cost?", 50);
+	fPainPillsHealAmount				= GetConfigValueFloat("on use pain killers heal?", 0.3);
+	iNumAdvertisements					= GetConfigValueInt("number of advertisements?", 0);
+	HostNameTime						= GetConfigValueInt("delay in seconds between advertisements?", 180);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
@@ -3792,6 +3874,7 @@ stock LoadMainConfig() {
 	GetConfigValue(defaultLoadoutWeaponPrimary, sizeof(defaultLoadoutWeaponPrimary), "default loadout primary weapon?");
 	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
 	GetConfigValue(serverKey, sizeof(serverKey), "server steam key?");
+
 	LogMessage("Main Config Loaded.");
 }
 
@@ -3803,6 +3886,7 @@ public Action CMD_AutoDismantle(client, args) {
 		PrintToChat(client, "\x04!autodismantle clear/perfect/major/minor - \x03Deletes \x04all/perfect/major/minor augments \x03not equipped or favourited.");
 		return Plugin_Handled;
 	}
+
 	char arg[64];
 	GetCmdArg(1, arg, 64);
 	char key[64];
@@ -3821,6 +3905,7 @@ public Action CMD_AutoDismantle(client, args) {
 		for (int i = size-1; i >= 0; i--) {
 			isEquipped = GetArrayCell(myAugmentInfo[client], i, 3);
 			if (isEquipped != -1) continue;
+
 			RemoveFromArray(myAugmentIDCodes[client], i);
 			RemoveFromArray(myAugmentCategories[client], i);
 			RemoveFromArray(myAugmentOwners[client], i);
@@ -3828,6 +3913,7 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentInfo[client], i);
 			RemoveFromArray(myAugmentTargetEffects[client], i);
 			RemoveFromArray(myAugmentActivatorEffects[client], i);
+			RemoveFromArray(myAugmentSavedProfiles[client], i);
 			refunded++;
 		}
 		PrintToChat(client, "\x04Deleted \x03all \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
@@ -3854,6 +3940,7 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentOwners[client], i);
 			RemoveFromArray(myAugmentOwnersName[client], i);
 			RemoveFromArray(myAugmentInfo[client], i);
+			RemoveFromArray(myAugmentSavedProfiles[client], i);
 			refunded++;
 		}
 		PrintToChat(client, "\x04Deleted all \x03Minor \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
@@ -3880,6 +3967,7 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentOwners[client], i);
 			RemoveFromArray(myAugmentOwnersName[client], i);
 			RemoveFromArray(myAugmentInfo[client], i);
+			RemoveFromArray(myAugmentSavedProfiles[client], i);
 			refunded++;
 		}
 		PrintToChat(client, "\x04Deleted all \x03Major \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
@@ -3905,6 +3993,7 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentOwners[client], i);
 			RemoveFromArray(myAugmentOwnersName[client], i);
 			RemoveFromArray(myAugmentInfo[client], i);
+			RemoveFromArray(myAugmentSavedProfiles[client], i);
 			refunded++;
 		}
 		PrintToChat(client, "\x04Deleted all \x03Perfect \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
@@ -3965,7 +4054,7 @@ stock RollLoot(client, enemyClient) {
 	}
 }
 
-stock void PickupAugment(int client, char[] ownerSteamID = "none", char[] ownerName = "none") {
+stock void PickupAugment(int client, int owner, char[] ownerSteamID = "none", char[] ownerName = "none", int pos) {
 	int size = GetArraySize(myAugmentIDCodes[client]);
 	ResizeArray(myAugmentIDCodes[client], size+1);
 	ResizeArray(myAugmentCategories[client], size+1);
@@ -3974,6 +4063,10 @@ stock void PickupAugment(int client, char[] ownerSteamID = "none", char[] ownerN
 	ResizeArray(myAugmentInfo[client], size+1);
 	ResizeArray(myAugmentActivatorEffects[client], size+1);
 	ResizeArray(myAugmentTargetEffects[client], size+1);
+	ResizeArray(myAugmentSavedProfiles[client], size+1);
+	char nosaved[64];
+	Format(nosaved, sizeof(nosaved), "none");
+	SetArrayString(myAugmentSavedProfiles[client], size, nosaved);
 
 	// [0] - category score roll
 	// [1] - category position
@@ -3982,13 +4075,13 @@ stock void PickupAugment(int client, char[] ownerSteamID = "none", char[] ownerN
 	// [4] - target score roll
 	// [5] = target position
 	// [6] = handicap score bonus (used for upgrading later)
-	int pos = GetArraySize(playerLootOnGround[client])-1;
+	//int pos = GetArraySize(playerLootOnGround[owner])-1;
 	char sItemCode[64];
-	GetArrayString(playerLootOnGroundId[client], pos, sItemCode, sizeof(sItemCode));
+	GetArrayString(playerLootOnGroundId[owner], pos, sItemCode, sizeof(sItemCode));
 	SetArrayString(myAugmentIDCodes[client], size, sItemCode);
 
 	char buffedCategory[64];
-	GetArrayString(myLootDropCategoriesAllowed[client], GetArrayCell(playerLootOnGround[client], pos, 1), buffedCategory, 64);
+	GetArrayString(myLootDropCategoriesAllowed[owner], GetArrayCell(playerLootOnGround[owner], pos, 1), buffedCategory, 64);
 
 	char menuText[64];
 	int len = GetAugmentTranslation(client, buffedCategory, menuText);
@@ -3996,7 +4089,7 @@ stock void PickupAugment(int client, char[] ownerSteamID = "none", char[] ownerN
 
 	SetArrayString(myAugmentCategories[client], size, buffedCategory);
 
-	int augmentItemScore = GetArrayCell(playerLootOnGround[client], pos);
+	int augmentItemScore = GetArrayCell(playerLootOnGround[owner], pos);
 	char key[64];
 	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 	SetArrayString(myAugmentOwners[client], size, ownerSteamID);
@@ -4012,18 +4105,18 @@ stock void PickupAugment(int client, char[] ownerSteamID = "none", char[] ownerN
 	char activatorEffects[64];
 	char targetEffects[64];
 
-	int maxpossibleroll = GetArrayCell(playerLootOnGround[client], pos, 6);
+	int maxpossibleroll = GetArrayCell(playerLootOnGround[owner], pos, 6);
 	SetArrayCell(myAugmentInfo[client], size, maxpossibleroll, 6);
 
 	int maxPossibleActivatorScore = 0;
 	int maxPossibleTargetScore = 0;
 
-	int apos = GetArrayCell(playerLootOnGround[client], pos, 3);
+	int apos = GetArrayCell(playerLootOnGround[owner], pos, 3);
 	if (apos >= 0) {
-		GetArrayString(myLootDropActivatorEffectsAllowed[client], apos, activatorEffects, 64);
+		GetArrayString(myLootDropActivatorEffectsAllowed[owner], apos, activatorEffects, 64);
 		SetArrayString(myAugmentActivatorEffects[client], size, activatorEffects);
-		augmentActivatorRating = GetArrayCell(playerLootOnGround[client], pos, 2);
-		maxPossibleActivatorScore = GetArrayCell(playerLootOnGround[client], pos, 7);
+		augmentActivatorRating = GetArrayCell(playerLootOnGround[owner], pos, 2);
+		maxPossibleActivatorScore = GetArrayCell(playerLootOnGround[owner], pos, 7);
 		SetArrayCell(myAugmentInfo[client], size, maxPossibleActivatorScore, 7);
 	}
 	else {
@@ -4034,12 +4127,12 @@ stock void PickupAugment(int client, char[] ownerSteamID = "none", char[] ownerN
 	}
 	SetArrayCell(myAugmentInfo[client], size, augmentActivatorRating, 4);
 
-	int tpos = GetArrayCell(playerLootOnGround[client], pos, 5);
+	int tpos = GetArrayCell(playerLootOnGround[owner], pos, 5);
 	if (tpos >= 0) {
-		GetArrayString(myLootDropTargetEffectsAllowed[client], tpos, targetEffects, 64);
+		GetArrayString(myLootDropTargetEffectsAllowed[owner], tpos, targetEffects, 64);
 		SetArrayString(myAugmentTargetEffects[client], size, targetEffects);
-		augmentTargetRating = GetArrayCell(playerLootOnGround[client], pos, 4);
-		maxPossibleTargetScore = GetArrayCell(playerLootOnGround[client], pos, 8);
+		augmentTargetRating = GetArrayCell(playerLootOnGround[owner], pos, 4);
+		maxPossibleTargetScore = GetArrayCell(playerLootOnGround[owner], pos, 8);
 		SetArrayCell(myAugmentInfo[client], size, maxPossibleTargetScore, 8);
 	}
 	else {
@@ -4067,7 +4160,7 @@ stock void PickupAugment(int client, char[] ownerSteamID = "none", char[] ownerN
 	GetClientName(client, name, sizeof(name));
 	char text[512];
 	Format(text, sizeof(text), "{B}%s {N}{OBTAINTYPE} a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", name, (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
-	if (StrContains(ownerSteamID, key, false) != -1) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "obtained", true);
+	if (StrContains(ownerSteamID, key, false) != -1) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "found", true);
 	else {
 		ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "stole", true);
 		Format(text, sizeof(text), "%s {N}from {O}%s", text, ownerName);
@@ -4183,7 +4276,8 @@ stock int GenerateAugment(int client, int spawnTarget) {
 		SetArrayCell(playerLootOnGround[client], size, -1, 4);
 		SetArrayCell(playerLootOnGround[client], size, -1, 5);
 	}
-	CreateItemDrop(client, spawnTarget);
+	SetArrayCell(playerLootOnGround[client], size, size, 9);
+	CreateItemDrop(client, spawnTarget, size);
 	return 1;
 }
 
@@ -4283,12 +4377,16 @@ stock DeleteAndCreateNewData(client, bool IsBot = false) {
 	if (!IsBot) {
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+
 		Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` = '%s';", TheDBPrefix, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
+
 		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `steam_id` = '%s';", TheDBPrefix, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
+
 		ResetData(client);
 		CreateNewPlayerEx(client);
+
 		PrintToChat(client, "data erased, new data created.");	// not bothering with a translation here, since it's a debugging command.
 	}
 	else {
@@ -4297,8 +4395,8 @@ stock DeleteAndCreateNewData(client, bool IsBot = false) {
 				if (IsLegitimateClient(i) && IsFakeClient(i)) KickClient(i);
 			}
 			Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE '%s%s%s';", TheDBPrefix, pct, sBotTeam, pct);
-			//Format(tquery, sizeof(tquery), "DELETE FROM `%s` WHERE `steam_id` LIKE 'STEAM';", TheDBPrefix);
 			SQL_TQuery(hDatabase, QueryResults, tquery, client);
+
 			PrintToChatAll("%t", "bot data deleted", orange, blue);
 		}
 	}
@@ -4307,6 +4405,7 @@ stock DeleteAndCreateNewData(client, bool IsBot = false) {
 public Action CMD_DirectorTalentToggle(client, args) {
 	char thetext[64];
 	GetConfigValue(thetext, sizeof(thetext), "director talent flags?");
+
 	if (HasCommandAccess(client, thetext)) {
 		if (b_IsDirectorTalents[client]) {
 			b_IsDirectorTalents[client]			= false;
@@ -4323,6 +4422,7 @@ public Action CMD_DirectorTalentToggle(client, args) {
 
 stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Handle Section, size, last, bool setConfigArraysDebugger = false) {
 	bool configIsForTalents = (IsTalentConfig(Config) || StrEqual(Config, CONFIG_SURVIVORTALENTS));
+
 	char text[64];
 	if (configIsForTalents) TalentKey		=					CreateArray(12);
 	else					TalentKey		=					CreateArray(16);
@@ -4330,12 +4430,12 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	else					TalentValue		=					CreateArray(16);
 	TalentSection = CreateArray(16);
 	if (configIsForTalents) TalentTriggers	= CreateArray(8);
+
 	char key[64];
 	char value[64];
 	int a_Size = GetArraySize(Keys);
 	//setConfigArraysDebugger = true;
 	for (int i = 0; i < a_Size; i++) {
-
 		GetArrayString(Keys, i, key, sizeof(key));
 		GetArrayString(Values, i, value, sizeof(value));
 		PushArrayString(TalentKey, key);

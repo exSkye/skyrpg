@@ -2,7 +2,7 @@
 #pragma newdecls required
 */
 
-stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bool bIsPanel = false, bool ShowLayerEligibility = false) {	// 0 is legacy type that appeared on all menus. 0 - Main Menu | 1 - Upgrades | 2 - Points
+stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bool bIsPanel = false, bool ShowLayerEligibility = false, int typeOfDataToShow = 0) {	// 0 is legacy type that appeared on all menus. 0 - Main Menu | 1 - Upgrades | 2 - Points
 
 	char text[512];
 	int CurRPGMode = iRPGMode;
@@ -30,18 +30,22 @@ stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bo
 
 			int TotalPoints = TotalPointsAssigned(client);
 			char PlayerLevelText[256];
-			MenuExperienceBar(client, _, _, PlayerLevelText, sizeof(PlayerLevelText));
-			Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted, scrap, avgAugLvl);
-			if (SkyLevel[client] > 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Prestige Level Text", client, SkyLevel[client], iSkyLevelMax, PlayerLevelText);
-			if (iExperienceLevelCap > 0) {
-				if (PlayerLevel[client] < iExperienceLevelCap) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "XP Level Cap", client, PlayerLevelText, iExperienceLevelCap);
-				else Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "XP Level Cap Reached", client, PlayerLevelText, iExperienceLevelCap);
+			if (typeOfDataToShow == 0) {
+				MenuExperienceBar(client, _, _, PlayerLevelText, sizeof(PlayerLevelText));
+				if (typeOfDataToShow == 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted, scrap, avgAugLvl);
+				else if (typeOfDataToShow == 1) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text minor", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted, scrap, avgAugLvl);
+				if (SkyLevel[client] > 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Prestige Level Text", client, SkyLevel[client], iSkyLevelMax, PlayerLevelText);
+				if (iExperienceLevelCap > 0) {
+					if (PlayerLevel[client] < iExperienceLevelCap) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "XP Level Cap", client, PlayerLevelText, iExperienceLevelCap);
+					else Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "XP Level Cap Reached", client, PlayerLevelText, iExperienceLevelCap);
+				}
 			}
 			int maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
 			if (CheckRPGMode != 0) {
 				//decl String:upgradeCap[64];
 				//(iMaxServerUpgrades < 1) ? Format(upgradeCap, sizeof(upgradeCap), "N/A") : Format(upgradeCap, sizeof(upgradeCap), "%d", iMaxServerUpgrades);
-				Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
+				if (typeOfDataToShow == 0) Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
+				else if (typeOfDataToShow == 1) Format(text, sizeof(text), "%T", "RPG Header minor", client, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
 				if (ShowLayerEligibility) {
 					if (bIsLayerEligible) {
 						int strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true);
@@ -220,8 +224,11 @@ stock LoadProfileEx_Confirm(client, char[] key, char[] menuFacingProfileName = "
 		else PrintToChatAll("%t", "loading profile command", blue, myName, white, blue, menuFacingProfileName, white, green, key, white);
 	}
 
+	// track players who are loading a profile.
+	bIsLoadingCustomProfile[client] = true;
 	//b_IsLoading[client] = false;
 	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `total upgrades` FROM `%s_profiles` WHERE (`steam_id` = '%s');", TheDBPrefix, key);
+	Format(customProfileKey[client], sizeof(customProfileKey[]), "%s", key);
 	// maybe set a value equal to the users steamid integer only, so if steam:0:1:23456, set the value of "client" equal to 23456 and then set the client equal to whatever client's steamid contains 23456?
 	//LogMessage("Loading %N data: %s", client, tquery);
 	SQL_TQuery(hDatabase, QueryResults_LoadEx, tquery, client);
@@ -350,7 +357,8 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 	char skey[64];
 
 	if (!IsLegitimateClient(client)) return;
-	int dbsize = GetArraySize(a_Database_Talents);
+	int dbsize = GetArraySize(a_Menu_Talents);
+	if (GetArraySize(a_Database_PlayerTalents[client]) != dbsize) ResizeArray(a_Database_PlayerTalents[client], dbsize);
 	while (SQL_FetchRow(hndl)) {
 		SQL_FetchString(hndl, 0, key, sizeof(key));
 		if (LoadPos[client] >= 0 && LoadPos[client] < dbsize) {
@@ -384,6 +392,7 @@ public void QueryResults_LoadTalentTreesEx(Handle owner, Handle hndl, const char
 				LoadPos[client] = -2;
 				SQL_TQuery(hDatabase, QueryResults_LoadTalentTreesEx, tquery, client);
 				return;*/
+
 				int ActionSlots = iActionBarSlots;
 				Format(tquery, sizeof(tquery), "SELECT `steam_id`");
 				for (int i = 0; i < ActionSlots; i++) {
@@ -1798,6 +1807,7 @@ public DisplayTheLeaderboards_Init (Handle topmenu, MenuAction action, client, p
 }
 
 public void SpawnLoadoutEditor(client) {
+	if (GetArraySize(hWeaponList[client]) != 2) ResizeArray(hWeaponList[client], 2);
 
 	Handle menu		= CreateMenu(SpawnLoadoutEditorHandle);
 
@@ -2443,6 +2453,73 @@ stock CheckRequestStatus(client, bool CancelRequest = false) {
 	return -1;
 }
 
+stock void AddProfilesToAugments(int client, char[] profileName, char[] fullProfileName) {
+	for (int i = 0; i < iNumAugments; i++) {
+		char currentlyEquippedAugment[64];
+		GetArrayString(equippedAugmentsIDCodes[client], i, currentlyEquippedAugment, sizeof(currentlyEquippedAugment));
+
+		int augmentPos = FindAugmentPosByIDCode(client, currentlyEquippedAugment);
+		if (augmentPos < 0) continue;	// this augment doesn't exist anymore.
+
+		char profiles[512];
+		GetArrayString(myAugmentSavedProfiles[client], augmentPos, profiles, sizeof(profiles));
+		// don't add the profile to the augment if it's already stored on the augment.
+		if (StrContains(profiles, profileName, false) != -1) continue;
+		if (StrEqual(profiles, "none")) {
+			Format(profiles, sizeof(profiles), "%s", fullProfileName);
+		}
+		else Format(profiles, sizeof(profiles), "%s\n%s", profiles, fullProfileName);
+		SetArrayString(myAugmentSavedProfiles[client], augmentPos, profiles);
+	}
+}
+
+stock void RemoveProfileFromAugments(int client, char[] profileName, bool skipEquippedAugments = false, int specificAugmentOnly = -1) {
+	int size = GetArraySize(myAugmentSavedProfiles[client]);
+	char newProfiles[512];
+	for (int i = (specificAugmentOnly == -1) ? 0 : specificAugmentOnly; i < size; i++) {
+		int isEquipped = GetArrayCell(myAugmentInfo[client], i, 3);
+		// This switch is so when a new profile is saved, I can call:
+		// AddProfilesToAugments(client, newProfileName);
+		// and then call
+		// RemoveProfileFromAugments(client, newProfileName, true);
+		// afterwards, to quickly remove the newly-saved profile from augments that are not attached to its lists, if it's an overwrite, if those augments were previously saved to that profile.
+		if (skipEquippedAugments && isEquipped >= 0) continue;
+
+		char profiles[512];
+		GetArrayString(myAugmentSavedProfiles[client], i, profiles, sizeof(profiles));
+		
+		int ExplodeCount = GetDelimiterCount(profiles, "\n") + 1;
+		if (ExplodeCount == 1) {
+			if (StrContains(profiles, profileName, false) == -1) Format(newProfiles, sizeof(newProfiles), "%s", profiles);
+			else {
+				Format(newProfiles, sizeof(newProfiles), "none");
+				// augments not tied to profiles are unlocked for autodismantle if they are not equipped.
+				if (isEquipped >= 0) continue;
+
+				char augmentID[64];
+				GetArrayString(myAugmentIDCodes[client], i, augmentID, sizeof(augmentID));
+				
+				char sql[512];
+				Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '-1' WHERE (`itemid` = '%s');", TheDBPrefix, augmentID);
+ 				SQL_TQuery(hDatabase, QueryResults, sql, client);
+			}
+		}
+		else {
+			char[][] profileNames = new char[ExplodeCount][64];
+			ExplodeString(profiles, "\n", profileNames, ExplodeCount, 64);
+			int count = 0;
+			for (int pos = 0; pos < ExplodeCount; pos++) {
+				if (StrContains(profileNames[pos], profileName, false) != -1) continue;
+				if (count > 0) Format(newProfiles, sizeof(newProfiles), "%s\n%s", newProfiles, profileNames[pos]);
+				else Format(newProfiles, sizeof(newProfiles), "%s", profileNames[pos]);
+				count++;
+			}
+		}
+		SetArrayString(myAugmentSavedProfiles[client], i, newProfiles);
+		if (specificAugmentOnly >= 0) break;
+	}
+}
+
 stock DeleteProfile(client, bool DisplayToClient = true) {
 
 	if (strlen(LoadoutName[client]) < 4) return;
@@ -2455,8 +2532,8 @@ stock DeleteProfile(client, bool DisplayToClient = true) {
 	if (!StrEqual(serverKey, "-1")) Format(t_Loadout, sizeof(t_Loadout), "%s%s", serverKey, t_Loadout);
 	Format(t_Loadout, sizeof(t_Loadout), "%s+%s", t_Loadout, LoadoutName[client]);
 	Format(tquery, sizeof(tquery), "DELETE FROM `%s_profiles` WHERE `steam_id` LIKE '%s%s' AND `steam_id` LIKE '%s%s';", TheDBPrefix, t_Loadout, pct, pct, pct);
-	//PrintToChat(client, tquery);
 	SQL_TQuery(hDatabase, QueryResults, tquery, client);
+	RemoveProfileFromAugments(client, LoadoutName[client]);
 	if (DisplayToClient) {
 
 		PrintToChat(client, "%T", "loadout deleted", client, orange, green, LoadoutName[client]);
@@ -2547,9 +2624,16 @@ stock SaveProfile(client, SaveType = 0) {	// 1 insert a new save, 2 overwrite an
 		if (SaveType == 1) PrintToChat(client, "%T", "new save", client, orange, green, LoadoutName[client]);
 		else PrintToChat(client, "%T", "update save", client, orange, green, LoadoutName[client]);
 
-		if (StrContains(LoadoutName[client], "Lv.", false) == -1) Format(key, sizeof(key), "%s%s Lv.%d+%s", key, LoadoutName[client], TotalPointsAssigned(client), PROFILE_VERSION);
+		int tpa = TotalPointsAssigned(client);
+		if (StrContains(LoadoutName[client], "Lv.", false) == -1) Format(key, sizeof(key), "%s%s Lv.%d+%s", key, LoadoutName[client], tpa, PROFILE_VERSION);
 		else Format(key, sizeof(key), "%s%s+%s", key, LoadoutName[client], PROFILE_VERSION);
 		SaveProfileEx(client, key, SaveType);
+
+		char LoadoutNameFull[512];
+		Format(LoadoutNameFull, sizeof(LoadoutNameFull), "%s Lv.%d", LoadoutName[client], tpa);
+
+		AddProfilesToAugments(client, LoadoutName[client], LoadoutNameFull);
+		RemoveProfileFromAugments(client, LoadoutName[client], true);
 	}
 	else {
 
@@ -2592,8 +2676,6 @@ stock SaveProfileEx(client, char[] key, SaveType) {
 
 	//if (PlayerLevel[client] < 1) return;		// Clearly, their data hasn't loaded, so we don't save.
 	Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `total upgrades` = '%d' WHERE `steam_id` = '%s';", TheDBPrefix, PlayerLevel[client] - UpgradesAvailable[client] - FreeUpgrades[client], key);
-	//PrintToChat(client, tquery);
-	//LogMessage(tquery);
 	SQL_TQuery(hDatabase, QueryResults, tquery, client);
 
 	Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `primarywep` = '%s', `secondwep` = '%s' WHERE `steam_id` = '%s';", TheDBPrefix, sPrimary, sSecondary, key);
@@ -2622,6 +2704,13 @@ stock SaveProfileEx(client, char[] key, SaveType) {
 	}
 	Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `disab` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, isDisab, key);
 	SQL_TQuery(hDatabase, QueryResults, tquery);
+
+	for (int i = 0; i < iNumAugments; i++) {
+		char currentIDCode[64];
+		GetArrayString(equippedAugmentsIDCodes[client], i, currentIDCode, sizeof(currentIDCode));
+		Format(tquery, sizeof(tquery), "UPDATE `%s_profiles` SET `augment%d` = '%s' WHERE (`steam_id` = '%s');", TheDBPrefix, i+1, currentIDCode, key);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+	}
 }
 
 stock ReadProfiles(client, char[] target = "none") {
@@ -2654,7 +2743,6 @@ stock ReadProfiles(client, char[] target = "none") {
 	//decl String:tqueryE[512];
 	//SQL_EscapeString(Handle:hDatabase, tquery, tqueryE, sizeof(tqueryE));
 	// maybe set a value equal to the users steamid integer only, so if steam:0:1:23456, set the value of "client" equal to 23456 and then set the client equal to whatever client's steamid contains 23456?
-	//LogMessage("Loading %N data: %s", client, tquery);
 	ClearArray(PlayerProfiles[owner]);
 	if (!StrEqual(target, "all", false)) SQL_TQuery(hDatabase, ReadProfiles_Generate, tquery, owner);
 	else SQL_TQuery(hDatabase, ReadProfiles_GenerateAll, tquery, owner);
@@ -2715,7 +2803,7 @@ stock BuildSubMenu(client, char[] MenuName, char[] ConfigName, char[] ReturnMenu
 	// these keys/values/section names match their talentmenu.cfg notations.
 	int requiredTalentsRequiredToUnlock = 0;
 	int requiredCopy = 0;
-	bool isClientSurvivor = (myCurrentTeam[client] == TEAM_SURVIVOR) ? true : false;
+	bool isClientSurvivor = (myCurrentTeam[client] == TEAM_SURVIVOR || myCurrentTeam[client] == TEAM_SPECTATOR) ? true : false;
 	bool isClientInfected = (myCurrentTeam[client] == TEAM_INFECTED) ? true : false;
 	for (int i = 0; i < size; i++) {
 		MenuValues[client]			= GetArrayCell(a_Menu_Talents, i, 1);
@@ -2893,7 +2981,7 @@ public BuildSubMenuHandle(Handle menu, MenuAction action, client, slot)
 
 		//if (StrEqual(ConfigName, CONFIG_MENUSURVIVOR)) size			=	GetArraySize(a_Menu_Talents_Survivor);
 		//else if (StrEqual(ConfigName, CONFIG_MENUINFECTED)) size	=	GetArraySize(a_Menu_Talents_Infected);
-		bool isClientSurvivor = (myCurrentTeam[client] == TEAM_SURVIVOR) ? true : false;
+		bool isClientSurvivor = (myCurrentTeam[client] == TEAM_SURVIVOR || myCurrentTeam[client] == TEAM_SPECTATOR) ? true : false;
 		bool isClientInfected = (myCurrentTeam[client] == TEAM_INFECTED) ? true : false;
 		for (int i = 0; i < size; i++) {
 			MenuValues[client]				= GetArrayCell(a_Menu_Talents, i, 1);
@@ -3143,7 +3231,7 @@ public Handle TalentInfoScreen(client) {
 	int IsSpecialAmmo = GetArrayCell(PurchaseValues[client], TALENT_IS_SPELL);
 
 	Handle menu = CreatePanel();
-	BuildMenuTitle(client, menu, _, 0, true, true);
+	BuildMenuTitle(client, menu, _, 0, true, true, 1);
 
 	char TalentName[64];
 	Format(TalentName, sizeof(TalentName), "%s", PurchaseTalentName[client]);
@@ -3178,13 +3266,12 @@ public Handle TalentInfoScreen(client) {
 	GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation), true);
 	Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", TalentNameTranslation, client);
 	char text[1024];
-	if (AbilityTalent != 1) {
-
-		if (FreeUpgrades[client] < 0) FreeUpgrades[client] = 0;
-		Format(text, sizeof(text), "%T", "Talent Upgrade Title", client, TalentName_Temp, TalentPointAmount);
-	}
-	else Format(text, sizeof(text), "%s", TalentName_Temp);
-	DrawPanelText(menu, text);
+	if (FreeUpgrades[client] < 0) FreeUpgrades[client] = 0;
+	// if (AbilityTalent != 1) {
+	// 	Format(text, sizeof(text), "%T", "Talent Upgrade Title", client, TalentName_Temp, TalentPointAmount);
+	// }
+	// else Format(text, sizeof(text), "%s", TalentName_Temp);
+	// DrawPanelText(menu, text);
 
 	char governingAttribute[64];
 	GetGoverningAttribute(client, TalentName, governingAttribute, sizeof(governingAttribute), menuPos);
@@ -3863,46 +3950,50 @@ public UnequipAugment_Compare_Init(Handle topmenu, MenuAction action, client, pa
 
 stock bool UnequipAugment_Confirm(client, char[] augmentID) {
 	int size = GetArraySize(myAugmentIDCodes[client]);
-	char text[64];
+	char text[512];
 	for (int i = 0; i < size; i++) {
-		GetArrayString(myAugmentIDCodes[client], i, text, 64);
+		GetArrayString(myAugmentIDCodes[client], i, text, sizeof(text));
 		if (!StrEqual(text, augmentID)) continue;
-		SetArrayCell(myAugmentInfo[client], i, -1, 3);
+		GetArrayString(myAugmentSavedProfiles[client], i, text, sizeof(text));
+		bool isSaved = (StrEqual(text, "none")) ? true : false;
+		if (!isSaved) SetArrayCell(myAugmentInfo[client], i, -1, 3);
+		else SetArrayCell(myAugmentInfo[client], i, -3, 3);
 
 		char sql[512];
-		Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '-1' WHERE (`itemid` = '%s');", TheDBPrefix, augmentID);
- 		SQL_TQuery(hDatabase, QueryResults, sql);
+		Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, ((!isSaved) ? -1 : -3), augmentID);
+ 		SQL_TQuery(hDatabase, QueryResults, sql, client);
 
 		return true;
 	}
 	return false;
 }
 
-stock EquipAugment_Confirm(int client, int pos) {
+stock EquipAugment_Confirm(int client, int pos, int augmentInspectionOverride = -1) {
+	int augmentPos = (augmentInspectionOverride == -1) ? AugmentClientIsInspecting[client] : augmentInspectionOverride;
 	// there's a lot of augment data that needs to be stored in the equipped augment arrays.
 	char baseMenuText[64];
 	char activatorText[64];
 	char targetText[64];
-	GetArrayString(myAugmentCategories[client], AugmentClientIsInspecting[client], baseMenuText, 64);
-	GetArrayString(myAugmentActivatorEffects[client], AugmentClientIsInspecting[client], activatorText, 64);
-	GetArrayString(myAugmentTargetEffects[client], AugmentClientIsInspecting[client], targetText, 64);
-	int itemRating = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client]);
-	int activatorRating = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 4);
-	int targetRating = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 5);
+	GetArrayString(myAugmentCategories[client], augmentPos, baseMenuText, 64);
+	GetArrayString(myAugmentActivatorEffects[client], augmentPos, activatorText, 64);
+	GetArrayString(myAugmentTargetEffects[client], augmentPos, targetText, 64);
+	int itemRating = GetArrayCell(myAugmentInfo[client], augmentPos);
+	int activatorRating = GetArrayCell(myAugmentInfo[client], augmentPos, 4);
+	int targetRating = GetArrayCell(myAugmentInfo[client], augmentPos, 5);
 	//int isEquipped = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 3);
-	int itemCost = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], 1);
-	int iItemLevel = GetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client]);
+	int itemCost = GetArrayCell(myAugmentInfo[client], augmentPos, 1);
+	int iItemLevel = GetArrayCell(myAugmentInfo[client], augmentPos);
 
 
-	SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], pos, 3);
+	SetArrayCell(myAugmentInfo[client], augmentPos, pos, 3);
 	
 	char itemCode[64];
-	GetArrayString(myAugmentIDCodes[client], AugmentClientIsInspecting[client], itemCode, 64);
+	GetArrayString(myAugmentIDCodes[client], augmentPos, itemCode, 64);
 	SetArrayString(equippedAugmentsIDCodes[client], pos, itemCode);
 
 	char sql[512];
 	Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, pos, itemCode);
-	SQL_TQuery(hDatabase, QueryResults, sql);
+	SQL_TQuery(hDatabase, QueryResults, sql, client);
 
 	SetArrayCell(equippedAugments[client], pos, iItemLevel);
 	SetArrayCell(equippedAugments[client], pos, itemCost, 1);
@@ -3964,12 +4055,22 @@ public Handle Inspect_Augment(client, slot) {
 	char myAugLevelFormatted[10];
 	AddCommasToString(iThisAugmentLevel, myAugLevelFormatted, sizeof(myAugLevelFormatted));
 	Format(text, sizeof(text), "Augment Score: %s", myAugLevelFormatted);
+	
 	if (isNotOriginalOwner) {
 		// client is not the original owner of this augment.
 		Format(text, sizeof(text), "%s\nStolen From: %s", text, augmentOwnerName);
 	}
 	else Format(text, sizeof(text), "%s\nDiscovered By: You", text);
 	Format(text, sizeof(text), "%s\n \n", text);
+
+	char profilesThisAugmentIsSavedIn[512];
+	GetArrayString(myAugmentSavedProfiles[client], slot, profilesThisAugmentIsSavedIn, sizeof(profilesThisAugmentIsSavedIn));
+	if (StrEqual(profilesThisAugmentIsSavedIn, "none")) {
+		Format(text, sizeof(text), "%s\nThis augment is not saved to any profiles.", text);
+	}
+	else Format(text, sizeof(text), "%s\nSaved to:\n%s", text, profilesThisAugmentIsSavedIn);
+	Format(text, sizeof(text), "%s\n \n \n", text);
+
 	DrawPanelText(menu, text);
 	ClearArray(EquipAugmentPanel[client]);
 	int thisClientMaxAugmentLevel = (playerCurrentAugmentAverageLevel[client] > 0) ? playerCurrentAugmentAverageLevel[client] + RoundToCeil(playerCurrentAugmentAverageLevel[client] * fAugmentLevelDifferenceForStolen) : 0;
@@ -4020,19 +4121,24 @@ public Handle Inspect_Augment(client, slot) {
 		PushArrayString(EquipAugmentPanel[client], "upgrade augment");
 		DrawPanelItem(menu, text);
 		if (currentCategoryScoreRoll < maxCategoryScoreRoll) {
-			Format(text, sizeof(text), "%s: +%3.1f%s up to +%3.1f%s", augmentCategoryName, (currentCategoryScoreRoll * fAugmentRatingMultiplier) * 100.0, pct, (maxCategoryScoreRoll * fAugmentRatingMultiplier) * 100.0, pct);
+			Format(text, sizeof(text), "%s: +%3.1f%s -> +%3.1f%s", augmentCategoryName, (currentCategoryScoreRoll * fAugmentRatingMultiplier) * 100.0, pct, (maxCategoryScoreRoll * fAugmentRatingMultiplier) * 100.0, pct);
 			DrawPanelText(menu, text);
 		}
 		if (currentActivatorScoreRoll > 0 && currentActivatorScoreRoll < maxActivatorScoreRoll) {
-			Format(text, sizeof(text), "%s: +%3.1f%s up to +%3.1f%s", augmentActivatorName, (currentActivatorScoreRoll * fAugmentActivatorRatingMultiplier) * 100.0, pct, (maxActivatorScoreRoll * fAugmentActivatorRatingMultiplier) * 100.0, pct);
+			Format(text, sizeof(text), "%s: +%3.1f%s -> +%3.1f%s", augmentActivatorName, (currentActivatorScoreRoll * fAugmentActivatorRatingMultiplier) * 100.0, pct, (maxActivatorScoreRoll * fAugmentActivatorRatingMultiplier) * 100.0, pct);
 			DrawPanelText(menu, text);
 		}
 		if (currentTargetScoreRoll > 0 && currentTargetScoreRoll < maxTargetScoreRoll) {
-			Format(text, sizeof(text), "%s: +%3.1f%s up to +%3.1f%s", augmentTargetName, (currentTargetScoreRoll * fAugmentTargetRatingMultiplier) * 100.0, pct, (maxTargetScoreRoll * fAugmentTargetRatingMultiplier) * 100.0, pct);
+			Format(text, sizeof(text), "%s: +%3.1f%s -> +%3.1f%s", augmentTargetName, (currentTargetScoreRoll * fAugmentTargetRatingMultiplier) * 100.0, pct, (maxTargetScoreRoll * fAugmentTargetRatingMultiplier) * 100.0, pct);
 			DrawPanelText(menu, text);
 		}
+		Format(text, sizeof(text), "\n \n");
+		DrawPanelText(menu, text);
 	}
-	if (isEquipped < 0) {
+	char isSavedText[512];
+	GetArrayString(myAugmentSavedProfiles[client], AugmentClientIsInspecting[client], isSavedText, sizeof(isSavedText));
+	bool isSaved = (StrEqual(isSavedText, "none")) ? false : true;
+	if (isEquipped < 0 && !isSaved) {
 		if (isEquipped == -1) {
 			Format(text, sizeof(text), "%T", "lock augment", client);
 			PushArrayString(EquipAugmentPanel[client], "lock augment");
@@ -4062,6 +4168,10 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
 			return;
 		}
+		char text[512];
+		GetArrayString(myAugmentSavedProfiles[client], AugmentClientIsInspecting[client], text, sizeof(text));
+		bool isSaved = (StrEqual(text, "none")) ? false : true;
+		
 		GetArrayString(EquipAugmentPanel[client], param2-1, menuSelection, sizeof(menuSelection));
 		if (StrEqual(menuSelection, "req not met")) {
 			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
@@ -4073,9 +4183,11 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 		}
 		else if (StrEqual(menuSelection, "equip augment")) SendPanelToClientAndClose(Augments_Equip(client), client, Augments_Equip_Init, MENU_TIME_FOREVER);
 		else if (StrEqual(menuSelection, "unequip augment")) {
-			Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '-1' WHERE (`itemid` = '%s');", TheDBPrefix, itemCode);
-			SQL_TQuery(hDatabase, QueryResults, sql);
-			SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -1, 3);
+			Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, ((!isSaved) ? -1 : -3), itemCode);
+			SQL_TQuery(hDatabase, QueryResults, sql, client);
+
+			if (!isSaved) SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -1, 3);
+			else SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -3, 3);
 			
 			SetArrayString(equippedAugmentsIDCodes[client], isEquipped, "none");
 			SetArrayCell(equippedAugments[client], isEquipped, -1);
@@ -4105,6 +4217,7 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 				RemoveFromArray(myAugmentInfo[client], AugmentClientIsInspecting[client]);
 				RemoveFromArray(myAugmentTargetEffects[client], AugmentClientIsInspecting[client]);
 				RemoveFromArray(myAugmentActivatorEffects[client], AugmentClientIsInspecting[client]);
+				RemoveFromArray(myAugmentSavedProfiles[client], AugmentClientIsInspecting[client]);
 				if (GetArraySize(myAugmentIDCodes[client]) > 0) Augments_Inventory(client);
 				else BuildMenu(client);
 			}
@@ -4116,14 +4229,15 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 		else if (StrEqual(menuSelection, "reroll augment")) SendPanelToClientAndClose(Reroll_Augment(client), client, Reroll_Augment_Handle, MENU_TIME_FOREVER);
 		else if (StrEqual(menuSelection, "lock augment")) {
 			Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '-2' WHERE (`itemid` = '%s');", TheDBPrefix, itemCode);
-			SQL_TQuery(hDatabase, QueryResults, sql);
+			SQL_TQuery(hDatabase, QueryResults, sql, client);
 			SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -2, 3);
 			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
 		}
-		else if (StrEqual(menuSelection, "unlock augment")) {
-			Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '-1' WHERE (`itemid` = '%s');", TheDBPrefix, itemCode);
-			SQL_TQuery(hDatabase, QueryResults, sql);
-			SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -1, 3);
+		else if (StrEqual(menuSelection, "unlock augment")) {			
+			Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, ((!isSaved) ? -1 : -3), itemCode);
+			SQL_TQuery(hDatabase, QueryResults, sql, client);
+			if (!isSaved) SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -1, 3);
+			else SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -3, 3);
 			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
 		}
 		else if (StrEqual(menuSelection, "return")) Augments_Inventory(client);
@@ -4636,8 +4750,14 @@ stock Augments_Inventory(client) {
 				Format(augmentCatStr, sizeof(augmentCatStr), "%s (slot %d)", augmentCatStr, isEquipped+1);
 				char augmentOwner[64];
 				GetArrayString(myAugmentOwners[client], i, augmentOwner, sizeof(augmentOwner));
+				
 				bool isNotOriginalOwner = (StrContains(augmentOwner, key, false) == -1) ? true : false;
 				if (isNotOriginalOwner) Format(augmentCatStr, sizeof(augmentCatStr), "%s^", augmentCatStr);
+
+				char profilesSavedTo[64];
+				GetArrayString(myAugmentSavedProfiles[client], i, profilesSavedTo, sizeof(profilesSavedTo));
+				if (!StrEqual(profilesSavedTo, "none")) Format(augmentCatStr, sizeof(augmentCatStr), "%s!", augmentCatStr);
+
 				Format(text, sizeof(text), "%s", augmentCatStr);
 				if (!StrEqual(augmentActivator, "-1")) {
 					Format(augmentActStr, sizeof(augmentActStr), "%s %s", augmentActStr, augmentActivator);
@@ -4670,10 +4790,17 @@ stock Augments_Inventory(client) {
 			GetAugmentStrength(client, i, 2, augmentTarStr);
 			Format(augmentCatStr, sizeof(augmentCatStr), "%s %s", augmentCatStr, augmentCategory);
 			if (isEquipped == -2) Format(augmentCatStr, sizeof(augmentCatStr), "%s*", augmentCatStr);
+			
 			char augmentOwner[64];
 			GetArrayString(myAugmentOwners[client], i, augmentOwner, sizeof(augmentOwner));
+			
 			bool isNotOriginalOwner = (StrContains(augmentOwner, key, false) == -1) ? true : false;
 			if (isNotOriginalOwner) Format(augmentCatStr, sizeof(augmentCatStr), "%s^", augmentCatStr);
+			
+			char profilesSavedTo[64];
+			GetArrayString(myAugmentSavedProfiles[client], i, profilesSavedTo, sizeof(profilesSavedTo));
+			if (!StrEqual(profilesSavedTo, "none")) Format(augmentCatStr, sizeof(augmentCatStr), "%s!", augmentCatStr);
+
 			Format(text, sizeof(text), "%s", augmentCatStr);
 			if (!StrEqual(augmentActivator, "-1")) {
 				Format(augmentActStr, sizeof(augmentActStr), "%s %s", augmentActStr, augmentActivator);
@@ -4936,19 +5063,16 @@ stock TryToTellPeopleYouUpgraded(client) {
 
 	if (FreeUpgrades[client] == 0 && GetConfigValueInt("display when players upgrade to team?") == 1) {
 
-		char text2[64];
+		char text2[512];
 		char PlayerName[64];
-		char translationText[64];
-		GetClientName(client, PlayerName, sizeof(PlayerName));
+		char translationText[512];
+		GetFormattedPlayerName(client, PlayerName, sizeof(PlayerName));
 		GetTranslationOfTalentName(client, PurchaseTalentName[client], translationText, sizeof(translationText), true);
-		for (int k = 1; k <= MaxClients; k++) {
-
-			if (IsLegitimateClient(k) && !IsFakeClient(k) && myCurrentTeam[k] == myCurrentTeam[client]) {
-
-				Format(text2, sizeof(text2), "%T", translationText, k);
-				if (myCurrentTeam[client] == TEAM_SURVIVOR) PrintToChat(k, "%T", "Player upgrades ability", k, blue, PlayerName, white, green, text2, white);
-				else if (myCurrentTeam[client] == TEAM_INFECTED) PrintToChat(k, "%T", "Player upgrades ability", k, orange, PlayerName, white, green, text2, white);
-			}
+		Format(text2, sizeof(text2), "%t", translationText);
+		Format(text2, sizeof(text2), "%t", "Player upgrades ability", PlayerName, text2);
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+			Client_PrintToChat(i, true, text2);
 		}
 	}
 }
@@ -5060,11 +5184,11 @@ stock bool IsTalentLocked(client, char[] Name) {
 }
 
 stock WipeTalentPoints(client) {
-	if (!IsLegitimateClient(client)) return;
+	int size = GetArraySize(a_Menu_Talents);
+	if (!IsLegitimateClient(client) || GetArraySize(a_Database_PlayerTalents[client]) != size) return;
 	UpgradesAwarded[client] = 0;
-	int size							= GetArraySize(a_Menu_Talents);
 	int value = 0;
-	for (int i = 0; i < size; i++) {	// We only reset talents a player has points in, so locked talents don't become unlocked.
+	for (int i = 0; i < size; i++) {
 		value = GetArrayCell(a_Database_PlayerTalents[client], i);
 		if (value > 0) SetArrayCell(a_Database_PlayerTalents[client], i, 0);
 	}
