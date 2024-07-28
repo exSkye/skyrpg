@@ -48,12 +48,6 @@ void VerifyMinimumRating(int client, bool setMinimumRating = false) {
 	if (setMinimumRating || Rating[client] < minimumRating) Rating[client] = minimumRating;
 }
 
-// bool:AllowShotgunToTriggerNodes(client) {
-// 	new bool:isshotgun = IsPlayerUsingShotgun(client);
-// 	if (!isshotgun || isshotgun && !shotgunCooldown[client]) return true;
-// 	return false;
-// }
-
 stock void CheckDifficulty() {
 	char Difficulty[64];
 	GetConVarString(FindConVar("z_difficulty"), Difficulty, sizeof(Difficulty));
@@ -70,6 +64,9 @@ stock void GiveProfileItems(int client) {
 		GetArrayString(hWeaponList[client], 1, text, sizeof(text));
 		if (!StrEqual(text, "none")) {
 			QuickCommandAccessEx(client, text, _, true);
+			if (StrContains(text, "pistol") != -1 && StrContains(text, "magnum") == -1) {
+				CreateTimer(0.5, Timer_GiveSecondPistol, client, TIMER_FLAG_NO_MAPCHANGE);
+			}
 		}
 	}
 }
@@ -91,6 +88,7 @@ public Action Timer_CheckDifficulty(Handle timer) {
 public Action Timer_TickingMine(Handle timer, any entity) {
 	int size = GetArraySize(playerCustomEntitiesCreated);
 	bool entityIsFoundInArray = false;
+	float currentEngineTime = GetEngineTime();
 	for (int i = 0; i < size; i++) {
 		if (GetArrayCell(playerCustomEntitiesCreated, i, 2) != entity) continue;
 		if (!b_IsActiveRound || !IsValidEntity(entity)) {
@@ -98,7 +96,6 @@ public Action Timer_TickingMine(Handle timer, any entity) {
 			return Plugin_Stop;
 		}
 		entityIsFoundInArray = true;
-		float currentEngineTime = GetEngineTime();
 		float timeUntilMineExplodes = GetArrayCell(playerCustomEntitiesCreated, i, 4);
 		float AoESize = GetArrayCell(playerCustomEntitiesCreated, i, 3);
 		int visualInterval = GetArrayCell(playerCustomEntitiesCreated, i, 5);
@@ -147,7 +144,7 @@ public Action Timer_TickingMine(Handle timer, any entity) {
 					if (!IsCommonInfected(ci)) continue;
 					GetEntPropVector(ci, Prop_Send, "m_vecOrigin", commonPos);
 					if (GetVectorDistance(entityPos, commonPos) > AoESize/2.0) continue;
-					SetArrayCell(playerCustomEntitiesCreated, i, GetEngineTime() + 3.0, 4);
+					SetArrayCell(playerCustomEntitiesCreated, i, currentEngineTime + 3.0, 4);
 					survivor = MaxClients+1;
 					break;
 				}
@@ -841,6 +838,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 	}
 	bool isTargetClientABot;
 	float ammoStr = 0.0;
+	float currentEngineTime = GetEngineTime();
 	for (int i = 1; i <= MaxClients; i++) {
 
 		if (!IsLegitimateClientAlive(i) || i == client) continue;
@@ -848,7 +846,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 
 		GetClientAbsOrigin(i, TargetPosition);
 		if (GetVectorDistance(ClientPosition, TargetPosition) > (flRangeMax / 2)) continue;
-		CombatTime[i] = GetEngineTime() + fOutOfCombatTime;
+		CombatTime[i] = currentEngineTime + fOutOfCombatTime;
 		bIsInCombat[i] = true;
 
 		CreateExplosion(i);	// boom boom audio and effect on the location.
@@ -1388,8 +1386,7 @@ public Action Timer_ThreatSystem(Handle timer) {
 	if (cThreatEnt == -1 && IsLegitimateClientAlive(cThreatTarget)) {
 
 		cThreatEnt = CreateEntityByName("info_goal_infected_chase");
-		if (cThreatEnt > 0) {
-			
+		if (cThreatEnt > 0) {			
 			cThreatEnt = EntIndexToEntRef(cThreatEnt);
 
 			DispatchSpawn(cThreatEnt);

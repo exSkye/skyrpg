@@ -134,7 +134,7 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			PrintToChatAll("%t", "rise again", white, orange, white);
 		}
 		if (StrEqual(event_name, "ammo_pickup")) {
-			GiveAmmoBack(attacker, 999);	// whenever a player picks up an ammo pile, we want to give them their full ammo reserves - vanilla + talents.
+			GetWeaponResult(attacker, 5, maximumReserves[attacker]);
 		}
 	}
 	char weapon[64];
@@ -311,23 +311,7 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			}
 		}
 	}
-	// if (StrEqual(event_name, "player_hurt") || StrEqual(event_name, "infected_hurt")) {
-	// 	if (IsLegitimateClientAttacker) {
-	// 		if (!CheckIfHeadshot(attacker, victim, event, healthvalue))	CheckIfLimbDamage(attacker, victim, event, healthvalue);
-	// 		/*if (IsPlayerUsingShotgun(attacker)) {
-	// 			if (shotgunCooldown[attacker]) return 0;
-	// 			shotgunCooldown[attacker] = true;
-	// 			CreateTimer(0.1, Timer_ResetShotgunCooldown, attacker, TIMER_FLAG_NO_MAPCHANGE);
-	// 		}*/
-	// 	}
-	// 	//if (victimType == 2 && !b_IsHooked[victim]) ChangeHook(victim, true);
-	// 	//if (IsLegitimateClientAlive(victim) && GetClientTeam(victim) == TEAM_SURVIVOR && !b_IsHooked[victim]) ChangeHook(victim, true);
-	// 	//if (IsLegitimateClientAttacker && IsFakeClientAttacker && attackerTeam == TEAM_SURVIVOR && !b_IsLoaded[attacker]) IsClientLoadedEx(attacker);
-	// 	//if (victimTeam == TEAM_SURVIVOR && IsFakeClientVictim && !b_IsLoaded[victim]) IsClientLoadedEx(victim);
-	// }
-	// if (victimTeam == TEAM_INFECTED) {
-	// 	SetEntityHealth(victim, 400000);
-	// }
+
 	if (tagability == 1 && victimType == 2) {
 		if (!ISBILED[victim]) CreateTimer(15.0, Timer_RemoveBileStatus, victim, TIMER_FLAG_NO_MAPCHANGE);
 		ISBILED[victim] = true;
@@ -520,7 +504,7 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 				}
 			}
 			if (originvalue == 2 || distancevalue == 2 || distancevalue == 4) {
-				if (iRPGMode >= 1 && multiplierexp > 0.0 && (iExperienceLevelCap < 1 || PlayerLevel[attacker] < iExperienceLevelCap)) {
+				if (iRPGMode >= 1 && multiplierexp > 0.0 && PlayerLevel[attacker] < iMaxLevel) {
 					ExperienceLevel[attacker] += RoundToCeil(multiplierexp);
 					ExperienceOverall[attacker] += RoundToCeil(multiplierexp);
 					ConfirmExperienceAction(attacker);
@@ -820,7 +804,6 @@ stock bool UseAbility(client, target = -1, char[] TalentName, Handle Values, flo
 	float SpellCooldown = GetSpellCooldown(client, _, menuPos);
 
 	//new MyAttacker = L4D2_GetInfectedAttacker(client);
-	int MyStamina = GetPlayerStamina(client);
 	int MyBonus = 0;
 	//new MyMaxHealth = GetMaximumHealth(client);
 	GetArrayString(Values, ABILITY_TOGGLE_EFFECT, Effects, sizeof(Effects));
@@ -888,6 +871,7 @@ stock bool UseAbility(client, target = -1, char[] TalentName, Handle Values, flo
 		if (StrEqual(Effects, "A", true)) { // restores stamina
 
 			TheAbilityMultiplier = GetAbilityMultiplier(client, "A", 1);
+			int MyStamina = GetPlayerStamina(client);
 			MyBonus = RoundToCeil(MyStamina * TheAbilityMultiplier);
 			if (SurvivorStamina[client] + MyBonus > MyStamina) {
 
@@ -1676,21 +1660,22 @@ public Action OnPlayerRunCmd(client, &buttons) {
 					isSprinting) {
 					if (MyAttacker == -1 && !ISSLOW[client] && ISFROZEN[client] == INVALID_HANDLE) {
 						if (SurvivorConsumptionTime[client] <= TheTime && (isClientHoldingJump || isSprinting)) {
-							if (bJetpack[client]) {
+							if (SurvivorStamina[client] <= 0) {
+								bIsSurvivorFatigue[client] = true;
+								IsSpecialAmmoEnabled[client][0] = 0.0;
+								SurvivorStamina[client] = 0;
+								if (bJetpack[client]) ToggleJetpack(client, true);
+							}
+							else if (IsJetpackBroken && bJetpack[client]) ToggleJetpack(client, true);
+							else if (bJetpack[client]) {
 								float nextSprintInterval = GetAbilityStrengthByTrigger(client, client, "jetpack", _, 0, _, _, "flightcost", _, _, 2);
 								if (nextSprintInterval > 0.0) SurvivorConsumptionTime[client] = TheTime + fStamJetpackInterval + (fStamJetpackInterval * nextSprintInterval);
 								else SurvivorConsumptionTime[client] = TheTime + fStamJetpackInterval;
 							}
 							else SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 							if (!bIsSurvivorFatigue[client]) SurvivorStamina[client] -= ConsumptionInt;
-							if (SurvivorStamina[client] <= 0 || IsJetpackBroken) {
-								bIsSurvivorFatigue[client] = true;
-								IsSpecialAmmoEnabled[client][0] = 0.0;
-								SurvivorStamina[client] = 0;
-								if (bJetpack[client]) ToggleJetpack(client, true);
-							}
 						}
-						if (!bIsSurvivorFatigue[client] && !bJetpack[client] && (isClientHoldingJump && (JumpTime[client] >= fJumpTimeToActivateJetpack)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= GetEngineTime() && MyAttacker == -1) ToggleJetpack(client);
+						if (!bIsSurvivorFatigue[client] && !bJetpack[client] && (isClientHoldingJump && (JumpTime[client] >= fJumpTimeToActivateJetpack)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= TheTime && MyAttacker == -1) ToggleJetpack(client);
 						if (!bJetpack[client]) MovementSpeed[client] = fSprintSpeed;
 					}
 					buttons &= ~IN_SPEED;
@@ -1778,19 +1763,72 @@ stock bool IsEveryoneBoosterTime() {
 	return true;
 }
 
+stock int getDamageIncreaseFromBuffer(int entity, int damage) {
+	float fStrength = 0.0;
+	float cpos[3];
+	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", cpos);
+	for (int i = 0; i < GetArraySize(damageOfSpecialCommon); i++) {
+		int specialCommon = GetArrayCell(damageOfSpecialCommon, i);
+		if (specialCommon == entity) continue;
+
+		// only want to calculate if the specialCommon is a buffer
+		char effect[4];
+		GetCommonValueAtPos(effect, sizeof(effect), specialCommon, SUPER_COMMON_AURA_EFFECT);
+		if (StrContains(effect, "b", true) == -1) continue;
+
+		// if the entity isn't within range of this special common, the entity doesn't get whatever the damage buff of this super common is.
+		float range = GetCommonValueFloatAtPos(specialCommon, SUPER_COMMON_RANGE_MAX);
+		float tpos[3];
+		GetEntPropVector(specialCommon, Prop_Send, "m_vecOrigin", tpos);
+		if (GetVectorDistance(cpos, tpos) > range) continue;
+
+		// this infected is within range, so we get the # of commons that are within range of the buffer.
+		int count = setNumberOfEntitiesWithinRangeOfSpecialCommon(specialCommon, i, true);
+		float multiplier = GetCommonValueFloatAtPos(specialCommon, SUPER_COMMON_STRENGTH_TARGET);
+		fStrength += (count * multiplier);
+	}
+	return RoundToCeil(damage * fStrength);
+}
+
+stock int setNumberOfEntitiesWithinRangeOfSpecialCommon(int entity, int pos = -1, bool getNumber = false) {
+	int count = 0;
+	if (getNumber) count = GetArrayCell(damageOfSpecialCommon, pos, 2);
+	else {
+		if (pos == -1) pos = FindListPositionByEntity(entity, damageOfSpecialCommon);
+		if (pos == -1) return 0;
+		float range = GetCommonValueFloatAtPos(entity, SUPER_COMMON_RANGE_MAX);
+		count += LivingEntitiesInRangeByType(entity, range);
+		count += LivingEntitiesInRangeByType(entity, range, 1);
+		count += LivingEntitiesInRangeByType(entity, range, 2);
+		count += LivingEntitiesInRangeByType(entity, range, 3);
+		count += LivingEntitiesInRangeByType(entity, range, 4);
+		SetArrayCell(damageOfSpecialCommon, pos, count, 2);
+	}
+	if (count > 0) return count;
+	return 0;
+}
+
+public Action Timer_SetNumberOfEntitiesWithinRangeOfSpecialCommon(Handle timer) {
+	if (!b_IsActiveRound) return Plugin_Stop;
+	for (int i = 0; i < GetArraySize(damageOfSpecialCommon); i++) {
+		int specialCommon = GetArrayCell(damageOfSpecialCommon, i);
+		if (IsSpecialCommon(specialCommon)) setNumberOfEntitiesWithinRangeOfSpecialCommon(specialCommon, i);
+	}
+	return Plugin_Continue;
+}
+
 stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner = 0, float RangeOverride = 0.0) {
 	if (!IsSpecialCommon(client)) return;
-	float AfxRange = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_PLAYER_LEVEL);
+	//float AfxRange = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_PLAYER_LEVEL);
 	float AfxStrengthLevel = GetCommonValueFloatAtPos(client, SUPER_COMMON_LEVEL_STRENGTH);
 	float AfxRangeMax = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_MAX);
 	int AfxMultiplication = GetCommonValueIntAtPos(client, SUPER_COMMON_ENEMY_MULTIPLICATION);
 	int AfxStrength = GetCommonValueIntAtPos(client, SUPER_COMMON_AURA_STRENGTH);
 	float AfxStrengthTarget = GetCommonValueFloatAtPos(client, SUPER_COMMON_STRENGTH_TARGET);
-	float AfxRangeBase = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_MIN);
+	//float AfxRangeBase = GetCommonValueFloatAtPos(client, SUPER_COMMON_RANGE_MIN);
 	float OnFireBase = GetCommonValueFloatAtPos(client, SUPER_COMMON_ONFIRE_BASE_TIME);
 	float OnFireLevel = GetCommonValueFloatAtPos(client, SUPER_COMMON_ONFIRE_LEVEL);
 	float OnFireMax = GetCommonValueFloatAtPos(client, SUPER_COMMON_ONFIRE_MAX_TIME);
-	float OnFireInterval = GetCommonValueFloatAtPos(client, SUPER_COMMON_ONFIRE_INTERVAL);
 	int AfxLevelReq = GetCommonValueIntAtPos(client, SUPER_COMMON_LEVEL_REQ);
 	float ClientPosition[3];
 	float TargetPosition[3];
@@ -1805,13 +1843,7 @@ stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner =
 			for (int i = 1; i <= MaxClients; i++) {
 				if (!IsLegitimateClientAlive(i) || (target != 0 && i != target) || PlayerLevel[i] < AfxLevelReq) continue;		// if type is 1 and target is 0 acid is spread to all players nearby. but if target is not 0 it is spread to only the player the acid zombie hits. or whatever type uses it.
 				GetClientAbsOrigin(i, TargetPosition);
-				if (RangeOverride == 0.0) {
-					if (AfxRange > 0.0) t_Range = AfxRange * (PlayerLevel[i] - AfxLevelReq);
-					else t_Range = AfxRangeMax;
-					if (t_Range + AfxRangeBase > AfxRangeMax) t_Range = AfxRangeMax;
-					else t_Range += AfxRangeBase;
-				}
-				else t_Range = RangeOverride;
+				t_Range = AfxRangeMax;
 				if (GetVectorDistance(ClientPosition, TargetPosition) > (t_Range / 2)) continue;
 				if (AfxMultiplication == 1) {
 					if (AfxStrengthTarget < 0.0) t_Strength = AfxStrength * NumLivingEntities;
@@ -1823,11 +1855,6 @@ stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner =
 				t_OnFireRange += OnFireBase;
 				if (t_OnFireRange > OnFireMax) t_OnFireRange = OnFireMax;
 				if (IsSpecialCommonInRange(client, 'b')) t_Strength *= 2;//t_Strength = GetSpecialCommonDamage(t_Strength, client, 'b', i);
-				if (type == 0) CreateAndAttachFlame(i, t_Strength, t_OnFireRange, OnFireInterval, _, "burn");		// Static time for now.
-				else if (type == 4) {
-					CreateAndAttachFlame(i, t_Strength, t_OnFireRange, OnFireInterval, _, "acid");
-					break;	// to prevent buffer overflow only allow it on one client.
-				}
 			}
 		}
 	}
@@ -2056,7 +2083,7 @@ stock CheckMinimumRate(client) {
 
 stock float GetScoreMultiplier(int client) {
 	if (GetArraySize(HandicapSelectedValues[client]) != 4) SetClientHandicapValues(client, true);
-	float scoreMultiplier = (handicapLevel[client] > 0) ? GetArrayCell(HandicapSelectedValues[client], 3) : fNoHandicapScoreMultiplier;
+	float scoreMultiplier = (handicapLevel[client] > 0 && handicapLevel[client] < GetArraySize(a_HandicapLevels)) ? GetArrayCell(HandicapSelectedValues[client], 3) : fNoHandicapScoreMultiplier;
 	return scoreMultiplier;
 }
 
@@ -2293,7 +2320,7 @@ stock GetRatingRewardForHealing(survivor, infected) {
 	return score;
 }
 
-void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos = -1) {
+void CalculateInfectedDamageAward(int client, int killerblow = 0) {
 	bool IsLegitimateClientClient = IsLegitimateClient(client);
 	int clientTeam = -1;
 	if (IsLegitimateClientClient) clientTeam = myCurrentTeam[client];
@@ -2582,10 +2609,9 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 	}
 	if (bSomeoneHurtThisInfected) {
 		if (ClientType == 0) {
-			SpecialsKilled++;
 			ReadyUp_NtvStatistics(killerblow, 6, 1);
-			if (clientZombieClass != ZOMBIECLASS_TANK) SetArrayCell(RoundStatistics, 3, GetArrayCell(RoundStatistics, 3) + 1);
-			else SetArrayCell(RoundStatistics, 4, GetArrayCell(RoundStatistics, 4) + 1);
+			if (clientZombieClass != ZOMBIECLASS_TANK) numberOfSpecialsKilledThisRound++;
+			else numberOfTanksKilledThisRound++;
 
 			if (IsFakeClient(client)) {
 				float fDirectorPointsEarned = (DamageContribution[client] * fPointsMultiplierInfected);
@@ -2599,7 +2625,7 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 				}
 			}
 		}
-		else if (ClientType == 1) SetArrayCell(RoundStatistics, 2, GetArrayCell(RoundStatistics, 2) + 1);
+		else if (ClientType == 1) numberOfWitchesKilledThisRound++;
 		else if (ClientType == 2) {
 			if (CommonInfectedModel(client, FALLEN_SURVIVOR_MODEL) && killerClientTeam == TEAM_SURVIVOR) {
 				float fModifiedDefibChance = fFallenSurvivorDefibChance;
@@ -2621,19 +2647,13 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int entityPos 
 					TeleportEntity(defib, Origin, NULL_VECTOR, vel);
 				}
 			}
+			numberOfSupersKilledThisRound++;
 			ReadyUp_NtvStatistics(killerblow, 2, 1);
-			SetArrayCell(RoundStatistics, 1, GetArrayCell(RoundStatistics, 1) + 1);
 		}
 		else if (ClientType == 3) {
 			ReadyUp_NtvStatistics(killerblow, 2, 1);
-			SetArrayCell(RoundStatistics, 0, GetArrayCell(RoundStatistics, 0) + 1);
+			numberOfCommonsKilledThisRound++;
 		}
-	}
-	if (ClientType == 1) {
-		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-		//SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
-		AcceptEntityInput(client, "Kill");
-		if (entityPos >= 0) RemoveFromArray(WitchList, entityPos);		// Delete the witch. Forever.
 	}
 	if (IsLegitimateClientClient && clientTeam == TEAM_INFECTED) {
 
@@ -2750,7 +2770,7 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, float p_reward, t_r
 	//	0 = Points Only
 	//	1 = RPG Only
 	//	2 - RPG + Points
-	if (RPGMode > 0 && (iExperienceLevelCap < 1 || PlayerLevel[client] < iExperienceLevelCap)) {
+	if (RPGMode > 0 && PlayerLevel[client] < iMaxLevel) {
 		if (!TheRoundHasEnded && DisplayType > 0 && (infected == 0 || enemytype > 0)) {								// \x04Jockey \x01killed: \x04 \x03experience
 			char rewardText[64];
 			if (e_reward > 0) {

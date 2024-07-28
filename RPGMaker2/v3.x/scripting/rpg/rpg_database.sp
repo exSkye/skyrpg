@@ -18,7 +18,6 @@ void MySQL_Init()
 	RatingPerAugmentLevel		= GetConfigValueInt("rating per augment level multiplier?", 1);
 	RatingPerLevelSurvivorBots	= GetConfigValueInt("rating level multiplier survivor bots?");
 	InfectedTalentLevel			= GetConfigValueInt("talent level multiplier?");
-	fEnrageModifier				= GetConfigValueFloat("enrage modifier?");
 
 	if (iServerLevelRequirement > 0) {
 
@@ -1559,6 +1558,7 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 			BestRating[client] =	SQL_FetchInt(hndl, 22);
 			Rating[client] = SQL_FetchInt(hndl, 23);
 			handicapLevel[client] = SQL_FetchInt(hndl, 24);
+			if (handicapLevel[client] > GetArraySize(a_HandicapLevels)-1) handicapLevel[client] = -1;
 			SQL_FetchString(hndl, 25, t_Hostname, sizeof(t_Hostname));
 			SQL_FetchString(hndl, 26, CurrentSeason, sizeof(CurrentSeason));
 			iIsLevelingPaused[client]	= SQL_FetchInt(hndl, 27);
@@ -2160,8 +2160,9 @@ public void QueryResults_LoadAugmentSavedProfiles(Handle owner, Handle hndl, con
 }
 
 stock void LoadedClientActions(int client) {
-	if (ReadyUpGameMode != 3 && !b_IsActiveRound) CreateTimer(1.0, Timer_GiveProfileItems, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	SetClientTalentStrength(client);
+	if (ReadyUpGameMode != 3 && !b_IsActiveRound) CreateTimer(1.0, Timer_GiveProfileItems, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	else CreateTimer(0.1, Timer_SetMyWeapons, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	myCurrentTeam[client] = GetClientTeam(client);
 	IsClearedToLoad(client, _, true);
 	//ChangeHook(client, true);
@@ -2180,12 +2181,16 @@ stock void LoadedClientActions(int client) {
 	b_IsLoaded[client] = true;
 	SetMaximumHealth(client);
 	GiveMaximumHealth(client);
+	ChangeHook(client, true);
 	PrintToChatAll("\x03%N's \x04data is \x03loaded.", client);
 }
 
 public Action Timer_GiveProfileItems(Handle timer, any client) {
 	if (IsLegitimateClient(client)) {
-		if (IsPlayerAlive(client)) GiveProfileItems(client);
+		if (IsPlayerAlive(client)) {
+			GiveProfileItems(client);
+			CreateTimer(0.1, Timer_SetMyWeapons, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
 		else return Plugin_Continue;
 	}
 	return Plugin_Stop;
@@ -2237,6 +2242,7 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 	int ASize = GetArraySize(a_Menu_Talents);
 	ResizeArray(MyTalentStrength[client], ASize);
 	ResizeArray(MyTalentStrengths[client], ASize);
+	ClearArray(MyUnlockedTalents[client]);
 	char TalentName[64];
 	for (int i = 0; i < ASize; i++) {
 		// preset all talents to being unclaimed.
@@ -2258,6 +2264,8 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 		SetArrayCell(MyTalentStrengths[client], i, f_Time, 1);
 		SetArrayCell(MyTalentStrengths[client], i, f_Cooldown, 2);
 		SetArrayCell(MyTalentStrength[client], i, 1);
+
+		PushArrayCell(MyUnlockedTalents[client], i);
 	}
 	int iCurrentAugmentLevel = 0;
 	if (GetArraySize(equippedAugments[client]) != iNumAugments) ClearEquippedAugmentData(client);

@@ -35,10 +35,6 @@ stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bo
 				if (typeOfDataToShow == 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted, scrap, avgAugLvl);
 				else if (typeOfDataToShow == 1) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text minor", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted, scrap, avgAugLvl);
 				if (SkyLevel[client] > 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Prestige Level Text", client, SkyLevel[client], iSkyLevelMax, PlayerLevelText);
-				if (iExperienceLevelCap > 0) {
-					if (PlayerLevel[client] < iExperienceLevelCap) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "XP Level Cap", client, PlayerLevelText, iExperienceLevelCap);
-					else Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "XP Level Cap Reached", client, PlayerLevelText, iExperienceLevelCap);
-				}
 			}
 			int maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
 			if (CheckRPGMode != 0) {
@@ -2200,7 +2196,6 @@ public void CharacterSheetMenu(client) {
 		}
 		if (!hasMeleeWeaponEquipped[client]) {
 			if (StrContains(text, "{HEALSTRGUN}", true) != -1) {
-				// new pelletMultiplication = (IsPlayerUsingShotgun(client)) ? 10 : 1;
 				Format(weaponDamage, sizeof(weaponDamage), "%d", GetBulletOrMeleeHealAmount(client, target, currentWeaponDamage, DMG_BULLET));
 				ReplaceString(text, sizeof(text), "{HEALSTRGUN}", weaponDamage);
 			}
@@ -4677,6 +4672,9 @@ stock void SetBotClientHandicapValues(int clientToIgnore = 0) {
 			SetArrayCell(HandicapSelectedValues[i], 3, 0.0);
 		}
 		return;
+	}
+	if (handicapLevel[client]-1 > GetArraySize(a_HandicapLevels)) {
+		handicapLevel[client] = 1;
 	}
 	SetHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
 	float handicapDamage = GetArrayCell(SetHandicapValues[client], HANDICAP_DAMAGE);

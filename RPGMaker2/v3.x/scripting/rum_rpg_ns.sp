@@ -15,7 +15,7 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v3.4.7.8"
+#define PLUGIN_VERSION					"v3.4.7.8.a"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"github.com/biaspark/"
 #define PLUGIN_NAME						"RPG Construction Set"
@@ -47,6 +47,28 @@
 //	================================
 #define DEBUG     					false
 /*	================================
+ Version 3.4.7.8.a
+	- Super Common buffers have had their original functionality properly restored with an (O)n solution.
+		- Buffer originally increased damage of each infected within range based on the # of other infected in range, but I couldn't figure out an optimal solution to keep it from causing lag in earlier builds
+		so buffer had its buff changed to a flat 2.0x damage increase.
+		- Now buffers will do a proper damage increase, making them a deadly opponent.
+	- This is also a buff to psycho, masochist, or any other talent that is multiplied based on the # of enemies as it can now multiply for every infected type.
+	- Common Infected and Witches will now accrue [Bu]rn stacks when within the area of a molotov or other human-activated fire sources.
+	- Optimization pass for the OnTakeDamage() method and its accompanying methods.
+	- Patched a bug where bot handicap values were being incorrectly set.
+	- Patched a bug where headshots on common infected would not instantly kill them.
+	- Patched a bug where common infected would trigger CalculateInfectedPlayerAward() multiple times on death.
+	- Redesigned the round/campaign statistics counters and display.
+	- Removed minimum restrictions on spells, so that talents such as spell cost reduction will be viable.
+	- Patched a bug where primary weapon ammo reserves were not being properly set or enforced.
+	- Patched a bug where handicap levels for players would not be properly reset and cause major ioob errors if the max # of difficulties was reduced below a players current difficulty setting.
+	- Patched a bug related to properly enforcing weapon ammo reserves.
+	- Optimized GetEngineTime() calls
+	- Optimized all weapon data collection calls
+	- Patched a logic error that resulted in all stamina being taken away when the jetpack was forcefully disabled for anyone reason.
+	- Patched a bug where any existing loot bags could be corrupted if any existing loot bags expired and disappeared.
+	- Some minor optimizations to float GetAbilityStrengthByTrigger() - needs more work
+
  Version 3.4.7.8
   *** Augments in Profiles ***
 	- Augments will now be saved to profiles.
@@ -886,6 +908,22 @@ public Plugin myinfo = {
 #define CONTRIBUTION_AWARD_BUFFING				2
 #define CONTRIBUTION_AWARD_HEALING				3
 
+Handle MyUnlockedTalents[MAXPLAYERS + 1];
+int weaponProficiencyType[MAXPLAYERS + 1];
+int myCurrentWeapon[MAXPLAYERS + 1];
+int myCurrentWeaponPos[MAXPLAYERS + 1];
+int maximumReserves[MAXPLAYERS + 1];
+int iTotalCampaignTime;
+int numberOfCommonsKilledThisRound;
+int numberOfCommonsKilledThisCampaign;
+int numberOfSupersKilledThisRound;
+int numberOfSupersKilledThisCampaign;
+int numberOfWitchesKilledThisRound;
+int numberOfWitchesKilledThisCampaign;
+int numberOfSpecialsKilledThisRound;
+int numberOfSpecialsKilledThisCampaign;
+int numberOfTanksKilledThisRound;
+int numberOfTanksKilledThisCampaign;
 int iNumAdvertisements = 0;
 int iAdvertisementCounter = 0;
 int clientDeathTime[MAXPLAYERS + 1];
@@ -1026,7 +1064,6 @@ char sDonatorFlags[10];
 float fDeathPenalty;
 int iHardcoreMode;
 int iDeathPenaltyPlayers;
-Handle RoundStatistics;
 bool bRushingNotified[MAXPLAYERS + 1];
 bool bHasTeleported[MAXPLAYERS + 1];
 bool IsAirborne[MAXPLAYERS + 1];
@@ -1200,7 +1237,6 @@ Handle TrailsValues[MAXPLAYERS + 1];
 bool b_IsFinaleActive;
 int RoundDamage[MAXPLAYERS + 1];
 //int RoundDamageTotal;
-int SpecialsKilled;
 Handle MOTValues[MAXPLAYERS + 1];
 Handle DamageValues[MAXPLAYERS + 1];
 Handle DamageSection[MAXPLAYERS + 1];
@@ -1520,7 +1556,6 @@ int iIsLevelingPaused[MAXPLAYERS + 1];
 int iIsBulletTrails[MAXPLAYERS + 1];
 Handle ActiveStatuses[MAXPLAYERS + 1];
 int InfectedTalentLevel;
-float fEnrageModifier;
 float LastAttackTime[MAXPLAYERS + 1];
 Handle hWeaponList[MAXPLAYERS + 1];
 int MyStatusEffects[MAXPLAYERS + 1];
@@ -1546,6 +1581,7 @@ float fSpecialAmmoInterval;
 Handle CooldownEffectTriggerValues[MAXPLAYERS + 1];
 Handle IsSpellAnAuraValues[MAXPLAYERS + 1];
 float fStaggerTickrate;
+float fSuperCommonTickrate;
 Handle StaggeredTargets;
 Handle staggerBuffer;
 bool staggerCooldownOnTriggers[MAXPLAYERS + 1];
@@ -1628,7 +1664,6 @@ float fForceTankJumpHeight;
 float fForceTankJumpRange;
 int iResetDirectorPointsOnNewRound;
 int iMaxServerUpgrades;
-int iExperienceLevelCap;
 bool LastHitWasHeadshot[MAXPLAYERS + 1];
 char acmd[20];
 char abcmd[20];
@@ -1916,6 +1951,7 @@ public int ReadyUp_TrueDisconnect(int client) {
 	b_IsLoaded[client] = false;
 	// the best redundancy check to tower over all others. no more collisions when a player connects on a client that is not yet timed out to a crashed player!
 	Format(currentClientSteamID[client], sizeof(currentClientSteamID[]), "-1");
+	myCurrentWeaponPos[client] = -1;
 	DisconnectDataReset(client);
 }
 
@@ -2020,7 +2056,6 @@ stock CreateAllArrays() {
 	if (PreloadValues == INVALID_HANDLE) PreloadValues = CreateArray(16);
 	if (persistentCirculation == INVALID_HANDLE) persistentCirculation = CreateArray(16);
 	if (RandomSurvivorClient == INVALID_HANDLE) RandomSurvivorClient = CreateArray(16);
-	if (RoundStatistics == INVALID_HANDLE) RoundStatistics = CreateArray(16);
 	if (EffectOverTime == INVALID_HANDLE) EffectOverTime = CreateArray(16);
 	if (TimeOfEffectOverTime == INVALID_HANDLE) TimeOfEffectOverTime = CreateArray(16);
 	if (StaggeredTargets == INVALID_HANDLE) StaggeredTargets = CreateArray(16);
@@ -2036,6 +2071,8 @@ stock CreateAllArrays() {
 	if (damageOfCommonInfected == INVALID_HANDLE) damageOfCommonInfected = CreateArray(16);
 	ResizeArray(tempStorage, MAXPLAYERS + 1);
 	for (int i = 1; i <= MAXPLAYERS; i++) {
+		weaponProficiencyType[i] = -1;
+		myCurrentWeaponPos[i] = -1;
 		itemToDisassemble[i] = -1;
 		augmentParts[i] = 0;
 		LastDeathTime[i] = 0.0;
@@ -2044,6 +2081,8 @@ stock CreateAllArrays() {
 		DisplayActionBar[i] = false;
 		ActionBarSlot[i] = -1;
 		b_IsIdle[i] = false;
+
+		if (MyUnlockedTalents[i] == INVALID_HANDLE) MyUnlockedTalents[i] = CreateArray(16);
 		if (GetCoherencyValues[i] == INVALID_HANDLE) GetCoherencyValues[i] = CreateArray(16);
 		if (GetValueFloatArray[i] == INVALID_HANDLE) GetValueFloatArray[i] = CreateArray(8);
 		if (CommonInfected[i] == INVALID_HANDLE) CommonInfected[i] = CreateArray(16);
@@ -2197,7 +2236,6 @@ stock OnMapStartFunc() {
 	if (!b_MapStart) {
 		b_MapStart = true;
 		if (!b_FirstLoad) CreateAllArrays();
-		CreateTimer(10.0, Timer_GetCampaignName, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	SetSurvivorsAliveHostname();
 }
@@ -2277,12 +2315,6 @@ public void OnMapEnd() {
 		ClearArray(CommonInfected[i]);
 	}
 	ClearArray(NewUsersRound);
-}
-
-public Action Timer_GetCampaignName(Handle timer) {
-	ReadyUp_NtvGetCampaignName();
-	ReadyUp_NtvIsCampaignFinale();
-	return Plugin_Stop;
 }
 
 stock CheckGamemode() {
@@ -2582,18 +2614,24 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		ClearArray(persistentCirculation);
 		ClearArray(CoveredInVomit);
 		if (CurrentMapPosition == 0) {
-			ClearArray(RoundStatistics);
-			ResizeArray(RoundStatistics, 5);
-			for (int i = 0; i < 5; i++) {
-				SetArrayCell(RoundStatistics, i, 0);
-				SetArrayCell(RoundStatistics, i, 0, 1);	// first map of campaign, reset the total.
-			}
+			iTotalCampaignTime = 0;
+			numberOfCommonsKilledThisCampaign = 0;
+			numberOfCommonsKilledThisRound = 0;
+			numberOfSupersKilledThisCampaign = 0;
+			numberOfSupersKilledThisRound = 0;
+			numberOfWitchesKilledThisCampaign = 0;
+			numberOfWitchesKilledThisRound = 0;
+			numberOfSpecialsKilledThisCampaign = 0;
+			numberOfSpecialsKilledThisRound = 0;
+			numberOfTanksKilledThisCampaign = 0;
+			numberOfTanksKilledThisRound = 0;
 		}
 		else {
-			if (GetArraySize(RoundStatistics) < 5) ResizeArray(RoundStatistics, 5);
-			for (int i = 0; i < 5; i++) {
-				SetArrayCell(RoundStatistics, i, 0);
-			}
+			numberOfCommonsKilledThisRound = 0;
+			numberOfSupersKilledThisRound = 0;
+			numberOfWitchesKilledThisRound = 0;
+			numberOfSpecialsKilledThisRound = 0;
+			numberOfTanksKilledThisRound = 0;
 		}
 		char pct[4];
 		Format(pct, sizeof(pct), "%");
@@ -2642,7 +2680,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		b_IsCampaignComplete				= false;
 		if (ReadyUpGameMode != 3) b_IsRoundIsOver						= false;
 		if (ReadyUpGameMode == 2) MapRoundsPlayed = 0;	// Difficulty leniency does not occur in versus.
-		SpecialsKilled				=	0;
 		//RoundDamageTotal			=	0;
 		b_IsFinaleActive			=	false;
 		for (int i = 1; i <= MaxClients; i++) {
@@ -2668,6 +2705,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		CreateTimer(0.5, Timer_EntityOnFire, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// Fire status effect
 		CreateTimer(1.0, Timer_ThreatSystem, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);		// threat system modulator
 		CreateTimer(fStaggerTickrate, Timer_StaggerTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(fSuperCommonTickrate, Timer_SetNumberOfEntitiesWithinRangeOfSpecialCommon, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//CreateTimer(fDrawHudInterval, Timer_ShowHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//CreateTimer(fSpecialAmmoInterval, Timer_ShowActionBar, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		if (iCommonAffixes > 0) {
@@ -3187,9 +3225,6 @@ public ReadyUp_RoundIsOver(gamemode) {
 
 stock CallRoundIsOver() {
 	if (!b_IsRoundIsOver) {
-		for (int i = 0; i < 5; i++) {
-			SetArrayCell(RoundStatistics, i, GetArrayCell(RoundStatistics, i) + GetArrayCell(RoundStatistics, i, 1), 1);
-		}
 		int pEnt = -1;
 		char pText[2][64];
 		char text[64];
@@ -3212,49 +3247,67 @@ stock CallRoundIsOver() {
 		if (b_IsActiveRound) b_IsActiveRound = false;
 		SetSurvivorsAliveHostname();
 		int Seconds			= GetTime() - RoundTime;
+		iTotalCampaignTime += Seconds;
 		int Minutes			= 0;
-		while (Seconds >= 60) {
-			Minutes++;
-			Seconds -= 60;
-		}
-		//common is 0
-		//super is 1
-		//witch is 2
-		//si is 3
-		//tank is 4
-		char roundStatisticsText[6][64];
-		PrintToChatAll("%t", "Round Time", orange, blue, Minutes, white, blue, Seconds, white);
-		if (CurrentMapPosition != 1 || ReadyUp_GetGameMode() == 3) {
-			AddCommasToString(GetArrayCell(RoundStatistics, 0), roundStatisticsText[0], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 1), roundStatisticsText[1], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 2), roundStatisticsText[2], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 3), roundStatisticsText[3], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 4), roundStatisticsText[4], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 0) + GetArrayCell(RoundStatistics, 1) + GetArrayCell(RoundStatistics, 2) + GetArrayCell(RoundStatistics, 3) + GetArrayCell(RoundStatistics, 4), roundStatisticsText[5], sizeof(roundStatisticsText[]));
+		char thisRoundTime[64];
+		numberOfCommonsKilledThisCampaign += numberOfCommonsKilledThisRound;
+		numberOfSupersKilledThisCampaign += numberOfSupersKilledThisRound;
+		numberOfWitchesKilledThisCampaign += numberOfWitchesKilledThisRound;
+		numberOfSpecialsKilledThisCampaign += numberOfSpecialsKilledThisRound;
+		numberOfTanksKilledThisCampaign += numberOfTanksKilledThisRound;
+		if (CurrentMapPosition != 1) {
+			while (Seconds >= 60) {
+				Minutes++;
+				Seconds -= 60;
+			}
+			Format(thisRoundTime, sizeof(thisRoundTime), "{G}%d {O}min(s), {G}%d {O}sec(s)", Minutes, Seconds);
+			int totalInfectedKilledThisRound = numberOfCommonsKilledThisRound + numberOfSupersKilledThisRound + numberOfWitchesKilledThisRound + numberOfSpecialsKilledThisRound + numberOfTanksKilledThisRound;
+			char totalInfectedKilled[10];
+			AddCommasToString(totalInfectedKilledThisRound, totalInfectedKilled, sizeof(totalInfectedKilled));
+			char commonsKilledThisRound[10];
+			AddCommasToString(numberOfCommonsKilledThisRound, commonsKilledThisRound, sizeof(commonsKilledThisRound));
+			char supersKilledThisRound[10];
+			AddCommasToString(numberOfSupersKilledThisRound, supersKilledThisRound, sizeof(supersKilledThisRound));
+			char witchesKilledThisRound[10];
+			AddCommasToString(numberOfWitchesKilledThisRound, witchesKilledThisRound, sizeof(witchesKilledThisRound));
+			char specialsKilledThisRound[10];
+			AddCommasToString(numberOfSpecialsKilledThisRound, specialsKilledThisRound, sizeof(specialsKilledThisRound));
+			char tanksKilledThisRound[10];
+			AddCommasToString(numberOfTanksKilledThisRound, tanksKilledThisRound, sizeof(tanksKilledThisRound));
 
-			PrintToChatAll("%t", "round statistics", orange, orange, blue,
-							roundStatisticsText[0], orange, blue,
-							roundStatisticsText[1], orange, blue,
-							roundStatisticsText[2], orange, blue,
-							roundStatisticsText[3], orange, blue,
-							roundStatisticsText[4], orange, green,
-							roundStatisticsText[5], green, green);
+			char roundStatistics[512];
+			Format(roundStatistics, sizeof(roundStatistics), "%t", "round statistics", commonsKilledThisRound, supersKilledThisRound, witchesKilledThisRound, specialsKilledThisRound, tanksKilledThisRound, thisRoundTime, totalInfectedKilled);
+			for (int i = 1; i <= MaxClients; i++) {
+				if (!IsLegitimateClient(i)) continue;
+				Client_PrintToChat(i, true, roundStatistics);
+			}
 		}
 		else {
-			AddCommasToString(GetArrayCell(RoundStatistics, 0, 1), roundStatisticsText[0], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 1, 1), roundStatisticsText[1], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 2, 1), roundStatisticsText[2], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 3, 1), roundStatisticsText[3], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 4, 1), roundStatisticsText[4], sizeof(roundStatisticsText[]));
-			AddCommasToString(GetArrayCell(RoundStatistics, 0, 1) + GetArrayCell(RoundStatistics, 1, 1) + GetArrayCell(RoundStatistics, 2, 1) + GetArrayCell(RoundStatistics, 3, 1) + GetArrayCell(RoundStatistics, 4, 1), roundStatisticsText[5], sizeof(roundStatisticsText[]));
+			while (iTotalCampaignTime >= 60) {
+				Minutes++;
+				iTotalCampaignTime -= 60;
+			}
+			Format(thisRoundTime, sizeof(thisRoundTime), "{G}%d {O}min(s), {G}%d {O}sec(s)", Minutes, iTotalCampaignTime);
+			int totalInfectedKilledThisCampaign = numberOfCommonsKilledThisCampaign + numberOfSupersKilledThisCampaign + numberOfWitchesKilledThisCampaign + numberOfSpecialsKilledThisCampaign + numberOfTanksKilledThisCampaign;
+			char totalInfectedKilledCampaign[10];
+			AddCommasToString(totalInfectedKilledThisCampaign, totalInfectedKilledCampaign, sizeof(totalInfectedKilledCampaign));
+			char commonsKilledThisCampaign[10];
+			AddCommasToString(numberOfCommonsKilledThisCampaign, commonsKilledThisCampaign, sizeof(commonsKilledThisCampaign));
+			char supersKilledThisCampaign[10];
+			AddCommasToString(numberOfSupersKilledThisCampaign, supersKilledThisCampaign, sizeof(supersKilledThisCampaign));
+			char witchesKilledThisCampaign[10];
+			AddCommasToString(numberOfWitchesKilledThisCampaign, witchesKilledThisCampaign, sizeof(witchesKilledThisCampaign));
+			char specialsKilledThisCampaign[10];
+			AddCommasToString(numberOfSpecialsKilledThisCampaign, specialsKilledThisCampaign, sizeof(specialsKilledThisCampaign));
+			char tanksKilledThisCampaign[10];
+			AddCommasToString(numberOfTanksKilledThisCampaign, tanksKilledThisCampaign, sizeof(tanksKilledThisCampaign));
 
-			PrintToChatAll("%t", "campaign statistics", orange, orange, blue,
-							roundStatisticsText[0], orange, blue,
-							roundStatisticsText[1], orange, blue,
-							roundStatisticsText[2], orange, blue,
-							roundStatisticsText[3], orange, blue,
-							roundStatisticsText[4], orange, green,
-							roundStatisticsText[5], green, green);
+			char campaignStatistics[512];
+			Format(campaignStatistics, sizeof(campaignStatistics), "%t", "campaign statistics", commonsKilledThisCampaign, supersKilledThisCampaign, witchesKilledThisCampaign, specialsKilledThisCampaign, tanksKilledThisCampaign, thisRoundTime, totalInfectedKilledCampaign);
+			for (int i = 1; i <= MaxClients; i++) {
+				if (!IsLegitimateClient(i)) continue;
+				Client_PrintToChat(i, true, campaignStatistics);
+			}
 		}
 		if (!b_IsMissionFailed) {
 			//InfectedLevel = HumanSurvivorLevels();
@@ -3757,6 +3810,7 @@ stock LoadMainConfig() {
 	iMaxLayers							= GetConfigValueInt("max talent layers?");
 	iCommonInfectedBaseDamage			= GetConfigValueInt("common infected base damage?");
 	iShowTotalNodesOnTalentTree			= GetConfigValueInt("show upgrade maximum by nodes?");
+	fSuperCommonTickrate				= GetConfigValueFloat("super common tick rate?");
 	fDrawHudInterval					= GetConfigValueFloat("hud display tick rate?");
 	fSpecialAmmoInterval				= GetConfigValueFloat("special ammo tick rate?");
 	//fEffectOverTimeInterval				= GetConfigValueFloat("effect over time tick rate?");
@@ -3799,7 +3853,6 @@ stock LoadMainConfig() {
 	fForceTankJumpRange					= GetConfigValueFloat("force tank to jump range?", 256.0);
 	iResetDirectorPointsOnNewRound		= GetConfigValueInt("reset director points every round?", 1);
 	iMaxServerUpgrades					= GetConfigValueInt("max upgrades allowed?");
-	iExperienceLevelCap					= GetConfigValueInt("player level to stop earning experience?", 0);
 	//iDeleteSupersOnDeath				= GetConfigValueInt("delete super commons on death?", 1);
 	//iShoveStaminaCost					= GetConfigValueInt("shove stamina cost?", 10);
 	iLootEnabled						= GetConfigValueInt("loot system enabled?", 1);
