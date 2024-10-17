@@ -1,37 +1,27 @@
 public Handle TalentInfoScreen_Special(client) {
 	char TalentName[64];
 	Format(TalentName, sizeof(TalentName), "%s", PurchaseTalentName[client]);
-
 	Handle menu = CreatePanel();
 	int menuPos					= GetMenuPosition(client, TalentName);
-
 	int AbilityTalent			= GetArrayCell(PurchaseValues[client], IS_TALENT_ABILITY);
-
-	char TalentIdCode[64];
 	char theval[64];
 	FormatKeyValue(theval, sizeof(theval), PurchaseKeys[client], PurchaseValues[client], "id_number");
-	Format(TalentIdCode, sizeof(TalentIdCode), "%T", "Talent Id Code", client);
-	Format(TalentIdCode, sizeof(TalentIdCode), "%s: %s", TalentIdCode, theval);
-
-	
-
-	//	We copy the talent name to another string so we can show the talent in the language of the player.
-
-	
-
 	//	Talents now have a brief description of what they do on their purchase page.
 	//	This variable is pre-determined and calls a translation file in the language of the player.
 	
 	char TalentInfo[128];
+	GetTranslationOfTalentName(client, TalentName, TalentInfo, sizeof(TalentInfo), true);
+	Format(TalentInfo, sizeof(TalentInfo), "%T", TalentInfo, client);
+	DrawPanelText(menu, TalentInfo);
+	DrawPanelText(menu, "\n ");
 	char text[512];
 
 	if (AbilityTalent != 1) {
 		char TalentName_Temp[64];
 		GetTranslationOfTalentName(client, TalentName, TalentName_Temp, sizeof(TalentName_Temp), _, true);
+		//	We copy the talent name to another string so we can show the talent in the language of the player.
 		Format(TalentName_Temp, sizeof(TalentName_Temp), "%T", TalentName_Temp, client);
-
 		GetTranslationOfTalentName(client, TalentName, TalentInfo, sizeof(TalentInfo));
-
 		Format(TalentInfo, sizeof(TalentInfo), "%T", TalentInfo, client);
 
 		float fltime = GetSpecialAmmoStrength(client, TalentName, _, _, _, menuPos);
@@ -47,12 +37,17 @@ public Handle TalentInfoScreen_Special(client) {
 		DrawPanelText(menu, text);
 		Format(text, sizeof(text), "%T", "Special Ammo Range", client, GetSpecialAmmoStrength(client, TalentName, 3, _, _, menuPos), GetSpecialAmmoStrength(client, TalentName, 3, true, _, menuPos));
 		DrawPanelText(menu, text);
-		DrawPanelText(menu, TalentIdCode);
+		DrawPanelText(menu, TalentInfo);	// rawline means not a selectable option.
 	}
 	else {
-		GetTranslationOfTalentName(client, TalentName, TalentInfo, sizeof(TalentInfo), _, true);
-		Format(TalentInfo, sizeof(TalentInfo), "%T", TalentInfo, client);
-		DrawPanelText(menu, TalentInfo);
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client]);
+		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_PASSIVE_EFFECT);
+		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_TOGGLE_EFFECT);
+		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
+		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_COOLDOWN_EFFECT);
+		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
 	}
 
 	// We only have the option to assign it to action bars, instead.
@@ -71,18 +66,6 @@ public Handle TalentInfoScreen_Special(client) {
 	
 	Format(text, sizeof(text), "%T", "return to talent menu", client);
 	DrawPanelItem(menu, text);
-	if (AbilityTalent == 1) {
-
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client]);
-		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_PASSIVE_EFFECT);
-		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_TOGGLE_EFFECT);
-		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-		GetAbilityText(client, text, sizeof(text), PurchaseKeys[client], PurchaseValues[client], ABILITY_COOLDOWN_EFFECT);
-		if (!StrEqual(text, "-1")) DrawPanelText(menu, text);
-	}
-	else DrawPanelText(menu, TalentInfo);	// rawline means not a selectable option.
 	return menu;
 }
 

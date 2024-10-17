@@ -89,26 +89,14 @@ stock DrawSpecialAmmoTarget(int TargetClient, int CurrentPos,
 	int client = TargetClient;
 	if (owner != 0) client = owner;
 	if (iRPGMode <= 0) return -1;
-	//int CurrentPos	= GetMenuPosition(client, TalentName);
-	DrawSpecialAmmoValues[client]	= GetArrayCell(a_Menu_Talents, CurrentPos, 1);
 
 	float AfxRange			= GetSpecialAmmoStrength(client, TalentName, 3, _, _, CurrentPos);
 	float AfxRangeBonus = GetAbilityStrengthByTrigger(client, TargetClient, TRIGGER_aamRNG, _, 0, _, _, RESULT_d, 1, true);
-	if (AfxRangeBonus > 0.0) AfxRangeBonus *= (1.0 + AfxRangeBonus);
-	char AfxDrawPos[64];
-	char AfxDrawColour[64];
-	int drawpos = TALENT_FIRST_RANDOM_KEY_POSITION;
-	int drawcolor = TALENT_FIRST_RANDOM_KEY_POSITION;
-	DrawSpecialAmmoKeys[client]		= GetArrayCell(a_Menu_Talents, CurrentPos, 0);
-	while (drawpos >= 0 && drawcolor >= 0) {
-		drawpos = FormatKeyValue(AfxDrawPos, sizeof(AfxDrawPos), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw pos?", _, _, drawpos, false);
-		drawcolor = FormatKeyValue(AfxDrawColour, sizeof(AfxDrawColour), DrawSpecialAmmoKeys[client], DrawSpecialAmmoValues[client], "draw colour?", _, _, drawcolor, false);
-		if (drawpos < 0 || drawcolor < 0) return -1;
-		//if (StrEqual(AfxDrawColour, "-1", false)) return -1;		// if there's no colour, we return otherwise you'll get errors like this: TE_Send Exception reported: No TempEntity call is in progress (return 0 here would cause endless loop set to -1 as it is ignored i broke the golden rule lul)
-		CreateRingSoloEx(-1, AfxRange, AfxDrawColour, AfxDrawPos, false, f_ActiveTime, TargetClient, PosX, PosY, PosZ);
-		drawpos++;
-		drawcolor++;
+	if (AfxRangeBonus > 0.0) {
+		AfxRangeBonus *= (1.0 + AfxRangeBonus);
+		AfxRange *= AfxRangeBonus;
 	}
+	CreateRingSoloEx(-1, AfxRange, CurrentPos, false, f_ActiveTime, TargetClient, PosX, PosY, PosZ);
 	return 2;
 }
 
@@ -224,7 +212,7 @@ stock float GetAmmoCooldownTime(client, char[] TalentName, bool IsActiveTimeInst
 	4	Interval Time
 	5	Effect Strength
 */
-stock float GetSpecialAmmoStrength(client, char[] TalentName, resulttype=0, bool bGetNextUpgrade=false, TalentStrengthOverride = 0, int menupos = -1) {
+stock float GetSpecialAmmoStrength(client, char[] TalentName, int resulttype = 0, bool bGetNextUpgrade=false, TalentStrengthOverride = 0, int menupos = -1) {
 
 	int pos							=	(menupos == -1) ? GetMenuPosition(client, TalentName) : menupos;
 	if (pos == -1) return -1.0;		// no ammo is selected.
@@ -235,6 +223,7 @@ stock float GetSpecialAmmoStrength(client, char[] TalentName, resulttype=0, bool
 	float i_CooldownStart		= 0.0;
 	if (TalentStrengthOverride != 0) f_Str = TalentStrengthOverride * 1.0;
 	else if (bGetNextUpgrade) f_Str++;		// We add 1 point if we're showing the next upgrade value.
+	if (f_Str == 0.0) return 0.0;
 
 	//SpecialAmmoStrengthKeys[client]			= GetArrayCell(a_Menu_Talents, pos, 0);
 	SpecialAmmoStrengthValues[client]		= GetArrayCell(a_Menu_Talents, pos, 1);
@@ -243,53 +232,49 @@ stock float GetSpecialAmmoStrength(client, char[] TalentName, resulttype=0, bool
 	GetGoverningAttribute(client, TalentName, governingAttribute, sizeof(governingAttribute), pos);
 	float attributeMult = 0.0;
 	if (!StrEqual(governingAttribute, "-1")) attributeMult = GetAttributeMultiplier(client, governingAttribute);
-	float TheAbilityMultiplier = 0.0;
 
-	if (f_Str > 0.0) {
-
-		if (resulttype == 0) {		// Ability Time
-			i_FirstPoint		=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_ACTIVE_TIME_FIRST_POINT);
-			i_FirstPoint_Temp	=	(i_FirstPoint * attributeMult);	// Constitution increases the first point value of spells.
-			i_FirstPoint		+= i_FirstPoint_Temp;
-			f_Str			=	i_FirstPoint;
-			f_Str += GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_activetime, 0, true);
-		}
-		else if (resulttype == 1) {		// Cooldown Time
-			i_CooldownStart			=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_COOLDOWN_START);
-			i_FirstPoint			=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_COOLDOWN_FIRST_POINT);
-			i_FirstPoint_Temp	=	(i_FirstPoint * attributeMult);
-			i_FirstPoint		+= i_FirstPoint_Temp;
-			TheAbilityMultiplier = GetAbilityMultiplier(client, "L");
-			if (TheAbilityMultiplier != -1.0) {
-				if (TheAbilityMultiplier < 0.0) TheAbilityMultiplier = 0.1;
-				else if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
-					i_FirstPoint		*= TheAbilityMultiplier;
-				}
+	if (resulttype == 0) {		// Ability Time
+		i_FirstPoint		=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_ACTIVE_TIME_FIRST_POINT);
+		i_FirstPoint_Temp	=	(i_FirstPoint * attributeMult);	// Constitution increases the first point value of spells.
+		i_FirstPoint		+= i_FirstPoint_Temp;
+		f_Str			=	i_FirstPoint;
+		f_Str += GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_activetime, 0, true);
+	}
+	else if (resulttype == 1) {		// Cooldown Time
+		i_CooldownStart			=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_COOLDOWN_START);
+		i_FirstPoint			=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_COOLDOWN_FIRST_POINT);
+		i_FirstPoint_Temp	=	(i_FirstPoint * attributeMult);
+		i_FirstPoint		+= i_FirstPoint_Temp;
+		float TheAbilityMultiplier = GetAbilityMultiplier(client, "L");
+		if (TheAbilityMultiplier != -1.0) {
+			if (TheAbilityMultiplier < 0.0) TheAbilityMultiplier = 0.1;
+			else if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
+				i_FirstPoint		*= TheAbilityMultiplier;
 			}
-			f_Str			=	i_FirstPoint;
-			f_Str			+=	i_CooldownStart;
-			f_Str -= GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_cooldown, 0, true);
-			//float minimumCooldown = GetSpecialAmmoStrength(client, TalentName, _, _, _, pos);
-			// If talents reduce the cooldown time, we need to make sure the cooldown is never less than the active time - or they could have multiple of the same spell active at one time.
-			//if (f_Str < minimumCooldown) f_Str = minimumCooldown;//f_Str = GetSpecialAmmoStrength(client, TalentName, _, bGetNextUpgrade, TalentStrengthOverride);
 		}
-		else if (resulttype == 2) {		// Stamina Cost
-			int baseStamReq = GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_BASE_STAMINA_REQ);
-			i_FirstPoint						=	baseStamReq * 1.0;
-			i_FirstPoint_Temp					=	(i_FirstPoint * attributeMult);
-			if (i_FirstPoint_Temp > 0.0) i_FirstPoint += i_FirstPoint_Temp;
-			f_Str								=	i_FirstPoint;
-			f_Str -= GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_staminacost, 0, true);
-			//if (f_Str < baseStamReq) f_Str = baseStamReq * 1.0;
-			// we do class multiplier after because we want to allow classes to modify the restrictions
-		}
-		else if (resulttype == 3) {		// Range
-			i_FirstPoint						=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_RANGE_FIRST_POINT);
-			i_FirstPoint_Temp					=	(i_FirstPoint * attributeMult);
-			i_FirstPoint						+=	i_FirstPoint_Temp;
-			f_Str			=	i_FirstPoint;
-			f_Str += GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_range, 0, true);
-		}
+		f_Str			=	i_FirstPoint;
+		f_Str			+=	i_CooldownStart;
+		f_Str -= GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_cooldown, 0, true);
+		//float minimumCooldown = GetSpecialAmmoStrength(client, TalentName, _, _, _, pos);
+		// If talents reduce the cooldown time, we need to make sure the cooldown is never less than the active time - or they could have multiple of the same spell active at one time.
+		//if (f_Str < minimumCooldown) f_Str = minimumCooldown;//f_Str = GetSpecialAmmoStrength(client, TalentName, _, bGetNextUpgrade, TalentStrengthOverride);
+	}
+	else if (resulttype == 2) {		// Stamina Cost
+		int baseStamReq = GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_BASE_STAMINA_REQ);
+		i_FirstPoint						=	baseStamReq * 1.0;
+		i_FirstPoint_Temp					=	(i_FirstPoint * attributeMult);
+		if (i_FirstPoint_Temp > 0.0) i_FirstPoint += i_FirstPoint_Temp;
+		f_Str								=	i_FirstPoint;
+		f_Str -= GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_staminacost, 0, true);
+		//if (f_Str < baseStamReq) f_Str = baseStamReq * 1.0;
+		// we do class multiplier after because we want to allow classes to modify the restrictions
+	}
+	else if (resulttype == 3) {		// Range
+		i_FirstPoint						=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_RANGE_FIRST_POINT);
+		i_FirstPoint_Temp					=	(i_FirstPoint * attributeMult);
+		i_FirstPoint						+=	i_FirstPoint_Temp;
+		f_Str			=	i_FirstPoint;
+		f_Str += GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_range, 0, true);
 	}
 	//if (resulttype == 3) return (f_Str / 2);	// we always measure from the center-point.
 	return f_Str;

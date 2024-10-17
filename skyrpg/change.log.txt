@@ -1,4 +1,15 @@
- Version 3.4.7.8.c
+Version 4.1.x
+	- Refactored the Points module for optimizations.
+	- Refactored the Super Commons module for optimizations.
+	- Refactored the AIDirector+ module for optimizations.
+	- Cleaned up a lot of code.
+	- Refactored a lot of miscellaneous code bits.
+	- Made the hard decision to prioritize performance optimizations over code readability. Sorry. But on the plus side
+	  players are reporting this update is lag-free and buttery-smooth.
+	+ Will add a player settings option in the next update to allow players to locally control whether they have infected
+	  health bars displayed or not.
+
+Version 3.4.7.8.c
 	- Patched a bug where survivor bots could not receive the benefits of medkits or pain pills.
 	- OnPlayerRunCmd() optimizations to remove strcomp and instead place that in the SetMyWeapons() that only occurs when weapon swaps occur.
 	- Patched a bug where GetTalentModifiers() was doubling the benefit of certain talents.

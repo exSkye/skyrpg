@@ -72,7 +72,7 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 			if (inflictor > MaxClients && ((damagetype & DMG_BLAST) || (damagetype & DMG_BLAST_SURFACE) || (damagetype & DMG_NERVEGAS))) {
 				char classname[64];
 				GetEdictClassname(inflictor, classname, sizeof(classname));
-				if (StrContains(classname, "pipe_bomb") == -1) baseWeaponDamage = iExplosionBaseDamage;
+				if (!StrEqualAtPos(classname, "pipe_bomb", 7)) baseWeaponDamage = iExplosionBaseDamage;
 				else baseWeaponDamage = iExplosionBaseDamagePipe;
 				baseWeaponDamage += RoundToCeil(GetAbilityStrengthByTrigger(attacker, victim, TRIGGER_S, _, baseWeaponDamage, _, _, RESULT_d, 1, true, _, _, _, damagetype));
 				GetAbilityStrengthByTrigger(attacker, victim, TRIGGER_explosion, _, baseWeaponDamage, _, _, _, _, _, _, _, _, damagetype, _, _, takeDamageEvent[attacker][1]);
@@ -204,15 +204,15 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 				We can now calculate the damage the victim will take.
 				============================================================*/
 			if (!IsSurvivorBotVictim || iCanSurvivorBotsBurn == 1) {
-				char effectToCreate[10];
+				int effectToCreate = -1;
 				int effectType = -1;
 				if (IsFireDamage(damagetype)) {
-					Format(effectToCreate, sizeof(effectToCreate), "burn");
+					effectToCreate = STATUS_EFFECT_BURN;
 					if (survivorIncomingDamage < iFireBaseDamage) survivorIncomingDamage = iFireBaseDamage;
 					effectType = 0;
 				}
 				else if ((damagetype & DMG_SPITTERACID1 || damagetype & DMG_SPITTERACID2)) {
-					Format(effectToCreate, sizeof(effectToCreate), "acid");
+					effectToCreate = STATUS_EFFECT_ACID;
 					effectType = 1;
 				}
 
@@ -221,7 +221,6 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 					float currentEngineTime = GetEngineTime();
 					if (iBurnCounter < iDebuffLimit && fOnFireDebuff[victim] < currentEngineTime) {
 						fOnFireDebuff[victim] = currentEngineTime + fOnFireDebuffDelay;
-						PushArrayString(ApplyDebuffCooldowns[victim], effectToCreate);
 						if (iRPGMode >= 1) {
 							float fAcidDamage = (attackerType == 1) ? fAcidDamageSupersPlayerLevel : fAcidDamagePlayerLevel;
 							if (iBotLevelType == 1) {

@@ -6,13 +6,33 @@ stock void Autoloot(client) {
 	for (int i = 0; i < MAX_ENTITIES; i++) {
 		if (!IsValidEntity(i)) continue;
 		GetEntityClassname(i, entityClassname, sizeof(entityClassname));
-		if (StrContains(entityClassname, "physics") == -1) continue;
+		if (!StrBeginsWith(entityClassname, "physics")) continue;
 		GetEntPropString(i, Prop_Data, "m_iName", entityClassname, sizeof(entityClassname));
-		if (StrContains(entityClassname, "loot") == -1) continue;
+		if (!StrBeginsWith(entityClassname, "loot")) continue;
 		GetEntPropVector(i, Prop_Send, "m_vecOrigin", pos);
 		if (GetVectorDistance(myPos, pos) > 64.0) continue;
 		IsPlayerTryingToPickupLoot(client, i, entityClassname);
 	}
+}
+// char[] string = "hello"
+
+stock bool StrBeginsWith(char[] string, char[] prefix) {
+	int len = strlen(prefix);
+	if (strlen(string) < len) return false;
+
+	for (int i = 0; i < len; i++) {
+		if (string[i] != prefix[i]) return false;
+	}
+	return true;
+}
+
+stock bool StrEqualAtPos(char[] string, char[] prefix, int pos) {
+	int len = strlen(prefix);
+	if (strlen(string)-pos < len) return false;
+	for (int i = pos, j = 0; j < len; i++, j++) {
+		if (string[i] != prefix[j]) return false;
+	}
+	return true;
 }
 
 stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname = "none") {
@@ -21,9 +41,11 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 		entity = GetClientAimTarget(client, false);
 		if (entity == -1) return false;
 		GetEntityClassname(entity, entityClassname, sizeof(entityClassname));
-		if (StrContains(entityClassname, "physics") == -1) return false;	// not a loot object
+		if (!StrEqualAtPos(entityClassname, "physics", 5)) return false;	// not a loot object
 		GetEntPropString(entity, Prop_Data, "m_iName", entityClassname, sizeof(entityClassname));
-		if (StrContains(entityClassname, "loot") == -1) return false;		// not specifically loot (we will change this to allow types later, maybe)
+
+		if (!StrBeginsWith(entityClassname, "loot")) return false;		// not specifically loot (we will change this to allow types later, maybe)
+		
 		// okay, so it's a loot object. Is the player close enough to pick it up?
 		float myPos[3];
 		GetClientAbsOrigin(client, myPos);

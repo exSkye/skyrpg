@@ -6,9 +6,7 @@
 #undef REQUIRE_PLUGIN
 #include <readyup>
 #define REQUIRE_PLUGIN
-
-#include "rpg/definitions.sp"
-
+#include "rpg/Definitions.sp"
 public Plugin myinfo = {
 	name = PLUGIN_NAME,
 	author = PLUGIN_CONTACT,
@@ -19,8 +17,8 @@ public Plugin myinfo = {
 
 public void OnPluginStart() {
 	OnMapStartFunc(); // The very first thing that must happen before anything else happens.
-	CreateConVar("rpgmaker_version", PLUGIN_VERSION, "version of RPGMaker 2 Construction Kit");
-	SetConVarString(FindConVar("rpgmaker_version"), PLUGIN_VERSION);
+	CreateConVar("skyrpg_version", PLUGIN_VERSION, "!skyrpg   = )");
+	SetConVarString(FindConVar("skyrpg_version"), PLUGIN_VERSION);
 	g_Steamgroup = FindConVar("sv_steamgroup");
 	SetConVarFlags(g_Steamgroup, GetConVarFlags(g_Steamgroup) & ~FCVAR_NOTIFY);
 	g_svCheats = FindConVar("sv_cheats");
@@ -192,6 +190,8 @@ stock LoadMainConfig() {
 	CheckDifficulty();
 	GetConfigValue(sDeleteBotFlags, sizeof(sDeleteBotFlags), "delete bot flags?");
 
+	iDirectorThinkingAdvertisementTime	= GetConfigValueInt("director thinking advertisement?", 30);
+	fBagPickupDelay						= GetConfigValueFloat("bag pickup delay?", 0.1);
 	fDoTInterval						= GetConfigValueFloat("DoT tick interval?", 1.0);
 	fDoTMaxTime							= GetConfigValueFloat("DoT maximum duration?", 10.0);
 	iFireBaseDamage						= GetConfigValueInt("fire base damage?", 10);	// vanilla default is 40
@@ -267,6 +267,8 @@ stock LoadMainConfig() {
 	fCommonDirectorPoints				= GetConfigValueFloat("common infected director points?");
 	iDisplayHealthBars					= GetConfigValueInt("display health bars?");
 	scoreRequiredForLeaderboard			= GetConfigValueInt("player score required for leaderboard?");
+
+
 	char text[64];
 	char text2[64];
 	char text3[64];
@@ -303,6 +305,11 @@ stock LoadMainConfig() {
 	BroadcastType						= GetConfigValueInt("hint text type?");
 	iDoomTimer							= GetConfigValueInt("doom kill timer?");
 	iSurvivorStaminaMax					= GetConfigValueInt("survivor stamina?");
+	fBuffingMultTank					= GetConfigValueFloat("buffing multiplier tank?", 0.5);
+	fBuffingMultWitch					= GetConfigValueFloat("buffing multiplier witch?", 0.5);
+	fBuffingMultSpecials				= GetConfigValueFloat("buffing multiplier specials?", 0.2);
+	fBuffingMultSupers					= GetConfigValueFloat("buffing multiplier supers?", 0.1);
+	fBuffingMultCommons					= GetConfigValueFloat("buffing multiplier commons?", 0.0);
 	fRatingMultSpecials					= GetConfigValueFloat("rating multiplier specials?");
 	fRatingMultSupers					= GetConfigValueFloat("rating multiplier supers?");
 	fRatingMultCommons					= GetConfigValueFloat("rating multiplier commons?");
@@ -422,8 +429,8 @@ stock LoadMainConfig() {
 	iAllowPauseLeveling					= GetConfigValueInt("let players pause their leveling?");
 	fMaxDamageResistance				= GetConfigValueFloat("max damage resistance?", 0.99);
 	fStaminaPerPlayerLevel				= GetConfigValueFloat("stamina increase per player level?");
-	iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?");
-	iEndRoundIfNoLivingHumanSurvivors	= GetConfigValueInt("end round if no living human survivors?", 1);
+	//iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?");
+	//iEndRoundIfNoLivingHumanSurvivors	= GetConfigValueInt("end round if no living human survivors?", 1);
 	fTankMovementSpeed_Burning			= GetConfigValueFloat("fire tank movement speed?", 1.0);	// if this key is omitted, a default value is set. these MUST be > 0.0, so the default is hard-coded.
 	fTankMovementSpeed_Hulk				= GetConfigValueFloat("hulk tank movement speed?", 0.75);
 	fTankMovementSpeed_Death			= GetConfigValueFloat("death tank movement speed?", 0.5);
@@ -508,7 +515,6 @@ stock LoadMainConfig() {
 	GetConfigValue(defaultLoadoutWeaponPrimary, sizeof(defaultLoadoutWeaponPrimary), "default loadout primary weapon?");
 	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
 	GetConfigValue(serverKey, sizeof(serverKey), "server steam key?");
-	mainConfigLoaded = true;
 	LogMessage("Main Config Loaded.");
 }
 
@@ -540,15 +546,16 @@ stock LoadMainConfig() {
 #include "rpg/TalentModifiers.sp"
 #include "rpg/ActionBar/ShowAndDrawActionBar.sp"
 #include "rpg/Menus/TeamComposition.sp"
-#include "rpg/Menus/ThreatMeter.sp"
+#include "rpg/ThreatMeter/ThreatMeter.sp"
 #include "rpg/Menus/CharacterSheet.sp"
 #include "rpg/Menus/Proficiency.sp"
 #include "rpg/Menus/Leaderboards.sp"
 #include "rpg/ProfileEditor.sp"
 #include "rpg/Menus/PointsBuyMenu.sp"
 #include "rpg/Menus/Store.sp"
-#include "rpg/Menus/AIDirectorMenu.sp"
+#include "rpg/AIDirector/AIDirectorMenu.sp"
 #include "rpg/Timers.sp"
+#include "rpg/AIDirector/Director.sp"
 #include "rpg/Stocks/ConvertTriggerAndResult.sp"
 #include "rpg/Stocks/ActivateAbilityEx.sp"
 #include "rpg/Stocks/GetAbilityStrengthByTrigger.sp"

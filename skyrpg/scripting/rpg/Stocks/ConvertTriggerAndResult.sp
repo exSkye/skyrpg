@@ -54,6 +54,20 @@ int ConvertEffectToInt(char[] resultEffects) {
 	return -1;
 }
 
+int ConvertStringToColorCode(char[] string) {
+	if (StrEqual(string, "green", false)) return 0;
+	if (StrEqual(string, "red", false)) return 1;
+	if (StrEqual(string, "blue", false)) return 2;
+	if (StrEqual(string, "purple", false)) return 3;
+	if (StrEqual(string, "yellow", false)) return 4;
+	if (StrEqual(string, "orange", false)) return 5;
+	if (StrEqual(string, "black", false)) return 6;
+	if (StrEqual(string, "brightblue", false)) return 7;
+	if (StrEqual(string, "darkgreen", false)) return 8;
+	if (StrEqual(string, "white", false)) return 9;
+	return 0;
+}
+
 int ConvertTriggerToInt(char[] abilityTrigger) {
 	if (StrEqual(abilityTrigger, "R")) return 0;
 	if (StrEqual(abilityTrigger, "r")) return 1;

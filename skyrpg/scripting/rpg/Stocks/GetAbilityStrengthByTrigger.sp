@@ -71,7 +71,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 
 
 	// Some talents require the player to be currently selected on a specific weapon, across any weapon category.
-	int theItemActivatorIsHolding = GetEntPropEnt(activator, Prop_Data, "m_hActiveWeapon");
+	int theItemActivatorIsHolding = GetEntPropEnt(activator, Prop_Data, "m_hActiveWeapon"); // stored and should be pulled from the memo
 	char theItemActivatorIsHoldingName[64];
 	if (theItemActivatorIsHolding != -1) GetEdictClassname(theItemActivatorIsHolding, theItemActivatorIsHoldingName, sizeof(theItemActivatorIsHoldingName));
 
@@ -323,6 +323,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 			int iWeaponsPermitted = GetArrayCell(TriggerValues[activator], WEAPONS_PERMITTED);
 			if (iWeaponsPermitted > 0 && !clientWeaponCategoryIsAllowed(activator, iWeaponsPermitted)) continue;
 			
+			// optimize to skip weapon_
 			char specificWeaponRequired[64];
 			GetArrayString(TriggerValues[activator], WEAPON_NAME_REQUIRED, specificWeaponRequired, sizeof(specificWeaponRequired));
 			if (!StrEqual(specificWeaponRequired, "-1") && StrContains(theItemActivatorIsHoldingName, specificWeaponRequired) == -1) continue;
@@ -502,7 +503,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 				if (ResultType >= 1) {
 					if (!bDontActuallyActivate) {
 						if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
-						ActivateAbilityEx(activator, targetPlayer, damagevalue, targetEffectsInt, p_Strength, p_Time, targetPlayer, _, isRawType,
+						ActivateAbilityEx(activator, targetPlayer, i, damagevalue, targetEffectsInt, p_Strength, p_Time, targetPlayer, _, isRawType,
 											GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffectInt,
 											GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
 											abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
@@ -511,7 +512,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 				else {
 					if (!bDontActuallyActivate) {
 						if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
-						ActivateAbilityEx(activator, activator, damagevalue, activatorEffectsInt, p_Strength, p_Time, targetPlayer, _, isRawType,
+						ActivateAbilityEx(activator, activator, i, damagevalue, activatorEffectsInt, p_Strength, p_Time, targetPlayer, _, isRawType,
 																	GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffectInt,
 																	GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
 																	abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);

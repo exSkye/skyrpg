@@ -95,14 +95,36 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		RemoveFromArray(section, 0);
 		PushArrayString(TalentSections, s_section);
 
-		if (configIsForTalents) SetConfigArrays(configname, a_Menu_Talents, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Menu_Talents));
+		if (configIsForTalents) {
+			PushArrayCell(TalentDrawPositions, -1);
+			PushArrayCell(TalentDrawColors, -1);
+
+			PushArrayCell(TalentInstantColors, -1);
+			PushArrayCell(TalentInstantPositions, -1.0);
+			PushArrayCell(TalentInstantDelays, -1.0);
+			PushArrayCell(TalentInstantSizes, -1.0);
+
+			PushArrayCell(TalentActiveColors, -1);
+			PushArrayCell(TalentActivePositions, -1.0);
+			PushArrayCell(TalentActiveSizes, -1.0);
+
+			PushArrayCell(TalentPassiveColors, -1);
+			PushArrayCell(TalentPassivePositions, -1.0);
+			PushArrayCell(TalentPassiveSizes, -1.0);
+
+			SetConfigArrays(configname, a_Menu_Talents, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Menu_Talents));
+		}
 		else if (StrEqual(configname, CONFIG_MAINMENU)) SetConfigArrays(configname, a_Menu_Main, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Menu_Main));
 		else if (StrEqual(configname, CONFIG_EVENTS)) SetConfigArrays(configname, a_Events, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Events));
 		else if (StrEqual(configname, CONFIG_POINTS)) SetConfigArrays(configname, a_Points, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Points));
 		else if (StrEqual(configname, CONFIG_STORE)) SetConfigArrays(configname, a_Store, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Store));
 		else if (StrEqual(configname, CONFIG_TRAILS)) SetConfigArrays(configname, a_Trails, TalentKeys, TalentValues, TalentSections, GetArraySize(a_Trails));
 		else if (StrEqual(configname, CONFIG_WEAPONS)) SetConfigArrays(configname, a_WeaponDamages, TalentKeys, TalentValues, TalentSections, GetArraySize(a_WeaponDamages));
-		else if (StrEqual(configname, CONFIG_COMMONAFFIXES)) SetConfigArrays(configname, a_CommonAffixes, TalentKeys, TalentValues, TalentSections, GetArraySize(a_CommonAffixes));
+		else if (StrEqual(configname, CONFIG_COMMONAFFIXES)) {
+			PushArrayCell(CommonDrawColors, -1);
+			PushArrayCell(CommonDrawPositions, -1.0);
+			SetConfigArrays(configname, a_CommonAffixes, TalentKeys, TalentValues, TalentSections, GetArraySize(a_CommonAffixes));
+		}
 		else if (StrEqual(configname, CONFIG_HANDICAP)) SetConfigArrays(configname, a_HandicapLevels, TalentKeys, TalentValues, TalentSections, GetArraySize(a_HandicapLevels));
 		//else if (StrEqual(configname, CONFIG_CLASSNAMES)) SetConfigArrays(configname, a_Classnames, TalentKeys, TalentValues, tTalentSection, GetArraySize(a_Classnames));
 		if (configIsForTalents) {
@@ -123,25 +145,21 @@ public ReadyUp_LoadFromConfigEx(Handle key, Handle value, Handle section, char[]
 		Handle Keys					=	CreateArray(11);
 		Handle Values				=	CreateArray(11);
 		Handle Section				=	CreateArray(10);
-		int sizer						=	0;
 		for (int i = 0; i < size; i++) {
 			Keys						=	GetArrayCell(a_Points, i, 0);
 			Values						=	GetArrayCell(a_Points, i, 1);
 			Section						=	GetArrayCell(a_Points, i, 2);
-			int size2					=	GetArraySize(Keys);
-			for (int ii = 0; ii < size2; ii++) {
-				GetArrayString(Keys, ii, s_key, sizeof(s_key));
-				GetArrayString(Values, ii, s_value, sizeof(s_value));
-				if (StrEqual(s_key, "model?")) PushArrayString(ModelsToPrecache, s_value); //PrecacheModel(s_value, true);
-				else if (StrEqual(s_key, "director option?") && StrEqual(s_value, "1")) {
-					sizer				=	GetArraySize(a_DirectorActions);
-					ResizeArray(a_DirectorActions, sizer + 1);
-					SetArrayCell(a_DirectorActions, sizer, Keys, 0);
-					SetArrayCell(a_DirectorActions, sizer, Values, 1);
-					SetArrayCell(a_DirectorActions, sizer, Section, 2);
-					ResizeArray(a_DirectorActions_Cooldown, sizer + 1);
-					SetArrayString(a_DirectorActions_Cooldown, sizer, "0");						// 0 means not on cooldown. 1 means on cooldown. This resets every map.
-				}
+
+			char model[64];
+			GetArrayString(Values, POINTS_MODEL, model, 64);
+			if (!StrEqual(model, "-1")) PushArrayString(ModelsToPrecache, model);
+			int isDirectorOption = GetArrayCell(Values, POINTS_IS_DIRECTOR_OPTION);
+			if (isDirectorOption == 1) {
+				int sizer				=	GetArraySize(a_DirectorActions);
+				PushArrayCell(a_DirectorActions, Keys);
+				SetArrayCell(a_DirectorActions, sizer, Values, 1);
+				SetArrayCell(a_DirectorActions, sizer, Section, 2);
+				PushArrayCell(a_DirectorActions_Cooldown, 0);						// 0 means not on cooldown. 1 means on cooldown. This resets every map.
 			}
 		}
 	}
@@ -174,11 +192,139 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	char value[64];
 	int a_Size = GetArraySize(Keys);
 	//setConfigArraysDebugger = true;
+	int drawColor = 0;
+	int drawPos = 0;
+
+	int instantDrawColor = 0;
+	int instantDrawPos = 0;
+	int instantDrawDelay = 0;
+	int instantDrawSize = 0;
+
+	int activeDrawColor = 0;
+	int activeDrawPos = 0;
+	int activeDrawSize = 0;
+
+	int passiveDrawColor = 0;
+	int passiveDrawPos = 0;
+	int passiveDrawSize = 0;
 	for (int i = 0; i < a_Size; i++) {
 		GetArrayString(Keys, i, key, sizeof(key));
 		GetArrayString(Values, i, value, sizeof(value));
+		if (configIsForTalents) {
+			if (StrEqual(key, "draw pos?")) {
+				float fVal = StringToFloat(value);
+				SetArrayCell(TalentDrawPositions, size, fVal, drawPos+1);
+				drawPos++;
+				continue;
+			}
+			else if (StrEqual(key, "draw colour?")) {
+				int iColor = ConvertStringToColorCode(value);
+				SetArrayCell(TalentDrawColors, size, iColor, drawColor+1);
+				drawColor++;
+				continue;
+			}
+			else if (StrEqual(key, "instant draw?")) {
+				int instantColor = ConvertStringToColorCode(value);
+				SetArrayCell(TalentInstantColors, size, instantColor, instantDrawColor+1);
+				instantDrawColor++;
+				continue;
+			}
+			else if (StrEqual(key, "instant draw pos?")) {
+				float fInstantDrawColorPos = StringToFloat(value);
+				SetArrayCell(TalentInstantPositions, size, fInstantDrawColorPos, instantDrawPos+1);
+				instantDrawPos++;
+				continue;
+			}
+			else if (StrEqual(key, "instant draw delay?")) {
+				float fInstantDrawColorDelay = StringToFloat(value);
+				SetArrayCell(TalentInstantDelays, size, fInstantDrawColorDelay, instantDrawDelay+1);
+				instantDrawDelay++;
+				continue;
+			}
+			else if (StrEqual(key, "instant draw size?")) {
+				float fInstantDrawColorSize = StringToFloat(value);
+				SetArrayCell(TalentInstantPositions, size, fInstantDrawColorSize, instantDrawSize+1);
+				instantDrawSize++;
+				continue;
+			}
+			else if (StrEqual(key, "passive draw?")) {
+				int passiveDrawColorPos = ConvertStringToColorCode(value);
+				SetArrayCell(TalentPassiveColors, size, passiveDrawColorPos, passiveDrawColor+1);
+				passiveDrawColor++;
+				continue;
+			}
+			else if (StrEqual(key, "passive draw pos?")) {
+				float passiveDrawColorHeight = StringToFloat(value);
+				SetArrayCell(TalentPassivePositions, size, passiveDrawColorHeight, passiveDrawPos+1);
+				passiveDrawPos++;
+				continue;
+			}
+			else if (StrEqual(key, "passive draw size?")) {
+				float passiveDrawColorSize = StringToFloat(value);
+				SetArrayCell(TalentPassiveSizes, size, passiveDrawColorSize, passiveDrawSize+1);
+				passiveDrawSize++;
+				continue;
+			}
+			else if (StrEqual(key, "draw effect?")) {
+				int activeDrawColorPos = ConvertStringToColorCode(value);
+				SetArrayCell(TalentActiveColors, size, activeDrawColorPos, activeDrawColor+1);
+				activeDrawColor++;
+				continue;
+			}
+			else if (StrEqual(key, "draw effect pos?")) {
+				float activeDrawColorHeight = StringToFloat(value);
+				SetArrayCell(TalentActivePositions, size, activeDrawColorHeight, activeDrawPos+1);
+				activeDrawPos++;
+				continue;
+			}
+			else if (StrEqual(key, "draw effect size?")) {
+				float activeDrawColorSize = StringToFloat(value);
+				SetArrayCell(TalentActivePositions, size, activeDrawColorSize, activeDrawSize+1);
+				activeDrawSize++;
+				continue;
+			}
+		}
+		else if (StrEqual(Config, CONFIG_COMMONAFFIXES)) {
+			if (StrEqual(key, "aura effect?") && StrEqual(value, "t", true)) {
+				// we want to track the position where defender commons are.
+				iDefenderCommonMenuPos = size;
+			}
+			else if (StrEqual(key, "draw pos?")) {
+				float fVal = StringToFloat(value);
+				SetArrayCell(CommonDrawPositions, size, fVal, drawPos+1);
+				drawPos++;
+				continue;
+			}
+			else if (StrEqual(key, "draw colour?")) {
+				int iColor = ConvertStringToColorCode(value);
+				SetArrayCell(CommonDrawColors, size, iColor, drawColor+1);
+				drawColor++;
+				continue;
+			}
+		}
 		PushArrayString(TalentKey, key);
 		PushArrayString(TalentValue, value);
+	}
+	if (configIsForTalents) {
+		SetArrayCell(TalentDrawPositions, size, drawPos);
+		SetArrayCell(TalentDrawColors, size, drawColor);
+
+		SetArrayCell(TalentInstantColors, size, instantDrawColor);
+		SetArrayCell(TalentInstantPositions, size, instantDrawPos);
+		SetArrayCell(TalentInstantDelays, size, instantDrawDelay);
+		SetArrayCell(TalentInstantSizes, size, instantDrawSize);
+
+		SetArrayCell(TalentActiveColors, size, activeDrawColor);
+		SetArrayCell(TalentActivePositions, size, activeDrawPos);
+		SetArrayCell(TalentActiveSizes, size, activeDrawSize);
+
+		SetArrayCell(TalentPassiveColors, size, passiveDrawColor);
+		SetArrayCell(TalentPassivePositions, size, passiveDrawPos);
+		SetArrayCell(TalentPassiveSizes, size, passiveDrawSize);
+	}
+	else if (StrEqual(Config, CONFIG_COMMONAFFIXES)) {
+		SetArrayCell(CommonDrawPositions, size, drawPos);
+		SetArrayCell(CommonDrawColors, size, drawColor);
 	}
 	int pos = 0;
 	int sortSize = 0;
@@ -1140,6 +1286,174 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 		// 	}
 		// }
 	}
+	else if (StrEqual(Config, CONFIG_POINTS)) {
+		if (FindStringInArray(TalentKey, "experience multiplier?") == -1) {
+			PushArrayString(TalentKey, "experience multiplier?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "isrespawn?") == -1) {
+			PushArrayString(TalentKey, "isrespawn?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "description?") == -1) {
+			PushArrayString(TalentKey, "description?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "part of menu named?") == -1) {
+			PushArrayString(TalentKey, "part of menu named?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "supercommon?") == -1) {
+			PushArrayString(TalentKey, "supercommon?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "delay handicap?") == -1) {
+			PushArrayString(TalentKey, "delay handicap?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "minimum delay?") == -1) {
+			PushArrayString(TalentKey, "minimum delay?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "living survivors?") == -1) {
+			PushArrayString(TalentKey, "living survivors?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "director option?") == -1) {
+			PushArrayString(TalentKey, "director option?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "priority?") == -1) {
+			PushArrayString(TalentKey, "priority?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "pcount?") == -1) {
+			PushArrayString(TalentKey, "pcount?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "drop?") == -1) {
+			PushArrayString(TalentKey, "drop?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "count handicap?") == -1) {
+			PushArrayString(TalentKey, "count handicap?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "count?") == -1) {
+			PushArrayString(TalentKey, "count?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "model?") == -1) {
+			PushArrayString(TalentKey, "model?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "parameter?") == -1) {
+			PushArrayString(TalentKey, "parameter?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "min cost handicap?") == -1) {
+			PushArrayString(TalentKey, "min cost handicap?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "cost handicap?") == -1) {
+			PushArrayString(TalentKey, "cost handicap?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "pre-game free?") == -1) {
+			PushArrayString(TalentKey, "pre-game free?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "quick bind?") == -1) {
+			PushArrayString(TalentKey, "quick bind?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "point cost minimum?") == -1) {
+			PushArrayString(TalentKey, "point cost minimum?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "command?") == -1) {
+			PushArrayString(TalentKey, "command?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "experience cost?") == -1) {
+			PushArrayString(TalentKey, "experience cost?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "point cost?") == -1) {
+			PushArrayString(TalentKey, "point cost?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "flags?") == -1) {
+			PushArrayString(TalentKey, "flags?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "gamemode?") == -1) {
+			PushArrayString(TalentKey, "gamemode?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "team?") == -1) {
+			PushArrayString(TalentKey, "team?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "weapon category?") == -1) {
+			PushArrayString(TalentKey, "weapon category?");
+			PushArrayString(TalentValue, "-1");
+		}
+		sortSize = GetArraySize(TalentKey);
+		pos = 0;
+		while (pos < sortSize) {
+			GetArrayString(TalentKey, pos, text, sizeof(text));
+			if (
+			pos == 0 && !StrEqual(text, "weapon category?") ||
+			pos == 1 && !StrEqual(text, "team?") ||
+			pos == 2 && !StrEqual(text, "gamemode?") ||
+			pos == 3 && !StrEqual(text, "flags?") ||
+			pos == 4 && !StrEqual(text, "point cost?") ||
+			pos == 5 && !StrEqual(text, "experience cost?") ||
+			pos == 6 && !StrEqual(text, "command?") ||
+			pos == 7 && !StrEqual(text, "point cost minimum?") ||
+			pos == 8 && !StrEqual(text, "quick bind?") ||
+			pos == 9 && !StrEqual(text, "pre-game free?") ||
+			pos == 10 && !StrEqual(text, "cost handicap?") ||
+			pos == 11 && !StrEqual(text, "min cost handicap?") ||
+			pos == 12 && !StrEqual(text, "parameter?") ||
+			pos == 13 && !StrEqual(text, "model?") ||
+			pos == 14 && !StrEqual(text, "count?") ||
+			pos == 15 && !StrEqual(text, "count handicap?") ||
+			pos == 16 && !StrEqual(text, "drop?") ||
+			pos == 17 && !StrEqual(text, "pcount?") ||
+			pos == 18 && !StrEqual(text, "priority?") ||
+			pos == 19 && !StrEqual(text, "director option?") ||
+			pos == 20 && !StrEqual(text, "living survivors?") ||
+			pos == 21 && !StrEqual(text, "minimum delay?") ||
+			pos == 22 && !StrEqual(text, "delay handicap?") ||
+			pos == 23 && !StrEqual(text, "supercommon?") ||
+			pos == 24 && !StrEqual(text, "part of menu named?") ||
+			pos == 25 && !StrEqual(text, "description?") ||
+			pos == 26 && !StrEqual(text, "isrespawn?") ||
+			pos == 27 && !StrEqual(text, "experience multiplier?")) {
+				PushArrayString(TalentKey, text);
+				GetArrayString(TalentValue, pos, text, sizeof(text));
+				PushArrayString(TalentValue, text);
+				RemoveFromArray(TalentKey, pos);
+				RemoveFromArray(TalentValue, pos);
+				continue;
+			}
+			pos++;
+		}
+		for (int i = 0; i < sortSize; i++) {
+			if (i == POINTS_WEAPON_CATEGORY || i == POINTS_POINT_COST || i == POINTS_EXPERIENCE_COST ||
+			i == POINTS_POINT_COST_MINIMUM || i == POINTS_FREE_DURING_PREGAME || i == POINTS_HANDICAP_COST ||
+			i == POINTS_HANDICAP_COST_MINIMUM || i == POINTS_COUNT || i == POINTS_COUNT_HANDICAP ||
+			i == POINTS_DROP || i == POINTS_PCOUNT || i == POINTS_PRIORITY || i == POINTS_IS_DIRECTOR_OPTION ||
+			i == POINTS_LIVING_SURVIVORS || i == POINTS_MINIMUM_DELAY || i == POINTS_HANDICAP_DELAY ||
+			i == POINTS_IS_RESPAWN) {
+				GetArrayString(TalentValue, i, text, sizeof(text));
+				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
+				else SetArrayCell(TalentValue, i, StringToInt(text));	//int
+			}
+		}
+	}
 	else if (StrEqual(Config, CONFIG_EVENTS)) {
 		if (FindStringInArray(TalentKey, "entered saferoom?") == -1) {
 			PushArrayString(TalentKey, "entered saferoom?");
@@ -1599,8 +1913,8 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	GetArrayString(Section, 0, text, sizeof(text));
 	PushArrayString(TalentSection, text);
 
-	ResizeArray(Main, size + 1);
-	SetArrayCell(Main, size, TalentKey, 0);
+	//ResizeArray(Main, size + 1);
+	PushArrayCell(Main, TalentKey);
 	SetArrayCell(Main, size, TalentValue, 1);
 	SetArrayCell(Main, size, TalentSection, 2);
 	

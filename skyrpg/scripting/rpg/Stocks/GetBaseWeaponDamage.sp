@@ -6,8 +6,6 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 	//int dontActivateTalentCooldown = (IsDataSheet) ? 1 : 0;
 
 	int WeaponDamage = 0;
-	float WeaponDamageRangePenalty = 0.0;
-	float WeaponDamageRangeBonus = 0.0;
 
 	float cpos[3];
 	float tpos[3];
@@ -108,31 +106,27 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 	// if effective range > range, reduce effective range based on the weapon range increase talents, so that snipers receive their range damage bonus faster
 	// if range > effective range, then weapon range talents increase effective range, so damage drop off doesn't start until further away.
 	if (!IsMelee) {
+		float fEffectiveRangeDamageBonus = 2.0;
 		if (WeaponEffectiveRange > WeaponRange) {	// Scale weapons like Snipers that you should deal more damage the FURTHER away you are.
-			if (Distance >= WeaponEffectiveRange) {	// Receive the maximum damage bonus for distance
-				WeaponDamage = RoundToCeil(WeaponDamage * 2.0);
+			if (Distance <= WeaponRange) {
+				fEffectiveRangeDamageBonus = 1.0;
 			}
-			else if (Distance > WeaponRange) {		// Receive a damage bonus based on how close the player is to the WeaponEffectiveRange versus the WeaponRange
-				WeaponDamageRangeBonus = 1.0 + ((Distance - WeaponRange) / WeaponEffectiveRange);
-				WeaponDamage = RoundToCeil(WeaponDamage * WeaponDamageRangeBonus);
+			else if (Distance < WeaponEffectiveRange) {		// Receive a damage bonus based on how close the player is to the WeaponEffectiveRange versus the WeaponRange
+				fEffectiveRangeDamageBonus = 1.0 + (Distance - WeaponRange) / (WeaponEffectiveRange - WeaponRange);
 			}
 		}
 		else {
-			if (Distance >= WeaponRange * 2.0) {	// When double or greater a weapons max effective range, damage is set to 1
-				WeaponDamage = 1;
+			float maxWeaponRange = WeaponRange * 2.0;
+			// damage is double if the player is the effective range or closer and then the value is not modified.
+			if (Distance >= maxWeaponRange) fEffectiveRangeDamageBonus = 0.01;
+			else if (Distance >= WeaponRange) {
+				fEffectiveRangeDamageBonus = 1.0 - (Distance - WeaponRange) / (maxWeaponRange - WeaponRange);
 			}
-			else if (Distance > WeaponRange) {
-				WeaponDamageRangePenalty = 1.0 - ((Distance - WeaponRange) / WeaponRange);
-				WeaponDamage = RoundToCeil(WeaponDamage * WeaponDamageRangePenalty);
-			}
-			else {
-				if (WeaponEffectiveRange < 1.0) WeaponEffectiveRange = 1.0;
-				// This variable ensures that if the player is <= the effective range to the target that they receive the maximum (2.0x) bonus
-				float DistanceMin = (Distance > WeaponEffectiveRange) ? (Distance - WeaponEffectiveRange) : WeaponRange;
-				WeaponDamageRangeBonus = 1.0 + (DistanceMin / WeaponRange);
-				WeaponDamage = RoundToCeil(WeaponDamage * WeaponDamageRangeBonus);
+			else if (Distance >= WeaponEffectiveRange) {	// When double or greater a weapons max effective range, damage is set to 1
+				fEffectiveRangeDamageBonus = 2.0 - (Distance - WeaponEffectiveRange) / (WeaponRange - WeaponEffectiveRange);
 			}
 		}
+		WeaponDamage = RoundToCeil(WeaponDamage * fEffectiveRangeDamageBonus);
 	}
 	return WeaponDamage;
 }

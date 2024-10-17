@@ -71,27 +71,38 @@ stock int GetRatingRewardForBuffing(int survivor, int infected, int pos, int cli
 	float RatingMultiplier = 0.0;
 	int buffingDone = 0;
 	int tHealth = 0;
+	float BuffingMultiplier = 0.0;
 	if (clientType == CLIENT_SPECIAL_INFECTED) {
 		buffingDone		= GetArrayCell(InfectedHealth[survivor], pos, 7);
 		tHealth			= GetArrayCell(InfectedHealth[survivor], pos, 1);
-		if (FindZombieClass(infected) != ZOMBIECLASS_TANK) RatingMultiplier = fRatingMultSpecials;
-		else RatingMultiplier = fRatingMultTank;
+		if (FindZombieClass(infected) != ZOMBIECLASS_TANK) {
+			RatingMultiplier = fRatingMultSpecials;
+			BuffingMultiplier = fBuffingMultSpecials;
+		}
+		else {
+			RatingMultiplier = fRatingMultTank;
+			BuffingMultiplier = fBuffingMultTank;
+		}
 	}
 	else if (clientType == CLIENT_WITCH) {
 		buffingDone		= GetArrayCell(WitchDamage[survivor], pos, 7);
 		tHealth			= GetArrayCell(WitchDamage[survivor], pos, 1);
 		RatingMultiplier = fRatingMultWitch;
+		BuffingMultiplier = fBuffingMultWitch;
 	}
 	else if (clientType == CLIENT_SUPER_COMMON) {
 		buffingDone		= GetArrayCell(SpecialCommon[survivor], pos, 7);
 		tHealth			= GetArrayCell(SpecialCommon[survivor], pos, 1);
 		RatingMultiplier = fRatingMultSupers;
+		BuffingMultiplier = fBuffingMultSupers;
 	}
 	else {
 		buffingDone		= GetArrayCell(CommonInfected[survivor], pos, 7);
 		tHealth			= GetArrayCell(CommonInfected[survivor], pos, 1);
 		RatingMultiplier = fRatingMultCommons;
+		BuffingMultiplier = fBuffingMultCommons;
 	}
+	buffingDone *= BuffingMultiplier;
 	float fBuffContribution = (buffingDone * 1.0) / (tHealth * 1.0);
 	if (fBuffContribution < fBuffingContribution) return 0;
 	if (fBuffContribution > 1.0) fBuffContribution = 1.0;

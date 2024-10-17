@@ -26,9 +26,9 @@ stock DoBurn(attacker, victim, baseWeaponDamage) {
 			AddWitchDamage(attacker, victim, baseWeaponDamage, true);
 		}
 	}
- 	if (IsLegitimateClientVictim && GetClientStatusEffect(victim, "burn") < iDebuffLimit) {
-		if (ISEXPLODE[victim] == INVALID_HANDLE) CreateAndAttachFlame(victim, RoundToCeil(baseWeaponDamage * TheInfernoMult), 10.0, 0.5, hAttacker, "burn");
-		else CreateAndAttachFlame(victim, RoundToCeil((baseWeaponDamage * TheInfernoMult) * TheScorchMult), 10.0, 0.5, hAttacker, "burn");
+ 	if (IsLegitimateClientVictim && GetClientStatusEffect(victim, STATUS_EFFECT_BURN) < iDebuffLimit) {
+		if (ISEXPLODE[victim] == INVALID_HANDLE) CreateAndAttachFlame(victim, RoundToCeil(baseWeaponDamage * TheInfernoMult), 10.0, 0.5, hAttacker, STATUS_EFFECT_BURN);
+		else CreateAndAttachFlame(victim, RoundToCeil((baseWeaponDamage * TheInfernoMult) * TheScorchMult), 10.0, 0.5, hAttacker, STATUS_EFFECT_BURN);
  	}
 }
 

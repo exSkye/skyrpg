@@ -15,26 +15,23 @@ stock GetStatusEffects(client, EffectType = 0, char[] theStringToStoreItIn, theS
 	int clientButtons = GetEntProp(client, Prop_Data, "m_nButtons");
 	if (EffectType == 0) {
 
-		//new AcidCount = GetClientStatusEffect(client, Handle:EntityOnFire, "acid");
-		int FireCount = GetClientStatusEffect(client, "burn");
-		int AcidCount = GetClientStatusEffect(client, "acid");
+		int FireCount = GetClientStatusEffect(client, STATUS_EFFECT_BURN);
+		int AcidCount = GetClientStatusEffect(client, STATUS_EFFECT_ACID);
 		Format(theStringToStoreItIn, theSizeOfTheString, "[-]");
 		if (DoomTimer != 0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Dm%d]", theStringToStoreItIn, iDoomTimer - DoomTimer);
 		if (bIsSurvivorFatigue[client]) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Fa]", theStringToStoreItIn);
 
-		//Count = GetClientStatusEffect(client, "burn");
 		if (FireCount > 0) iNumStatusEffects++;
 		if (FireCount >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bu++]", theStringToStoreItIn);
 		else if (FireCount >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bu++]", theStringToStoreItIn);
 		else if (FireCount > 0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bu]", theStringToStoreItIn);
 
-		//Count = GetClientStatusEffect(client, "acid");
 		if (AcidCount > 0) iNumStatusEffects++;
 		if (AcidCount >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ab++]", theStringToStoreItIn);
 		else if (AcidCount >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ab+]", theStringToStoreItIn);
 		else if (AcidCount > 0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ab]", theStringToStoreItIn);
 
-		Count = GetClientStatusEffect(client, "reflect");
+		Count = GetClientStatusEffect(client, STATUS_EFFECT_REFLECT);
 		if (Count > 0) iNumStatusEffects++;
 		if (Count >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Re++]", theStringToStoreItIn);
 		else if (Count >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Re+]", theStringToStoreItIn);

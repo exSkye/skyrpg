@@ -405,9 +405,10 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			else if (iEnsnareRestrictions == 1 && attackerZombieClass != ZOMBIECLASS_TANK) {
 				int iEnsnaredCount = EnsnaredInfected();
 				int livingSurvivors = LivingHumanSurvivors();
-				int ensnareBonus = (livingSurvivors > 1) ? livingSurvivors - 1 : 0;
+				int ensnareBonus = RaidCommonBoost(_, true);
+				if (ensnareBonus < 1) ensnareBonus = 1;
 				if (IsEnsnarer(attacker)) {
-					if (iInfectedLimit == -2 && iEnsnaredCount > RaidCommonBoost(_, true) + ensnareBonus ||
+					if (iInfectedLimit == -2 && iEnsnaredCount > ensnareBonus ||
 					iInfectedLimit == -1 ||
 					iInfectedLimit == 0 && iEnsnaredCount > livingSurvivors ||
 					iInfectedLimit > 0 && iEnsnaredCount > iInfectedLimit ||

@@ -182,35 +182,21 @@ stock UpgradesUsed(client, char[] text, size) {
 	Format(text, size, "(%s: %d / %d)", text, PlayerUpgradesTotal[client], MaximumPlayerUpgrades(client));
 }
 
-stock bool TalentListingFound(client, Handle Values, char[] MenuName, bool IsAllowItems = false) {
+stock bool TalentListingFound(client, Handle Values, char[] MenuName) {
 	char value[64];
-	GetArrayString(Values, PART_OF_MENU_NAMED, value, sizeof(value));
+	GetArrayString(Values, PART_OF_MENU_NAMED, value, 64);
 	if (!StrEqual(MenuName, value)) return false;
 	return true;
 }
 
 // Need to convert the points module to the new memoized structure, but until then...
-stock bool TalentListingFoundForPoints(client, Handle Keys, Handle Values, char[] MenuName, bool IsAllowItems = false) {
-
-	int size = GetArraySize(Keys);
-
-	char key[64];
+stock bool TalentListingFoundForPoints(client, Handle Values, char[] MenuName) {
 	char value[64];
-
-	for (int i = 0; i < size; i++) {
-
-		GetArrayString(Keys, i, key, sizeof(key));
-		if (StrEqual(key, "part of menu named?")) {
-
-			GetArrayString(Values, i, value, sizeof(value));
-			if (!StrEqual(MenuName, value)) return false;
-		}
-		if (StrEqual(key, "flags?")) {
-
-			GetArrayString(Values, i, value, sizeof(value));
-			if (!StrEqual(value, "none", false) && !HasCommandAccess(client, value)) return false;
-		}
-	}
+	GetArrayString(Values, POINTS_PART_OF_MENU_NAMED, value, 64);
+	if (!StrEqual(MenuName, value)) return false;
+	
+	GetArrayString(Values, POINTS_FLAGS, value, 64);
+	if (!StrEqual(value, "-1", false) && !HasCommandAccess(client, value)) return false;
 	return true;
 }
 

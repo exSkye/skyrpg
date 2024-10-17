@@ -17,14 +17,12 @@ public Action Timer_EntityOnFire(Handle timer) {
 		bool clientIsWitch = IsWitch(Client);
 		if (!clientIsSpecialCommon && !clientIsCommonInfected && !clientIsWitch && !IsClientAlive) {
 			RemoveFromArray(EntityOnFire, i);
-			RemoveFromArray(EntityOnFireName, i);
 			if (i > 0) i--;
 			continue;
 		}
 		if ((GetEntityFlags(Client) & FL_INWATER)) {
 			ExtinguishEntity(Client);
 			RemoveFromArray(EntityOnFire, i);
-			RemoveFromArray(EntityOnFireName, i);
 			if (i > 0) i--;
 			continue;
 		}
@@ -92,7 +90,7 @@ public Action Timer_EntityOnFire(Handle timer) {
 		}
 		if (FlTime - fDebuffTickrate <= 0.0 || damage <= 0) {
 			RemoveFromArray(EntityOnFire, i);
-			RemoveFromArray(EntityOnFireName, i);
+			if (i > 0) i--;
 			ExtinguishEntity(Client);
 			continue;
 		}
@@ -299,7 +297,7 @@ public Action Timer_TickingMine(Handle timer, any entity) {
 		float AoESize = GetArrayCell(playerCustomEntitiesCreated, i, 3);
 		int visualInterval = GetArrayCell(playerCustomEntitiesCreated, i, 5);
 		SetArrayCell(playerCustomEntitiesCreated, i, visualInterval + 1, 5);
-		if (visualInterval % 3 == 0) CreateRing(entity, AoESize, "red", "32.0", _, 0.5, _, true);
+		if (visualInterval % 3 == 0) CreateExplosionRingOnClient(entity, AoESize);
 		
 		float entityPos[3];
 		GetEntPropVector(entity, Prop_Send, "m_vecOrigin", entityPos);
@@ -406,7 +404,7 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 					if (GetVectorDistance(clientPos, teammatePos) > clericRange || GetClientHealth(teammate) >= GetMaximumHealth(teammate)) continue;
 					HealPlayer(teammate, client, healregenamount, 'h', true);
 				}
-				CreateRing(client, clericRange, "green", "48.0", false, 0.5);
+				CreateHealingRingOnClient(client, clericRange);
 			}
 		}
 		//ModifyHealth(client, GetAbilityStrengthByTrigger(client, client, "p", _, 0, _, _, "H"), 0.0);
@@ -959,14 +957,9 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 	float flStrengthTarget = ReadPackFloat(packagey);
 	float flStrengthLevel = ReadPackFloat(packagey);
 	float flRangeMax = ReadPackFloat(packagey);
-	float flDeathMultiplier = ReadPackFloat(packagey);
 	float flDeathBaseTime = ReadPackFloat(packagey);
 	float flDeathInterval = ReadPackFloat(packagey);
 	float flDeathMaxTime = ReadPackFloat(packagey);
-	char StAuraColour[64];
-	char StAuraPos[64];
-	ReadPackString(packagey, StAuraColour, sizeof(StAuraColour));
-	ReadPackString(packagey, StAuraPos, sizeof(StAuraPos));
 	int iLevelRequired = ReadPackCell(packagey);
 
 	int NumLivingEntities = LivingEntitiesInRange(client, ClientPosition, flRangeMax);
@@ -991,7 +984,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 		ISEXPLODETIME[client] += flDeathInterval;
 		return Plugin_Continue;
 	}
-	CreateRing(client, flRangeMax, StAuraColour, StAuraPos);
+	CreateExplosionRingOnClient(client, flRangeMax);
 	CreateExplosion(client);
 	int ReflectDebuff = 0;
 	DamageValue += RoundToCeil(strengthBase * IsClientInRangeSpecialAmmo(client, "d", _, _, strengthBase));
@@ -1031,7 +1024,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 
 				ReflectDebuff = RoundToCeil(DamageValue * ammoStr);
 				SetClientTotalHealth(i, client, ReflectDebuff);
-				CreateAndAttachFlame(i, ReflectDebuff, 3.0, 0.5, i, "reflect");
+				CreateAndAttachFlame(i, ReflectDebuff, 3.0, 0.5, i, STATUS_EFFECT_REFLECT);
 			}
 		}
 		else if (myCurrentTeam[i] == TEAM_INFECTED) {
@@ -1041,9 +1034,9 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 				if (ammoStr > 0.0) {
 
 					ReflectDebuff = RoundToCeil(DamageValue * (1.0 - ammoStr));
-					CreateAndAttachFlame(client, ReflectDebuff, 3.0, 0.5, i, "reflect");
+					CreateAndAttachFlame(client, ReflectDebuff, 3.0, 0.5, i, STATUS_EFFECT_REFLECT);
 				}
-				else CreateAndAttachFlame(client, DamageValue, 3.0, 0.5, i, "reflect");
+				else CreateAndAttachFlame(client, DamageValue, 3.0, 0.5, i, STATUS_EFFECT_REFLECT);
 			}
 			else AddSpecialInfectedDamage(client, i, DamageValue);
 		}
@@ -1068,7 +1061,7 @@ public Action Timer_IsNotImmune(Handle timer, any client) {
 	return Plugin_Stop;
 }
 
-bool ScenarioEndConditionsMet() {
+/*bool ScenarioEndConditionsMet() {
 	int numberOfLivingHumanSurvivors 	= LivingHumanSurvivors();
 	int numberOfLivingSurvivors	  		= LivingSurvivors();
 	//int numberOfHumanSurvivors		  	= TotalHumanSurvivors();
@@ -1087,7 +1080,7 @@ bool ScenarioEndConditionsMet() {
 	// If all living survivors are dead, or they're all hanging from ledges, or they're all incapped/dead/ledged.
 	else if (numberOfLivingSurvivors < 1 || numberOfLivingSurvivors == LedgedSurvivors() || NoHealthySurvivors()) return true;
 	return false;
-}
+}*/
 
 public Action Timer_CheckIfHooked(Handle timer) {
 
@@ -1130,16 +1123,6 @@ public Action Timer_CheckIfHooked(Handle timer) {
 		if (iAdvertisementCounter + 1 == iNumAdvertisements) iAdvertisementCounter = 0;
 		else iAdvertisementCounter++;
 		//PrintToChatAll("%t", "playing in server name", orange, blue, Hostname, orange, blue, MenuCommand, orange);
-	}
-	//if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup();
-	if (ScenarioEndConditionsMet()) {
-		int c = FindAnyClient();
-		if (c > 0) {
-			b_IsMissionFailed = true;
-			ScenarioEnd(c);
-			CallRoundIsOver();
-			return Plugin_Stop;
-		}
 	}
 	static char text[64];
 	int secondsUntilEnrage = GetSecondsUntilEnrage();
@@ -1391,24 +1374,6 @@ public Action Timer_RespawnQueue(Handle timer) {
 	return Plugin_Continue;
 }
 
-// public Action Timer_AcidCooldown(Handle timer, any client) {
-// 	if (IsLegitimateClient(client)) DebuffOnCooldown(client, "acid", true);
-// 	return Plugin_Stop;
-// }
-
-// bool DebuffOnCooldown(client, char[] debuffToSearchFor, bool removeDebuffCooldown = false) {
-// 	char result[64];
-// 	int size = GetArraySize(ApplyDebuffCooldowns[client]);
-// 	for (int pos = 0; pos < size; pos++) {
-// 		GetArrayString(ApplyDebuffCooldowns[client], pos, result, sizeof(result));
-// 		if (!StrEqual(debuffToSearchFor, result)) continue;
-// 		if (!removeDebuffCooldown) return true;
-// 		RemoveFromArray(ApplyDebuffCooldowns[client], pos);
-// 		break;
-// 	}
-// 	return false;
-// }
-
 stock bool IsClientSorted(client) {
 
 	int size = GetArraySize(hThreatSort);
@@ -1498,240 +1463,6 @@ public Action Timer_Defibrillator(Handle timer, any client) {
 	return Plugin_Stop;
 }
 
-public Action Timer_ThreatSystem(Handle timer) {
-
-	static cThreatTarget			= -1;
-	static cThreatOld				= -1;
-	static cThreatLevel				= 0;
-	static cThreatEnt				= -1;
-	static count					= 0;
-	static char temp[64];
-	static float vPos[3];
-
-	if (!b_IsActiveRound) {
-		iSurvivalCounter = -1;
-
-		for (int i = 1; i <= MaxClients; i++) {
-
-			if (IsLegitimateClient(i)) {
-
-				iThreatLevel_temp[i] = 0;
-				iThreatLevel[i] = 0;
-			}
-		}
-
-		count = 0;
-		cThreatLevel = 0;
-		iTopThreat = 0;
-		// it happens due to ent shifting
-		//if (!IsLegitimateClient(cThreatEnt) && cThreatEnt != -1 && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
-		if (!IsLegitimateClient(cThreatEnt) && cThreatEnt > 0) AcceptEntityInput(cThreatEnt, "Kill");
-		cThreatEnt = -1;
-
-		return Plugin_Stop;
-	}
-	//if (IsLegitimateClient(cThreatEnt)) cThreatEnt = -1;
-	iSurvivalCounter++;
-	SortThreatMeter();
-	count++;
-
-	cThreatOld = cThreatTarget;
-	cThreatLevel = 0;
-	
-
-	if (GetArraySize(hThreatMeter) < 1) {
-
-		for (int i = 1; i <= MaxClients; i++) {
-
-			if (IsLegitimateClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
-
-				if (!IsPlayerAlive(i)) {
-
-					iThreatLevel_temp[i] = 0;
-					iThreatLevel[i] = 0;
-					
-					continue;
-				}
-				if (iThreatLevel[i] > cThreatLevel) {
-
-					cThreatTarget = i;
-					cThreatLevel = iThreatLevel[i];
-				}
-			}
-		}
-	}
-	else {
-
-		//GetArrayString(Handle:hThreatMeter, 0, temp, sizeof(temp));
-		//ExplodeString(temp, "+", iThreatInfo, 2, 64);
-		//client+threat
-		cThreatTarget = GetArrayCell(hThreatMeter, 0, 0);
-		//cThreatTarget = StringToInt(iThreatInfo[0]);
-		
-		//GetClientName(iClient, text, sizeof(text));
-		//iThreatTarget = StringToInt(iThreatInfo[1]);
-		cThreatLevel = iThreatLevel[cThreatTarget];
-	}
-
-	iTopThreat = cThreatLevel;	// when people use taunt, it sets iTopThreat + 1;
-	if (cThreatOld != cThreatTarget || count >= 20) {
-
-		count = 0;
-		if (cThreatEnt > 0) AcceptEntityInput(cThreatEnt, "Kill");
-		cThreatEnt = -1;
-	}
-
-	if (cThreatEnt == -1 && IsLegitimateClientAlive(cThreatTarget)) {
-
-		cThreatEnt = CreateEntityByName("info_goal_infected_chase");
-		if (cThreatEnt > 0) {			
-			cThreatEnt = EntIndexToEntRef(cThreatEnt);
-
-			DispatchSpawn(cThreatEnt);
-			//new Float:vPos[3];
-			GetClientAbsOrigin(cThreatTarget, vPos);
-			vPos[2] += 20.0;
-			TeleportEntity(cThreatEnt, vPos, NULL_VECTOR, NULL_VECTOR);
-
-			SetVariantString("!activator");
-			AcceptEntityInput(cThreatEnt, "SetParent", cThreatTarget);
-
-			//decl String:temp[32];
-			Format(temp, sizeof temp, "OnUser4 !self:Kill::20.0:-1");
-			SetVariantString(temp);
-			AcceptEntityInput(cThreatEnt, "AddOutput");
-			AcceptEntityInput(cThreatEnt, "FireUser4");
-		}
-	}
-
-	return Plugin_Continue;
-}
-
-public Action Timer_DirectorPurchaseTimer(Handle timer) {
-	static Counter										=	-1;
-	static float DirectorDelay							=	0.0;
-	if (!b_IsActiveRound) {
-		Counter											=	-1;
-		return Plugin_Stop;
-	}
-	static theClient									=	-1;
-	static theTankStartTime								=	-1;
-	int iTankCount = GetInfectedCount(ZOMBIECLASS_TANK);
-	int iTankLimit = GetSpecialInfectedLimit(true);
-	int iInfectedCount = GetInfectedCount();
-	int iSurvivors = TotalHumanSurvivors();
-	int iSurvivorBots = TotalSurvivors() - iSurvivors;
-	int LivingSerfs = LivingSurvivorCount();
-	int requiredAlwaysTanks = GetAlwaysTanks(iSurvivors);
-	int currentTime = GetTime();
-	if (iSurvivorBots >= 2) iSurvivorBots /= 2;
-	theClient = FindAnyRandomClient();
-	if (requiredAlwaysTanks >= 1 && iTankCount < requiredAlwaysTanks && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) || iTankRush == 1 && !b_IsFinaleActive && iTankCount < (iSurvivors + iSurvivorBots)) {
-		ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
-	}
-	else if (iTankRush == 0) {
-
-		if (iInfectedCount < (iSurvivors + iSurvivorBots)) {
-
-			SpawnAnyInfected(theClient);
-		}
-	}
-	int iTankRequired = GetAlwaysTanks(iSurvivors);
-	if (iTankRequired != 0) {
-
-		if (theTankStartTime == -1) theTankStartTime = GetConfigValueInt("tank rush delay?");//theTankStartTime = GetRandomInt(30, 60);
-		if (theTankStartTime == 0 || RPGRoundTime(true) >= theTankStartTime) {
-
-			theTankStartTime = 0;
-
-			if (iInfectedCount - iTankCount < (iSurvivors)) SpawnAnyInfected(theClient);
-			//if (!b_IsFinaleActive && iTankCount < iTankLimit && iTankCount < iTanksAlways) {
-			// no finale active			don't force on this server		or if we do and not on cooldown
-			if (!b_IsFinaleActive && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) && ((iTankRequired > 0 && iTankCount < iTankLimit + iTankRequired) || (iTankRequired == 0 && iTankCount < iSurvivors + iSurvivorBots))) {
-
-				if (IsLegitimateClientAlive(theClient))	ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
-			}
-		}
-	}
-	if (Counter == -1 || b_IsSurvivalIntermission || LivingSerfs < 1) {
-
-		Counter = RoundToCeil(currentTime + DirectorDelay);
-		return Plugin_Continue;
-	}
-	else if (Counter > currentTime) {
-
-		// We still spawn specials, out of range of players to enforce the active special limit.
-		return Plugin_Continue;
-	}
-	//PrintToChatAll("%t", "Director Think Process", orange, white);
-
-	DirectorDelay	 = (fDirectorThoughtHandicap > 0.0) ? fDirectorThoughtDelay - (LivingSerfs * fDirectorThoughtHandicap) : fDirectorThoughtDelay;
-	if (DirectorDelay < fDirectorThoughtProcessMinimum) DirectorDelay = fDirectorThoughtProcessMinimum;
-	Counter = RoundToCeil(currentTime + DirectorDelay);
-
-	int size				=	GetArraySize(a_DirectorActions);
-
-	for (int i = 1; i <= MaximumPriority; i++) { CheckDirectorActionPriority(i, size); }
-
-	return Plugin_Continue;
-}
-
-stock GetAlwaysTanks(survivors) {
-
-	if (iTanksAlways > 0) return iTanksAlways;
-	if (iTanksAlways < 0) {
-		return RoundToFloor((survivors * 1.0)/(iTanksAlways * -1));
-	}
-	return 0;
-}
-
-stock CheckDirectorActionPriority(pos, size) {
-
-	char text[64];
-	char talentName[64];
-	for (int i = 0; i < size; i++) {
-
-		if (i < GetArraySize(a_DirectorActions_Cooldown)) GetArrayString(a_DirectorActions_Cooldown, i, text, sizeof(text));
-		else break;
-		if (StringToInt(text) > 0) continue;			// Purchase still on cooldown.
-		DirectorKeys					=	GetArrayCell(a_DirectorActions, i, 2);
-		GetArrayString(DirectorKeys, 0, talentName, sizeof(talentName));
-		
-		DirectorKeys					=	GetArrayCell(a_DirectorActions, i, 0);
-		DirectorValues					=	GetArrayCell(a_DirectorActions, i, 1);
-		if (GetKeyValueInt(DirectorKeys, DirectorValues, "priority?") != pos) continue;
-		if (!DirectorPurchase_Valid(DirectorKeys, DirectorValues, i)) continue;
-		// lol? if (GetKeyValueInt(DirectorKeys, DirectorValues, "priority?") != pos || !DirectorPurchase_Valid(DirectorKeys, DirectorValues, i)) continue;
-		DirectorPurchase(DirectorKeys, DirectorValues, i, talentName);
-	}
-}
-
-stock bool DirectorPurchase_Valid(Handle Keys, Handle Values, pos) {
-
-	float PointCost		=	0.0;
-	float PointCostMin	=	0.0;
-	char Cooldown[64];
-
-	GetArrayString(a_DirectorActions_Cooldown, pos, Cooldown, sizeof(Cooldown));
-	if (StringToInt(Cooldown) > 0) return false;
-
-	PointCost				=	GetKeyValueFloat(Keys, Values, "point cost?") + (GetKeyValueFloat(Keys, Values, "cost handicap?") * LivingHumanSurvivors());
-	if (PointCost > 1.0) PointCost = 1.0;
-	PointCostMin			=	GetKeyValueFloat(Keys, Values, "point cost minimum?") + (GetKeyValueFloat(Keys, Values, "min cost handicap?") * LivingHumanSurvivors());
-
-	if (Points_Director > 0.0) PointCost *= Points_Director;
-	if (PointCost < PointCostMin) PointCost = PointCostMin;
-
-	if (Points_Director >= PointCost) return true;
-	return false;
-}
-
-stock bool bIsDirectorTankEligible() {
-
-	if (ActiveTanks() < DirectorTankLimit()) return true;
-	return false;
-}
-
 stock ActiveTanks() {
 	int iSurvivors = TotalHumanSurvivors();
 	//new iSurvivorBots = TotalSurvivors() - iSurvivors;
@@ -1741,10 +1472,6 @@ stock ActiveTanks() {
 		if (IsClientInGame(i) && myCurrentTeam[i] == TEAM_INFECTED && IsPlayerAlive(i) && FindZombieClass(i) == ZOMBIECLASS_TANK) count++;
 	}
 	return count;
-}
-
-stock DirectorTankLimit() {
-	return GetSpecialInfectedLimit(true);
 }
 
 stock GetWitchCount() {
@@ -1759,102 +1486,12 @@ stock GetWitchCount() {
 	return count;
 }
 
-stock DirectorPurchase(Handle Keys, Handle Values, pos, char[] TalentName) {
-
-	char Command[64];
-	char Parameter[64];
-	char Model[64];
-	int IsPlayerDrop		=	0;
-	int Count				=	0;
-
-	float PointCost		=	0.0;
-	float PointCostMin	=	0.0;
-
-	float MinimumDelay	=	0.0;
-
-	PointCost				=	GetKeyValueFloat(Keys, Values, "point cost?") + (GetKeyValueFloat(Keys, Values, "cost handicap?") * LivingHumanSurvivors());
-	PointCostMin			=	GetKeyValueFloat(Keys, Values, "point cost minimum?") + (GetKeyValueFloat(Keys, Values, "min cost handicap?") * LivingHumanSurvivors());
-	FormatKeyValue(Parameter, sizeof(Parameter), Keys, Values, "parameter?");
-	Count					=	GetKeyValueInt(Keys, Values, "count?");
-	int CountHandicap		=	GetKeyValueInt(Keys, Values, "count handicap?");
-	Count += (CountHandicap * LivingSurvivorCount());
-	FormatKeyValue(Command, sizeof(Command), Keys, Values, "command?");
-	IsPlayerDrop			=	GetKeyValueInt(Keys, Values, "drop?");
-	FormatKeyValue(Model, sizeof(Model), Keys, Values, "model?");
-	MinimumDelay			=	GetKeyValueFloat(Keys, Values, "minimum delay?");
-
-	if (PointCost > 1.0) {
-
-		PointCost			=	1.0;
-	}
-
-	bool bIsEnrage = IsEnrageActive();
-
-	//if (ReadyUp_GetGameMode() != 3 && b_IsFinaleActive && StrContains(Parameter, "witch", false) == -1 && StrContains(Parameter, "tank", false) == -1) return;
-
-	if (DirectorWitchLimit == 0) DirectorWitchLimit = LivingSurvivorCount();
-
-
-	if (StrContains(Parameter, "witch", false) != -1 && (IsSurvivalMode || GetWitchCount() >= DirectorWitchLimit || GetArraySize(WitchList) + 1 >= DirectorWitchLimit)) return;
-	if (StrContains(Parameter, "tank", false) != -1 && (IsSurvivalMode || (ActiveTanks() >= DirectorTankLimit() && !bIsEnrage || bIsEnrage && ActiveTanks() >= LivingHumanSurvivors()) || f_TankCooldown != -1.0)) return;
-
-	if (StrEqual(Parameter, "common")) {
-
-		if (GetArraySize(CommonInfectedQueue) + Count >= GetCommonQueueLimit()) {
-
-			return;
-		}
-	}
-
-	if (StrEqual(Command, "director_force_panic_event") && b_IsFinaleActive) {
-		return;
-	}
-	//if (!IsEnrageActive() && StrEqual(Command, "director_force_panic_event")) return;
-
-	if (Points_Director > 0.0) PointCost *= Points_Director;
-	if (PointCost < PointCostMin) PointCost = PointCostMin;
-
-	if (Points_Director < PointCost) return;
-
-	if (LivingSurvivorCount() < GetKeyValueInt(Keys, Values, "living survivors?")) return;
-
-	int Client				=	FindLivingSurvivor();
-	if (Client < 1) return;
-	char sTalentName[64];
-	Format(sTalentName, sizeof(sTalentName), "%t", TalentName);
-
-	PrintToChatAll("%t", "director purchase announcement", orange, blue, green, sTalentName, orange, green, PointCost, orange);
-
-	Points_Director -= PointCost;
-
-	if (!IsEnrageActive() && MinimumDelay > 0.0) {
-
-		SetArrayString(a_DirectorActions_Cooldown, pos, "1");
-		MinimumDelay = MinimumDelay - (LivingHumanSurvivors() * fDirectorThoughtHandicap) - (GetKeyValueFloat(Keys, Values, "delay handicap?") * LivingHumanSurvivors());
-		if (MinimumDelay < 0.0) MinimumDelay = 1.0;
-		fDirectorThoughtDelay = fDirectorThoughtDelay - (LivingHumanSurvivors() * fDirectorThoughtHandicap);
-		if (fDirectorThoughtDelay < 0.0) fDirectorThoughtDelay = 0.0;
-		CreateTimer(fDirectorThoughtDelay + MinimumDelay, Timer_DirectorActions_Cooldown, pos, TIMER_FLAG_NO_MAPCHANGE);
-	}
-
-	if (!StrEqual(Parameter, "common")) ExecCheatCommand(Client, Command, Parameter);
-	else {
-		char superCommonType[64];
-		FormatKeyValue(superCommonType, sizeof(superCommonType), Keys, Values, "supercommon?");
-		SpawnCommons(Client, Count, Command, Parameter, Model, IsPlayerDrop, superCommonType);
-	}
-}
-
 stock SpawnCommons(Client, Count, char[] Command, char[] Parameter, char[] Model, IsPlayerDrop, char[] SuperCommon = "none") {
-
 	int TargetClient				=	-1;
 	int CommonQueueLimit = GetCommonQueueLimit();
-	if (StrContains(Model, ".mdl", false) != -1) {
-
+	if (StrEqualAtPos(Model, ".mdl", strlen(Model)-4)) {
 		for (int i = Count; i > 0 && GetArraySize(CommonInfectedQueue) < CommonQueueLimit; i--) {
-
 			if (IsPlayerDrop == 1) {
-
 				ResizeArray(CommonInfectedQueue, GetArraySize(CommonInfectedQueue) + 1);
 				ShiftArrayUp(CommonInfectedQueue, 0);
 				SetArrayString(CommonInfectedQueue, 0, Model);
@@ -1912,19 +1549,13 @@ stock LivingSurvivorCount(ignore = -1) {
 	return Count;
 }
 
-public Action Timer_DirectorActions_Cooldown(Handle timer, any pos) {
-
-	SetArrayString(a_DirectorActions_Cooldown, pos, "0");
-	return Plugin_Stop;
-}
-
 public Action Timer_SpecialAmmoData(Handle timer, any client) {
 
 	if (!b_IsActiveRound || !IsLegitimateClient(client) || !bTimersRunning[client]) {
 		return Plugin_Stop;
 	}
 	if (myCurrentTeam[client] != TEAM_SURVIVOR) return Plugin_Continue;
-	int numOfStatusEffects = GetClientStatusEffect(client);
+	int numOfStatusEffects = GetClientStatusEffect(client, STATUS_EFFECT_GET_TOTAL);
 	CheckActiveAbility(client, -1, _, _, true);	// draws effects for any active ability this client has.
 	for (int i = 0; i < GetArraySize(SpecialAmmoData); i++) {
 		int dataClient = FindClientByIdNumber(GetArrayCell(SpecialAmmoData, i, 7));
@@ -2115,7 +1746,7 @@ public Action Timer_AmmoActiveTimer(Handle timer, any client) {
 		if (triggerRequirementsAreMet == 1 && talentPositionInUnlockedList >= 0 && !IsAbilityActive(client, result, _, _, menuPos) && IsAbilityActive(client, result, fSpecialAmmoInterval, _, menuPos)) {
 			CallAbilityCooldownAbilityTrigger(client, menuPos, true, talentPositionInUnlockedList);
 		}
-		if (talentTimeRemaining - fSpecialAmmoInterval <= 0.0) {
+		if (talentTimeRemaining - fSpecialAmmoInterval < 0.0) {
 			if (triggerRequirementsAreMet == 1 && talentPositionInUnlockedList >= 0) CallAbilityCooldownAbilityTrigger(client, menuPos, _, talentPositionInUnlockedList);
 			RemoveFromArray(PlayActiveAbilities[client], i);
 			size--;
@@ -2178,7 +1809,7 @@ public Action Timer_DeleteLootBag(Handle timer, any entity) {
 
 	char text[512];
 	GetEntPropString(entity, Prop_Data, "m_iName", text, sizeof(text));
-	if (StrContains(text, "loot") == -1) return Plugin_Stop;
+	if (!StrBeginsWith(text, "loot")) return Plugin_Stop;
 	AcceptEntityInput(entity, "Kill");	// delete the loot bag.
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;

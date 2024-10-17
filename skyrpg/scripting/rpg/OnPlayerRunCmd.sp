@@ -31,11 +31,11 @@ public Action OnPlayerRunCmd(client, &buttons) {
 	}
 	if (clientIsSurvivor) {
 		if (isClientOnFire && (isClientInWater || IsBiledOn)) {
-			RemoveAllDebuffs(client, "burn");
+			RemoveAllDebuffs(client, STATUS_EFFECT_BURN);
 			ExtinguishEntity(client);
 		}
-		if (isClientInWater && GetClientStatusEffect(client, "acid") > 0) {
-			RemoveAllDebuffs(client, "acid");
+		if (isClientInWater) {
+			RemoveAllDebuffs(client, STATUS_EFFECT_ACID);
 		}
 	}
 	if ((buttons & IN_ZOOM) && ZoomcheckDelayer[client] == INVALID_HANDLE) ZoomcheckDelayer[client] = CreateTimer(0.1, Timer_ZoomcheckDelayer, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -58,7 +58,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 	bool isHoldingUseKey = (buttons & IN_USE) ? true : false;
 	if (isHoldingUseKey) {
 		if (lootPickupCooldownTime[client] < TheTime) {
-			lootPickupCooldownTime[client] = TheTime + 0.5;
+			lootPickupCooldownTime[client] = TheTime + fBagPickupDelay;
 			IsPlayerTryingToPickupLoot(client);
 		}
 		if (b_IsRoundIsOver && (ReadyUpGameMode == 3 || StrContains(TheCurrentMap, "zerowarn", false) != -1)) {

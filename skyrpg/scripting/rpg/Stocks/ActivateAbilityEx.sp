@@ -1,4 +1,4 @@
-void ActivateAbilityEx(int activator, int target, int d_Damage, int effectInt, float g_TalentStrength, float g_TalentTime, int victim = 0,
+void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int effectInt, float g_TalentStrength, float g_TalentTime, int victim = 0,
 						char[] Trigger = "0", int isRaw = 0, float AoERange = 0.0, int secondaryEffects = -1,
 						float secondaryAoERange = 0.0, int hitgroup = -1, int secondaryTrigger = -1, char[] thisAbilitiesTrigger = "none",
 						int damagetype = -1, char[] nameOfItemToGivePlayer = "-1", int activatorCallAbilityTrigger = -1, int entityIdToPassThrough = -1, float healthActivationCost = 0.0, int targetCallAbilityTrigger = -1) {
@@ -48,24 +48,24 @@ void ActivateAbilityEx(int activator, int target, int d_Damage, int effectInt, f
 				CreateTimer(0.5, Timer_TickingMine, entityIdToPassThrough, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 			}
 			case 2: {
-				CreateAoE(activator, AoERange, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength), _, _, hitgroup, damagetype, targetCallAbilityTrigger);
+				CreateAoE(activator, menuPos, AoERange, (g_TalentStrength < 1.0) ? RoundToCeil(d_Damage * g_TalentStrength) : RoundToCeil(g_TalentStrength), _, _, hitgroup, damagetype, targetCallAbilityTrigger);
 			}
 			case 3: {
-				CreatePlayerExplosion(activator, 384.0, RoundToCeil(d_Damage * g_TalentStrength), false);
+				CreatePlayerExplosion(activator, RoundToCeil(d_Damage * g_TalentStrength), false);
 			}
 			case 4: {
 				int acid = RoundToFloor(iDamage * (GetDifficultyRating(victim) * fAcidDamagePlayerLevel));
 				AwardExperience(activator, HEXING_CONTRIBUTION, acid);
 
-				acid += acid * (GetClientStatusEffect(victim, "acid") + 1);
-				CreateAndAttachFlame(victim, acid, 10.0, 0.5, FindInfectedClient(true), "acid");
+				acid += acid * (GetClientStatusEffect(victim, STATUS_EFFECT_ACID) + 1);
+				CreateAndAttachFlame(victim, acid, 10.0, 0.5, FindInfectedClient(true), STATUS_EFFECT_ACID);
 			}
 			case 5: {
 				int burn = RoundToFloor(iDamage * (GetDifficultyRating(victim) * fBurnPercentage));
 				AwardExperience(activator, HEXING_CONTRIBUTION, burn);
 
-				burn += burn * (GetClientStatusEffect(victim, "burn") + 1);
-				CreateAndAttachFlame(victim, burn, 10.0, 0.5, FindInfectedClient(true), "burn");
+				burn += burn * (GetClientStatusEffect(victim, STATUS_EFFECT_BURN) + 1);
+				CreateAndAttachFlame(victim, burn, 10.0, 0.5, FindInfectedClient(true), STATUS_EFFECT_BURN);
 			}
 			case 6: {
 				// this goes up here and we're gonna recursively call for "d"
@@ -82,7 +82,7 @@ void ActivateAbilityEx(int activator, int target, int d_Damage, int effectInt, f
 						int totalMagSize = bulletsFired + bulletsRemaining;
 						float fMagazineExhausted = ((bulletsFired * 1.0)/(totalMagSize * 1.0));
 
-						ActivateAbilityEx(activator, target, d_Damage, secondaryEffects, (fMagazineExhausted * g_TalentStrength), g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, _, _, damagetype);
+						ActivateAbilityEx(activator, target, menuPos, d_Damage, secondaryEffects, (fMagazineExhausted * g_TalentStrength), g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, _, _, damagetype);
 					}
 				}
 			}
@@ -108,10 +108,10 @@ void ActivateAbilityEx(int activator, int target, int d_Damage, int effectInt, f
 				if (!IsLegitimateClient(target) || myCurrentTeam[target] == TEAM_SURVIVOR || L4D2_GetSurvivorVictim(target) == -1) BeanBag(target, g_TalentStrength);
 			}
 			case 11: {
-				CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.5, activator, "burn");
+				CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.5, activator, STATUS_EFFECT_BURN);
 			}
 			case 12: {
-				CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.5, activator, "acid");
+				CreateAndAttachFlame(target, iDamage, g_TalentTime, 0.5, activator, STATUS_EFFECT_ACID);
 			}
 			case 13: {
 				if (IsLegitimateClient(target)) CreateFireEx(target);

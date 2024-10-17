@@ -13,11 +13,11 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v4.0"
+#define PLUGIN_VERSION					"v4.1"
 #define PROFILE_VERSION					"v1.5"
-#define PLUGIN_CONTACT					"github.com/exSkye/"
+#define PLUGIN_CONTACT					"skyy"
 #define PLUGIN_NAME						"RPG Construction Set"
-#define PLUGIN_DESCRIPTION				"Fully-customizable and modular RPG, like the one for Atari."
+#define PLUGIN_DESCRIPTION				"a build-your-own rpg adventure for source engine."
 #define CONFIG_EVENTS					"rpg/events.cfg"
 #define CONFIG_MAINMENU					"rpg/mainmenu.cfg"
 #define CONFIG_SURVIVORTALENTS			"rpg/talentmenu.cfg"
@@ -48,6 +48,12 @@
 #define MULTIPLY_WITCH					4
 #define MULTIPLY_SURVIVOR				8
 #define MULTIPLY_SPECIAL				16
+
+#define STATUS_EFFECT_GET_RANDOM		-1
+#define STATUS_EFFECT_GET_TOTAL			-1
+#define STATUS_EFFECT_BURN				0
+#define STATUS_EFFECT_ACID				1
+#define STATUS_EFFECT_REFLECT			2
 //	================================
 #define DEBUG     					false
 //	================================
@@ -454,9 +460,56 @@
 #define TRIGGER_headshot 61
 #define TRIGGER_wasHealed 62
 #define TRIGGER_healself 63
+//Points.cfg
+#define POINTS_WEAPON_CATEGORY 0
+#define POINTS_TEAM 1
+#define POINTS_GAMEMODE 2
+#define POINTS_FLAGS 3
+#define POINTS_POINT_COST 4
+#define POINTS_EXPERIENCE_COST 5
+#define POINTS_COMMAND 6
+#define POINTS_POINT_COST_MINIMUM 7
+#define POINTS_QUICK_BIND 8
+#define POINTS_FREE_DURING_PREGAME 9
+#define POINTS_HANDICAP_COST 10
+#define POINTS_HANDICAP_COST_MINIMUM 11
+#define POINTS_PARAMETER 12
+#define POINTS_MODEL 13
+#define POINTS_COUNT 14
+#define POINTS_COUNT_HANDICAP 15
+#define POINTS_DROP 16
+#define POINTS_PCOUNT 17
+#define POINTS_PRIORITY 18
+#define POINTS_IS_DIRECTOR_OPTION 19
+#define POINTS_LIVING_SURVIVORS 20
+#define POINTS_MINIMUM_DELAY 21
+#define POINTS_HANDICAP_DELAY 22
+#define POINTS_SUPERCOMMON 23
+#define POINTS_PART_OF_MENU_NAMED 24
+#define POINTS_DESCRIPTION 25
+#define POINTS_IS_RESPAWN 26
+#define POINTS_EXPERIENCE_MULTIPLIER 27
 
+int iDirectorThinkingAdvertisementTime;
+Handle TalentInstantPositions;
+Handle TalentInstantColors;
+Handle TalentInstantDelays;
+Handle TalentInstantSizes;
+Handle TalentActivePositions;
+Handle TalentActiveColors;
+Handle TalentActiveSizes;
+Handle TalentPassivePositions;
+Handle TalentPassiveColors;
+Handle TalentPassiveSizes;
+int iDefenderCommonMenuPos;
+Handle CommonDrawPositions;
+Handle CommonDrawColors;
+Handle TalentDrawPositions;
+Handle TalentDrawColors;
+float fBagPickupDelay;
+char lastCurrentWeapon[MAXPLAYERS + 1][64];
+char lastPrimaryWeapon[MAXPLAYERS + 1][64];
 int iMenuCommandsToDisplay;
-bool mainConfigLoaded = false;
 float fDoTInterval;
 float fDoTMaxTime;
 int iFireBaseDamage;
@@ -741,7 +794,6 @@ float ISEXPLODETIME[MAXPLAYERS + 1];
 Handle ISEXPLODE[MAXPLAYERS + 1];
 Handle ISBLIND[MAXPLAYERS + 1];
 Handle EntityOnFire;
-Handle EntityOnFireName;
 Handle CommonInfected[MAXPLAYERS + 1];
 Handle RCAffixes[MAXPLAYERS + 1];
 Handle h_CommonKeys;
@@ -1029,6 +1081,11 @@ int iCommonAffixes;
 int BroadcastType;
 int iDoomTimer;
 int iSurvivorStaminaMax;
+float fBuffingMultTank;
+float fBuffingMultWitch;
+float fBuffingMultSpecials;
+float fBuffingMultSupers;
+float fBuffingMultCommons;
 float fRatingMultSpecials;
 float fRatingMultSupers;
 float fRatingMultCommons;
@@ -1180,7 +1237,6 @@ Handle GetTalentValueSearchValues[MAXPLAYERS + 1];
 Handle GetTalentStrengthSearchValues[MAXPLAYERS + 1];
 int iSkyLevelNodeUnlocks;
 Handle GetTalentKeyValueValues[MAXPLAYERS + 1];
-Handle ApplyDebuffCooldowns[MAXPLAYERS + 1];
 int iCanSurvivorBotsBurn;
 char defaultLoadoutWeaponPrimary[64];
 char defaultLoadoutWeaponSecondary[64];
@@ -1211,8 +1267,8 @@ float fMaxDamageResistance;
 float fStaminaPerPlayerLevel;
 int LastBulletCheck[MAXPLAYERS + 1];
 int iSpecialInfectedMinimum;
-int iEndRoundIfNoHealthySurvivors;
-int iEndRoundIfNoLivingHumanSurvivors;
+//int iEndRoundIfNoHealthySurvivors;
+//int iEndRoundIfNoLivingHumanSurvivors;
 float fAcidDamagePlayerLevel;
 float fAcidDamageSupersPlayerLevel;
 char ClientStatusEffects[MAXPLAYERS + 1][2][64];
@@ -1316,6 +1372,22 @@ int iMultiplierForAugmentLootDrops;
 stock CreateAllArrays() {
 	if (b_FirstLoad) return;
 	LogMessage("=====\t\tRunning first-time load of RPG.\t\t=====");
+
+	if (TalentInstantPositions == INVALID_HANDLE) TalentInstantPositions = CreateArray(8);
+	if (TalentInstantColors == INVALID_HANDLE) TalentInstantColors = CreateArray(8);
+	if (TalentInstantDelays == INVALID_HANDLE) TalentInstantDelays = CreateArray(8);
+	if (TalentInstantSizes == INVALID_HANDLE) TalentInstantSizes = CreateArray(8);
+	if (TalentActivePositions == INVALID_HANDLE) TalentActivePositions = CreateArray(8);
+	if (TalentActiveColors == INVALID_HANDLE) TalentActiveColors = CreateArray(8);
+	if (TalentActiveSizes == INVALID_HANDLE) TalentActiveSizes = CreateArray(8);
+	if (TalentPassivePositions == INVALID_HANDLE) TalentPassivePositions = CreateArray(8);
+	if (TalentPassiveColors == INVALID_HANDLE) TalentPassiveColors = CreateArray(8);
+	if (TalentPassiveSizes == INVALID_HANDLE) TalentPassiveSizes = CreateArray(8);
+
+	if (TalentDrawPositions == INVALID_HANDLE) TalentDrawPositions = CreateArray(8);
+	if (TalentDrawColors == INVALID_HANDLE) TalentDrawColors = CreateArray(8);
+	if (CommonDrawPositions == INVALID_HANDLE) CommonDrawPositions = CreateArray(8);
+	if (CommonDrawColors == INVALID_HANDLE) CommonDrawColors = CreateArray(8);
 	if (ModelsToPrecache == INVALID_HANDLE) ModelsToPrecache = CreateArray(16);
 	if (TalentMenuConfigs == INVALID_HANDLE) TalentMenuConfigs = CreateArray(32);
 	if (holdingFireList == INVALID_HANDLE) holdingFireList = CreateArray(16);
@@ -1380,8 +1452,7 @@ stock CreateAllArrays() {
 	if (h_CommonKeys == INVALID_HANDLE) h_CommonKeys = CreateArray(16);
 	if (h_CommonValues == INVALID_HANDLE) h_CommonValues = CreateArray(16);
 	//if (CommonInfected == INVALID_HANDLE) CommonInfected = CreateArray(16);
-	if (EntityOnFire == INVALID_HANDLE) EntityOnFire = CreateArray(32);
-	if (EntityOnFireName == INVALID_HANDLE) EntityOnFireName = CreateArray(32);
+	if (EntityOnFire == INVALID_HANDLE) EntityOnFire = CreateArray(8);
 	if (CommonDrawKeys == INVALID_HANDLE) CommonDrawKeys = CreateArray(16);
 	if (CommonDrawValues == INVALID_HANDLE) CommonDrawValues = CreateArray(16);
 	if (PreloadKeys == INVALID_HANDLE) PreloadKeys = CreateArray(16);
@@ -1530,7 +1601,6 @@ stock BuildArraysOnClientFirstLoad(int client) {
 	if (GetTalentValueSearchValues[client] == INVALID_HANDLE) GetTalentValueSearchValues[client] = CreateArray(16);
 	if (GetTalentStrengthSearchValues[client] == INVALID_HANDLE) GetTalentStrengthSearchValues[client] = CreateArray(16);
 	if (GetTalentKeyValueValues[client] == INVALID_HANDLE) GetTalentKeyValueValues[client] = CreateArray(16);
-	if (ApplyDebuffCooldowns[client] == INVALID_HANDLE) ApplyDebuffCooldowns[client] = CreateArray(8);
 	if (playerContributionTracker[client] == INVALID_HANDLE) {
 		playerContributionTracker[client] = CreateArray(6);
 		ResizeArray(playerContributionTracker[client], 4);

@@ -134,33 +134,27 @@ stock bool IsAbilityTalent(client, int menuPos, char[] SearchKey = "none", TheSi
 	return false;
 }
 // Delay can be set to a default value because it is only used for overloading.
-stock DrawAbilityEffect(client, char[] sDrawEffect, float fDrawHeight, float fDrawDelay = 0.0, float fDrawSize, char[] sTalentName, iEffectType = 0) {
-
+stock DrawAbilityEffect(client, int menuPos, iEffectType = 0) {
 	// no longer needed because we check for it before we get here.if (StrEqual(sDrawEffect, "-1")) return;							//size					color		pos		   pulse?  lifetime
 	//CreateRingEx(client, fDrawSize, sDrawEffect, fDrawHeight, false, 0.2);
-	if (iEffectType == 1 || iEffectType == 2) CreateRingEx(client, fDrawSize, sDrawEffect, fDrawHeight, false, 0.2);
+	if (iEffectType == 1) CreateRingEffectType1(client, menuPos, false, 0.2);
+	else if (iEffectType == 2) CreateRingEffectType2(client, menuPos, false, 0.2);
 	else {
 		Handle drawpack;
+		float fDrawDelay = GetArrayCell(TalentInstantDelays, menuPos);
 		CreateDataTimer(fDrawDelay, Timer_DrawInstantEffect, drawpack, TIMER_FLAG_NO_MAPCHANGE);
 		WritePackCell(drawpack, client);
-		WritePackString(drawpack, sDrawEffect);
-		WritePackFloat(drawpack, fDrawHeight);
-		WritePackFloat(drawpack, fDrawSize);
+		WritePackCell(drawpack, menuPos);
 	}
 }
 
 public Action Timer_DrawInstantEffect(Handle timer, Handle drawpack) {
-
 	ResetPack(drawpack);
 	int client				=	ReadPackCell(drawpack);
+
 	if (IsLegitimateClient(client) && IsPlayerAlive(client)) {
-
-		char DrawColour[64];
-		ReadPackString(drawpack, DrawColour, sizeof(DrawColour));
-		float fHeight = ReadPackFloat(drawpack);
-		float fSize = ReadPackFloat(drawpack);
-
-		CreateRingEx(client, fSize, DrawColour, fHeight, false, 0.2);
+		int menuPos = ReadPackCell(drawpack);
+		CreateRingEffectType0(client, menuPos, false, 0.2);
 	}
 
 	return Plugin_Stop;
@@ -203,20 +197,12 @@ stock float CheckActiveAbility(client, thevalue, eventtype = 0, bool IsPassive =
 	if (GetArraySize(ActionBarMenuPos[client]) != iActionBarSlots) ResizeArray(ActionBarMenuPos[client], iActionBarSlots);
 	char text[64];// free guesses on what this one is for.
 	char none[64];
-	char sDrawEffect[PLATFORM_MAX_PATH];
-	char sDrawPos[PLATFORM_MAX_PATH];
-	char sDrawDelay[PLATFORM_MAX_PATH];
-	char sDrawSize[PLATFORM_MAX_PATH];
 	Format(none, sizeof(none), "none");	// you guessed it.
 	//int pos = -1;
 	float MyMultiplier = 1.0;
 	//new MyAttacker = L4D2_GetInfectedAttacker(client);
 	int size = GetArraySize(ActionBar[client]);
 	//new Float:fAbilityTime = 0.0;
-	int drawpos = TALENT_FIRST_RANDOM_KEY_POSITION;
-	int drawheight = TALENT_FIRST_RANDOM_KEY_POSITION;
-	int drawdelay = TALENT_FIRST_RANDOM_KEY_POSITION;
-	int drawsize = TALENT_FIRST_RANDOM_KEY_POSITION;
 
 	int IsPassiveAbility = 0;
 	int abPos = -1;
@@ -240,20 +226,7 @@ stock float CheckActiveAbility(client, thevalue, eventtype = 0, bool IsPassive =
 		if (IsDrawEffect) {
 			if (GetArrayCell(CheckAbilityValues[client], IS_TALENT_ABILITY) == 1) {
 				IsPassiveAbility = GetArrayCell(CheckAbilityValues[client], ABILITY_PASSIVE_ONLY);
-				if (IsInstantDraw) {
-					while (drawpos >= 0 && drawheight >= 0 && drawdelay >= 0 && drawsize >= 0) {
-						drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw?", _, _, drawpos, false);
-						drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw pos?", _, _, drawheight, false);
-						drawdelay = FormatKeyValue(sDrawDelay, sizeof(sDrawDelay), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw delay?", _, _, drawdelay, false);
-						drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "instant draw size?", _, _, drawsize, false);
-						if (drawpos == -1 || drawheight == -1 || drawdelay == -1 || drawsize == -1) break;
-						DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text);
-						drawpos++;
-						drawheight++;
-						drawdelay++;
-						drawsize++;
-					}
-				}
+				if (IsInstantDraw) DrawAbilityEffect(client, pos);
 				else {
 					abPos = GetAbilityDataPosition(client, pos);
 					if (abPos == -1) continue;
@@ -265,29 +238,11 @@ stock float CheckActiveAbility(client, thevalue, eventtype = 0, bool IsPassive =
 					}
 					if (IsActionAbilityCooldown(client, text, true, pos)) {// || !StrEqual(sPassiveEffects, "-1.0") && !IsActionAbilityCooldown(client, text)) {
 						SetArrayCell(PlayActiveAbilities[client], abPos, GetArrayCell(CheckAbilityValues[client], ABILITY_ACTIVE_DRAW_DELAY), 3);
-						while (drawpos >= 0 && drawheight >= 0 && drawsize >= 0) {
-							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect?", _, _, drawpos, false);
-							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect pos?", _, _, drawheight, false);
-							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "draw effect size?", _, _, drawsize, false);
-							if (drawpos == -1 || drawheight == -1 || drawsize == -1) break;
-							DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 1);
-							drawpos++;
-							drawheight++;
-							drawsize++;
-						}
+						DrawAbilityEffect(client, pos, 1);
 					}
 					else if (PassiveEffectDisplay[client] == i && IsPassiveAbility == 1) {
 						SetArrayCell(PlayActiveAbilities[client], abPos, GetArrayCell(CheckAbilityValues[client], ABILITY_PASSIVE_DRAW_DELAY), 3);
-						while (drawpos >= 0 && drawheight >= 0 && drawsize >= 0) {
-							drawpos = FormatKeyValue(sDrawEffect, sizeof(sDrawEffect), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw?", _, _, drawpos, false);
-							drawheight = FormatKeyValue(sDrawPos, sizeof(sDrawPos), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw pos?", _, _, drawheight, false);
-							drawsize = FormatKeyValue(sDrawSize, sizeof(sDrawSize), CheckAbilityKeys[client], CheckAbilityValues[client], "passive draw size?", _, _, drawsize, false);
-							if (drawpos == -1 || drawheight == -1 || drawsize == -1) break;
-							DrawAbilityEffect(client, sDrawEffect, StringToFloat(sDrawPos), _, StringToFloat(sDrawSize), text, 2);
-							drawpos++;
-							drawheight++;
-							drawsize++;
-						}
+						DrawAbilityEffect(client, pos, 2);
 					}
 				}
 			}
@@ -386,13 +341,14 @@ stock GetAbilityText(client, char[] TheString, TheSize, Handle Keys, Handle Valu
 			Format(text2, sizeof(text2), "%T", text2, client);
 		}
 	}
-	Format(tDraft, sizeof(tDraft), "%s\n%s", tDraft, text2);
+	Format(tDraft, sizeof(tDraft), "%s %s", tDraft, text2);
 	if (pos == ABILITY_ACTIVE_EFFECT) {
 		float fActiveTime = GetArrayCell(Values, ABILITY_ACTIVE_TIME);
-		if (!StrEqual(text2, "-1")) Format(text2, sizeof(text2), "%T", "Ability Active Time", client, fActiveTime);
-		else Format(text2, sizeof(text2), "%T", "Instant Ability", client);
-
-		Format(TheString, TheSize, "%s\n%s\n%s", text, text2, tDraft);
+		if (fActiveTime > 0.0) {
+			Format(text2, sizeof(text2), "%T", "Ability Active Time", client, fActiveTime);
+			Format(TheString, TheSize, "%s\n%s", text2, tDraft);
+		}
+		else Format(TheString, TheSize, "%s", tDraft);
 	}
 	else if (pos == ABILITY_COOLDOWN_EFFECT) {
 		float fAbilityCooldown = GetArrayCell(Values, ABILITY_COOLDOWN);
@@ -403,15 +359,12 @@ stock GetAbilityText(client, char[] TheString, TheSize, Handle Keys, Handle Valu
 			if (TheAbilityMultiplier < 0.0) TheAbilityMultiplier = 0.1;
 			else if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
 				fAbilityCooldown -= (fAbilityCooldown * TheAbilityMultiplier);
-				//Format(text, sizeof(text), "%3.0f", StringToFloat(text) - (StringToFloat(text) * TheAbilityMultiplier));
 			}
 		}
+		if (fAbilityCooldown > 0.0) Format(text2, sizeof(text2), "%T", "Ability Cooldown", client, fAbilityCooldown);
+		else Format(text2, sizeof(text2), "%T", "No Ability Cooldown", client);
 
-		//Format(text, sizeof(text), "%3.3f", StringToFloat(text))
-		if (!StrEqual(text, "-1")) Format(text, sizeof(text), "%T", "Ability Cooldown", client, fAbilityCooldown);
-		else Format(text, sizeof(text), "%T", "No Ability Cooldown", client);
-
-		Format(TheString, TheSize, "%s\n%s", text, tDraft);
+		Format(TheString, TheSize, "%s\n%s", text2, tDraft);
 	}
 	else Format(TheString, TheSize, "%s", tDraft);
 }

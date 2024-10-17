@@ -1,3 +1,112 @@
+public Action Timer_ThreatSystem(Handle timer) {
+
+	static cThreatTarget			= -1;
+	static cThreatOld				= -1;
+	static cThreatLevel				= 0;
+	static cThreatEnt				= -1;
+	static count					= 0;
+	static char temp[64];
+	static float vPos[3];
+
+	if (!b_IsActiveRound) {
+		iSurvivalCounter = -1;
+
+		for (int i = 1; i <= MaxClients; i++) {
+
+			if (IsLegitimateClient(i)) {
+
+				iThreatLevel_temp[i] = 0;
+				iThreatLevel[i] = 0;
+			}
+		}
+
+		count = 0;
+		cThreatLevel = 0;
+		iTopThreat = 0;
+		// it happens due to ent shifting
+		//if (!IsLegitimateClient(cThreatEnt) && cThreatEnt != -1 && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
+		if (!IsLegitimateClient(cThreatEnt) && cThreatEnt > 0) AcceptEntityInput(cThreatEnt, "Kill");
+		cThreatEnt = -1;
+
+		return Plugin_Stop;
+	}
+	//if (IsLegitimateClient(cThreatEnt)) cThreatEnt = -1;
+	iSurvivalCounter++;
+	SortThreatMeter();
+	count++;
+
+	cThreatOld = cThreatTarget;
+	cThreatLevel = 0;
+	
+
+	if (GetArraySize(hThreatMeter) < 1) {
+
+		for (int i = 1; i <= MaxClients; i++) {
+
+			if (IsLegitimateClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
+
+				if (!IsPlayerAlive(i)) {
+
+					iThreatLevel_temp[i] = 0;
+					iThreatLevel[i] = 0;
+					
+					continue;
+				}
+				if (iThreatLevel[i] > cThreatLevel) {
+
+					cThreatTarget = i;
+					cThreatLevel = iThreatLevel[i];
+				}
+			}
+		}
+	}
+	else {
+
+		//GetArrayString(Handle:hThreatMeter, 0, temp, sizeof(temp));
+		//ExplodeString(temp, "+", iThreatInfo, 2, 64);
+		//client+threat
+		cThreatTarget = GetArrayCell(hThreatMeter, 0, 0);
+		//cThreatTarget = StringToInt(iThreatInfo[0]);
+		
+		//GetClientName(iClient, text, sizeof(text));
+		//iThreatTarget = StringToInt(iThreatInfo[1]);
+		cThreatLevel = iThreatLevel[cThreatTarget];
+	}
+
+	iTopThreat = cThreatLevel;	// when people use taunt, it sets iTopThreat + 1;
+	if (cThreatOld != cThreatTarget || count >= 20) {
+
+		count = 0;
+		if (cThreatEnt > 0) AcceptEntityInput(cThreatEnt, "Kill");
+		cThreatEnt = -1;
+	}
+
+	if (cThreatEnt == -1 && IsLegitimateClientAlive(cThreatTarget)) {
+
+		cThreatEnt = CreateEntityByName("info_goal_infected_chase");
+		if (cThreatEnt > 0) {			
+			cThreatEnt = EntIndexToEntRef(cThreatEnt);
+
+			DispatchSpawn(cThreatEnt);
+			//new Float:vPos[3];
+			GetClientAbsOrigin(cThreatTarget, vPos);
+			vPos[2] += 20.0;
+			TeleportEntity(cThreatEnt, vPos, NULL_VECTOR, NULL_VECTOR);
+
+			SetVariantString("!activator");
+			AcceptEntityInput(cThreatEnt, "SetParent", cThreatTarget);
+
+			//decl String:temp[32];
+			Format(temp, sizeof temp, "OnUser4 !self:Kill::20.0:-1");
+			SetVariantString(temp);
+			AcceptEntityInput(cThreatEnt, "AddOutput");
+			AcceptEntityInput(cThreatEnt, "FireUser4");
+		}
+	}
+
+	return Plugin_Continue;
+}
+
 public Handle ShowThreatMenu(client) {
 
 	Handle menu = CreatePanel();

@@ -138,6 +138,7 @@ stock CallRoundIsOver() {
 				if (b_IsMissionFailed) {
 					if (myCurrentTeam[i] == TEAM_SURVIVOR) {
 						RoundExperienceMultiplier[i] = 0.0;
+						if (IsPlayerAlive(i)) CheckForRatingLossOnDeath(i);
 					}
 				}
 				SavePlayerData(i);
@@ -151,7 +152,6 @@ stock CallRoundIsOver() {
 		MapRoundsPlayed++;
 		ClearArray(WitchList);
 		ClearArray(EntityOnFire);
-		ClearArray(EntityOnFireName);
 		ClearArray(CommonInfectedQueue);
 		ClearArray(SuperCommonQueue);
 		ClearArray(StaggeredTargets);

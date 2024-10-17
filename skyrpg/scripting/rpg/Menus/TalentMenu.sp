@@ -541,7 +541,7 @@ public Handle TalentInfoScreen(client) {
 	Format(text, sizeof(text), "%T", "return to talent menu", client);
 	DrawPanelItem(menu, text);
 
-	if (GetArrayCell(PurchaseValues[client], HIDE_TRANSLATION) != 1) {
+	if (AbilityTalent != 1 && GetArrayCell(PurchaseValues[client], HIDE_TRANSLATION) != 1) {
 		//	Talents now have a brief description of what they do on their purchase page.
 		//	This variable is pre-determined and calls a translation file in the language of the player.
 		GetTranslationOfTalentName(client, TalentName, TalentNameTranslation, sizeof(TalentNameTranslation));

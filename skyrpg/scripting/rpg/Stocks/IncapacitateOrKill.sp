@@ -73,22 +73,7 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool bIsFalling 
 				SQL_TQuery(hDatabase, QueryResults, text, client);
 			}
 			//if (ReadyUpGameMode != 3)
-			if (fRatingPercentLostOnDeath > 0.0) {
-				Rating[client] = RoundToCeil(Rating[client] * (1.0 - fRatingPercentLostOnDeath)) + 1;
-				int minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
-				if (Rating[client] < minimumRating) Rating[client] = minimumRating;
-
-				if (handicapLevel[client] > 0 && handicapLevel[client] <= GetArraySize(a_HandicapLevels)) {
-					OnDeathHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
-					int scoreRequired	 = GetArrayCell(OnDeathHandicapValues[client], HANDICAP_SCORE_REQUIRED);
-					if (Rating[client] < scoreRequired) {
-						handicapLevel[client] = 0;
-						SetClientHandicapValues(client);
-						FormatPlayerName(client);
-						PrintToChat(client, "\x04Score requirement for current handicap level not met. \x03Handicap level reset.");
-					}
-				}
-			}
+			CheckForRatingLossOnDeath(client);
 
 			if (!isPlayerASurvivorBot) {
 
@@ -135,5 +120,24 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool bIsFalling 
 			if (!IsFakeClient(client)) SavePlayerData(client);
 		}
 		else if (!isClientIncapacitated) ForceIncapSurvivor(client, attacker, healthvalue);
+	}
+}
+
+void CheckForRatingLossOnDeath(int client) {
+	if (fRatingPercentLostOnDeath > 0.0) {
+		Rating[client] = RoundToCeil(Rating[client] * (1.0 - fRatingPercentLostOnDeath)) + 1;
+		int minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
+		if (Rating[client] < minimumRating) Rating[client] = minimumRating;
+
+		if (handicapLevel[client] > 0 && handicapLevel[client] <= GetArraySize(a_HandicapLevels)) {
+			OnDeathHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
+			int scoreRequired	 = GetArrayCell(OnDeathHandicapValues[client], HANDICAP_SCORE_REQUIRED);
+			if (Rating[client] < scoreRequired) {
+				handicapLevel[client] = 0;
+				SetClientHandicapValues(client);
+				FormatPlayerName(client);
+				PrintToChat(client, "\x04Score requirement for current handicap level not met. \x03Handicap level reset.");
+			}
+		}
 	}
 }

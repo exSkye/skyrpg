@@ -98,7 +98,7 @@ public ReadyUpEnd_Complete() {
 			HexingContribution[i] = 0;
 			BuffingContribution[i] = 0;
 			b_IsFloating[i] = false;
-			SetMyWeapons(i);
+			//SetMyWeapons(i);
 		}
 	}
 }
@@ -142,7 +142,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		bool AnyBotsOnSurvivorTeam = BotsOnSurvivorTeam();
 		for (int i = 1; i <= MaxClients; i++) {
 			if (!IsLegitimateClient(i)) continue;
-			SetMyWeapons(i);
+			//SetMyWeapons(i);
 			if (IsFakeClient(i)) continue;
 			bIsMeleeCooldown[i] = false;
 			iCurrentIncapCount[i] = 0;

@@ -751,14 +751,14 @@ stock CheckTankSubroutine(tank, survivor = 0, damage = 0, bool TankIsVictim = fa
 
 		if (BurnState == 1) {
 
-			int Count = GetClientStatusEffect(survivor, "burn");
+			int Count = GetClientStatusEffect(survivor, STATUS_EFFECT_BURN);
 
 			if (!IsSurvivorBiled && Count < iDebuffLimit) {
 
 				//if (IsSurvivorReflect) CreateAndAttachFlame(tank, RoundToCeil(damage * 0.1), 10.0, 1.0, survivor, "burn");
 				//else
 				Count++;
-				CreateAndAttachFlame(survivor, RoundToCeil((damage * fBurnPercentage) / Count), fDoTMaxTime, fDoTInterval, tank, "burn");
+				CreateAndAttachFlame(survivor, RoundToCeil((damage * fBurnPercentage) / Count), fDoTMaxTime, fDoTInterval, tank, STATUS_EFFECT_BURN);
 			}
 		}
 		if (DeathState == 0) ChangeTankState(tank, "hulk");
@@ -801,7 +801,9 @@ public Action Hook_SetTransmit(entity, client) {
 
 // returning plugin stop in here actually prevents you from switching weapons... great for if fatigued.
 public Action OnWeaponSwitch(client, weapon) {
-	if (IsLegitimateClient(client) && myCurrentTeam[client] == TEAM_SURVIVOR) CreateTimer(0.1, Timer_SetMyWeapons, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	if (IsLegitimateClient(client) && myCurrentTeam[client] == TEAM_SURVIVOR) {
+		CreateTimer(0.1, Timer_SetMyWeapons, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	}
 	return Plugin_Continue;
 }
 
@@ -961,8 +963,6 @@ stock int IfInfectedIsAttackerDoStuff(attacker, victim) {
 
 stock int IfSurvivorIsAttackerDoStuff(int attacker, int victim, int baseWeaponDamage, int damagetype, int victimType, int ammotype = -1, int hitgroup = -1, int inflictor = -1) {
 						// 0 super, 1 common, 2 witch
-	//if (bIsMeleeCooldown[attacker] && (StrContains(MyCurrentWeapon[attacker], "melee", false) != -1 || StrContains(MyCurrentWeapon[attacker], "chainsaw", false) != -1)) return -1;
-
 	LastWeaponDamage[attacker] = baseWeaponDamage;
 	if (iDisplayHealthBars == 1) DisplayInfectedHealthBars(attacker, victim);
 	if (LastAttackedUser[attacker] == victim) ConsecutiveHits[attacker]++;
@@ -995,7 +995,7 @@ stock int TryToDamagePlayerInfected(attacker, victim, baseWeaponDamage, damagety
 	if (fireDamage && zombieclass == ZOMBIECLASS_TANK && TankState[victim] == TANKSTATE_FIRE) return -1;
 
 	if (fireDamage) {
-		CreateAndAttachFlame(victim, baseWeaponDamage, 10.0, 0.5, attacker, "burn");
+		CreateAndAttachFlame(victim, baseWeaponDamage, 10.0, 0.5, attacker, STATUS_EFFECT_BURN);
 	}
 	else {
 		GetAbilityStrengthByTrigger(attacker, victim, TRIGGER_D, _, baseWeaponDamage, _, _, _, _, _, _, hitgroup, _, damagetype);
@@ -1034,7 +1034,7 @@ stock int TryToDamageNonPlayerInfected(int attacker, int victim, int baseWeaponD
 		if (!fireDamage) {
 			if (AddSpecialCommonDamage(attacker, victim, baseWeaponDamage, _, _, ammotype, hitgroup) > 1) return baseWeaponDamage;
 		}
-		else CreateAndAttachFlame(victim, baseWeaponDamage, 10.0, 0.5, attacker, "burn");
+		else CreateAndAttachFlame(victim, baseWeaponDamage, 10.0, 0.5, attacker, STATUS_EFFECT_BURN);
 		if (CheckTeammateDamages(victim, attacker) < 1.0) {
 
 			char TheCommonValue[10];
@@ -1297,7 +1297,6 @@ stock AddSpecialCommonDamage(client, entity, playerDamage, bool IsStatusDamage =
 	int damageTotal = -1;
 	int my_pos	= FindListPositionByEntity(entity, SpecialCommon[client]);
 
-	char text[64];
 	int superPos = GetArrayCell(CommonAffixes, pos, 1);
 	if (my_pos < 0) {
 		int CommonHealth = GetCommonValueIntAtPosEx(superPos, SUPER_COMMON_BASE_HEALTH);
@@ -1574,7 +1573,7 @@ bool alliesInRangeOnFire(int activator, float fCoherencyRange) {
 		float tpos[3];
 		GetClientAbsOrigin(i, tpos);
 		if (GetVectorDistance(cpos, tpos) > fCoherencyRange) continue;
-		if (GetClientStatusEffect(i, "burn") < 1) continue;
+		if (GetClientStatusEffect(i, STATUS_EFFECT_BURN) < 1) continue;
 		return true;
 	}
 	return false;
@@ -1596,6 +1595,7 @@ bool alliesInRangeWithAdrenaline(int activator, float fCoherencyRange) {
 }
 
 bool anyNearbyAlliesBelowHealthPercentage(int activator, float requireAllyBelowHealthPercentage, float fCoherencyRange) {
+	if (fCoherencyRange <= 0.0) return false;
 	// Get the origin position.
 	float cpos[3];
 	GetClientAbsOrigin(activator, cpos);
@@ -1617,6 +1617,7 @@ bool anyNearbyAlliesBelowHealthPercentage(int activator, float requireAllyBelowH
 }
 
 int enemyInRange(int activator, float fCoherencyRange) {
+	if (fCoherencyRange <= 0.0) return -1;
 	float cpos[3];
 	GetClientAbsOrigin(activator, cpos);
 	int team = GetClientTeam(activator);
@@ -1660,8 +1661,8 @@ stock bool clientHasEffectStateRequired(client, effectStatesAllowed) {
 
 void SetClientEffectState(client) {
 	int effectState = 0;
-	bool clientIsOnFire = (GetClientStatusEffect(client, "burn") > 0) ? true : false;
-	bool clientIsSufferingAcidBurn = (GetClientStatusEffect(client, "acid") > 0) ? true : false;
+	bool clientIsOnFire = (GetClientStatusEffect(client, STATUS_EFFECT_BURN) > 0) ? true : false;
+	bool clientIsSufferingAcidBurn = (GetClientStatusEffect(client, STATUS_EFFECT_ACID) > 0) ? true : false;
 	if (clientIsOnFire) effectState +=												1;		// ON FIRE
 	if (!clientIsSufferingAcidBurn) effectState +=									2;		// ACID BURN
 	if (ISEXPLODE[client] != INVALID_HANDLE) effectState +=							4;		// EXPLODING
@@ -2235,10 +2236,10 @@ stock GetWeaponSlot(entity) {
 		char Classname[64];
 		GetEntityClassname(entity, Classname, sizeof(Classname));
 
-		if (StrContains(Classname, "pistol", false) != -1 || StrContains(Classname, "chainsaw", false) != -1) return 1;
-		if (StrContains(Classname, "molotov", false) != -1 || StrContains(Classname, "pipe_bomb", false) != -1 || StrContains(Classname, "vomitjar", false) != -1) return 2;
-		if (StrContains(Classname, "defib", false) != -1 || StrContains(Classname, "first_aid", false) != -1) return 3;
-		if (StrContains(Classname, "adren", false) != -1 || StrContains(Classname, "pills", false) != -1) return 4;
+		if (StrEqualAtPos(Classname, "pistol", 7) || StrEqualAtPos(Classname, "chainsaw", 7)) return 1;
+		if (StrEqualAtPos(Classname, "molotov", 7) || StrEqualAtPos(Classname, "pipe_bomb", 7) || StrEqualAtPos(Classname, "vomitjar", 7)) return 2;
+		if (StrEqualAtPos(Classname, "defib", 7) || StrEqualAtPos(Classname, "first_aid", 7)) return 3;
+		if (StrEqualAtPos(Classname, "adren", 7) || StrEqualAtPos(Classname, "pills", 7)) return 4;
 		return 0;
 	}
 	return -1;
@@ -2450,7 +2451,7 @@ stock SlowPlayer(client, float g_TalentStrength, float g_TalentTime) {
 	}
 }
 
-stock CreateLineSoloEx(client, target, char[] DrawColour, char[] DrawPos, float lifetime = 0.5, targetClient = 0) {
+/*stock CreateLineSoloEx(client, target, int menuPos, float lifetime = 0.5, targetClient = 0) {
 
 	float ClientPos[3];
 	float TargetPos[3];
@@ -2459,24 +2460,36 @@ stock CreateLineSoloEx(client, target, char[] DrawColour, char[] DrawPos, float 
 	if (IsLegitimateClient(target)) GetClientAbsOrigin(target, TargetPos);
 	else GetEntPropVector(target, Prop_Send, "m_vecOrigin", TargetPos);
 
-	ClientPos[2] += StringToFloat(DrawPos);
-	TargetPos[2] += StringToFloat(DrawPos);
+	int colorsToDraw = GetArrayCell(TalentDrawColors, menuPos);
+	int colorsPositions = GetArrayCell(TalentDrawPositions, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	if (colorsToDraw != colorsPositions) {
+		if (colorsToDraw < colorsPositions) colorsPositions = colorsToDraw;
+		else colorsToDraw = colorsPositions;
+	}
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentDrawPositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
+		TargetPos[2] += fDrawPos;
 
-	if (StrEqual(DrawColour, "green", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 255, 0, 200}, 50);
-	else if (StrEqual(DrawColour, "red", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 0, 200}, 50);
-	else if (StrEqual(DrawColour, "blue", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 255, 200}, 50);
-	else if (StrEqual(DrawColour, "purple", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 255, 200}, 50);
-	else if (StrEqual(DrawColour, "yellow", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 0, 200}, 50);
-	else if (StrEqual(DrawColour, "orange", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 69, 0, 200}, 50);
-	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
-	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
-	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
-	else if (StrEqual(DrawColour, "white", false)) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
-	else return 0;
-	TE_SendToClient(targetClient);
+		int color = GetArrayCell(TalentDrawColors, menuPos, i);
+		if (color == 0) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 255, 0, 200}, 50);
+		else if (color == 1) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 0, 200}, 50);
+		else if (color == 2) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 255, 200}, 50);
+		else if (color == 3) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 255, 200}, 50);
+		else if (color == 4) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 0, 200}, 50);
+		else if (color == 5) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 69, 0, 200}, 50);
+		else if (color == 6) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
+		else if (color == 7) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
+		else if (color == 8) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
+		else if (color == 9) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
+		else return 0;
+		TE_SendToClient(targetClient);
+	}
 	return 1;
-}
-stock CreateRingSoloEx(client, float RingAreaSize, char[] DrawColour, char[] DrawPos, bool IsPulsing = true, float lifetime = 1.0, targetClient, float PosX=0.0, float PosY=0.0, float PosZ=0.0) {
+}*/
+
+stock CreateRingForCommonEffect(client, float RingAreaSize, int menuPos, bool IsPulsing = true, float lifetime = 1.0, targetClient, float PosX=0.0, float PosY=0.0, float PosZ=0.0) {
 	float ClientPos[3];
 	if (client != -1) {
 		if (IsLegitimateClient(client)) GetClientAbsOrigin(client, ClientPos);
@@ -2491,53 +2504,173 @@ stock CreateRingSoloEx(client, float RingAreaSize, char[] DrawColour, char[] Dra
 	if (IsPulsing) pulserange = 32.0;
 	else pulserange = RingAreaSize - 32.0;
 
-	ClientPos[2] += 20.0;
-	ClientPos[2] += StringToFloat(DrawPos);
+	int colorsToDraw = GetArrayCell(CommonDrawColors, menuPos);
+	int colorsPositions = GetArrayCell(CommonDrawPositions, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	if (colorsToDraw != colorsPositions) {
+		if (colorsToDraw < colorsPositions) colorsPositions = colorsToDraw;
+		else colorsToDraw = colorsPositions;
+	}
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(CommonDrawPositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
 
-	//float t_ClientPos[3];
-	//t_ClientPos = ClientPos;
-
-	if (StrEqual(DrawColour, "green", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "red", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "blue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "purple", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "yellow", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "orange", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "white", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
-	else return 0;
-	TE_SendToClient(targetClient);
+		int color = GetArrayCell(CommonDrawColors, menuPos, i);
+		if (color == 0) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+		else if (color == 1) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+		else if (color == 2) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+		else if (color == 3) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+		else if (color == 4) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+		else if (color == 5) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+		else if (color == 6) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+		else if (color == 7) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+		else if (color == 8) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (color == 9) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
+		else return 0;
+		TE_SendToClient(targetClient);
+	}
 	return 1;
 }
-stock CreateRingEx(client, float RingAreaSize, char[] DrawColour, float DrawPos, bool IsPulsing = true, float lifetime = 1.0, targetClient = 0) {
 
+stock CreateRingSoloEx(client, float RingAreaSize, int menuPos, bool IsPulsing = true, float lifetime = 1.0, targetClient, float PosX=0.0, float PosY=0.0, float PosZ=0.0) {
 	float ClientPos[3];
-	if (IsLegitimateClient(client)) GetClientAbsOrigin(client, ClientPos);
-	else GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
-
+	if (client != -1) {
+		if (IsLegitimateClient(client)) GetClientAbsOrigin(client, ClientPos);
+		else GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+	}
+	else {
+		ClientPos[0] = PosX;
+		ClientPos[1] = PosY;
+		ClientPos[2] = PosZ;
+	}
 	float pulserange = 0.0;
 	if (IsPulsing) pulserange = 32.0;
 	else pulserange = RingAreaSize - 32.0;
 
-	ClientPos[2] += DrawPos;
-	if (StrEqual(DrawColour, "green", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "red", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "blue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "purple", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "yellow", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "orange", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "black", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "brightblue", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "darkgreen", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
-	else if (StrEqual(DrawColour, "white", false)) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
-	else return 0;
-	TE_SendToAll();
+	int colorsToDraw = GetArrayCell(TalentDrawColors, menuPos);
+	int colorsPositions = GetArrayCell(TalentDrawPositions, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	if (colorsToDraw != colorsPositions) {
+		if (colorsToDraw < colorsPositions) colorsPositions = colorsToDraw;
+		else colorsToDraw = colorsPositions;
+	}
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentDrawPositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
+
+		int color = GetArrayCell(TalentDrawColors, menuPos, i);
+		if (color == 0) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+		else if (color == 1) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+		else if (color == 2) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+		else if (color == 3) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+		else if (color == 4) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+		else if (color == 5) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+		else if (color == 6) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+		else if (color == 7) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+		else if (color == 8) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (color == 9) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
+		else return 0;
+		TE_SendToClient(targetClient);
+	}
+	return 1;
+}
+stock CreateRingEffectType0(int client, int menuPos, bool IsPulsing = true, float lifetime = 1.0) {
+	float ClientPos[3];
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+
+	float pulserange = 0.0;
+	if (IsPulsing) pulserange = 32.0;
+
+	int colorsToDraw = GetArrayCell(TalentInstantColors, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentInstantPositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
+
+		float RingAreaSize = GetArrayCell(TalentInstantSizes, menuPos, i);
+		if (!IsPulsing) pulserange = RingAreaSize - 32.0;
+		int color = GetArrayCell(TalentInstantColors, menuPos, i);
+		if (color == 0) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+		else if (color == 1) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+		else if (color == 2) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+		else if (color == 3) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+		else if (color == 4) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+		else if (color == 5) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+		else if (color == 6) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+		else if (color == 7) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+		else if (color == 8) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (color == 9) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
+		else return 0;
+		TE_SendToAll();
+	}
 	return 1;
 }
 
-stock CreateLineSolo(client, target, char[] DrawColour, char[] DrawPos, float lifetime = 0.5, targetClient = 0) {
+stock CreateRingEffectType1(int client, int menuPos, bool IsPulsing = true, float lifetime = 1.0) {
+	float ClientPos[3];
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+
+	float pulserange = 0.0;
+	if (IsPulsing) pulserange = 32.0;
+
+	int colorsToDraw = GetArrayCell(TalentActiveColors, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentActivePositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
+
+		float RingAreaSize = GetArrayCell(TalentActiveSizes, menuPos, i);
+		if (!IsPulsing) pulserange = RingAreaSize - 32.0;
+		int color = GetArrayCell(TalentActiveColors, menuPos, i);
+		if (color == 0) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+		else if (color == 1) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+		else if (color == 2) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+		else if (color == 3) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+		else if (color == 4) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+		else if (color == 5) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+		else if (color == 6) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+		else if (color == 7) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+		else if (color == 8) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (color == 9) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
+		else return 0;
+		TE_SendToAll();
+	}
+	return 1;
+}
+
+stock CreateRingEffectType2(int client, int menuPos, bool IsPulsing = true, float lifetime = 1.0) {
+	float ClientPos[3];
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+
+	float pulserange = 0.0;
+	if (IsPulsing) pulserange = 32.0;
+
+	int colorsToDraw = GetArrayCell(TalentPassiveColors, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentPassivePositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
+
+		float RingAreaSize = GetArrayCell(TalentPassiveSizes, menuPos, i);
+		if (!IsPulsing) pulserange = RingAreaSize - 32.0;
+		int color = GetArrayCell(TalentPassiveColors, menuPos, i);
+		if (color == 0) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+		else if (color == 1) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+		else if (color == 2) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+		else if (color == 3) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+		else if (color == 4) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+		else if (color == 5) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+		else if (color == 6) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+		else if (color == 7) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+		else if (color == 8) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (color == 9) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
+		else return 0;
+		TE_SendToAll();
+	}
+	return 1;
+}
+
+/*stock CreateLineSolo(client, target, int menuPos, float lifetime = 0.5, targetClient = 0) {
 
 	float ClientPos[3];
 	float TargetPos[3];
@@ -2546,41 +2679,35 @@ stock CreateLineSolo(client, target, char[] DrawColour, char[] DrawPos, float li
 	if (IsLegitimateClient(target)) GetClientAbsOrigin(target, TargetPos);
 	else GetEntPropVector(target, Prop_Send, "m_vecOrigin", TargetPos);
 
-	int DrawColourCount = GetDelimiterCount(DrawColour, ":") + 1;
-	char[][] t_DrawColour = new char[DrawColourCount][12];
-	ExplodeString(DrawColour, ":", t_DrawColour, DrawColourCount, 12);
+	int colorsToDraw = GetArrayCell(TalentDrawColors, menuPos);
+	int colorsPositions = GetArrayCell(TalentDrawPositions, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	if (colorsToDraw != colorsPositions) {
+		if (colorsToDraw < colorsPositions) colorsPositions = colorsToDraw;
+		else colorsToDraw = colorsPositions;
+	}
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentDrawPositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
+		TargetPos[2] += fDrawPos;
 
-	char[][] t_DrawPos = new char[DrawColourCount][10];
-	ExplodeString(DrawPos, ":", t_DrawPos, DrawColourCount, 10);
-
-	float t_ClientPos[3];
-	t_ClientPos = ClientPos;
-	float t_TargetPos[3];
-	t_TargetPos = TargetPos;
-
-	for (int i = 0; i < DrawColourCount; i++) {
-
-		t_ClientPos = ClientPos;
-		t_TargetPos = TargetPos;
-
-		t_ClientPos[2] += StringToFloat(t_DrawPos[i]);
-		t_TargetPos[2] += StringToFloat(t_DrawPos[i]);
-
-		if (StrEqual(t_DrawColour[i], "green", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 255, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "red", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "blue", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 255, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "purple", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 255, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "yellow", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "orange", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 69, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "black", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "brightblue", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "darkgreen", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "white", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
+		int color = GetArrayCell(TalentDrawColors, menuPos, i);
+		if (color == 0) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 255, 0, 200}, 50);
+		else if (color == 1) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 0, 200}, 50);
+		else if (color == 2) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 255, 200}, 50);
+		else if (color == 3) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 255, 200}, 50);
+		else if (color == 4) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 0, 200}, 50);
+		else if (color == 5) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 69, 0, 200}, 50);
+		else if (color == 6) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
+		else if (color == 7) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
+		else if (color == 8) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
+		else if (color == 9) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
 		else continue;
 		TE_SendToClient(targetClient);
 	}
-}
-stock CreateRingSolo(client, float RingAreaSize, char[] DrawColour, char[] DrawPos, bool IsPulsing = true, float lifetime = 1.0, targetClient, float PosX=0.0, float PosY=0.0, float PosZ=0.0) {
+}*/
+
+stock CreateRingFromSuperSolo(client, float RingAreaSize, int menuPos, bool IsPulsing = true, float lifetime = 1.0, targetClient, float PosX=0.0, float PosY=0.0, float PosZ=0.0) {
 
 	float ClientPos[3];
 	//if (!IsWitch(client) && !IsCommonInfected(client)) GetClientAbsOrigin(client, ClientPos);
@@ -2600,41 +2727,35 @@ stock CreateRingSolo(client, float RingAreaSize, char[] DrawColour, char[] DrawP
 	if (IsPulsing) pulserange = 32.0;
 	else pulserange = RingAreaSize - 32.0;
 
-	int DrawColourCount = GetDelimiterCount(DrawColour, ":") + 1;
-	char[][] t_DrawColour = new char[DrawColourCount][12];
-	ExplodeString(DrawColour, ":", t_DrawColour, DrawColourCount, 12);
+	int colorsToDraw = GetArrayCell(TalentDrawColors, menuPos);
+	int colorsPositions = GetArrayCell(TalentDrawPositions, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	if (colorsToDraw != colorsPositions) {
+		if (colorsToDraw < colorsPositions) colorsPositions = colorsToDraw;
+		else colorsToDraw = colorsPositions;
+	}
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentDrawPositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
 
-	char[][] t_DrawPos = new char[DrawColourCount][10];
-	ExplodeString(DrawPos, ":", t_DrawPos, DrawColourCount, 10);
-
-	ClientPos[2] += 20.0;
-
-	float t_ClientPos[3];
-	t_ClientPos = ClientPos;
-
-	for (int i = 0; i < DrawColourCount; i++) {
-
-		t_ClientPos = ClientPos;
-
-		t_ClientPos[2] += StringToFloat(t_DrawPos[i]);
-
-		if (StrEqual(t_DrawColour[i], "green", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "red", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "blue", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "purple", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "yellow", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "orange", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "black", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "brightblue", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "darkgreen", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "white", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
+		int color = GetArrayCell(TalentDrawColors, menuPos, i);
+		if (color == 0) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+		else if (color == 1) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+		else if (color == 2) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+		else if (color == 3) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+		else if (color == 4) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+		else if (color == 5) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+		else if (color == 6) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+		else if (color == 7) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+		else if (color == 8) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (color == 9) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
 		else continue;
 		TE_SendToClient(targetClient);
 	}
 }
 
 // line 840
-stock CreateLine(client, target, char[] DrawColour, char[] DrawPos, float lifetime = 0.5, targetClient = 0) {
+/*stock CreateLine(client, target, int menuPos, float lifetime = 0.5, targetClient = 0) {
 
 	float ClientPos[3];
 	float TargetPos[3];
@@ -2643,39 +2764,49 @@ stock CreateLine(client, target, char[] DrawColour, char[] DrawPos, float lifeti
 	if (IsLegitimateClient(target)) GetClientAbsOrigin(target, TargetPos);
 	else GetEntPropVector(target, Prop_Send, "m_vecOrigin", TargetPos);
 
-	int DrawColourCount = GetDelimiterCount(DrawColour, ":") + 1;
-	char[][] t_DrawColour = new char[DrawColourCount][12];
-	ExplodeString(DrawColour, ":", t_DrawColour, DrawColourCount, 12);
+	int colorsToDraw = GetArrayCell(TalentDrawColors, menuPos);
+	int colorsPositions = GetArrayCell(TalentDrawPositions, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	if (colorsToDraw != colorsPositions) {
+		if (colorsToDraw < colorsPositions) colorsPositions = colorsToDraw;
+		else colorsToDraw = colorsPositions;
+	}
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentDrawPositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
+		TargetPos[2] += fDrawPos;
 
-	char[][] t_DrawPos = new char[DrawColourCount][10];
-	ExplodeString(DrawPos, ":", t_DrawPos, DrawColourCount, 10);
-
-	float t_ClientPos[3];
-	t_ClientPos = ClientPos;
-	float t_TargetPos[3];
-	t_TargetPos = TargetPos;
-
-	for (int i = 0; i < DrawColourCount; i++) {
-		t_ClientPos = ClientPos;
-		t_TargetPos = TargetPos;
-		t_ClientPos[2] += StringToFloat(t_DrawPos[i]);
-		t_TargetPos[2] += StringToFloat(t_DrawPos[i]);
-		if (StrEqual(t_DrawColour[i], "green", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 255, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "red", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "blue", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 255, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "purple", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 255, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "yellow", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "orange", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 69, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "black", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "brightblue", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "darkgreen", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
-		else if (StrEqual(t_DrawColour[i], "white", false)) TE_SetupBeamPoints(t_ClientPos, t_TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
+		int color = GetArrayCell(TalentDrawColors, menuPos, i);
+		if (color == 0) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 255, 0, 200}, 50);
+		else if (color == 1) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 0, 200}, 50);
+		else if (color == 2) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 255, 200}, 50);
+		else if (color == 3) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 0, 255, 200}, 50);
+		else if (color == 4) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 0, 200}, 50);
+		else if (color == 5) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 69, 0, 200}, 50);
+		else if (color == 6) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {0, 0, 0, 200}, 50);
+		else if (color == 7) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {132, 112, 255, 200}, 50);
+		else if (color == 8) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {178, 34, 34, 200}, 50);
+		else if (color == 9) TE_SetupBeamPoints(ClientPos, TargetPos, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, 0, 0.5, {255, 255, 255, 200}, 50);
 		else continue;
 		TE_SendToAll();
 	}
+}*/
+
+stock CreateExplosionRingOnClient(client, float fRange) {
+	float ClientPos[3];
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+	TE_SetupBeamRingPoint(ClientPos, fRange - 32.0, fRange, g_iSprite, g_BeaconSprite, 0, 15, 0.5, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+	TE_SendToAll();
 }
 
-stock CreateRing(client, float RingAreaSize, char[] DrawColour, char[] DrawPos, bool IsPulsing = true, float lifetime = 1.0, targetClient = 0, bool ringStartsAtMaxSize = false) {
+stock CreateHealingRingOnClient(client, float fRange) {
+	float ClientPos[3];
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
+	TE_SetupBeamRingPoint(ClientPos, fRange - 32.0, fRange, g_iSprite, g_BeaconSprite, 0, 15, 0.5, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+	TE_SendToAll();
+}
+
+stock CreateRing(client, float RingAreaSize, int menuPos, bool IsPulsing = true, float lifetime = 1.0, targetClient = 0, bool ringStartsAtMaxSize = false) {
 
 	float ClientPos[3];
 	if (IsLegitimateClient(client)) GetClientAbsOrigin(client, ClientPos);
@@ -2683,29 +2814,28 @@ stock CreateRing(client, float RingAreaSize, char[] DrawColour, char[] DrawPos, 
 
 	float pulserange = (ringStartsAtMaxSize) ? RingAreaSize : (IsPulsing) ? 32.0 : RingAreaSize - 32.0;
 
-	int DrawColourCount = GetDelimiterCount(DrawColour, ":") + 1;
-	char[][] t_DrawColour = new char[DrawColourCount][12];
-	ExplodeString(DrawColour, ":", t_DrawColour, DrawColourCount, 12);
+	int colorsToDraw = GetArrayCell(TalentDrawColors, menuPos);
+	int colorsPositions = GetArrayCell(TalentDrawPositions, menuPos);
+	// these are paired so if the user creating the talent files does it wrong, then it's the parsers job to catch that and not try to draw the missing value.
+	if (colorsToDraw != colorsPositions) {
+		if (colorsToDraw < colorsPositions) colorsPositions = colorsToDraw;
+		else colorsToDraw = colorsPositions;
+	}
+	for (int i = 1; i <= colorsToDraw; i++) {
+		float fDrawPos = GetArrayCell(TalentDrawPositions, menuPos, i);
+		ClientPos[2] += fDrawPos;
 
-	char[][] t_DrawPos = new char[DrawColourCount][10];
-	ExplodeString(DrawPos, ":", t_DrawPos, DrawColourCount, 10);
-
-	float t_ClientPos[3];
-	t_ClientPos = ClientPos;
-
-	for (int i = 0; i < DrawColourCount; i++) {
-		t_ClientPos = ClientPos;
-		t_ClientPos[2] += StringToFloat(t_DrawPos[i]);
-		if (StrEqual(t_DrawColour[i], "green", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "red", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "blue", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "purple", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "yellow", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "orange", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "black", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "brightblue", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "darkgreen", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
-		else if (StrEqual(t_DrawColour[i], "white", false)) TE_SetupBeamRingPoint(t_ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
+		int color = GetArrayCell(TalentDrawColors, menuPos, i);
+		if (color == 0) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 255, 0, 200}, 50, 0);
+		else if (color == 1) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 0, 200}, 50, 0);
+		else if (color == 2) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 255, 200}, 50, 0);
+		else if (color == 3) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 0, 255, 200}, 50, 0);
+		else if (color == 4) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 0, 200}, 50, 0);
+		else if (color == 5) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 69, 0, 200}, 50, 0);
+		else if (color == 6) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {0, 0, 0, 200}, 50, 0);
+		else if (color == 7) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {132, 112, 255, 200}, 50, 0);
+		else if (color == 8) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {178, 34, 34, 200}, 50, 0);
+		else if (color == 9) TE_SetupBeamRingPoint(ClientPos, pulserange, RingAreaSize, g_iSprite, g_BeaconSprite, 0, 15, lifetime, 2.0, 0.5, {255, 255, 255, 200}, 50, 0);
 		else continue;
 		TE_SendToAll();
 	}
@@ -3486,14 +3616,12 @@ stock bool RollChanceIsSuccessful(client, float rollChance) {
 	return false;
 }
 
-stock RemoveAllDebuffs(client, char[] debuffName) {
+stock RemoveAllDebuffs(client, int debuffName) {
 	int size = GetArraySize(EntityOnFire);
-	char text[64];
 	for (int i = 0; i < size; i++) {
 		if (client != GetArrayCell(EntityOnFire, i, 0)) continue;	// client isn't the client owning this debuff
-		GetArrayString(EntityOnFireName, i, text, sizeof(text));
-		if (!StrEqual(debuffName, text)) continue;
-		RemoveFromArray(EntityOnFireName, i);
+		int debuffType = GetArrayCell(EntityOnFire, i, 6);
+		if (debuffName != debuffType) continue;
 		RemoveFromArray(EntityOnFire, i);
 		size--;
 		if (i > 0) i--;
@@ -3507,7 +3635,7 @@ stock RemoveAllDebuffs(client, char[] debuffName) {
 		and the plugin will check every so often to see if a player has such an entity attached to them.
 		If they do, they'll burn. Players can have multiple of these, so it is dangerous.
 */
-void CreateAndAttachFlame(int client, int damage = 0, float lifetime = 10.0, float tickInt = 1.0, int owner, char[] DebuffName = "burn", float tickIntContinued = -2.0) {
+void CreateAndAttachFlame(int client, int damage = 0, float lifetime = 10.0, float tickInt = 1.0, int owner, int DebuffName = STATUS_EFFECT_BURN, float tickIntContinued = -2.0) {
 	bool isLegitimate = IsLegitimateClient(client);
 	if (isLegitimate) {
 		float TheAbilityMultiplier = GetAbilityMultiplier(client, "B");
@@ -3521,35 +3649,34 @@ void CreateAndAttachFlame(int client, int damage = 0, float lifetime = 10.0, flo
 	SetArrayCell(EntityOnFire, size, tickInt, 3);
 	SetArrayCell(EntityOnFire, size, tickIntContinued, 4);
 	SetArrayCell(EntityOnFire, size, owner, 5);
-	PushArrayString(EntityOnFireName, DebuffName);
-	if (isLegitimate && StrEqual(DebuffName, "burn", false)) IgniteEntity(client, lifetime);
-	if (damage == 0 && StrEqual(DebuffName, "acid", false) && IsCommonInfected(client)) CreateAcid(FindInfectedClient(true), client, 48.0);
+	SetArrayCell(EntityOnFire, size, DebuffName, 6);
+	if (isLegitimate && DebuffName == STATUS_EFFECT_BURN) IgniteEntity(client, lifetime);
+	if (damage == 0 && DebuffName == STATUS_EFFECT_ACID && IsCommonInfected(client)) CreateAcid(FindInfectedClient(true), client, 48.0);
 }
 
-stock RemoveClientStatusEffect(client, char[] EffectName = "all") {
-	char text[64];
+stock RemoveClientStatusEffect(client, int EffectName = STATUS_EFFECT_GET_RANDOM) {
 	if (!IsLegitimateClient(client)) return 0;
 	for (int i = 0; i < GetArraySize(EntityOnFire); i++) {
-		if (GetArrayCell(EntityOnFire, i, 0) != client) continue;
-		if (!StrEqual(EffectName, "all")) {
-			GetArrayString(EntityOnFireName, i, text, sizeof(text));
-			if (!StrEqual(EffectName, text)) continue;
+		if (GetArrayCell(EntityOnFire, i) != client) continue;
+		if (EffectName != STATUS_EFFECT_GET_RANDOM) {
+			int EffectType = GetArrayCell(EntityOnFire, i, 6);
+			if (EffectName != EffectType) continue;
 		}
 		RemoveFromArray(EntityOnFire, i);
-		RemoveFromArray(EntityOnFireName, i);
 		return 1;
 	}
 	return 0;
 }
 
-stock GetClientStatusEffect(client, char[] EffectName = "burn") {
+stock GetClientStatusEffect(client, int EffectName = 0) {
 	int Count = 0;
-	char TalentName[64];
 	if (!IsLegitimateClient(client)) return 0;
 	for (int i = 0; i < GetArraySize(EntityOnFire); i++) {
 		if (GetArrayCell(EntityOnFire, i) != client) continue;
-		GetArrayString(EntityOnFireName, i, TalentName, sizeof(TalentName));
-		if (!StrEqual(EffectName, TalentName)) continue;
+		if (EffectName != STATUS_EFFECT_GET_TOTAL) {
+			int DebuffName = GetArrayCell(EntityOnFire, i, 6);
+			if (DebuffName != EffectName) continue;
+		}
 		Count++;
 	}
 	return Count;
@@ -4441,7 +4568,7 @@ stock FindInfectedClient(bool GetClient=false) {
 	return count;
 }
 
-stock CreateAoE(int owner, float fRangeOfEffect, amount, effectType = 0, bool bMustBeSameTeamAsOwner = true, int hitgroup, int damagetype, int targetCallAbilityTrigger) {
+stock CreateAoE(int owner, int menuPos, float fRangeOfEffect, amount, effectType = 0, bool bMustBeSameTeamAsOwner = true, int hitgroup, int damagetype, int targetCallAbilityTrigger) {
 	float ownerPos[3];
 	GetEntPropVector(owner, Prop_Send, "m_vecOrigin", ownerPos);
 	int playersInRange = 0;
@@ -4456,19 +4583,18 @@ stock CreateAoE(int owner, float fRangeOfEffect, amount, effectType = 0, bool bM
 		if (effectType == 0) HealPlayer(teammate, owner, amount * 1.0, 'h', true);
 		if (targetCallAbilityTrigger >= 0) GetAbilityStrengthByTrigger(teammate, owner, targetCallAbilityTrigger, _, amount, _, _, _, _, _, _, hitgroup, _, damagetype);
 	}
-	char effectColor[64];
-	if (effectType == 0) Format(effectColor, sizeof(effectColor), "green:green");
-	if (playersInRange > 0) CreateRing(owner, 384.0, effectColor, "32.0:48.0", _, 0.5);
+	if (playersInRange > 0) CreateRing(owner, 384.0, menuPos, false);
 }
 
-stock CreatePlayerExplosion(client, float fRangeOfExplosion, damageToDealToEligibleTargets, bool bDontHurtAllies = true, bool bShowExplosionRingVisual = false) {
+stock CreatePlayerExplosion(client, damageToDealToEligibleTargets, bool bDontHurtAllies = true) {
 	float originOfExplosion[3];
 	GetEntPropVector(client, Prop_Send, "m_vecOrigin", originOfExplosion);
+	float fRangeOfExplosion = 256.0;
 
 	float realPlayerOrigin[3];
 	CreateExplosion(client);
 	ScreenShake(client);
-	CreateRing(client, fRangeOfExplosion * 2.0, "red:red:red", "32.0:48.0:64.0", _, 0.5, _, true);
+	CreateExplosionRingOnClient(client, 512.0);
 
 	for (int realPlayer = 1; realPlayer <= MaxClients; realPlayer++) {
 		if (realPlayer == client || !IsLegitimateClientAlive(realPlayer)) continue;
@@ -5547,7 +5673,7 @@ stock TeamworkRewardNotification(client, target, float PointCost, char[] ItemNam
 }
 
 stock GetActiveWeaponSlot(client) {
-	if (StrEqual(MyCurrentWeapon[client], "weapon_melee", false) || StrContains(MyCurrentWeapon[client], "pistol", false) != -1 || StrContains(MyCurrentWeapon[client], "chainsaw", false) != -1) return 1;
+	if (StrEqualAtPos(MyCurrentWeapon[client], "melee", 7) || StrEqualAtPos(MyCurrentWeapon[client], "pistol", 7) || StrEqualAtPos(MyCurrentWeapon[client], "chainsaw", 7)) return 1;
 	return 0;
 }
 
@@ -6366,7 +6492,7 @@ stock EnableHardcoreMode(client, bool Disable=false) {
 	}
 }
 
-void ScenarioEnd(int client, const char[] s = "scenario_end") {
+/*void ScenarioEnd(int client, const char[] s = "scenario_end") {
 	int iFlags = GetCommandFlags(s);
 	if (IsFakeClient(client)) {
         SetCommandFlags(s, iFlags & ~FCVAR_CHEAT);
@@ -6381,7 +6507,7 @@ void ScenarioEnd(int client, const char[] s = "scenario_end") {
         SetCommandFlags(s, iFlags);
         SetUserFlagBits(client, uFlags);
     }
-}
+}*/
 
 void ExecCheatCommand(int client = 0, const char[] command, const char[] parameters = "") {
 	if (StrEqual(parameters, "ammo")) {
@@ -6435,6 +6561,7 @@ stock int ValidSurvivors() {
 
 // targetstate = 0 (ignore) 1 (ensnared) 2 (incapacitated) 3 (dead)
 void GetClientsInRangeByState(int client, float range, int incappedAllies, int ensnaredAllies, int healthyAllies) {
+	if (range <= 0.0) return;
 	int team = myCurrentTeam[client];
 	float cpos[3];
 	incappedAllies = 0;

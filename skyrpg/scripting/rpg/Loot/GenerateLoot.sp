@@ -366,6 +366,136 @@ stock void GetUniqueAugmentLootDropItemCode(char[] sTime) {
 	Format(sTime, 64, "%d%s%d", iUniqueServerCode, sTime, lootDropCounter);
 }
 
+stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
+	b_IsLoading[client] = true;
+	int ASize = GetArraySize(a_Menu_Talents);
+	ResizeArray(MyTalentStrength[client], ASize);
+	ResizeArray(MyTalentStrengths[client], ASize);
+	ClearArray(MyUnlockedTalents[client]);
+	char TalentName[64];
+	for (int i = 0; i < ASize; i++) {
+		// preset all talents to being unclaimed.
+		SetArrayCell(MyTalentStrengths[client], i, 0.0);
+		SetArrayCell(MyTalentStrengths[client], i, 0.0, 1);
+		SetArrayCell(MyTalentStrengths[client], i, 0.0, 2);
+		SetArrayCell(MyTalentStrength[client], i, 0);
+
+		//PreloadTalentSection[client]	= GetArrayCell(a_Menu_Talents, i, 2);
+		GetArrayString(a_Database_Talents, i, TalentName, sizeof(TalentName));
+		if (!giveAccessToAllTalents && GetTalentStrength(client, TalentName) < 1) {
+			continue;
+		}
+		PreloadTalentValues[client]	= GetArrayCell(a_Menu_Talents, i, 1);
+		float f_EachPoint	= GetTalentInfo(client, PreloadTalentValues[client], _, _, TalentName, _, 1, true);
+		float f_Time		= GetTalentInfo(client, PreloadTalentValues[client], 2, _, TalentName, _, 1, true);
+		float f_Cooldown	= GetTalentInfo(client, PreloadTalentValues[client], 3, _, TalentName, _, 1, true);
+		SetArrayCell(MyTalentStrengths[client], i, f_EachPoint);
+		SetArrayCell(MyTalentStrengths[client], i, f_Time, 1);
+		SetArrayCell(MyTalentStrengths[client], i, f_Cooldown, 2);
+		SetArrayCell(MyTalentStrength[client], i, 1);
+
+		int numUnlockedTalents = GetArraySize(MyUnlockedTalents[client]);
+		//ResizeArray(MyUnlockedTalents[client], numUnlockedTalents + 1);
+		PushArrayCell(MyUnlockedTalents[client], i);
+
+		char activatoreffects[64];
+		char targeteffects[64];
+		GetArrayString(PreloadTalentValues[client], ACTIVATOR_ABILITY_EFFECTS, activatoreffects, sizeof(activatoreffects));
+		GetArrayString(PreloadTalentValues[client], TARGET_ABILITY_EFFECTS, targeteffects, sizeof(targeteffects));
+
+		char secondaryEffects[64];
+		GetArrayString(PreloadTalentValues[client], SECONDARY_EFFECTS, secondaryEffects, sizeof(secondaryEffects));
+
+		// intcomp is significantly faster than strcomp
+		int activatorInt = ConvertEffectToInt(activatoreffects);
+		SetArrayCell(MyUnlockedTalents[client], numUnlockedTalents, activatorInt, 1);
+
+		int targetInt = ConvertEffectToInt(targeteffects);
+		SetArrayCell(MyUnlockedTalents[client], numUnlockedTalents, targetInt, 2);
+
+		int secondaryInt = ConvertEffectToInt(secondaryEffects);
+		SetArrayCell(MyUnlockedTalents[client], numUnlockedTalents, secondaryInt, 3);
+
+		char activeEndAbilityTrigger[64];
+		char endAbilityTrigger[64];
+		GetArrayString(PreloadTalentValues[client], ABILITY_ACTIVE_END_ABILITY_TRIGGER, activeEndAbilityTrigger, sizeof(activeEndAbilityTrigger));
+		GetArrayString(PreloadTalentValues[client], ABILITY_COOLDOWN_END_TRIGGER, endAbilityTrigger, sizeof(endAbilityTrigger));
+		int endActiveAbilityTriggerInt = ConvertTriggerToInt(activeEndAbilityTrigger);
+		int endAbilityTriggerInt = ConvertTriggerToInt(endAbilityTrigger);
+		SetArrayCell(MyUnlockedTalents[client], numUnlockedTalents, endActiveAbilityTriggerInt, 4);
+		SetArrayCell(MyUnlockedTalents[client], numUnlockedTalents, endAbilityTriggerInt, 5);
+
+		char secondaryAbilityTrigger[64];
+		GetArrayString(PreloadTalentValues[client], SECONDARY_ABILITY_TRIGGER, secondaryAbilityTrigger, sizeof(secondaryAbilityTrigger));
+		int secondaryAbilityInt = ConvertTriggerToInt(secondaryAbilityTrigger);
+		SetArrayCell(MyUnlockedTalents[client], numUnlockedTalents, secondaryAbilityInt, 6);
+
+		char activatorCallAbilityTrigger[64];
+		GetArrayString(PreloadTalentValues[client], ACTIVATOR_CALL_ABILITY_TRIGGER, activatorCallAbilityTrigger, sizeof(activatorCallAbilityTrigger));
+		int activatorCallAbilityTriggerInt = ConvertTriggerToInt(activatorCallAbilityTrigger);
+		SetArrayCell(MyUnlockedTalents[client], numUnlockedTalents, activatorCallAbilityTriggerInt, 7);
+
+		char targetCallAbilityTrigger[64];
+		GetArrayString(PreloadTalentValues[client], TARGET_CALL_ABILITY_TRIGGER, targetCallAbilityTrigger, sizeof(targetCallAbilityTrigger));
+		int targetCallAbilityTriggerInt = ConvertTriggerToInt(targetCallAbilityTrigger);
+		SetArrayCell(MyUnlockedTalents[client], numUnlockedTalents, targetCallAbilityTriggerInt, 8);
+
+
+		// We're going to memo certain string results since checking strings very-often and many times is expensive and slow.
+		char playerRequiredToBeInSpecialAmmo[10];
+		GetArrayString(PreloadTalentValues[client], ACTIVATOR_MUST_BE_IN_AMMO, playerRequiredToBeInSpecialAmmo, sizeof(playerRequiredToBeInSpecialAmmo));
+		if (StrEqual(playerRequiredToBeInSpecialAmmo, "-1")) SetArrayCell(MyTalentStrengths[client], i, -1, 6);
+		else SetArrayCell(MyTalentStrengths[client], i, 1, 6);
+
+		char TargetRequiredToBeInSpecialAmmo[10];
+		GetArrayString(PreloadTalentValues[client], TARGET_MUST_BE_IN_AMMO, TargetRequiredToBeInSpecialAmmo, sizeof(TargetRequiredToBeInSpecialAmmo));
+		if (StrEqual(TargetRequiredToBeInSpecialAmmo, "-1")) SetArrayCell(MyTalentStrengths[client], i, -1, 7);
+		else SetArrayCell(MyTalentStrengths[client], i, 1, 7);
+
+		char coherencyTalentNearbyRequired[64];
+		GetArrayString(PreloadTalentValues[client], COHERENCY_TALENT_NEARBY_REQUIRED, coherencyTalentNearbyRequired, sizeof(coherencyTalentNearbyRequired));
+		if (StrEqual(coherencyTalentNearbyRequired, "-1")) SetArrayCell(MyTalentStrengths[client], i, -1, 8);
+		else SetArrayCell(MyTalentStrengths[client], i, 1, 8);
+
+		char specificWeaponRequired[64];
+		GetArrayString(PreloadTalentValues[client], WEAPON_NAME_REQUIRED, specificWeaponRequired, sizeof(specificWeaponRequired));
+		if (StrEqual(specificWeaponRequired, "-1")) SetArrayCell(MyTalentStrengths[client], i, -1, 9);
+		else SetArrayCell(MyTalentStrengths[client], i, 1, 9);
+	}
+	int iCurrentAugmentLevel = 0;
+	if (GetArraySize(equippedAugments[client]) != iNumAugments) ClearEquippedAugmentData(client);
+	else {
+		for (int i = 0; i < iNumAugments; i++) {
+			int iCur = GetArrayCell(equippedAugments[client], i, 2);
+			if (iCur > 0) iCurrentAugmentLevel += iCur;
+		}
+		playerCurrentAugmentLevel[client] = (iCurrentAugmentLevel / iAugmentLevelDivisor);
+		playerCurrentAugmentAverageLevel[client] = GetClientAverageAugment(client);
+		SetLootDropCategories(client);
+	}
+	myCurrentTeam[client] = GetClientTeam(client);
+	b_IsLoading[client] = false;
+	SurvivorStamina[client] = GetPlayerStamina(client);
+	SetMaximumHealth(client);
+	if (!b_IsActiveRound) GiveMaximumHealth(client);
+	if (GetTalentPointsByKeyValue(client, ACTIVATOR_ABILITY_EFFECTS, "weakness") > 0 ||
+		GetTalentPointsByKeyValue(client, SECONDARY_EFFECTS, "weakness") > 0) bForcedWeakness[client] = true;
+	else bForcedWeakness[client] = false;
+
+	GenerateUnlockedLootPool(client);
+}
+
+int GetClientAverageAugment(client) {
+	// int numEquippedAugments = 0;
+	// for (int i = 0; i < iNumAugments; i++) {
+	// 	int iCur = GetArrayCell(equippedAugments[client], i, 2);
+	// 	if (iCur > 0) numEquippedAugments++;
+	// }
+	// int averageAugmentScore = (numEquippedAugments > 0) ? (playerCurrentAugmentLevel[client] / numEquippedAugments) : playerCurrentAugmentLevel[client];
+	int averageAugmentScore = (playerCurrentAugmentLevel[client] > 0) ? (playerCurrentAugmentLevel[client] / iNumAugments) : playerCurrentAugmentLevel[client];
+	return averageAugmentScore;
+}
+
 stock GenerateUnlockedLootPool(client) {
 	ClearArray(unlockedLootPoolActivator[client]);
 	ClearArray(unlockedLootPoolTarget[client]);

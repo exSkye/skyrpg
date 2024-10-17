@@ -435,7 +435,7 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0) {
 		else t_Range = AfxRangeMax;
 		if (t_Range + AfxRangeBase > AfxRangeMax) t_Range = AfxRangeMax;
 		else t_Range += AfxRangeBase;
-		if (GetVectorDistance(SourcLoc, TargetPosition) > (t_Range / 2) || StrContains(negativeStatusEffects[i], "[Fl]", false) != -1) continue;		// player not within blast radius, takes no damage. Or playing is floating.
+		if (GetVectorDistance(SourcLoc, TargetPosition) > (t_Range / 2) || !(GetEntityFlags(i) & FL_ONGROUND)) continue;		// player not within blast radius, takes no damage. Or playing is floating.
 
 		// Because range can fluctuate, we want to get the # of entities within range for EACH player individually.
 		if (isRaw == 0) {
@@ -478,13 +478,6 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0) {
 	}
 
 	if (client == target) CreateBomberExplosion(client, 0, Effects);
-}
-
-stock GetCommonVisuals(int superPos, char[] TheString, TheSize, int key, int pos) {
-	h_CommonKeys		= GetArrayCell(a_CommonAffixes, superPos, 0);
-	h_CommonValues		= GetArrayCell(a_CommonAffixes, superPos, 1);
-	if (key == 0) return FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, "draw colour?", _, _, pos);
-	return FormatKeyValue(TheString, TheSize, h_CommonKeys, h_CommonValues, "draw pos?", _, _, pos);
 }
 
 stock int GetCommonPos(int entity) {
@@ -579,7 +572,7 @@ stock GetCommonValueInt(entity, char[] Key) {
 	return -1;
 }
 
-stock DrawSpecialInfectedAffixes(client, target = -1, float fRange = 256.0) {
+stock DrawSpecialInfectedAffixes(int client, int target = -1, float fRange = 256.0) {
 	if (target != -1) {
 		float clientPos[3];
 		float targetPos[3];
@@ -602,20 +595,15 @@ stock DrawSpecialInfectedAffixes(client, target = -1, float fRange = 256.0) {
 	else return 0;
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
-		CreateRingSolo(client, fRange, AfxDrawColour, AfxDrawPos, false, 0.25, i);
+		CreateRingFromSuperSolo(client, fRange, iDefenderCommonMenuPos, false, 0.25, i);
 	}
 	return 1;
 }
 
 stock DrawCommonAffixes(entity, int superPos) {
 	char AfxEffect[64];
-	char AfxDrawColour[64];
-	char AfxDrawPos[64];
-
 	float EntityPos[3];
 	float TargetPos[3];
-
-	
 // superpos: 7
 // effect: b , range: 0.000 type: 0
 // Level req: 0
@@ -629,21 +617,11 @@ stock DrawCommonAffixes(entity, int superPos) {
 	if (AfxDrawType == -1) return;
 
 	int AfxLevelReq = GetCommonValueIntAtPosEx(superPos, SUPER_COMMON_LEVEL_REQ);
-
-
-
-	int drawColourPos = 0;
-	int drawPosPos = 0;
-	while (drawColourPos >= 0 && drawPosPos >= 0) {
-		drawColourPos	= GetCommonVisuals(superPos, AfxDrawColour, sizeof(AfxDrawColour), 0, drawColourPos);
-		drawPosPos		= GetCommonVisuals(superPos, AfxDrawPos, sizeof(AfxDrawPos), 1, drawPosPos);
-		//PrintToChatAll("Draw color: %d draw pos: %d", drawColourPos, drawPosPos);
-		if (drawColourPos < 0 || drawPosPos < 0) return;
-		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
-			if (myCurrentTeam[i] == TEAM_SURVIVOR && PlayerLevel[i] < AfxLevelReq) continue;
-			if (AfxDrawType == 0) CreateRingSoloEx(entity, AfxRangeMax, AfxDrawColour, AfxDrawPos, false, 0.25, i);
-		}
+	
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+		if (myCurrentTeam[i] == TEAM_SURVIVOR && PlayerLevel[i] < AfxLevelReq) continue;
+		if (AfxDrawType == 0) CreateRingForCommonEffect(entity, AfxRangeMax, superPos, false, 0.25, i);
 	}
 
 	
@@ -659,39 +637,25 @@ stock DrawCommonAffixes(entity, int superPos) {
 	else t_Strength = AfxStrength;
 
 	for (int i = 1; i <= MaxClients; i++) {
-
 		if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR || PlayerLevel[i] < AfxLevelReq) continue;
 		GetClientAbsOrigin(i, TargetPos);
-
 		// Player is outside the applicable range.
 		if (!IsInRange(EntityPos, TargetPos, AfxRangeMax)) continue;
-
 		if (AfxStrengthLevel > 0.0) t_Strength += RoundToCeil(t_Strength * (PlayerLevel[i] * AfxStrengthLevel));
-
 		//If they are not immune to the effects, we consider the effects.
-		
 		if (StrContains(AfxEffect, "d", true) != -1) {
-
 			//if (t_Strength > GetClientHealth(i)) IncapacitateOrKill(i);
 			//else SetEntityHealth(i, GetClientHealth(i) - t_Strength);
 			SetClientTotalHealth(entity, i, t_Strength);
 		}
 		if (StrContains(AfxEffect, "l", true) != -1) {
-
-
 			//	We don't want multiple blinders to spam blind a player who is already blind.
 			//	Furthermore, we don't want it to accidentally blind a player AFTER it dies and leave them permablind.
-
 			//	ISBLIND is tied a timer, and when the timer reverses the blind, it will close the handle.
 			if (ISBLIND[i] == INVALID_HANDLE) BlindPlayer(i, 0.0, 255);
 		}
 		if (StrContains(AfxEffect, "r", true) != -1) {
-
-			//
-
 			//	Freeze players, teleport them up a lil bit.
-
-			//
 			if (ISFROZEN[i] == INVALID_HANDLE) FrozenPlayer(i, 0.0);
 		}
 	}
@@ -717,9 +681,6 @@ bool ForceClearSpecialCommon(entity, int client = 0, bool killMob = true) {
 }
 
 stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, lastAttacker = -1) {
-	char TheDraws[64];
-	char ThePos[64];
-
 	int pos = FindListPositionByEntity(entity, CommonAffixes);
 	if (pos >= 0) {
 
@@ -764,14 +725,9 @@ stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, l
 						WritePackFloat(packagey, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_STRENGTH_TARGET));
 						WritePackFloat(packagey, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_LEVEL_STRENGTH));
 						WritePackFloat(packagey, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX));
-						WritePackFloat(packagey, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_DEATH_MULTIPLIER));
 						WritePackFloat(packagey, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_DEATH_BASE_TIME));
 						WritePackFloat(packagey, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_DEATH_INTERVAL));
 						WritePackFloat(packagey, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_DEATH_MAX_TIME));
-						GetCommonValue(TheDraws, sizeof(TheDraws), entity, "draw colour?");
-						WritePackString(packagey, TheDraws);
-						GetCommonValue(ThePos, sizeof(ThePos), entity, "draw pos?");
-						WritePackString(packagey, ThePos);
 						WritePackCell(packagey, GetCommonValueIntAtPosEx(superPos, SUPER_COMMON_LEVEL_REQ));
 					}
 				}
