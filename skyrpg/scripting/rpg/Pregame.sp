@@ -43,9 +43,7 @@ public ReadyUp_ReadyUpStart() {
 		bIsInCombat[i] = false;
 		b_IsInSaferoom[i] = true;
 		// Anti-Farm/Anti-Camping system stuff.
-		ClearArray(h_KilledPosition_X[i]);		// We clear all positions from the array.
-		ClearArray(h_KilledPosition_Y[i]);
-		ClearArray(h_KilledPosition_Z[i]);
+		ClearArray(h_KilledPosition[i]);		// We clear all positions from the array.
 		if (!IsFakeClient(i)) continue;
 		if (b_IsLoaded[i]) GiveMaximumHealth(i);
 	}
@@ -160,6 +158,8 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			while ((ent = FindEntityByClassname(ent, "witch")) != -1) {
 				// Some maps, like Hard Rain pre-spawn a ton of witches - we want to add them to the witch table.
 				OnWitchCreated(ent);
+				SDKHook(ent, SDKHook_OnTakeDamage, OnTakeDamage);
+				SDKHook(ent, SDKHook_TraceAttack, OnTraceAttack);
 			}
 			char thetext[64];
 			GetConfigValue(thetext, sizeof(thetext), "path setting?");

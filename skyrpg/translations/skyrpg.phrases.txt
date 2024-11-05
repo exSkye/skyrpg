@@ -3,6 +3,26 @@
 
 "Phrases"
 {
+	"attribute multiple level increase"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:i}"
+		"en"				"{1}{2} {3}gains {4}{5} {6}{7} {8}levels and is now {9}{10} {11}Level {12}{13}"
+	}
+	"attribute level increase"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s},{8:i}"
+		"en"				"{1}{2} {3}is now {4}{5} {6}Level {7}{8}"
+	}
+	"attribute info"
+	{
+		"#format"			"{1:s},{2:i},{3:s},{4:s},{5:s}"
+		"en"				"{1} Lv.{2}\n{5} {3}/{4} XP"
+	}
+	"proficiency info"
+	{
+		"#format"			"{1:s},{2:i},{3:s},{4:s},{5:s}"
+		"en"				"{1} Lv.{2}\n{5} {3}/{4} XP"
+	}
 	"Activator Health Required"
 	{
 		"#format"			"{1:3.1f},{2:s}"
@@ -34,7 +54,7 @@
 	}
 	"savior complex increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increased melee damage per stack to infected with\nan ensnared survivor.\nAdd 1 stack for each {14} consecutive hits to {10} max stacks."
 	}
 	"savior complex ii"
@@ -43,7 +63,7 @@
 	}
 	"savior complex ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Deal increased melee damage to special infected\nthat have an ensnared Survivor for each {1}{2} health\nmissing while you have less than {5}{6} health."
 	}
 	"savior complex iii"
@@ -52,7 +72,7 @@
 	}
 	"savior complex iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When healed by an ally, hurt yourself, exploding for\nAoE damage when within {7}units of an ensnared ally."
 	}
 	"determination i"
@@ -61,7 +81,7 @@
 	}
 	"determination i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Deal increased melee damage per stack, up to {10} stacks\nwhen within {7}units of an ensnared Survivor."
 	}
 	"barrier i"
@@ -70,7 +90,7 @@
 	}
 	"barrier i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Knocks back any non-Tank special infected\nthat get within {7}units of you."
 	}
 	"barrier ii"
@@ -79,7 +99,7 @@
 	}
 	"barrier ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Knocks back Tanks that get within {7}units of you."
 	}
 	"precision path iii"
@@ -88,7 +108,7 @@
 	}
 	"precision path iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When using sniper rifles, deal bonus damage when\nhitting limbs of enemies further than {9}units from you."
 	}
 	"knockback i"
@@ -97,7 +117,7 @@
 	}
 	"knockback i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Knocks back any non-Tank special infected\nthat you shoot within {7}units of you."
 	}
 	"knockback ii"
@@ -106,7 +126,7 @@
 	}
 	"knockback ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Knocks back any special infected that\nhurts you and is within {7}units of you."
 	}
 	"explosives i"
@@ -196,6 +216,14 @@
 	"vampire perfect surname"
 	{
 		"en"				"Vampiric"
+	}
+	"amplify major surname"
+	{
+		"en"				"Amplifying"
+	}
+	"amplify perfect surname"
+	{
+		"en"				"Amplifying"
 	}
 	"cdr perfect surname"
 	{
@@ -328,6 +356,91 @@
 	"heal spec ii info"
 	{
 		"en"				"Unlike normal talents, proficiencies are multiplicative.\nIncreases all healing, but also increases all damage taken."
+	}
+	"boss damageresist i"
+	{
+		"en"				"Boss Resistance I"
+	}
+	"boss damageresist i info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Reduces damage taken and reduces damage dealt\nwhen a tank or witch is within {7}units"
+	}
+	"boss damageresist ii"
+	{
+		"en"				"Boss Resistance II"
+	}
+	"boss damageresist ii info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Reduces healing done and reduces damage taken\nwhen a tank or witch is within {7}units"
+	}
+	"crouching tiger"
+	{
+		"en"				"Crouching Tiger"
+	}
+	"crouching tiger info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Increases outgoing damage while crouching\nwhen a tank or witch is within {7}units"
+	}
+	"hidden dragon"
+	{
+		"en"				"Hidden Dragon"
+	}
+	"hidden dragon info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Increases outgoing damage while crouching when\nno special infected or witches are within {7}units"
+	}
+	"silent killer"
+	{
+		"en"				"Silent Killer"
+	}
+	"silent killer info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Increases outgoing damage while crouching when within\n{7}units of a witch and your target hasn't hurt you yet."
+	}
+	"damage amp"
+	{
+		"en"				"Amplify Damage"
+	}
+	"damage amp info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Amplify gun and melee damage when there are no\nspecial infected or witches within {7}units."
+	}
+	"boss health"
+	{
+		"en"				"Boss Health"
+	}
+	"boss health info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Increase health when within {7}units of a tank or witch."
+	}
+	"scout health"
+	{
+		"en"				"Scout Health"
+	}
+	"scout health info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Increase health when there are no special\ninfected or witches within {7}units."
+	}
+	"gambler i"
+	{
+		"en"				"The Gambler I"
+	}
+	"gambler ii"
+	{
+		"en"				"The Gambler II"
+	}
+	"gambler i info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Increases damage dealt and increases damage taken\nwhen a tank or witch is within {7}units"
 	}
 	"tank spec i"
 	{
@@ -495,6 +608,10 @@
 	"vampire augment info"
 	{
 		"en"				"Vampire"
+	}
+	"amplify augment info"
+	{
+		"en"				"Amplify"
 	}
 	"cdr augment info"
 	{
@@ -1132,7 +1249,7 @@
 	}
 	"difficulty modifiers"
 	{
-		"en"				"Difficulty Modifiers (Handicap)"
+		"en"				"Settings"
 	}
 	"threat menu"
 	{
@@ -1261,7 +1378,11 @@
 	}
 	"proficiency data"
 	{
-		"en"				"Weapon Proficiency Data"
+		"en"				"Weapon Experience"
+	}
+	"attribute data"
+	{
+		"en"				"Attribute Experience"
 	}
 	"disable handicap"
 	{
@@ -1628,53 +1749,58 @@
 	}
 	"damage experience reward"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"{1}Exited Combat\n{2}Damage {3}bonus: {4}{5} {6}experience"
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"en"				"{1}+{2}{3} {4}Damage {5}XP"
 	}
 	"base experience reward"
 	{
-		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s}"
-		"en"				"{1}{2} {3}Killed: {4}{5} {6}experience"
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:s},{7:s}"
+		"en"				"{1}{2} Killed!\n{3}+{4}{5} {6}Damage {7}XP"
 	}
 	"handicap experience reward"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"				"{1}Handicap {2}bonus: {3}{4} {5}experience"
+		"en"				"{1}Handicap {2}bonus: {3}{4} {5}XP"
 	}
 	"sky experience reward"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"				"{1}Sky level {2}bonus: {3}{4} {5}experience"
+		"en"				"{1}Sky level {2}bonus: {3}{4} {5}XP"
 	}
 	"rested experience reward"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"				"{1}Rested {2}bonus: {3}{4} {5}experience"
+		"en"				"{1}+{2}{3} {4}Rested {5}XP"
 	}
 	"booster experience reward"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"				"{1}Booster {2}bonus: {3}{4} {5}experience"
+		"en"				"{1}+{2}{3} {4}Booster {5}XP"
+	}
+	"exited combat"
+	{
+		"#format"			"{1:s}"
+		"en"				"{1}You are no longer in combat."
 	}
 	"tanking experience reward"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"				"{1}Tanking {2}bonus: {3}{4} {5}experience"
+		"en"				"{1}+{2}{3} {4}Tanking {5}XP"
 	}
 	"healing experience reward"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"				"{1}Healing {2}bonus: {3}{4} {5}experience"
+		"en"				"{1}+{2}{3} {4}Healing {5}XP"
 	}
 	"buffing experience reward"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"				"{1}Buffing {2}bonus: {3}{4} {5}experience"
+		"en"				"{1}+{2}{3} {4}Buffing {5}XP"
 	}
 	"hexing experience reward"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"				"{1}Hexing {2}bonus: {3}{4} {5}experience"
+		"en"				"{1}+{2}{3} {4}Hexing {5}XP"
 	}
 	"points from damage reward"
 	{
@@ -1976,9 +2102,9 @@
 		"en"				"Prestige Lv.{1} {3}"
 	}
 	"Player Level Text"
-	{
+	{						// Inventory limit: {9}/{10}\t\tMaterials: {7}
 		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:i},{10:i}"
-		"en"				"{3}xp{4}{5}xp\nScore: {6}\nLoot Inventory: {9}/{10}\t\t Scrap: {7}\nTalent Lv.{1}/{2}\t Augment Lv.{8}"
+		"en"				"Lv.{1}/{2}\t\t\t\t Augment Lv.{8}\n{3}xp {4} {5}xp\nScore:\t\t{6}\n \n"
 	}
 	"XP Level Cap"
 	{
@@ -1998,7 +2124,7 @@
 	"RPG Header"
 	{
 		"#format"			"{1:s},{2:i},{3:i},{4:i}"
-		"en"				"{1}\nTalent points: {4}\t\tUnlocked: {2}/{3}"
+		"en"				"Talent points: {4}\t\tUnlocked: {2}\n{1}"
 	}
 	"RPG Header minor"
 	{
@@ -2133,6 +2259,14 @@
 	"fireaxe bind"
 	{
 		"en"				"purchases the fireaxe melee weapon"
+	}
+	"electric_guitar bind"
+	{
+		"en"				"purchase the electric guitar melee weapon"
+	}
+	"crowbar bind"
+	{
+		"en"				"purchase the crowbar melee weapon"
 	}
 	"pitchfork bind"
 	{
@@ -3406,10 +3540,6 @@
 	{
 		"en"				"Buffs Vendor\nEarn store credits to buy temporary buffs."
 	}
-	"survivor health"
-	{
-		"en"				"Raises your overall Health pool."
-	}
 	"health regen cdr i"
 	{
 		"en"				"Regen Mastery I"
@@ -3626,6 +3756,22 @@
 	{
 		"en"				"Passively heal all nearby teammates when you're out of combat."
 	}
+	"icad selfhp regen increase"
+	{
+		"en"				"[Ad][Ic] Health Regen"
+	}
+	"icad selfhp regen increase info"
+	{
+		"en"				"Passive health regen when you have [Ad]renaline in combat."
+	}
+	"ocad selfhp regen increase"
+	{
+		"en"				"[Ad][Oc] Health Regen"
+	}
+	"ocad selfhp regen increase info"
+	{
+		"en"				"Passive health regen when you have [Ad]renaline\nand are not in combat."
+	}
 	"oc selfhp regen increase"
 	{
 		"en"				"[Oc] Health Regen"
@@ -3748,7 +3894,7 @@
 	}
 	"bloodritual path increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Hurt yourself to deal increased damage for each {1}{2} health\nmissing when you are under {5}{6} health."
 	}
 	"revenge path increase"
@@ -3765,7 +3911,7 @@
 	}
 	"health regen critical increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Rapidly AoE heal when an ally within\n{7}units is below {16}{17} health."
 	}
 	"gunner path increase"
@@ -3774,7 +3920,7 @@
 	}
 	"gunner path increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase bullet damage per stack up to {10} stacks\nfor each {14} consecutive bullet hits on the same target."
 	}
 	"marksman path increase"
@@ -3783,7 +3929,7 @@
 	}
 	"marksman path increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When hitting limb or headshots, increase bullet damage\nper stack up to {10} stacks for each {14} consecutive\nbullet hits on the same target."
 	}
 	"brawler path increase"
@@ -3800,7 +3946,7 @@
 	}
 	"berserker path increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase melee damage per stack up to {10} stacks\nfor each {14} consecutive melee hits on the same target."
 	}
 	"shadow path increase"
@@ -3881,7 +4027,7 @@
 	}
 	"sharpshooter path increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase sniper/dmr damage per stack up to {10} stacks for\neach {14} consecutive precision (limb/head) hits."
 	}
 	"fighter path ii"
@@ -3918,7 +4064,7 @@
 	}
 	"bloodmage path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Deal increased damage for each {1}{2} health missing."
 	}
 	"bloodmage path ii"
@@ -3927,7 +4073,7 @@
 	}
 	"bloodmage path ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Deal increased damage when you are under {5}{6} health."
 	}
 	"bloodmage path iii"
@@ -3936,7 +4082,7 @@
 	}
 	"bloodmage path iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Deal increased damage for each {1}{2} health missing\nwhen you are under {5}{6} health."
 	}
 	"bloodmage path iv"
@@ -3945,7 +4091,7 @@
 	}
 	"precision path ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increases your limb/head shot damage with non-snipers\nwhen enemies are within {9} units."
 	}
 	"swimmer path i"
@@ -3954,7 +4100,7 @@
 	}
 	"swimmer path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increases all damage when you are in water\nwhen the target is further than {9} units from you."
 	}
 	"assassin path iv"
@@ -3963,7 +4109,7 @@
 	}
 	"assassin path iv info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Non-sniper/melee damage bonus when hurting a new target\nthat is further than {9} units from you."
 	}
 	"arsonist path i"
@@ -3988,7 +4134,7 @@
 	}
 	"arsonist path iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"While on fire within {7}units of an ally on fire,\ndeal increased damage per stack up to {10} stacks."
 	}
 	"arsonist path iv"
@@ -3997,7 +4143,7 @@
 	}
 	"arsonist path iv info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"While on fire within {7}units of an ally on fire,\ndeal increased melee damage per stack up to {10} stacks."
 	}
 	"arsonist path v"
@@ -4006,12 +4152,12 @@
 	}
 	"arsonist path v info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Upon reaching the threshold with a melee weapon while\non fire, AoE explode for damage up to {10} stacks."
 	}
 	"savior complex iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When healed by an ally, hurt yourself, exploding for\nAoE damage when within {7}units of an ensnared ally."
 	}
 	"opportunist path i"
@@ -4036,7 +4182,7 @@
 	}
 	"opportunist path iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When you attack, explode for a percentage of damage if\nyour last attack was at least {18} second(s) ago."
 	}
 	"revenge path i"
@@ -4053,7 +4199,7 @@
 	}
 	"hodor increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increased damage for each downed teammate in range\nwhen you have at least {5}{6} health.\nHold. The. Line."
 	}
 	"hodor path ii"
@@ -4090,7 +4236,7 @@
 	}
 	"cleaner path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Deal increased damage on consecutive hit to\ncommon infected per stack. Max {10} stacks."
 	}
 	"healer overload increase"
@@ -4143,12 +4289,12 @@
 	}
 	"healer overload increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Heal nearby allies every {14} consecutive hits\nwith a gun on the same ally."
 	}
 	"shaman overload increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Heal nearby allies every {14} consecutive hits\nwith a melee weapon on the same ally."
 	}
 	"cleaner path iii info"
@@ -4169,7 +4315,7 @@
 	}
 	"brawler path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"With your trusty melee weapon, deal damage per consecutive hit, up to {10} stacks."
 	}
 	"brawler path iii info"
@@ -4182,7 +4328,7 @@
 	}
 	"sharpshooter path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When using guns, deal damage per consecutive special\ninfected headshot, up to {12} stacks."
 	}
 	"accurate path i"
@@ -4191,12 +4337,12 @@
 	}
 	"accurate path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When using guns, deal damage per consecutive hit, up to {10} stacks."
 	}
 	"warrior path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Receive less damage when you are under {5}{6} health."
 	}
 	"warrior path v"
@@ -4205,7 +4351,7 @@
 	}
 	"warrior path v info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increased health regen for each {1}{2} health missing\nwhen you are under {5}{6} health."
 	}
 	"warrior path iii"
@@ -4222,7 +4368,7 @@
 	}
 	"coherency path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase your health pool for each teammate within {7}units\nup to a maximum of {8} teammates."
 	}
 	"coherency path ii"
@@ -4231,7 +4377,7 @@
 	}
 	"coherency path ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase your melee damage for each teammate within {7}units\nup to a maximum of {8} teammates."
 	}
 	"coherency path iii"
@@ -4240,7 +4386,7 @@
 	}
 	"coherency path iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase your damage resistance for each teammate within {7}units\nup to a maximum of {8} teammates."
 	}
 	"coherency path iv"
@@ -4249,7 +4395,7 @@
 	}
 	"coherency path iv info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase your gun damage for each teammate within {7}units\nup to a maximum of {8} teammates."
 	}
 	"coherency path v"
@@ -4258,7 +4404,7 @@
 	}
 	"coherency path v info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase your health regen for each teammate within {7}units\nup to a maximum of {8} teammates."
 	}
 	"last resort i"
@@ -4483,7 +4629,7 @@
 	}
 	"brainiac iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Stacks {10} times; damage infected that haven't\nhurt you yet while you're inside an ammo circle."
 	}
 	"machiavellian i"
@@ -4886,7 +5032,7 @@
 	{
 		"en"				"Removes temporary debuffs on tick and pauses permanent debuffs."
 	}
-	"adren ab"
+	"adren ammo ab"
 	{
 		"en"				"Adrenaline"
 	}
@@ -5032,7 +5178,7 @@
 	}
 	"warrior increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When using a melee weapon, receive less damage for\neach enemy in range when you are under {5}{6} health."
 	}
 	"lastresort i"
@@ -5353,7 +5499,7 @@
 	}
 	"cleric path info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Heal nearby teammates within {7}units for a percentage\nof your passive health regen."
 	}
 	"pacifist path i"
@@ -5362,7 +5508,7 @@
 	}
 	"pacifist path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Heal allies within {7} units\nwhen your last attack happened over {18} second(s) ago."
 	}
 	"pacifist path ii"
@@ -5371,7 +5517,7 @@
 	}
 	"pacifist path ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Health increase for allies within {7} units\nwhen your last attack happened over {18} second(s) ago."
 	}
 	"pacifist path iii"
@@ -5380,7 +5526,7 @@
 	}
 	"pacifist path iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Damage increase for allies within {7} units\nwhen your last attack happened over {18} second(s) ago."
 	}
 	"tank stance path i"
@@ -5389,7 +5535,7 @@
 	}
 	"tank stance path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"When in combat, heal yourself if your last\nattack happened over {18} second(s) ago."
 	}
 	"tank stance path ii"
@@ -5398,7 +5544,7 @@
 	}
 	"tank stance path ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increased health pool when your last attack\nhappened over {18} second(s) ago."
 	}
 	"tank stance path iii"
@@ -5407,7 +5553,7 @@
 	}
 	"tank stance path iii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Thorns (damage reflect) when your last attack\nhappened over {18} second(s) ago."
 	}
 	"tank stance path iv"
@@ -5416,7 +5562,7 @@
 	}
 	"tank stance path iv info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Explode for weapon damage as AoE when you take damage\nif your last attack happened over {18} second(s) ago."
 	}
 	"first strike path i"
@@ -5457,7 +5603,7 @@
 	}
 	"skeet god increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increased damage per stack on repeatedly\nhitting the same hitbox on infected above you.\nAdd 1 stack for each {14} consecutive hits to {10} max stacks."
 	}
 	"accurate increase"
@@ -5466,7 +5612,7 @@
 	}
 	"accurate increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increased gun damage per stack on repeatedly\nhitting the same hitbox.\nAdd 1 stack for each {14} consecutive hits to {10} max stacks."
 	}
 	"tank buster increase"
@@ -5475,27 +5621,27 @@
 	}
 	"first strike path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"With guns, deal bonus damage to infected\nthat haven't hurt you yet.\n{7}units coherency buff."
 	}
 	"first strike path ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"With melee weapons, deal bonus damage to\ninfected that haven't hurt you yet.\n{7}units coherency buff."
 	}
 	"first strike guns increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"With guns, deal bonus damage to infected\nthat haven't hurt you yet.\n{7}units coherency buff."
 	}
 	"first strike melee increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"With melee weapons, deal bonus damage to\ninfected that haven't hurt you yet.\n{7}units coherency buff."
 	}
 	"tank buster increase info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Increase your melee damage to any Tank that hasn't hurt you.\n{7}units coherency buff."
 	}
 	"snipers mark path i"
@@ -5504,7 +5650,7 @@
 	}
 	"snipers mark path i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"With all sniper rifles, +damage to SI/Witches that haven't hurt you yet.\n{7}units coherency buff."
 	}
 	"manipulator path i"
@@ -5633,7 +5779,7 @@
 	}
 	"battlecry i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Deal increased damage while you are within\n{7}units of an ally with the [Ad]renaline buff active."
 	}
 	"battlecry ii"
@@ -5642,7 +5788,7 @@
 	}
 	"battlecry ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Explode for AoE damage when hurt by an enemy and\nwithin {7}units of an ally with the [Ad]renaline buff active."
 	}
 	"health regen critical i"
@@ -5651,7 +5797,7 @@
 	}
 	"health regen critical i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Rapidly AoE heal when an ally within {7}units\nis below {16}{17} health, while you have [Ad]renaline."
 	}
 	"inverse health regen i"
@@ -5668,7 +5814,7 @@
 	}
 	"inverse health regen i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"At the expense of your own life, AoE heal when an ally\nwithin {7}units is below {16}{17} health."
 	}
 	"coverfire i"
@@ -5677,7 +5823,7 @@
 	}
 	"coverfire i info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"While there are allies within {7}units below {16}{17} health\ndeal increased damage and AoE heal nearby teammates on hitting an enemy."
 	}
 	"coverfire ii"
@@ -5686,7 +5832,7 @@
 	}
 	"coverfire ii info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Upon reaching the threshold while there are allies\nwithin {7}units below {16}{17} health, deal increased\ndamage and explode for AoE damage on hitting an enemy."
 	}
 	"health regen ii"
@@ -5773,6 +5919,23 @@
 	{
 		"en"				"Raises your maximum survivor health."
 	}
+	"survivor health status increase"
+	{
+		"en"				"[Status] Health"
+	}
+	"survivor health status info"
+	{
+		"en"				"Raises your maximum survivor health for each status effect you have."
+	}
+	"hp regen status increase"
+	{
+		"en"				"[Status] Health Regen"
+	}
+	"hp regen status increase info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Regen health if you have at least {19} status effects\nincreasing in strength for each up to {20} status effects."
+	}
 	"survivor health weak increase"
 	{
 		"en"				"[Wk] Health"
@@ -5811,7 +5974,7 @@
 	}
 	"survivor health coherency info"
 	{
-		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f}"
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
 		"en"				"Raises your maximum survivor health for\neach teammate within {7} units, up to {8} teammates."
 	}
 	"survivor health eot increase"
@@ -6272,7 +6435,7 @@
 	}
 	"gun damage increase info"
 	{
-		"en"				"Guns have increased damage.\n(twin pistols, pump shotguns, smg\'s, hunting rifle)"
+		"en"				"All guns have increased damage."
 	}
 	"gun damage increase"
 	{
@@ -7347,6 +7510,41 @@
 	"Ability Info Aura"
 	{
 		"en"				"Talent Bonus: {1}{2}\nRange:\nCooldown:\nUptime:"
+	}
+	"tank amplify"
+	{
+		"en"				"Tank Amplification"
+	}
+	"tank amplify info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Amplifies all talents that trigger when you\ntake damage within {7}units of a tank or witch."
+	}
+	"survivalist amp"
+	{
+		"en"				"The Survivalist"
+	}
+	"survivalist amp info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Amplifies the health regen bonus of talents\nwhen you are within {7}units of a tank or witch."
+	}
+	"healthnut amp"
+	{
+		"en"				"The Health Nut"
+	}
+	"healthnut amp info"
+	{
+		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
+		"en"				"Amplifies your health regen when you\nare within {7}units of a tank or witch."
+	}
+	"thorns amp"
+	{
+		"en"				"Thorns Amplification"
+	}
+	"thorns amp info"
+	{
+		"en"				"Amplifies how hard your thorns hits enemies for."
 	}
 	"Insert Talent Upgrade"
 	{

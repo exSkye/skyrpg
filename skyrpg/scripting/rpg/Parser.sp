@@ -330,6 +330,14 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 	int sortSize = 0;
 	// Sort the keys/values for TALENTS ONLY /w.
 	if (configIsForTalents) {
+		if (FindStringInArray(TalentKey, "require enemy class out of coherency?") == -1) {
+			PushArrayString(TalentKey, "require enemy class out of coherency?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "require enemy class in coherency?") == -1) {
+			PushArrayString(TalentKey, "require enemy class in coherency?");
+			PushArrayString(TalentValue, "-1");
+		}
 		if (FindStringInArray(TalentKey, "ability trigger?") == -1) {
 			PushArrayString(TalentKey, "ability trigger?");
 			PushArrayString(TalentValue, "-1");
@@ -1192,7 +1200,9 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			pos == 164 && !StrEqual(text, "multiply limit?") ||
 			pos == 165 && !StrEqual(text, "active effect interval?") ||
 			pos == 166 && !StrEqual(text, "active ability trigger?") ||
-			pos == 167 && !StrEqual(text, "ability trigger?")) {
+			pos == 167 && !StrEqual(text, "ability trigger?") ||
+			pos == 168 && !StrEqual(text, "require enemy class in coherency?") ||
+			pos == 169 && !StrEqual(text, "require enemy class out of coherency?")) {
 				PushArrayString(TalentKey, text);
 				GetArrayString(TalentValue, pos, text, sizeof(text));
 				PushArrayString(TalentValue, text);
@@ -1206,10 +1216,10 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			if (i == TALENT_IS_EFFECT_OVER_TIME || i == ACTIVATOR_CLASS_REQ || i == TARGET_CLASS_REQ || i == ABILITY_TYPE ||
 			i == IF_EOT_ACTIVE_ALLOW_ALL_ENEMIES || i == COMBAT_STATE_REQ || i == CONTRIBUTION_TYPE_CATEGORY ||
 			i == CONTRIBUTION_COST || i == TALENT_WEAPON_SLOT_REQUIRED || i == LAST_KILL_MUST_BE_HEADSHOT ||
-			i == COHERENCY_RANGE || i == COHERENCY_MAX || i == COHERENCY_REQ ||
+			i == COHERENCY_RANGE || i == COHERENCY_MAX || i == COHERENCY_REQ || i == REQUIRE_ENEMY_CLASS_IN_COHERENCY ||
 			i == HEALTH_PERCENTAGE_REQ_TAR_REMAINING || i == HEALTH_PERCENTAGE_REQ_TAR_MISSING || i == HEALTH_PERCENTAGE_REQ_ACT_REMAINING ||
 			i == REQUIRES_ZOOM || i == IF_EOT_ACTIVE_ALLOW_ALL_HITGROUPS || i == REQUIRES_HEADSHOT ||
-			i == REQUIRES_LIMBSHOT || i == HEALTH_PERCENTAGE_ACTIVATION_COST ||
+			i == REQUIRES_LIMBSHOT || i == HEALTH_PERCENTAGE_ACTIVATION_COST || i == REQUIRE_ENEMY_CLASS_OUT_OF_COHERENCY ||
 			i == TALENT_NO_AUGMENT_MODIFIERS || i == REQUIRE_ENEMY_IN_COHERENCY_RANGE || i == ENEMY_IN_COHERENCY_IS_TARGET) {// || i == UNHURT_BY_SPECIALINFECTED_OR_WITCH) {
 				GetArrayString(TalentValue, i, text, sizeof(text));
 				if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float

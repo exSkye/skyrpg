@@ -471,7 +471,7 @@ public Action CMD_DropWeapon(int client, int args) {
 	TeleportEntity(Entity, Origin, NULL_VECTOR, NULL_VECTOR);
 	SetEntityMoveType(Entity, MOVETYPE_VPHYSICS);
 	if (GetWeaponSlot(Entity) < 2) SetEntProp(Entity, Prop_Send, "m_iClip1", GetEntProp(CurrentEntity, Prop_Send, "m_iClip1"));
-	if (CurrentEntity > 0) AcceptEntityInput(CurrentEntity, "Kill");
+	if (IsValidEntity(CurrentEntity)) AcceptEntityInput(CurrentEntity, "Kill");
 	return Plugin_Handled;
 }
 

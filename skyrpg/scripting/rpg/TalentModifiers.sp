@@ -74,13 +74,15 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	}
 
 	float f_StrengthPoint = f_StrengthIncrement;
-	char text[64];
-	GetArrayString(Values, GOVERNING_ATTRIBUTE, text, sizeof(text));
-	float governingAttributeMultiplier = 0.0;
-	if (!StrEqual(text, "-1")) {
-		governingAttributeMultiplier = GetAttributeMultiplier(client, text);
-		if (governingAttributeMultiplier > 0.0) {
-			f_StrengthPoint += (f_StrengthPoint * governingAttributeMultiplier);
+	if (infotype != 3) {
+		char text[64];
+		GetArrayString(Values, GOVERNING_ATTRIBUTE, text, sizeof(text));
+		float governingAttributeMultiplier = 0.0;
+		if (!StrEqual(text, "-1")) {
+			governingAttributeMultiplier = GetAttributeMultiplier(client, text);
+			if (governingAttributeMultiplier > 0.0) {
+				f_StrengthPoint += (f_StrengthPoint * governingAttributeMultiplier);
+			}
 		}
 	}
 
@@ -92,6 +94,7 @@ stock float GetTalentInfo(client, Handle Values, infotype = 0, bool bIsNext = fa
 	int skipAugmentModifiers = GetArrayCell(Values, TALENT_NO_AUGMENT_MODIFIERS);
 	if (iAugmentsAffectCooldowns == 1 && skipAugmentModifiers != 1) {
 		float fCategoryAugmentBuff = GetCategoryAugmentBuff(client, TalentNameOverride, f_StrengthPoint);
+		if (infotype == 3) fCategoryAugmentBuff *= fAugmentCooldownIncrease;
 		float fCategoryTalentBuff = GetCategoryTalentBuff(client, activatorEffects, targetEffects);
 		if (fCategoryAugmentBuff > 0.0) f_StrengthPoint += (f_StrengthIncrement * fCategoryAugmentBuff);
 		if (fCategoryTalentBuff > 0.0) f_StrengthPoint += (f_StrengthIncrement * fCategoryTalentBuff);

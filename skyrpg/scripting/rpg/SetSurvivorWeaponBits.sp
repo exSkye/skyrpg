@@ -8,21 +8,22 @@ stock SetMyWeapons(client) {
 	bool bIsMeleeWeapon = StrEqualAtPos(PlayerWeapon, "melee", 7);
 	if (!bIsMeleeWeapon && StrEqual(PlayerWeapon, lastCurrentWeapon[client])) return;
 	lastCurrentWeapon[client] = PlayerWeapon;
+	CreateProgressBar(client, 0.0, true);
 
-	if (StrEqualAtPos(PlayerWeapon, "pain_pills", 7)) {
+	if (StrEqualAtPos(PlayerWeapon, "pain_", 7)) {
 		medItem[client] = 1;
 	}
-	else if (StrEqualAtPos(PlayerWeapon, "adrenaline", 7)) {
+	else if (StrEqualAtPos(PlayerWeapon, "adren", 7)) {
 		medItem[client] = 2;
 	}
-	else if (StrEqualAtPos(PlayerWeapon, "first_aid", 7)) {
+	else if (StrEqualAtPos(PlayerWeapon, "first_", 7)) {
 		medItem[client] = 3;
 	}
 	else if (StrEqualAtPos(PlayerWeapon, "defib", 7)) {
 		medItem[client] = 4;
 	}
 	else medItem[client] = 0;
-	if (StrEqualAtPos(PlayerWeapon, "chainsaw", 7)) {
+	if (StrEqualAtPos(PlayerWeapon, "chain", 7)) {
 		bHasChainsaw[client] = true;
 	}
 	else bHasChainsaw[client] = false;

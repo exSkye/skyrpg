@@ -237,6 +237,10 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			PrintToChatAll("%t", "the zombies are coming", blue, orange, blue);
 			ExecCheatCommand(FindAnyRandomClient(), "director_force_panic_event");
 		}
+		else {
+			ExecCheatCommand(FindAnyRandomClient(), "z_spawn_old", "tank auto");
+			forceTankToSpawnAtTime = GetEngineTime() + fFinaleDelayToForceTankSummon;
+		}
 	}
 	if (StrEqual(event_name, "finale_vehicle_ready")) {
 		// When the vehicle arrives, the finale is no longer active, but no experience can be earned. This stops farming.
@@ -360,6 +364,10 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 						Format(myClass, sizeof(myClass), "%d", changeClassId);
 					}
 					ChangeInfectedClass(attacker, changeClassId);
+					for (int i = 1; i <= MaxClients; i++) {
+						if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+						AddSpecialInfectedDamage(i, attacker, -1);
+					}
 				}
 			}
 			// In solo games, we restrict the number of ensnarement infected.
@@ -417,6 +425,10 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 							changeClassId = GetRandomInt(1,6);
 						}
 						ChangeInfectedClass(attacker, changeClassId);
+						for (int i = 1; i <= MaxClients; i++) {
+							if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+							AddSpecialInfectedDamage(i, attacker, -1);
+						}
 					}
 					else ChangeInfectedClass(attacker, _, true);	// doesn't change class but sets base health and speeds.
 				}

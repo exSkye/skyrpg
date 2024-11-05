@@ -1,6 +1,6 @@
 void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int effectInt, float g_TalentStrength, float g_TalentTime, int victim = 0,
 						char[] Trigger = "0", int isRaw = 0, float AoERange = 0.0, int secondaryEffects = -1,
-						float secondaryAoERange = 0.0, int hitgroup = -1, int secondaryTrigger = -1, char[] thisAbilitiesTrigger = "none",
+						float secondaryAoERange = 0.0, int hitgroup = -1, int secondaryTrigger = -1,
 						int damagetype = -1, char[] nameOfItemToGivePlayer = "-1", int activatorCallAbilityTrigger = -1, int entityIdToPassThrough = -1, float healthActivationCost = 0.0, int targetCallAbilityTrigger = -1) {
 	//return;
 
@@ -10,21 +10,35 @@ void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int
 	/*
 		It lags a lot when it has to check the string for a specific substring every single time, so we need to call activateabilityex multiple times for each different effect, instead.
 	*/
-	bool isInfected = (IsLegitimateClient(target) && myCurrentTeam[target] == TEAM_INFECTED || IsCommonInfected(target) || IsWitch(target)) ? true : false;
-	bool defenderInRange = (isInfected && (IsSpecialCommonInRange(target, 't') || DrawSpecialInfectedAffixes(target, target) == 1)) ? true : false;
+	//bool isInfected = (IsLegitimateClient(target) && myCurrentTeam[target] == TEAM_INFECTED || IsCommonInfected(target) || IsWitch(target)) ? true : false;
+	//bool defenderInRange = (isInfected && (IsSpecialCommonInRange(target, 't') || DrawSpecialInfectedAffixes(target, target) == 1)) ? true : false;
 	// If the target of the talent is an infected player that's currently shielded by a defender, we return.
-	if (defenderInRange) return;
+	//if (defenderInRange) return;
 
 	int healthCost = (healthActivationCost <= 0.0) ? 0 : RoundToCeil(healthActivationCost * GetMaximumHealth(activator));
 	if (healthCost > 0) SetClientTotalHealth(activator, activator, healthCost);
 
 	if (g_TalentStrength > 0.0) {
+		float fAmplifyPower = GetAbilityStrengthByTrigger(activator, activator, TRIGGER_amplify, _, _, _, _, effectInt, _, true);
+		fAmplifyPower *= g_TalentStrength;
+		g_TalentStrength += fAmplifyPower;
 		// When a node successfully fires, it can call custom ability triggers.
 		if (secondaryTrigger != -1) GetAbilityStrengthByTrigger(activator, target, secondaryTrigger, _, RoundToCeil(g_TalentStrength), _, _, _, _, _, _, hitgroup, _, damagetype);
 
 		int iDamage = (isRaw == 1 || d_Damage == 0) ? RoundToCeil(g_TalentStrength) : RoundToCeil(d_Damage * g_TalentStrength);
 		int talentStr = RoundToCeil(g_TalentStrength);
-		int anyPlayerNotMe = GetAnyPlayerNotMe(target);
+
+		if (activator == target) AddAttributeExperience(activator, ATTRIBUTE_RESILIENCE, iDamage);
+		else AddAttributeExperience(activator, ATTRIBUTE_TECHNIQUE, iDamage);
+
+		char governingAttribute[64];
+		GetGoverningAttribute(activator, governingAttribute, sizeof(governingAttribute), menuPos);
+		int governingAttributePos = GetAttributePosition(activator, governingAttribute);
+		int governingAttributeBonus = RoundToCeil(iDamage * fGoverningAttributeModifier);
+		AddAttributeExperience(activator, governingAttributePos, governingAttributeBonus);
+
+		float activatorPos[3];
+		GetClientAbsOrigin(activator, activatorPos);
 
 		switch (effectInt) {
 			case 0: {
@@ -69,7 +83,6 @@ void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int
 			}
 			case 6: {
 				// this goes up here and we're gonna recursively call for "d"
-				//ActivateAbilityEx(activator, target, d_Damage, String:Effects[], Float:g_TalentStrength, Float:g_TalentTime, victim = 0, String:Trigger[] = "0")
 				char curEquippedWeapon[64];
 				int bulletsFired = 0;
 				int WeaponId =	GetEntPropEnt(activator, Prop_Data, "m_hActiveWeapon");
@@ -82,13 +95,13 @@ void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int
 						int totalMagSize = bulletsFired + bulletsRemaining;
 						float fMagazineExhausted = ((bulletsFired * 1.0)/(totalMagSize * 1.0));
 
-						ActivateAbilityEx(activator, target, menuPos, d_Damage, secondaryEffects, (fMagazineExhausted * g_TalentStrength), g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, _, _, damagetype);
+						ActivateAbilityEx(activator, target, menuPos, d_Damage, secondaryEffects, (fMagazineExhausted * g_TalentStrength), g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, _, damagetype);
 					}
 				}
 			}
 			case 7: {
 				if (IsLegitimateClientAlive(activator) && IsLegitimateClientAlive(target)) {
-					StaggerPlayer(target, (activator == target) ? anyPlayerNotMe : activator);
+					L4D_StaggerPlayer(target, activator, activatorPos);
 				}
 			}
 			case 8: {
@@ -186,7 +199,8 @@ void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int
 				SlowPlayer(target, 1.0 + g_TalentStrength, g_TalentTime);
 			}
 			case 33: {
-				StaggerPlayer(target, activator);
+				L4D_StaggerPlayer(target, activator, activatorPos);
+				EntityWasStaggered(target, activator);
 			}
 			case 34: {
 				CreateAcid(activator, target, 512.0);

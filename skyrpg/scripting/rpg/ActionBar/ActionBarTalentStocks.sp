@@ -132,17 +132,15 @@ public Action Timer_AmmoTriggerCooldown(Handle timer, any client) {
 stock AdvertiseAction(client, char[] TalentName, bool isSpell = false) {
 
 	char TalentName_Temp[64];
-	char Name[64];
 	char text[64];
 
 	GetTranslationOfTalentName(client, TalentName, text, sizeof(text), _, true);
 	if (StrEqual(text, "-1")) GetTranslationOfTalentName(client, TalentName, text, sizeof(text), true);
 
-	GetFormattedPlayerName(client, Name, sizeof(Name));
 	char printer[512];
 	Format(TalentName_Temp, sizeof(TalentName_Temp), "%t", text);
-	if (isSpell) Format(printer, sizeof(printer), "%t", "player uses spell", Name, TalentName_Temp);
-	else Format(printer, sizeof(printer), "%t", "player uses ability", Name, TalentName_Temp);
+	if (isSpell) Format(printer, sizeof(printer), "%t", "player uses spell", baseName[client], TalentName_Temp);
+	else Format(printer, sizeof(printer), "%t", "player uses ability", baseName[client], TalentName_Temp);
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
 		Client_PrintToChat(i, true, printer);
@@ -282,7 +280,7 @@ stock bool UseAbility(client, target = -1, char[] TalentName, Handle Values, flo
 	if (GetArrayCell(Values, ABILITY_IS_REACTIVE) == 2) {	// instant, one-time-use abilities that have a cast-bar and then fire immediately.
 		if (GetAbilityMultiplier(client, Effects, 5) == -2.0) {
 			int reactiveType = GetArrayCell(Values, ABILITY_REACTIVE_TYPE);
-			if (reactiveType == 1) StaggerPlayer(client, GetAnyPlayerNotMe(client));
+			if (reactiveType == 1) L4D_StaggerPlayer(client, GetAnyPlayerNotMe(client), ClientPos);
 			else if (reactiveType == 2) {
 				float fActiveTime = GetArrayCell(Values, ABILITY_ACTIVE_TIME);
 				CreateProgressBar(client, fActiveTime);

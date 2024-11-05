@@ -1,3 +1,7 @@
+#define LOOT_DEBUG						true
+#define WITCH_NOT_ACTIVATED				0
+#define WITCH_ATTACKING					1
+
 #define NICK_MODEL						"models/survivors/survivor_gambler.mdl"
 #define ROCHELLE_MODEL					"models/survivors/survivor_producer.mdl"
 #define COACH_MODEL						"models/survivors/survivor_coach.mdl"
@@ -13,7 +17,7 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v4.1"
+#define PLUGIN_VERSION					"v4.3"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"skyy"
 #define PLUGIN_NAME						"RPG Construction Set"
@@ -263,9 +267,11 @@
 #define ACTIVE_EFFECT_INTERVAL					165
 #define TALENT_ACTIVE_ABILITY_TRIGGER			166
 #define TALENT_ABILITY_TRIGGER					167
+#define REQUIRE_ENEMY_CLASS_IN_COHERENCY		168
+#define REQUIRE_ENEMY_CLASS_OUT_OF_COHERENCY	169
 // because this value changes when we increase the static list of key positions
 // we should create a reference for the IsAbilityFound method, so that it doesn't waste time checking keys that we know aren't equal.
-#define TALENT_FIRST_RANDOM_KEY_POSITION		168
+#define TALENT_FIRST_RANDOM_KEY_POSITION		170
 
 #define SUPER_COMMON_MAX_ALLOWED				0
 #define SUPER_COMMON_AURA_EFFECT				1
@@ -394,6 +400,7 @@
 #define RESULT_d 47
 #define RESULT_o 48
 #define RESULT_H 49
+#define RESULT_AMPLIFY 50
 
 // Ability Triggers
 #define TRIGGER_R 0
@@ -460,6 +467,16 @@
 #define TRIGGER_headshot 61
 #define TRIGGER_wasHealed 62
 #define TRIGGER_healself 63
+#define TRIGGER_coveredInBile 64
+#define TRIGGER_biledTarget 65
+#define TRIGGER_biledOnEnds 66
+#define TRIGGER_defibUsed 67
+#define TRIGGER_wasDefibbed 68
+#define TRIGGER_P 69
+#define TRIGGER_impacthit 70
+#define TRIGGER_didRevive 71
+#define TRIGGER_wasRevive 72
+#define TRIGGER_amplify 73
 //Points.cfg
 #define POINTS_WEAPON_CATEGORY 0
 #define POINTS_TEAM 1
@@ -490,6 +507,45 @@
 #define POINTS_IS_RESPAWN 26
 #define POINTS_EXPERIENCE_MULTIPLIER 27
 
+#define ATTRIBUTE_CONSTITUTION	0
+#define ATTRIBUTE_AGILITY		1
+#define ATTRIBUTE_RESILIENCE	2
+#define ATTRIBUTE_TECHNIQUE		3
+#define ATTRIBUTE_ENDURANCE		4
+#define ATTRIBUTE_LUCK			5
+
+float fGoverningAttributeModifier;
+float fAttributeModifier[6];
+float fAttributeMultiplier[6];
+int iAttributeExperienceRequirement;
+float attributeExperienceMultiplier;
+Handle attributeData[MAXPLAYERS + 1];
+char statusMessageToDisplay[MAXPLAYERS + 1][64];
+float fStatusMessageDisplayTime[MAXPLAYERS + 1];
+float fAugmentCooldownIncrease;
+int iGiveSurvivorsWeaponsOnPregame;
+float fSpecialInfectedDelayRangeMin;
+float fInfectedSpawnDelay;
+float fSpecialInfectedMinDelay;
+float fSpecialInfectedMaxDelay;
+float fSpecialInfectedDelayHandicap;
+float fSpecialInfectedDelayMin;
+int iForceFFALoot;
+float fEnrageHordeBoostCurrent;
+float fEnrageDamageIncreaseCurrent;
+float fEnrageHordeBoost;
+float fEnrageHordeBoostDelay;
+float fEnrageDamageIncrease;
+float fEnrageDamageIncreaseDelay;
+float fFatigueDamagePenalty;
+float fFatigueDamageTakenPenalty;
+float fFatigueCooldownPenalty;
+float fSuperCommonDistanceHeight;
+float fHealingAwarded;
+float fBuffingAwarded;
+float forceTankToSpawnAtTime;
+float fFinaleDelayToForceTankSummon;
+int iDisplayTalentUpgradesToTeam;
 int iDirectorThinkingAdvertisementTime;
 Handle TalentInstantPositions;
 Handle TalentInstantColors;
@@ -693,8 +749,6 @@ Handle RandomSurvivorClient;
 int eBackpack[MAXPLAYERS + 1];
 bool b_IsFinaleTanks;
 char RatingType[64];
-bool bJumpTime[MAXPLAYERS + 1];
-float JumpTime[MAXPLAYERS + 1];
 Handle AbilityConfigValues[MAXPLAYERS + 1];
 bool IsGroupMember[MAXPLAYERS + 1];
 int IsGroupMemberTime[MAXPLAYERS + 1];
@@ -789,10 +843,9 @@ float SurvivorConsumptionTime[MAXPLAYERS + 1];
 float SurvivorStaminaTime[MAXPLAYERS + 1];
 bool ISSLOW[MAXPLAYERS + 1];
 float fSlowSpeed[MAXPLAYERS + 1];
-Handle ISFROZEN[MAXPLAYERS + 1];
+bool FreezerInRange[MAXPLAYERS + 1];
 float ISEXPLODETIME[MAXPLAYERS + 1];
 Handle ISEXPLODE[MAXPLAYERS + 1];
-Handle ISBLIND[MAXPLAYERS + 1];
 Handle EntityOnFire;
 Handle CommonInfected[MAXPLAYERS + 1];
 Handle RCAffixes[MAXPLAYERS + 1];
@@ -825,9 +878,7 @@ char Infected_LastChatUser[64];
 char Survivor_LastChatUser[64];
 char Spectator_LastChatUser[64];
 char currentCampaignName[64];
-Handle h_KilledPosition_X[MAXPLAYERS + 1];
-Handle h_KilledPosition_Y[MAXPLAYERS + 1];
-Handle h_KilledPosition_Z[MAXPLAYERS + 1];
+Handle h_KilledPosition[MAXPLAYERS + 1];
 bool bIsEligibleMapAward[MAXPLAYERS + 1];
 bool b_FirstLoad = false;
 bool b_MapStart = false;
@@ -996,6 +1047,9 @@ Handle CCAKeys;
 Handle CCAValues;
 int LastWeaponDamage[MAXPLAYERS + 1];
 float UseItemTime[MAXPLAYERS + 1];
+float freezerTime[MAXPLAYERS + 1];
+float shadowKnightTimeCheck[MAXPLAYERS + 1];
+float freezerCheck[MAXPLAYERS + 1];
 Handle NewUsersRound;
 Handle MenuStructure[MAXPLAYERS + 1];
 Handle TankState_Array[MAXPLAYERS + 1];
@@ -1045,7 +1099,6 @@ float fDirectorThoughtDelay;
 float fDirectorThoughtHandicap;
 float fDirectorThoughtProcessMinimum;
 int iSurvivalRoundTime;
-float fDazedDebuffEffect;
 int ConsumptionInt;
 float fStamJetpackInterval;
 float fStamSprintInterval;
@@ -1127,6 +1180,7 @@ int MaximumPriority;
 float fUpgradeExpCost;
 int iWitchHealthBase;
 float fWitchHealthMult;
+int RatingPerTalentPoint;
 int RatingPerLevel;
 int RatingPerAugmentLevel;
 int RatingPerLevelSurvivorBots;
@@ -1174,7 +1228,6 @@ char sServerDifficulty[64];
 int iSpecialsAllowed;
 char sSpecialsAllowed[64];
 int iSurvivorModifierRequired;
-float fEnrageMultiplier;
 bool bHealthIsSet[MAXPLAYERS + 1];
 int iIsLevelingPaused[MAXPLAYERS + 1];
 int iIsBulletTrails[MAXPLAYERS + 1];
@@ -1267,8 +1320,8 @@ float fMaxDamageResistance;
 float fStaminaPerPlayerLevel;
 int LastBulletCheck[MAXPLAYERS + 1];
 int iSpecialInfectedMinimum;
-//int iEndRoundIfNoHealthySurvivors;
-//int iEndRoundIfNoLivingHumanSurvivors;
+int iEndRoundIfNoHealthySurvivors;
+int iEndRoundIfNoLivingHumanSurvivors;
 float fAcidDamagePlayerLevel;
 float fAcidDamageSupersPlayerLevel;
 char ClientStatusEffects[MAXPLAYERS + 1][2][64];
@@ -1276,7 +1329,6 @@ float fTankMovementSpeed_Burning;
 float fTankMovementSpeed_Hulk;
 float fTankMovementSpeed_Death;
 int iResetPlayerLevelOnDeath;
-int iStartingPlayerUpgrades;
 char serverKey[64];
 bool playerHasAdrenaline[MAXPLAYERS + 1];
 bool playerInSlowAmmo[MAXPLAYERS + 1];
@@ -1284,7 +1336,6 @@ int leaderboardPageCount;
 float fForceTankJumpHeight;
 float fForceTankJumpRange;
 int iResetDirectorPointsOnNewRound;
-int iMaxServerUpgrades;
 bool LastHitWasHeadshot[MAXPLAYERS + 1];
 char acmd[20];
 char abcmd[20];
@@ -1362,7 +1413,6 @@ Handle possibleLootPoolActivator[MAXPLAYERS + 1];
 Handle unlockedLootPoolTarget[MAXPLAYERS + 1];
 Handle unlockedLootPoolActivator[MAXPLAYERS + 1];
 int iJetpackEnabled;
-float fJumpTimeToActivateJetpack;
 int iNumLootDropChancesPerPlayer[5];
 char lastPlayerGrab[64];
 int iInventoryLimit;
@@ -1583,9 +1633,7 @@ stock BuildArraysOnClientFirstLoad(int client) {
 	if (BoosterKeys[client] == INVALID_HANDLE) BoosterKeys[client]							= CreateArray(16);
 	if (BoosterValues[client] == INVALID_HANDLE) BoosterValues[client]						= CreateArray(16);
 	if (RPGMenuPosition[client] == INVALID_HANDLE) RPGMenuPosition[client]						= CreateArray(16);
-	if (h_KilledPosition_X[client] == INVALID_HANDLE) h_KilledPosition_X[client]				= CreateArray(16);
-	if (h_KilledPosition_Y[client] == INVALID_HANDLE) h_KilledPosition_Y[client]				= CreateArray(16);
-	if (h_KilledPosition_Z[client] == INVALID_HANDLE) h_KilledPosition_Z[client]				= CreateArray(16);
+	if (h_KilledPosition[client] == INVALID_HANDLE) h_KilledPosition[client]				= CreateArray(3);
 	if (RCAffixes[client] == INVALID_HANDLE) RCAffixes[client] = CreateArray(16);
 	if (SurvivorsIgnored[client] == INVALID_HANDLE) SurvivorsIgnored[client] = CreateArray(16);
 	if (MyGroup[client] == INVALID_HANDLE) MyGroup[client] = CreateArray(16);
@@ -1645,6 +1693,7 @@ stock BuildArraysOnClientFirstLoad(int client) {
 	if (EquipAugmentPanel[client] == INVALID_HANDLE) EquipAugmentPanel[client] = CreateArray(16);
 	if (OnDeathHandicapValues[client] == INVALID_HANDLE) OnDeathHandicapValues[client] = CreateArray(8);
 	if (augmentInventoryPosition[client] == INVALID_HANDLE) augmentInventoryPosition[client] = CreateArray(4);
+	if (attributeData[client] == INVALID_HANDLE) attributeData[client] = CreateArray(6);
 
 	int ASize = GetArraySize(a_Menu_Talents);
 	ResizeArray(MyTalentStrength[client], ASize);

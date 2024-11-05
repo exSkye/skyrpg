@@ -1,7 +1,8 @@
 stock bool IsSpecialCommon(entity) {
-	if (entity > 0 && FindListPositionByEntity(entity, CommonAffixes) >= 0) {
+	int entityPos = FindListPositionByEntity(entity, CommonAffixes);
+	if (entityPos >= 0) {
 		if (IsCommonInfected(entity)) return true;
-		else ClearSpecialCommon(entity, false);
+		ClearSpecialCommon(entity, false, _, _, entityPos);
 	}
 	return false;
 }
@@ -26,10 +27,9 @@ stock GetSpecialCommonDamage(damage, client, Effect, victim) {
 
 	char AuraEffectIsh[10];
 	for (int i = 0 ; i < GetArraySize(CommonAffixes); i++) {
-
 		ent = GetArrayCell(CommonAffixes, i);
 		if (ent == client || !IsSpecialCommon(ent)) continue;
-		int superPos = GetCommonPos(ent);
+		int superPos = GetArrayCell(CommonAffixes, i, 1);
 		GetCommonValueAtPosEx(AuraEffectIsh, sizeof(AuraEffectIsh), superPos, SUPER_COMMON_AURA_EFFECT);
 		if (StrContains(AuraEffectIsh, EffectT, true) != -1) {
 
@@ -38,18 +38,16 @@ stock GetSpecialCommonDamage(damage, client, Effect, victim) {
 			//	If the damaging common is in range of an entity meeting the specific effect, then we add its effects. In this case, it's damage.
 			
 			if (IsInRange(fEntPos, ClientPos, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX))) {
-				f_Strength += (GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_STRENGTH_SPECIAL) * GetEntitiesInRange(ent, victim));
+				f_Strength += (GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_STRENGTH_SPECIAL) * GetEntitiesInRange(ent, victim, superPos));
 			}
 		}
 	}
 	return RoundToCeil(damage * f_Strength);
 }
 
-stock int GetEntitiesInRange(int client, int victim) {
+stock int GetEntitiesInRange(int client, int victim, int superPos) {
 	float ClientPos[3];
 	GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
-
-	int superPos = GetCommonPos(client);
 
 	float AfxRange		= GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_PLAYER_LEVEL) * PlayerLevel[victim];
 	float AfxRangeMax	= GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX);
@@ -68,7 +66,7 @@ stock int GetEntitiesInRange(int client, int victim) {
 	return count;
 }
 
-stock bool IsSpecialCommonInRangeEx(client, char[] vEntity="none", bool IsAuraEffect = true) {	// false for death effect
+stock bool IsSpecialCommonInRangeEx(client, char[] vEntity, int modelEqualAtPos) {	// false for death effect
 
 	float ClientPos[3];
 	float fEntPos[3];
@@ -76,13 +74,15 @@ stock bool IsSpecialCommonInRangeEx(client, char[] vEntity="none", bool IsAuraEf
 	if (!bIsLegitimateClient) GetEntPropVector(client, Prop_Send, "m_vecOrigin", ClientPos);
 	else GetClientAbsOrigin(client, ClientPos);
 
+	bool vEntityIsNone = (StrEqual(vEntity, "none")) ? true : false;
+
 	int ent = -1;
 	//new Effect = 't';
 	for (int i = 0; i < GetArraySize(CommonAffixes); i++) {
 		ent = GetArrayCell(CommonAffixes, i);
 		if (ent == client || !IsCommonInfected(ent)) continue;
-		if (!StrEqual(vEntity, "none", false)) {
-			if(!CommonInfectedModel(ent, vEntity)) continue;
+		if (!vEntityIsNone) {
+			if(!CommonInfectedModelEx(ent, vEntity, modelEqualAtPos)) continue;
 		}
 
 		/*
@@ -90,16 +90,16 @@ stock bool IsSpecialCommonInRangeEx(client, char[] vEntity="none", bool IsAuraEf
 			At a certain level, like a lower one, it's just too much having to deal with auras, so some players will absolutely be oblivious to the shit
 			going on and killing other players who CAN see them.
 		*/
-		int superPos = GetCommonPos(ent);
+		int superPos = GetArrayCell(CommonAffixes, i, 1);
 		if (bIsLegitimateClient && PlayerLevel[client] < GetCommonValueIntAtPosEx(superPos, SUPER_COMMON_LEVEL_REQ)) return false;
 
 		GetEntPropVector(ent, Prop_Send, "m_vecOrigin", fEntPos);
-		if (IsInRange(fEntPos, ClientPos, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX))) return true;
+		if (GetDistanceBetweenTwoPoints(fEntPos[2], ClientPos[2]) <= fSuperCommonDistanceHeight && IsInRange(fEntPos, ClientPos, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX))) return true;
 	}
 	return false;
 }
 
-stock bool IsSpecialCommonInRange(client, Effect = -1, vEntity = -1, bool IsAuraEffect = true, infectedTarget = 0) {	// false for death effect
+stock bool IsSpecialCommonInRange(int client, int Effect = -1, int vEntity = -1, bool IsAuraEffect = true, int infectedTarget = 0, int superPos = -1) {	// false for death effect
 
 	float ClientPos[3];
 	float fEntPos[3];
@@ -114,8 +114,6 @@ stock bool IsSpecialCommonInRange(client, Effect = -1, vEntity = -1, bool IsAura
 	char TheDeaths[10];
 
 	if (vEntity != -1) {
-
-		int superPos = GetCommonPos(vEntity);
 
 		GetCommonValueAtPosEx(TheAuras, sizeof(TheAuras), superPos, SUPER_COMMON_AURA_EFFECT);
 		GetCommonValueAtPosEx(TheDeaths, sizeof(TheDeaths), superPos, SUPER_COMMON_DEATH_EFFECT);
@@ -145,27 +143,23 @@ stock bool IsSpecialCommonInRange(client, Effect = -1, vEntity = -1, bool IsAura
 		if (IsAuraEffect && StrContains(TheAuras, EffectT, true) != -1 || !IsAuraEffect && StrContains(TheDeaths, EffectT, true) != -1) {
 
 			GetEntPropVector(vEntity, Prop_Send, "m_vecOrigin", fEntPos);
-			if (IsInRange(fEntPos, ClientPos, AfxRangeMax)) {
+			if (GetDistanceBetweenTwoPoints(fEntPos[2], ClientPos[2]) <= fSuperCommonDistanceHeight && IsInRange(fEntPos, ClientPos, AfxRangeMax)) {
 				infectedTarget = vEntity;
 				return true;
 			}
 		}
 	}
 	else {
-
 		int ent = -1;
 		for (int i = 0; i < GetArraySize(CommonAffixes); i++) {
-
 			ent = GetArrayCell(CommonAffixes, i);
-			
 			if (ent == client) continue;
 			if (!IsCommonInfected(ent)) {
 				RemoveFromArray(CommonAffixes, i);
 				continue;
 			}
-			if (vEntity >= 0 && ent != vEntity) continue;
 
-			int superPos = GetCommonPos(ent);
+			superPos = GetArrayCell(CommonAffixes, i, 1);
 
 			GetCommonValueAtPosEx(TheAuras, sizeof(TheAuras), superPos, SUPER_COMMON_AURA_EFFECT);
 			GetCommonValueAtPosEx(TheDeaths, sizeof(TheDeaths), superPos, SUPER_COMMON_DEATH_EFFECT);
@@ -180,7 +174,7 @@ stock bool IsSpecialCommonInRange(client, Effect = -1, vEntity = -1, bool IsAura
 			if (IsAuraEffect && StrContains(TheAuras, EffectT, true) != -1 || !IsAuraEffect && StrContains(TheDeaths, EffectT, true) != -1) {
 
 				GetEntPropVector(ent, Prop_Send, "m_vecOrigin", fEntPos);
-				if (IsInRange(fEntPos, ClientPos, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX))) {
+				if (GetDistanceBetweenTwoPoints(fEntPos[2], ClientPos[2]) <= fSuperCommonDistanceHeight && IsInRange(fEntPos, ClientPos, GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX))) {
 					infectedTarget = ent;
 					return true;
 				}
@@ -263,7 +257,7 @@ stock int CreateCommonAffix(int entity) {
 	return 0;
 }
 
-stock int getDamageIncreaseFromBuffer(int entity, int damage) {
+stock int getDamageIncreaseFromBuffer(int entity, int damage, char[] targetEffect = "b") {
 	float fStrength = 0.0;
 	float cpos[3];
 	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", cpos);
@@ -275,7 +269,7 @@ stock int getDamageIncreaseFromBuffer(int entity, int damage) {
 		// only want to calculate if the specialCommon is a buffer
 		char effect[4];
 		GetCommonValueAtPosEx(effect, sizeof(effect), superPos, SUPER_COMMON_AURA_EFFECT);
-		if (StrContains(effect, "b", true) == -1) continue;
+		if (StrContains(effect, targetEffect, true) == -1) continue;
 
 		// if the entity isn't within range of this special common, the entity doesn't get whatever the damage buff of this super common is.
 		float range = GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX);
@@ -321,9 +315,9 @@ public Action Timer_SetNumberOfEntitiesWithinRangeOfSpecialCommon(Handle timer) 
 	return Plugin_Continue;
 }
 
-stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner = 0, float RangeOverride = 0.0) {
+stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner = 0, float RangeOverride = 0.0, int superPos = -1) {
 	if (!IsSpecialCommon(client)) return;
-	int superPos = GetCommonPos(client);
+	if (superPos == -1) superPos = GetCommonPos(client);
 	float AfxStrengthLevel = GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_LEVEL_STRENGTH);
 	float AfxRangeMax = GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX);
 	int AfxMultiplication = GetCommonValueIntAtPosEx(superPos, SUPER_COMMON_ENEMY_MULTIPLICATION);
@@ -365,7 +359,7 @@ stock CreateDamageStatusEffect(client, type = 0, target = 0, damage = 0, owner =
 	//ClearSpecialCommon(client);
 }
 
-stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0) {
+stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0, int superPos = -1) {
 
 	//if (IsLegitimateClient(target) && !IsPlayerAlive(target)) return;
 	if (!IsLegitimateClientAlive(target)) return;
@@ -373,7 +367,7 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0) {
 
 		When a bomber dies, it explodes.
 	*/
-	int superPos = GetCommonPos(client);
+	if (superPos == -1) superPos = GetCommonPos(client);
 	float AfxRange = GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_PLAYER_LEVEL);
 	float AfxStrengthLevel = GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_LEVEL_STRENGTH);
 	float AfxRangeMax = GetCommonValueFloatAtPosEx(superPos, SUPER_COMMON_RANGE_MAX);
@@ -454,7 +448,7 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0) {
 
 			// To prevent a never-ending chain reaction, we don't allow it to target the bomber that caused it.
 
-			if (myCurrentTeam[i] == TEAM_SURVIVOR && AfxChain == 1) CreateBomberExplosion(client, i, Effects);
+			if (myCurrentTeam[i] == TEAM_SURVIVOR && AfxChain == 1) CreateBomberExplosion(client, i, Effects, _, superPos);
 		}
 	}
 	if (StrContains(Effects, "e", true) != -1 || StrContains(Effects, "x", true) != -1) {
@@ -469,21 +463,19 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0) {
 			SDKCall(g_hCallVomitOnPlayer, target, client, true);
 			CreateTimer(15.0, Timer_RemoveBileStatus, target, TIMER_FLAG_NO_MAPCHANGE);
 			ISBILED[target] = true;
-			StaggerPlayer(target, client);
+			L4D_StaggerPlayer(target, client, SourcLoc);
 		}
 	}
 	if (StrContains(Effects, "a", true) != -1) {
 
-		CreateDamageStatusEffect(client, 4, target, abilityStrength);
+		CreateDamageStatusEffect(client, 4, target, abilityStrength, _, _, superPos);
 	}
 
-	if (client == target) CreateBomberExplosion(client, 0, Effects);
+	if (client == target) CreateBomberExplosion(client, 0, Effects, _, superPos);
 }
 
 stock int GetCommonPos(int entity) {
-	int pos = FindListPositionByEntity(entity, CommonAffixes);
-	if (pos >= 0) return GetArrayCell(CommonAffixes, pos, 1);
-	return -1;
+	return FindListPositionByEntity(entity, CommonAffixes, 1);
 }
 
 stock int GetCommonValueIntAtPosEx(int pos, int value) {
@@ -648,21 +640,11 @@ stock DrawCommonAffixes(entity, int superPos) {
 			//else SetEntityHealth(i, GetClientHealth(i) - t_Strength);
 			SetClientTotalHealth(entity, i, t_Strength);
 		}
-		if (StrContains(AfxEffect, "l", true) != -1) {
-			//	We don't want multiple blinders to spam blind a player who is already blind.
-			//	Furthermore, we don't want it to accidentally blind a player AFTER it dies and leave them permablind.
-			//	ISBLIND is tied a timer, and when the timer reverses the blind, it will close the handle.
-			if (ISBLIND[i] == INVALID_HANDLE) BlindPlayer(i, 0.0, 255);
-		}
-		if (StrContains(AfxEffect, "r", true) != -1) {
-			//	Freeze players, teleport them up a lil bit.
-			if (ISFROZEN[i] == INVALID_HANDLE) FrozenPlayer(i, 0.0);
-		}
 	}
 }
 
-bool ForceClearSpecialCommon(entity, int client = 0, bool killMob = true) {
-	int pos		= FindListPositionByEntity(entity, CommonAffixes);
+bool ForceClearSpecialCommon(int entity, int client = 0, bool killMob = true, int pos = -1) {
+	if (pos == -1) pos		= FindListPositionByEntity(entity, CommonAffixes);
 	if (client == 0) {
 		if (pos >= 0) RemoveFromArray(CommonAffixes, pos); // bug with common/specials/infected having insane hp is deleting entity from array instead of the position where entity was found xD
 	}
@@ -674,14 +656,14 @@ bool ForceClearSpecialCommon(entity, int client = 0, bool killMob = true) {
 	if (client == 0 && killMob && IsCommonInfected(entity)) {
 		//SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
 		//SDKUnhook(entity, SDKHook_TraceAttack, OnTraceAttack);
-		if (!CommonInfectedModel(entity, FALLEN_SURVIVOR_MODEL)) AcceptEntityInput(entity, "BecomeRagdoll");
+		if (!CommonInfectedModelEx(entity, "fallen", -19)) AcceptEntityInput(entity, "BecomeRagdoll");
 		else SetEntProp(entity, Prop_Data, "m_iHealth", 1);
 	}
 	return true;
 }
 
-stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, lastAttacker = -1) {
-	int pos = FindListPositionByEntity(entity, CommonAffixes);
+stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, lastAttacker = -1, int pos = -1) {
+	if (pos == -1) pos = FindListPositionByEntity(entity, CommonAffixes);
 	if (pos >= 0) {
 
 		if (IsCommonEntity && IsSpecialCommon(entity)) {
@@ -693,26 +675,26 @@ stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, l
 			// 	CreateDamageStatusEffect(entity);
 			// }
 			if (StrContains(CommonEntityEffect, "f", true) != -1) {
-				CreateDamageStatusEffect(entity);
+				CreateDamageStatusEffect(entity, _, _, _, _, _, superPos);
 			}
 
-			for (int y = 1; superPos >= 0 && y <= MaxClients; y++) {
+			for (int y = 1; y <= MaxClients; y++) {
 
 				if (!IsLegitimateClientAlive(y)) continue; // || GetClientTeam(y) != TEAM_SURVIVOR) continue;
-				if (StrContains(CommonEntityEffect, "x", true) != -1 && IsSpecialCommonInRange(y, 'x', entity, false)) {
-					CreateBomberExplosion(entity, y, "x");
+				if (StrContains(CommonEntityEffect, "x", true) != -1 && IsSpecialCommonInRange(y, 'x', entity, false, _, superPos)) {
+					CreateBomberExplosion(entity, y, "x", _, superPos);
 				}
-				if (StrContains(CommonEntityEffect, "b", true) != -1 && IsSpecialCommonInRange(y, 'b', entity, false) && FindInfectedClient() > 0 && !ISBILED[y]) {
+				if (StrContains(CommonEntityEffect, "b", true) != -1 && IsSpecialCommonInRange(y, 'b', entity, false, _, superPos) && FindInfectedClient() > 0 && !ISBILED[y]) {
 					SDKCall(g_hCallVomitOnPlayer, y, FindInfectedClient(true), true);
 					CreateTimer(15.0, Timer_RemoveBileStatus, y, TIMER_FLAG_NO_MAPCHANGE);
 					ISBILED[y] = true;
 				}
-				if (StrContains(CommonEntityEffect, "a", true) != -1 && IsSpecialCommonInRange(y, 'a', entity, false) && FindInfectedClient() > 0) {
+				if (StrContains(CommonEntityEffect, "a", true) != -1 && IsSpecialCommonInRange(y, 'a', entity, false, _, superPos) && FindInfectedClient() > 0) {
 
 					CreateAcid(FindInfectedClient(true), y, 48.0);
 					break;
 				}
-				if (StrContains(CommonEntityEffect, "e", true) != -1 && IsSpecialCommonInRange(y, 'e', entity, false)) {	// false so we compare death effect instead of aura effect which defaults to true
+				if (StrContains(CommonEntityEffect, "e", true) != -1 && IsSpecialCommonInRange(y, 'e', entity, false, _, superPos)) {	// false so we compare death effect instead of aura effect which defaults to true
 
 					if (ISEXPLODE[y] == INVALID_HANDLE) {
 
@@ -731,7 +713,7 @@ stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, l
 						WritePackCell(packagey, GetCommonValueIntAtPosEx(superPos, SUPER_COMMON_LEVEL_REQ));
 					}
 				}
-				if (StrContains(CommonEntityEffect, "s", true) != -1 && IsSpecialCommonInRange(y, 's', entity, false)) {
+				if (StrContains(CommonEntityEffect, "s", true) != -1 && IsSpecialCommonInRange(y, 's', entity, false, _, superPos)) {
 
 					if (!ISSLOW[y]) {
 
@@ -743,18 +725,13 @@ stock ClearSpecialCommon(entity, bool IsCommonEntity = true, playerDamage = 0, l
 				}
 				if (StrContains(CommonEntityEffect, "f", true) != -1) {
 
-					CreateDamageStatusEffect(entity, _, y, playerDamage, lastAttacker);
+					CreateDamageStatusEffect(entity, _, y, playerDamage, lastAttacker, _, superPos);
 					//if (FindZombieClass(y) == ZOMBIECLASS_TANK) ChangeTankState(y, "burn");
 				}
 			}
 			CalculateInfectedDamageAward(entity, lastAttacker, superPos);
 		}
-		ForceClearSpecialCommon(entity);
-		//if (pos < GetArraySize(CommonList)) RemoveFromArray(CommonList, pos);
-		//RemoveCommonAffixes(entity);
-		//RemoveCommonInfected(entity, true);
-		//if (IsCommonInfected(entity)) AcceptEntityInput(entity, "BecomeRagdoll");
-		//if (iDeleteSupersOnDeath == 1 && IsValidEntity(entity)) AcceptEntityInput(entity, "Kill");
+		ForceClearSpecialCommon(entity, _, _, pos);
 	}
 	//if (IsValidEntity(entity)) SetInfectedHealth(entity, 1);	// this is so it dies right away.
 	return playerDamage;

@@ -60,6 +60,7 @@ stock void CreateItemDrop(int owner, int client, int pos) {
 	DispatchKeyValue(entity, "spawnflags", "1029");
 	DispatchKeyValue(entity, "solid", "6");
 	DispatchKeyValue(entity, "model", sItemModel);
+	DispatchKeyValue(entity, "glowstate", "2");
 	DispatchSpawn(entity);
 
 	int lootsize = GetArraySize(playerLootOnGround[owner])-1;
@@ -73,12 +74,15 @@ stock void CreateItemDrop(int owner, int client, int pos) {
 	SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
 	if (lootsize == 0) {	// green for minor
 		SetEntityRenderColor(entity, 0, 255, 0, 255);
+		DispatchKeyValue(entity, "glowcolor", "0 255 0");
 	}
 	else if (lootsize == 1) {	// blue for major
 		SetEntityRenderColor(entity, 0, 0, 255, 255);
+		DispatchKeyValue(entity, "glowcolor", "0 0 255");
 	}
 	else {	// gold for perfect
 		SetEntityRenderColor(entity, 255, 215, 0, 255);
+		DispatchKeyValue(entity, "glowcolor", "255 215 0");
 	}
 	CreateTimer(fLootBagExpirationTimeInSeconds, Timer_DeleteLootBag, entity, TIMER_FLAG_NO_MAPCHANGE);
 
@@ -90,133 +94,6 @@ stock void CreateItemDrop(int owner, int client, int pos) {
 	Origin[2] += 32.0;
 	TeleportEntity(entity, Origin, NULL_VECTOR, vel);
 	//SetEntityMoveType(entity, MOVETYPE_VPHYSICS);
-}
-
-stock void PickupAugment(int client, int owner, char[] ownerSteamID = "none", char[] ownerName = "none", int pos, int lootPoolToDrawFrom) {
-	int size = GetArraySize(myAugmentIDCodes[client]);
-	ResizeArray(myAugmentIDCodes[client], size+1);
-	ResizeArray(myAugmentCategories[client], size+1);
-	ResizeArray(myAugmentOwners[client], size+1);
-	ResizeArray(myAugmentOwnersName[client], size+1);
-	ResizeArray(myAugmentInfo[client], size+1);
-	ResizeArray(myAugmentActivatorEffects[client], size+1);
-	ResizeArray(myAugmentTargetEffects[client], size+1);
-	ResizeArray(myAugmentSavedProfiles[client], size+1);
-	char nosaved[64];
-	Format(nosaved, sizeof(nosaved), "none");
-	SetArrayString(myAugmentSavedProfiles[client], size, nosaved);
-
-	// [0] - category score roll
-	// [1] - category position
-	// [2] - activator score roll
-	// [3] - activator position
-	// [4] - target score roll
-	// [5] = target position
-	// [6] = handicap score bonus (used for upgrading later)
-	//int pos = GetArraySize(playerLootOnGround[owner])-1;
-	char sItemCode[64];
-	GetArrayString(playerLootOnGroundId[owner], pos, sItemCode, sizeof(sItemCode));
-	SetArrayString(myAugmentIDCodes[client], size, sItemCode);
-
-	char buffedCategory[64];
-	if (lootPoolToDrawFrom == 1) GetArrayString(myLootDropCategoriesAllowed[owner], GetArrayCell(playerLootOnGround[owner], pos, 1), buffedCategory, 64);
-	else GetArrayString(myUnlockedLootDropCategoriesAllowed[owner], GetArrayCell(playerLootOnGround[owner], pos, 1), buffedCategory, 64);
-
-	char menuText[64];
-	int len = GetAugmentTranslation(client, buffedCategory, menuText);
-	Format(menuText, 64, "%T", menuText, client);
-
-	SetArrayString(myAugmentCategories[client], size, buffedCategory);
-
-	int augmentItemScore = GetArrayCell(playerLootOnGround[owner], pos);
-	char key[64];
-	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
-	SetArrayString(myAugmentOwners[client], size, ownerSteamID);
-	SetArrayString(myAugmentOwnersName[client], size, ownerName);
-	SetArrayCell(myAugmentInfo[client], size, augmentItemScore);	// item rating (cell 4 is activatorRating and cell5 is targetRating)
-	SetArrayCell(myAugmentInfo[client], size, 0, 1);			// item cost
-	SetArrayCell(myAugmentInfo[client], size, 0, 2);			// is item for sale
-	SetArrayCell(myAugmentInfo[client], size, -1, 3);			// which augment slot the item is equipped in - -1 for no slot.
-
-
-	int augmentActivatorRating = -1;
-	int augmentTargetRating = -1;
-	char activatorEffects[64];
-	char targetEffects[64];
-
-	int maxpossibleroll = GetArrayCell(playerLootOnGround[owner], pos, 6);
-	SetArrayCell(myAugmentInfo[client], size, maxpossibleroll, 6);
-
-	int maxPossibleActivatorScore = 0;
-	int maxPossibleTargetScore = 0;
-
-	int apos = GetArrayCell(playerLootOnGround[owner], pos, 3);
-	if (apos >= 0) {
-		if (lootPoolToDrawFrom == 1) GetArrayString(myLootDropActivatorEffectsAllowed[owner], apos, activatorEffects, 64);
-		else GetArrayString(myUnlockedLootDropActivatorEffectsAllowed[owner], apos, activatorEffects, 64);
-
-		SetArrayString(myAugmentActivatorEffects[client], size, activatorEffects);
-		augmentActivatorRating = GetArrayCell(playerLootOnGround[owner], pos, 2);
-		maxPossibleActivatorScore = GetArrayCell(playerLootOnGround[owner], pos, 7);
-		SetArrayCell(myAugmentInfo[client], size, maxPossibleActivatorScore, 7);
-	}
-	else {
-		augmentActivatorRating = -1;
-		Format(activatorEffects, 64, "-1");
-		SetArrayString(myAugmentActivatorEffects[client], size, "-1");
-		SetArrayCell(myAugmentInfo[client], size, -1, 7);
-	}
-	SetArrayCell(myAugmentInfo[client], size, augmentActivatorRating, 4);
-
-	int tpos = GetArrayCell(playerLootOnGround[owner], pos, 5);
-	if (tpos >= 0) {
-		if (lootPoolToDrawFrom == 1) GetArrayString(myLootDropTargetEffectsAllowed[owner], tpos, targetEffects, 64);
-		else GetArrayString(myUnlockedLootDropTargetEffectsAllowed[owner], tpos, targetEffects, 64);
-
-		SetArrayString(myAugmentTargetEffects[client], size, targetEffects);
-		augmentTargetRating = GetArrayCell(playerLootOnGround[owner], pos, 4);
-		maxPossibleTargetScore = GetArrayCell(playerLootOnGround[owner], pos, 8);
-		SetArrayCell(myAugmentInfo[client], size, maxPossibleTargetScore, 8);
-	}
-	else {
-		augmentTargetRating = -1;
-		Format(targetEffects, 64, "-1");
-		SetArrayString(myAugmentTargetEffects[client], size, "-1");
-		SetArrayCell(myAugmentInfo[client], size, -1, 8);
-	}
-	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
-	char augmentStrengthText[64];
-	if (augmentActivatorRating == -1 && augmentTargetRating == -1) {
-		Format(augmentStrengthText, 64, "{B}Minor");
-	}
-	else {
-		char majorname[64];
-		char perfectname[64];
-		GetAugmentSurname(client, size, majorname, sizeof(majorname), perfectname, sizeof(perfectname), false);
-		if (!StrEqual(majorname, "-1")) Format(majorname, sizeof(majorname), "%t", majorname);
-		if (!StrEqual(perfectname, "-1")) Format(perfectname, sizeof(perfectname), "%t", perfectname);
-		if (!StrEqual(majorname, "-1") && !StrEqual(perfectname, "-1")) Format(augmentStrengthText, 64, "{B}Perfect {O}%s %s", majorname, perfectname);
-		else if (!StrEqual(majorname, "-1")) Format(augmentStrengthText, 64, "{B}Major {O}%s", majorname);
-		else Format(augmentStrengthText, 64, "{B}Major {O}%s", perfectname);
-	}
-	char name[64];
-	GetClientName(client, name, sizeof(name));
-	char text[512];
-	Format(text, sizeof(text), "{B}%s {N}{OBTAINTYPE} a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", name, (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
-	if (StrContains(ownerSteamID, key, false) != -1) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "found", true);
-	else {
-		ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "stole", true);
-		Format(text, sizeof(text), "%s {N}from {O}%s", text, ownerName);
-	}
-	ReplaceString(text, sizeof(text), "PCT", "%%", true);
-	for (int i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
-		Client_PrintToChat(i, true, text);
-	}
-	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
-	char tquery[512];
-	Format(tquery, sizeof(tquery), "INSERT INTO `%s_loot` (`firstownername`, `firstowner`, `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`, `maxscoreroll`, `maxactroll`, `maxtarroll`) VALUES ('%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%d', '%d', '%d', '%d');", TheDBPrefix, ownerName, ownerSteamID, key, sItemCode, augmentItemScore, buffedCategory, 0, 0, -1, activatorEffects, augmentActivatorRating, targetEffects, augmentTargetRating, maxpossibleroll, maxPossibleActivatorScore, maxPossibleTargetScore);
-	SQL_TQuery(hDatabase, QueryResults, tquery);
 }
 
 stock int GenerateAugment(int client, int spawnTarget) {
@@ -367,6 +244,12 @@ stock void GetUniqueAugmentLootDropItemCode(char[] sTime) {
 }
 
 stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
+	if (GetArraySize(attributeData[client]) != 6) {
+		ResizeArray(attributeData[client], 6);
+		for (int i = ATTRIBUTE_CONSTITUTION; i <= ATTRIBUTE_LUCK; i++) {
+			AddAttributeExperience(client, i, 0, true);
+		}
+	}
 	b_IsLoading[client] = true;
 	int ASize = GetArraySize(a_Menu_Talents);
 	ResizeArray(MyTalentStrength[client], ASize);
@@ -466,7 +349,7 @@ stock SetClientTalentStrength(client, bool giveAccessToAllTalents = false) {
 	if (GetArraySize(equippedAugments[client]) != iNumAugments) ClearEquippedAugmentData(client);
 	else {
 		for (int i = 0; i < iNumAugments; i++) {
-			int iCur = GetArrayCell(equippedAugments[client], i, 2);
+			int iCur = GetArrayCell(equippedAugments[client], i, 2) + GetArrayCell(equippedAugments[client], i, 4) + GetArrayCell(equippedAugments[client], i, 5);
 			if (iCur > 0) iCurrentAugmentLevel += iCur;
 		}
 		playerCurrentAugmentLevel[client] = (iCurrentAugmentLevel / iAugmentLevelDivisor);
@@ -513,7 +396,7 @@ stock GenerateUnlockedLootPool(client) {
 		if (totalNodesThisLayer < 1) continue;
 		
 		int strengthOfCurrentLayer = GetLayerUpgradeStrength(client, currentLayer);
-		int totalUpgradesRequiredToUnlockNextLayer = RoundToCeil(totalNodesThisLayer * fUpgradesRequiredPerLayer);
+		int totalUpgradesRequiredToUnlockNextLayer = (fUpgradesRequiredPerLayer <= 1.0) ? RoundToCeil(totalNodesThisLayer * fUpgradesRequiredPerLayer) : RoundToCeil(fUpgradesRequiredPerLayer);
 		upgradesRequiredToUnlockThisLayer[currentLayer] = (totalUpgradesRequiredToUnlockNextLayer > strengthOfCurrentLayer)
 											? totalUpgradesRequiredToUnlockNextLayer - strengthOfCurrentLayer
 											: 0;

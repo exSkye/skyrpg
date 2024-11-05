@@ -151,6 +151,7 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 				else Format(text, sizeof(text), "%T", "bullet trails (enabled)", client);
 			}
 			else if (StrEqual(configname, "lootmode toggle")) {
+				if (iForceFFALoot == 1) continue;
 				if (iDontAllowLootStealing[client] == 3) Format(text, sizeof(text), "%T", "ffa loot (disabled)", client);
 				else if (iDontAllowLootStealing[client] == 2) Format(text, sizeof(text), "%T", "ffa loot (all)", client);
 				else if (iDontAllowLootStealing[client] == 1) Format(text, sizeof(text), "%T", "ffa loot (major)", client);
@@ -191,7 +192,7 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 					int totalNodesThisLayer = GetLayerUpgradeStrength(client, currentLayer, _, _, _, true);
 					if (totalNodesThisLayer < 1) continue;
 					strengthOfCurrentLayer = GetLayerUpgradeStrength(client, currentLayer);
-					int totalUpgradesRequiredToUnlockNextLayer = RoundToCeil(totalNodesThisLayer * fUpgradesRequiredPerLayer);
+					int totalUpgradesRequiredToUnlockNextLayer = (fUpgradesRequiredPerLayer <= 1.0) ? RoundToCeil(totalNodesThisLayer * fUpgradesRequiredPerLayer) : RoundToCeil(fUpgradesRequiredPerLayer);
 					upgradesRequiredToUnlockThisLayer[currentLayer] = (totalUpgradesRequiredToUnlockNextLayer > strengthOfCurrentLayer)
 														? totalUpgradesRequiredToUnlockNextLayer - strengthOfCurrentLayer
 														: 0;
@@ -223,7 +224,7 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 					if (PlayerCurrentMenuLayer[client] < 1) PlayerCurrentMenuLayer[client] = 1;
 					strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client]);
 					int layerUpgradesRequired = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true);
-					layerUpgradesRequired = RoundToCeil(layerUpgradesRequired * fUpgradesRequiredPerLayer);
+					layerUpgradesRequired = (fUpgradesRequiredPerLayer <= 1.0) ? RoundToCeil(layerUpgradesRequired * fUpgradesRequiredPerLayer) : RoundToCeil(fUpgradesRequiredPerLayer);
 					if (strengthOfCurrentLayer >= layerUpgradesRequired) Format(text, sizeof(text), "%T", "layer move", client, PlayerCurrentMenuLayer[client] + 1);
 					else Format(text, sizeof(text), "%T", "layer move locked", client, PlayerCurrentMenuLayer[client] + 1, PlayerCurrentMenuLayer[client], layerUpgradesRequired - strengthOfCurrentLayer);
 				}
@@ -466,6 +467,9 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 		}
 		else if (StrEqual(config, "proficiency", false)) {
 			LoadProficiencyData(client);
+		}
+		else if (StrEqual(config, "attributes", false)) {
+			LoadAttributesMenu(client);
 		}
 		else if (StrEqual(config, "nohandicap", false) && handicapLevel[client] >= 0) {
 			handicapLevel[client] = -1;

@@ -146,6 +146,19 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `grenade_xp` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `con` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `agi` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `res` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `tec` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `end` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `luc` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+
 
 		Format(tquery, sizeof(tquery), "CREATE TABLE IF NOT EXISTS `%s_loot` (`itemid` varchar(64) NOT NULL, PRIMARY KEY (`itemid`)) ENGINE=InnoDB;", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);

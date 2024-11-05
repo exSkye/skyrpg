@@ -133,10 +133,6 @@ stock void ResetData(int client) {
 	ClearArray(CommonInfected[client]);
 	ClearArray(PlayerActiveAmmo[client]);
 	ClearArray(PlayActiveAbilities[client]);
-	if (ISFROZEN[client] != INVALID_HANDLE) {
-		KillTimer(ISFROZEN[client]);
-		ISFROZEN[client] = INVALID_HANDLE;
-	}
 	StrugglePower[client] = 0;
 }
 
@@ -213,7 +209,8 @@ stock void ClearAndLoad(int client, bool IgnoreLoad = false) {
 	char tquery[2048];
 	char themenu[64];
 	GetConfigValue(themenu, sizeof(themenu), "sky points menu name?");
-	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `skylevel`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `restt`, `restexp`, `lpl`, `resr`, `survpoints`, `bec`, `rem`, `pri`, `xpdebt`, `upav`, `upawarded`, `%s`, `myrating %s`, `handicaplevel %s`, `lastserver`, `myseason`, `lvlpaused`, `itrails`, `pistol_xp`, `melee_xp`, `uzi_xp`, `shotgun_xp`, `sniper_xp`, `assault_xp`, `medic_xp`, `grenade_xp`, `augmentparts`, `dismantlescore`, `dismantleminor`, `dals`, `lootprio` FROM `%s` WHERE (`steam_id` = '%s');", themenu, RatingType, RatingType, RatingType, TheDBPrefix, key);
+	if (GetArraySize(attributeData[client]) != 6) ResizeArray(attributeData[client], 6);
+	Format(tquery, sizeof(tquery), "SELECT `steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `skylevel`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `restt`, `restexp`, `lpl`, `resr`, `survpoints`, `bec`, `rem`, `pri`, `xpdebt`, `upav`, `upawarded`, `%s`, `myrating %s`, `handicaplevel %s`, `lastserver`, `myseason`, `lvlpaused`, `itrails`, `pistol_xp`, `melee_xp`, `uzi_xp`, `shotgun_xp`, `sniper_xp`, `assault_xp`, `medic_xp`, `grenade_xp`, `augmentparts`, `dismantlescore`, `dismantleminor`, `dals`, `lootprio`, `con`, `agi`, `res`, `tec`, `end`, `luc` FROM `%s` WHERE (`steam_id` = '%s');", themenu, RatingType, RatingType, RatingType, TheDBPrefix, key);
 	// maybe set a value equal to the users steamid integer only, so if steam:0:1:23456, set the value of "client" equal to 23456 and then set the client equal to whatever client's steamid contains 23456?
 	SQL_TQuery(hDatabase, QueryResults_Load, tquery, client);
 }
@@ -413,6 +410,9 @@ stock void CreateNewPlayerEx(int client) {
 
 		SetArrayString(a_Store_Player[client], i, "0");				// We clear all players arrays for the store.
 	}
+	ClearArray(attributeData[client]);
+	ResizeArray(attributeData[client], 6);
+
 	BuildMenu(client);
 	FormatPlayerName(client, true);
 	Format(TagName, sizeof(TagName), "%s", baseName[client]);
@@ -420,6 +420,7 @@ stock void CreateNewPlayerEx(int client) {
 	//Format(tquery, sizeof(tquery), "INSERT INTO `%s` (`steam_id`, `exp`, `expov`, `upgrade cost`, `level`, `%s`, `time played`, `talent points`, `total upgrades`, `free upgrades`, `tcolour`, `tname`, `ccolour`) VALUES ('%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s');", TheDBPrefix, spmn, key, ExperienceLevel[client], ExperienceOverall[client], PlayerLevelUpgrades[client], PlayerLevel[client], SkyPoints[client], TimePlayed[client], TotalTalentPoints[client], PlayerUpgradesTotal[client], FreeUpgrades[client], TagColour, TagName, ChatColour);
 	Format(tquery, sizeof(tquery), "INSERT INTO `%s` (`steam_id`, `tname`) VALUES ('%s', '%s');", TheDBPrefix, key, TagName);
 	SQL_TQuery(hDatabase, QuerySaveNewPlayer, tquery, client);
+	ClearAndLoad(client);
 
 	CreateTimer(1.0, Timer_LoggedUsers, client, TIMER_FLAG_NO_MAPCHANGE);
 }
@@ -648,6 +649,13 @@ stock SavePlayerData(int client, bool b_IsTrueDisconnect = false, bool IsNewPlay
 
 	//if (PlayerLevel[client] < 1) return;		// Clearly, their data hasn't loaded, so we don't save.
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `exp` = '%d', `expov` = '%d', `upgrade cost` = '%d', `level` = '%d', `%s` = '%d', `time played` = '%d', `talent points` = '%d', `total upgrades` = '%d', `free upgrades` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, ExperienceLevel[client], ExperienceOverall[client], PlayerLevelUpgrades[client], PlayerLevel[client], thesp, SkyPoints[client], TimePlayed[client], TotalTalentPoints[client], PlayerUpgradesTotal[client], FreeUpgrades[client], key);
+	SQL_TQuery(hDatabase, QueryResults1, tquery, client);
+
+	int[] xpstored = new int[6];
+	for (int i = ATTRIBUTE_CONSTITUTION; i <= ATTRIBUTE_LUCK; i++) {
+		xpstored[i] = GetArrayCell(attributeData[client], i, 3);
+	}
+	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `con` = '%d', `agi` = '%d', `res` = '%d', `tec` = '%d', `end` = '%d', `luc` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, xpstored[0], xpstored[1], xpstored[2], xpstored[3], xpstored[4], xpstored[5], key);
 	SQL_TQuery(hDatabase, QueryResults1, tquery, client);
 	
 	Format(tquery, sizeof(tquery), "UPDATE `%s` SET `upav` = '%d', `upawarded` = '%d', `lvlpaused` = '%d', `itrails` = '%d' WHERE (`steam_id` = '%s');", TheDBPrefix, UpgradesAvailable[client], UpgradesAwarded[client], iIsLevelingPaused[client], iIsBulletTrails[client], key);
@@ -1103,6 +1111,11 @@ public void QueryResults_Load(Handle owner, Handle hndl, const char[] error, any
 			iplayerDismantleMinorAugments[client] = SQL_FetchInt(hndl, 39);
 			iDontAllowLootStealing[client] = SQL_FetchInt(hndl, 40);
 			iLootDropsForUnlockedTalentsOnly[client] = SQL_FetchInt(hndl, 41);
+			for (int i = ATTRIBUTE_CONSTITUTION; i <= ATTRIBUTE_LUCK; i++) {
+				int attributeExperience = SQL_FetchInt(hndl, 42+i);
+				if (attributeExperience < 0) attributeExperience = 0;
+				AddAttributeExperience(client, i, attributeExperience, true);
+			}
 		}
 		if (PlayerLevel[client] > 0) {
 			if (Rating[client] < 0) Rating[client] = 0;
@@ -1947,11 +1960,6 @@ public OnClientDisconnect(client) {
 		Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 		//Format(ClassLoadQueue[client], sizeof(ClassLoadQueue[]), "none");
 		//IsGroupMember[client] = false;
-		if (IsPlayerAlive(client) && eBackpack[client] > 0 && IsValidEntity(eBackpack[client])) {
-
-			AcceptEntityInput(eBackpack[client], "Kill");
-			eBackpack[client] = 0;
-		}
 		//ToggleTank(client, true);
 	}
 }
@@ -2062,9 +2070,6 @@ stock OnClientLoaded(client, bool IsHooked = false) {
 	Format(ProfileLoadQueue[client], sizeof(ProfileLoadQueue[]), "none");
 	ClearEquippedAugmentData(client);
 	ClearLocalClientAugmentData(client);
-	if (ISFROZEN[client] != INVALID_HANDLE) {
-		ISFROZEN[client] = INVALID_HANDLE;
-	}
 	playerCurrentAugmentAverageLevel[client] = 0;
 	FreeUpgrades[client] = 0;
 	bIsHideThreat[client] = true;
@@ -2156,7 +2161,10 @@ public Action Timer_Pregame(Handle timer, any client) {
 		if (!b_IsActiveRound && GetClientTeam(client) == TEAM_SURVIVOR && IsPlayerAlive(client)) {
 			SetMaximumHealth(client);
 			GiveMaximumHealth(client);
-			GiveProfileItems(client);
+			if (iGiveSurvivorsWeaponsOnPregame == 1 || CurrentMapPosition == 0) {
+				GiveProfileItems(client);
+				CreateTimer(0.1, Timer_SetMyWeapons, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			}
 		}
 	}
 	else if (IsClientConnected(client)) return Plugin_Continue;

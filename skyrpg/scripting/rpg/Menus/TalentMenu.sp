@@ -319,7 +319,7 @@ public Handle TalentInfoScreen(client) {
 	// DrawPanelText(menu, text);
 
 	char governingAttribute[64];
-	GetGoverningAttribute(client, TalentName, governingAttribute, sizeof(governingAttribute), menuPos);
+	GetGoverningAttribute(client, governingAttribute, sizeof(governingAttribute), menuPos);
 	if (!StrEqual(governingAttribute, "-1")) {
 		Format(text, sizeof(text), "%T", governingAttribute, client);
 		Format(text, sizeof(text), "%T", "Node Governing Attribute", client, text);
@@ -367,41 +367,46 @@ public Handle TalentInfoScreen(client) {
 			int hideStrengthDisplayFromPlayer = GetArrayCell(PurchaseValues[client], HIDE_TALENT_STRENGTH_DISPLAY);
 			if (AbilityType < 0) AbilityType = 0;	// if someone forgets to set this, we have to set it to the default value.
 			//if (TalentPointAmount > 0) s_PenaltyPoint = 0.0;
+			int multiplyCount = (GetArrayCell(PurchaseValues[client], STATUS_EFFECT_MULTIPLIER) >= 1) ? MyStatusEffects[client] : 1;
 			int iMultiplyLimit = GetArrayCell(PurchaseValues[client], MULTIPLY_LIMIT);
+			if (multiplyCount < 1) multiplyCount = 1;
+			if (iMultiplyLimit < 0) iMultiplyLimit = 0;
+			if (iMultiplyLimit > 1 && multiplyCount > iMultiplyLimit) multiplyCount = iMultiplyLimit;
+
 			if (hideStrengthDisplayFromPlayer != 1) {
 				if (TalentPointAmount < 1) {
 					if (AbilityType == 0) {
-						Format(text, sizeof(text), "%T", "Ability Info Percent", client, s_TalentPoints * 100.0, pct, s_OtherPointNext * 100.0, pct);
+						Format(text, sizeof(text), "%T", "Ability Info Percent", client, (multiplyCount * s_TalentPoints) * 100.0, pct, (multiplyCount * s_OtherPointNext) * 100.0, pct);
 						if (iMultiplyLimit > 0) Format(text, sizeof(text), "%s\nTalent Max Strength: %3.3f%s", text, (s_OtherPointNext * 100.0) * iMultiplyLimit, pct);
 					}
 					else if (AbilityType == 1) {
-						Format(text, sizeof(text), "%T", "Ability Info Time", client, i_AbilityTime, i_AbilityTimeNext);
+						Format(text, sizeof(text), "%T", "Ability Info Time", client, multiplyCount * i_AbilityTime, multiplyCount * i_AbilityTimeNext);
 						if (iMultiplyLimit > 0) Format(text, sizeof(text), "%s\nTalent Max Strength: %d sec(s)", text, i_AbilityTimeNext * iMultiplyLimit);
 					}
 					else if (AbilityType == 2) {
-						Format(text, sizeof(text), "%T", "Ability Info Distance", client, s_TalentPoints, s_OtherPointNext);
+						Format(text, sizeof(text), "%T", "Ability Info Distance", client, multiplyCount * s_TalentPoints, multiplyCount * s_OtherPointNext);
 						if (iMultiplyLimit > 0) Format(text, sizeof(text), "%s\nTalent Max Strength: %3.3f unit(s)", text, (s_OtherPointNext * 100.0) * iMultiplyLimit);
 					}
 					else if (AbilityType == 3) {
-						Format(text, sizeof(text), "%T", "Ability Info Raw", client, RoundToCeil(s_TalentPoints), RoundToCeil(s_OtherPointNext));
+						Format(text, sizeof(text), "%T", "Ability Info Raw", client, multiplyCount * RoundToCeil(s_TalentPoints), multiplyCount * RoundToCeil(s_OtherPointNext));
 						if (iMultiplyLimit > 0) Format(text, sizeof(text), "%s\nTalent Max Strength: %d", text, RoundToCeil(s_TalentPoints) * iMultiplyLimit);
 					}
 				}
 				else {
 					if (AbilityType == 0) {
-						Format(text, sizeof(text), "%T", "Ability Info Percent Max", client, s_TalentPoints * 100.0, pct);
+						Format(text, sizeof(text), "%T", "Ability Info Percent Max", client, (multiplyCount * s_TalentPoints) * 100.0, pct);
 						if (iMultiplyLimit > 0) Format(text, sizeof(text), "%s\nTalent Max Strength: %3.3f%s", text, (s_TalentPoints * 100.0) * iMultiplyLimit, pct);
 					}
 					else if (AbilityType == 1) {
-						Format(text, sizeof(text), "%T", "Ability Info Time Max", client, i_AbilityTime);
+						Format(text, sizeof(text), "%T", "Ability Info Time Max", client, multiplyCount * i_AbilityTime);
 						if (iMultiplyLimit > 0) Format(text, sizeof(text), "%s\nTalent Max Strength: %d sec(s)", text, i_AbilityTime * iMultiplyLimit);
 					}
 					else if (AbilityType == 2) {
-						Format(text, sizeof(text), "%T", "Ability Info Distance Max", client, s_TalentPoints);
+						Format(text, sizeof(text), "%T", "Ability Info Distance Max", client, multiplyCount * s_TalentPoints);
 						if (iMultiplyLimit > 0) Format(text, sizeof(text), "%s\nTalent Max Strength: %3.3f unit(s)", text, s_TalentPoints * iMultiplyLimit);
 					}
 					else if (AbilityType == 3) {
-						Format(text, sizeof(text), "%T", "Ability Info Raw Max", client, RoundToCeil(s_TalentPoints));
+						Format(text, sizeof(text), "%T", "Ability Info Raw Max", client, multiplyCount * RoundToCeil(s_TalentPoints));
 						if (iMultiplyLimit > 0) Format(text, sizeof(text), "%s\nTalent Max Strength: %d", text, RoundToCeil(s_TalentPoints) * iMultiplyLimit);
 					}
 				}
@@ -504,9 +509,12 @@ public Handle TalentInfoScreen(client) {
 	if (TalentPointAmount == 0) {
 		int ignoreLayerCount = (GetArrayCell(PurchaseValues[client], LAYER_COUNTING_IS_IGNORED) == 1) ? 1 : (bIsAttribute) ? 1 : 0;
 		// GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, true) * fUpgradesRequiredPerLayer)
-		bool bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
-		if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
-
+		int thisLayerUpgradeStrength = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1);
+		bool bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || fUpgradesRequiredPerLayer > 1.0 && thisLayerUpgradeStrength >= RoundToCeil(fUpgradesRequiredPerLayer) || fUpgradesRequiredPerLayer <= 1.0 && thisLayerUpgradeStrength >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
+		if (bIsLayerEligible) {
+			int theNextLayerUpgradeStrength = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true);
+			bIsLayerEligible = ((ignoreLayerCount == 1 || fUpgradesRequiredPerLayer > 1.0 && theNextLayerUpgradeStrength < RoundToCeil(fUpgradesRequiredPerLayer) || fUpgradesRequiredPerLayer <= 1.0 && theNextLayerUpgradeStrength < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
+		}
 		//decl String:sTalentsRequired[64];
 		char formattedTalentsRequired[64];
 		//FormatKeyValue(sTalentsRequired, sizeof(sTalentsRequired), PurchaseKeys[client], PurchaseValues[client], "talents required?");
@@ -565,7 +573,10 @@ public Handle TalentInfoScreen(client) {
 		int multiplyStrengthHeadshotDiv = GetArrayCell(PurchaseValues[client], MULT_STR_CONSECUTIVE_HEADSHOTS_DIV);
 		float fTimeSinceLastAttack = GetArrayCell(PurchaseValues[client], TIME_SINCE_LAST_ACTIVATOR_ATTACK);
 
-		if (fTimeSinceLastAttack > 0.0 || consecutiveHitsRequired > 0 || consecutiveHeadshotsRequired ||
+		int multiplierCountRequired = GetArrayCell(PurchaseValues[client], STATUS_EFFECT_MULTIPLIER);
+		int multiplyLimitForBonus = GetArrayCell(PurchaseValues[client], MULTIPLY_LIMIT);
+
+		if (multiplierCountRequired >= 1 || fTimeSinceLastAttack > 0.0 || consecutiveHitsRequired > 0 || consecutiveHeadshotsRequired ||
 			fPercentageHealthRequired > 0.0 || fPercentageHealthRequiredBelow > 0.0 || fCoherencyRange > 0.0 || fPercentageHealthAllyMissingRequired > 0.0 || fTargetRangeRequired > 0.0 ||
 			multiplyStrengthConsecutiveHits == 1 && (multiplyStrengthConsecutiveMax > 1 || multiplyStrengthConsecutiveDiv > 1) ||
 			multiplyStrengthHeadshotHits == 1 && (multiplyStrengthHeadshotMax > 1 || multiplyStrengthHeadshotDiv > 1)) {
@@ -574,7 +585,7 @@ public Handle TalentInfoScreen(client) {
 			Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client, fPercentageHealthRequired * 100.0, pct, fPercentageHealthRequiredMax * 100.0, pct,
 				   fPercentageHealthRequiredBelow * 100.0, pct, fCoherencyRange, iCoherencyMax, fTargetRangeRequired,
 				   (consecutiveHitsRequired < 2) ? multiplyStrengthConsecutiveMax : multiplyStrengthConsecutiveMax / consecutiveHitsRequired, multiplyStrengthConsecutiveDiv, multiplyStrengthHeadshotMax, multiplyStrengthHeadshotDiv,
-				   consecutiveHitsRequired, consecutiveHeadshotsRequired, fPercentageHealthAllyMissingRequired * 100.0, pct, fTimeSinceLastAttack);
+				   consecutiveHitsRequired, consecutiveHeadshotsRequired, fPercentageHealthAllyMissingRequired * 100.0, pct, fTimeSinceLastAttack, multiplierCountRequired, multiplyLimitForBonus);
 		}
 		else Format(TalentInfo, sizeof(TalentInfo), "%T", TalentNameTranslation, client);
 

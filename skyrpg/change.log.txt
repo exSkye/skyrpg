@@ -1,3 +1,13 @@
+Version 4.3.x
+	- Redesigned CARTEL attribute system to be a leveling system where experience is earned for doing different actions
+	  and based on the governing attribute of firing talents.
+	- Survivor bots are no longer affected by Super Common Reflectors.
+	- Redesigned the main menu header (white text) but you can undo this at any time by editing the translations file
+	  and modifying the "Player Level Text" translation.
+	- Implemented new talents based on the players current status effects (both positive and negative, but I will add
+	  a variable to differentiate between the types in a future update.)
+	- A lot more stuff that I can't remember at the moment... Will update later.
+
 Version 4.1.x
 	- Refactored the Points module for optimizations.
 	- Refactored the Super Commons module for optimizations.

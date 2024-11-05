@@ -50,6 +50,7 @@ int ConvertEffectToInt(char[] resultEffects) {
 		if (StrEqual(resultEffects, "d")) return 47;
 		if (StrEqual(resultEffects, "o")) return 48;
 		if (StrEqual(resultEffects, "H")) return 49;
+		if (StrEqual(resultEffects, "amplify")) return 50;
 	}
 	return -1;
 }
@@ -142,5 +143,6 @@ int ConvertTriggerToInt(char[] abilityTrigger) {
 	if (StrEqual(abilityTrigger, "impacthit")) return 70;
 	if (StrEqual(abilityTrigger, "didRevive")) return 71;
 	if (StrEqual(abilityTrigger, "wasRevive")) return 72;
+	if (StrEqual(abilityTrigger, "amplify")) return 73;
 	return -1;	// shouldn't happen unless a trigger is added that doesn't exist.
 }

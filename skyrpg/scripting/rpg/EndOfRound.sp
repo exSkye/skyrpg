@@ -10,7 +10,7 @@ stock CallRoundIsOver() {
 			GetArrayString(persistentCirculation, i, text, sizeof(text));
 			ExplodeString(text, ":", pText, 2, 64);
 			pEnt = StringToInt(pText[0]);
-			if (pEnt > 0 && IsValidEntity(pEnt)) AcceptEntityInput(pEnt, "Kill");
+			if (IsValidEntity(pEnt)) AcceptEntityInput(pEnt, "Kill");
 		}
 		ClearArray(persistentCirculation);
 		for (int i = 1; i <= MaxClients; i++) {

@@ -228,10 +228,12 @@ stock float GetSpecialAmmoStrength(client, char[] TalentName, int resulttype = 0
 	//SpecialAmmoStrengthKeys[client]			= GetArrayCell(a_Menu_Talents, pos, 0);
 	SpecialAmmoStrengthValues[client]		= GetArrayCell(a_Menu_Talents, pos, 1);
 
-	char governingAttribute[64];
-	GetGoverningAttribute(client, TalentName, governingAttribute, sizeof(governingAttribute), pos);
 	float attributeMult = 0.0;
-	if (!StrEqual(governingAttribute, "-1")) attributeMult = GetAttributeMultiplier(client, governingAttribute);
+	if (resulttype == 0 || resulttype == 3) {
+		char governingAttribute[64];
+		GetGoverningAttribute(client, governingAttribute, sizeof(governingAttribute), pos);
+		if (!StrEqual(governingAttribute, "-1")) attributeMult = GetAttributeMultiplier(client, governingAttribute);
+	}
 
 	if (resulttype == 0) {		// Ability Time
 		i_FirstPoint		=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_ACTIVE_TIME_FIRST_POINT);

@@ -23,14 +23,24 @@ public Action Timer_DirectorPurchaseTimer(Handle timer) {
 		ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
 	}
 	else if (iTankRush == 0) {
+		float fCurrentTime = GetEngineTime();
+		if (iInfectedCount < (iSurvivors + iSurvivorBots) && fInfectedSpawnDelay < fCurrentTime) {
 
-		if (iInfectedCount < (iSurvivors + iSurvivorBots)) {
+			float fSpawnHandicap = fSpecialInfectedDelayHandicap * LivingSerfs;
 
+			float fSpawnMinWait = fSpecialInfectedMinDelay - fSpawnHandicap;
+			if (fSpawnMinWait < fSpecialInfectedDelayMin) fSpawnMinWait = fSpecialInfectedDelayMin;
+
+			float fSpawnMaxWait = fSpecialInfectedMaxDelay - fSpawnHandicap;
+			if (fSpawnMaxWait - fSpecialInfectedDelayRangeMin <= fSpawnMinWait) fSpawnMaxWait = fSpawnMinWait + fSpecialInfectedDelayRangeMin;
+
+			float fSpawnDelayNext = GetRandomFloat(fSpawnMinWait, fSpawnMaxWait);
+
+			fInfectedSpawnDelay = fCurrentTime + fSpawnDelayNext;
 			SpawnAnyInfected(theClient);
 		}
 	}
-	int iTankRequired = GetAlwaysTanks(iSurvivors);
-	if (iTankRequired != 0) {
+	if (requiredAlwaysTanks != 0) {
 
 		if (theTankStartTime == -1) theTankStartTime = GetConfigValueInt("tank rush delay?");//theTankStartTime = GetRandomInt(30, 60);
 		if (theTankStartTime == 0 || RPGRoundTime(true) >= theTankStartTime) {
@@ -40,7 +50,7 @@ public Action Timer_DirectorPurchaseTimer(Handle timer) {
 			if (iInfectedCount - iTankCount < (iSurvivors)) SpawnAnyInfected(theClient);
 			//if (!b_IsFinaleActive && iTankCount < iTankLimit && iTankCount < iTanksAlways) {
 			// no finale active			don't force on this server		or if we do and not on cooldown
-			if (!b_IsFinaleActive && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) && ((iTankRequired > 0 && iTankCount < iTankLimit + iTankRequired) || (iTankRequired == 0 && iTankCount < iSurvivors + iSurvivorBots))) {
+			if (!b_IsFinaleActive && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) && ((requiredAlwaysTanks > 0 && iTankCount < iTankLimit + requiredAlwaysTanks) || (requiredAlwaysTanks == 0 && iTankCount < iSurvivors + iSurvivorBots))) {
 
 				if (IsLegitimateClientAlive(theClient))	ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
 			}
@@ -57,7 +67,7 @@ public Action Timer_DirectorPurchaseTimer(Handle timer) {
 		return Plugin_Continue;
 	}
 	if (iDirectorThinkingAdvertisementTime > 0 && directorThoughtNotification % iDirectorThinkingAdvertisementTime == 0) PrintToChatAll("%t", "Director Think Process", orange, white);
-	DirectorDelay	 = (fDirectorThoughtHandicap > 0.0) ? fDirectorThoughtDelay - (LivingSerfs * fDirectorThoughtHandicap) : fDirectorThoughtDelay;
+	DirectorDelay	 = (fDirectorThoughtHandicap > 0.0 && LivingSerfs-1 > 0) ? fDirectorThoughtDelay - ((LivingSerfs-1) * fDirectorThoughtHandicap) : fDirectorThoughtDelay;
 	if (DirectorDelay < fDirectorThoughtProcessMinimum) DirectorDelay = fDirectorThoughtProcessMinimum;
 	Counter = RoundToCeil(currentTime + DirectorDelay);
 	int size				=	GetArraySize(a_DirectorActions);
@@ -135,8 +145,8 @@ stock DirectorPurchase(Handle Values, pos, char[] TalentName) {
 	GetArrayString(Values, POINTS_COMMAND, Command, 64);
 	if (b_IsFinaleActive && StrBeginsWith(Command, "director_force")) return;
 
-	int numLivingHumanSurvivors = LivingHumanSurvivors();
-	int numLivingSurvivors = LivingSurvivorCount();
+	int numLivingHumanSurvivors = LivingHumanSurvivors()-1;
+	int numLivingSurvivors = LivingSurvivorCount()-1;
 
 	char Parameter[64];
 	GetArrayString(Values, POINTS_PARAMETER, Parameter, 64);
@@ -190,10 +200,16 @@ stock DirectorPurchase(Handle Values, pos, char[] TalentName) {
 	if (!bIsEnrage && MinimumDelay > 0.0) {
 		SetArrayCell(a_DirectorActions_Cooldown, pos, 1);
 		float fDelayHandicap = GetArrayCell(Values, POINTS_HANDICAP_DELAY);
-		MinimumDelay = MinimumDelay - (numLivingHumanSurvivors * fDirectorThoughtHandicap) - (fDelayHandicap * numLivingHumanSurvivors);
+		if (numLivingHumanSurvivors > 0) {
+			MinimumDelay = MinimumDelay - (numLivingHumanSurvivors * fDirectorThoughtHandicap) - (fDelayHandicap * numLivingHumanSurvivors);
+		}
 		if (MinimumDelay < 0.0) MinimumDelay = 1.0;
-		fDirectorThoughtDelay = fDirectorThoughtDelay - (numLivingHumanSurvivors * fDirectorThoughtHandicap);
-		if (fDirectorThoughtDelay < 0.0) fDirectorThoughtDelay = 0.0;
+		if (numLivingHumanSurvivors > 0) {
+			fDirectorThoughtDelay = fDirectorThoughtDelay - (numLivingHumanSurvivors * fDirectorThoughtHandicap);
+		}
+		if (fDirectorThoughtDelay < 0.0) {
+			fDirectorThoughtDelay = 0.0;
+		}
 		CreateTimer(fDirectorThoughtDelay + MinimumDelay, Timer_DirectorActions_Cooldown, pos, TIMER_FLAG_NO_MAPCHANGE);
 	}
 

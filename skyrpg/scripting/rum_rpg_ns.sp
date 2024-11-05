@@ -116,7 +116,7 @@ stock OnMapStartFunc() {
 }
 
 public void OnMapStart() {
-	SetConVarInt(FindConVar("director_no_death_check"), 0);	// leave 0 until figure out why scenario_end doesn't work anymore.
+	SetConVarInt(FindConVar("director_no_death_check"), 1);	// leave 0 until figure out why scenario_end doesn't work anymore.
 	SetConVarInt(FindConVar("sv_rescue_disabled"), 0);
 	SetConVarInt(FindConVar("z_common_limit"), 0);	// there are no commons until the round starts in all game modes to give players a chance to move.
 	iTopThreat = 0;
@@ -162,6 +162,7 @@ public void OnMapStart() {
 	Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "%srpg/%s.cfg", ConfigPathDirectory, TheCurrentMap);
 	if (!FileExists(CONFIG_MAIN)) Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "rpg/config.cfg");
 	else Format(CONFIG_MAIN, sizeof(CONFIG_MAIN), "rpg/%s.cfg", TheCurrentMap);
+
 	UnhookAll();
 	SetSurvivorsAliveHostname();
 	CheckGamemode();
@@ -189,7 +190,19 @@ stock LoadMainConfig() {
 	GetConfigValue(sServerDifficulty, sizeof(sServerDifficulty), "server difficulty?");
 	CheckDifficulty();
 	GetConfigValue(sDeleteBotFlags, sizeof(sDeleteBotFlags), "delete bot flags?");
-
+	fAugmentCooldownIncrease			= GetConfigValueFloat("augment cooldown modifier?", 0.3);
+	iGiveSurvivorsWeaponsOnPregame		= GetConfigValueInt("weapon profiles loaded every map?", 0);
+	fSpecialInfectedMinDelay			= GetConfigValueFloat("special infected min spawn delay?", 10.0);
+	fSpecialInfectedMaxDelay			= GetConfigValueFloat("special infected max spawn delay?", 20.0);
+	fSpecialInfectedDelayHandicap		= GetConfigValueFloat("special infected spawn reduction?", 1.0);
+	fSpecialInfectedDelayMin			= GetConfigValueFloat("special infected spawn reduction max?", 5.0);
+	fSpecialInfectedDelayRangeMin		= GetConfigValueFloat("special infected spawn range min?", 5.0);
+	iForceFFALoot						= GetConfigValueInt("force ffa loot?", 1);
+	fFatigueDamagePenalty				= GetConfigValueFloat("fatigued outgoing damage penalty?", 0.5);
+	fFatigueDamageTakenPenalty			= GetConfigValueFloat("fatigued incoming damage penalty?", 0.5);
+	fFatigueCooldownPenalty				= GetConfigValueFloat("fatigued talent cooldown penalty?", 0.5);
+	fSuperCommonDistanceHeight			= GetConfigValueFloat("super common aura vertical distance?", 48.0);
+	fFinaleDelayToForceTankSummon		= GetConfigValueInt("active finale force tank spawn delay?", 180) * 1.0;
 	iDirectorThinkingAdvertisementTime	= GetConfigValueInt("director thinking advertisement?", 30);
 	fBagPickupDelay						= GetConfigValueFloat("bag pickup delay?", 0.1);
 	fDoTInterval						= GetConfigValueFloat("DoT tick interval?", 1.0);
@@ -202,7 +215,6 @@ stock LoadMainConfig() {
 	fProficiencyExperienceMultiplier 	= GetConfigValueFloat("proficiency requirement multiplier?");
 	fProficiencyExperienceEarned 		= GetConfigValueFloat("experience multiplier proficiency?");
 	fRatingPercentLostOnDeath			= GetConfigValueFloat("rating percentage lost on death?");
-	//iProficiencyMaxLevel				= GetConfigValueInt("proficience level max?");
 	iProficiencyStart					= GetConfigValueInt("proficiency level start?");
 	iTeamRatingRequired					= GetConfigValueInt("team count rating bonus?");
 	fTeamRatingBonus					= GetConfigValueFloat("team player rating bonus?");
@@ -210,9 +222,7 @@ stock LoadMainConfig() {
 	iSurvivorRespawnRestrict			= GetConfigValueInt("respawn queue players ignored?");
 	iIsSpecialFire						= GetConfigValueInt("special infected fire?");
 	iSkyLevelMax						= GetConfigValueInt("max sky level?");
-	//iOnFireDebuffLimit				= GetConfigValueInt("standing in fire debuff limit?");
 	fOnFireDebuffDelay					= GetConfigValueFloat("standing in fire debuff delay?");
-	//fTankThreatBonus					= GetConfigValueFloat("tank threat bonus?");
 	forceProfileOnNewPlayers			= GetConfigValueInt("Force Profile On New Player?");
 	iShowLockedTalents					= GetConfigValueInt("show locked talents?");
 	iAwardBroadcast						= GetConfigValueInt("award broadcast?");
@@ -220,7 +230,10 @@ stock LoadMainConfig() {
 	GetConfigValue(sSpecialsAllowed, sizeof(sSpecialsAllowed), "special infected classes?");
 	iSpecialsAllowed					= GetConfigValueInt("special infected allowed?");
 	iSpecialInfectedMinimum				= GetConfigValueInt("special infected minimum?");
-	fEnrageMultiplier					= GetConfigValueFloat("enrage multiplier?");
+	fEnrageHordeBoost					= GetConfigValueFloat("enrage common increase?", 0.01);
+	fEnrageHordeBoostDelay				= GetConfigValueFloat("enrage common increase delay?", 6.0);
+	fEnrageDamageIncrease				= GetConfigValueFloat("enrage damage increase?", 0.01);
+	fEnrageDamageIncreaseDelay			= GetConfigValueFloat("enrage damage increase delay?", 3.0);
 	iRestedDonator						= GetConfigValueInt("rested experience earned donator?");
 	iRestedRegular						= GetConfigValueInt("rested experience earned non-donator?");
 	iRestedSecondsRequired				= GetConfigValueInt("rested experience required seconds?");
@@ -242,14 +255,12 @@ stock LoadMainConfig() {
 	fDirectorThoughtHandicap			= GetConfigValueFloat("director thought process handicap?", 0.0);
 	fDirectorThoughtProcessMinimum		= GetConfigValueFloat("director thought process minimum?", 1.0);
 	iSurvivalRoundTime					= GetConfigValueInt("survival round time?");
-	fDazedDebuffEffect					= GetConfigValueFloat("dazed debuff effect?");
 	ConsumptionInt						= GetConfigValueInt("stamina consumption interval?");
 	fStamSprintInterval					= GetConfigValueFloat("stamina sprint interval?", 0.12);
 	fStamJetpackInterval				= GetConfigValueFloat("stamina jetpack interval?", 0.05);
 	fStamRegenTime						= GetConfigValueFloat("stamina regeneration time?");
 	fStamRegenTimeAdren					= GetConfigValueFloat("stamina regeneration time adren?");
 	fBaseMovementSpeed					= GetConfigValueFloat("base movement speed?");
-	//fFatigueMovementSpeed				= GetConfigValueFloat("fatigue movement speed?");
 	iPlayerStartingLevel				= GetConfigValueInt("new player starting level?");
 	iBotPlayerStartingLevel				= GetConfigValueInt("new bot player starting level?");
 	if (iMaxLevelBots < iBotPlayerStartingLevel) iMaxLevelBots = iBotPlayerStartingLevel;
@@ -267,8 +278,6 @@ stock LoadMainConfig() {
 	fCommonDirectorPoints				= GetConfigValueFloat("common infected director points?");
 	iDisplayHealthBars					= GetConfigValueInt("display health bars?");
 	scoreRequiredForLeaderboard			= GetConfigValueInt("player score required for leaderboard?");
-
-
 	char text[64];
 	char text2[64];
 	char text3[64];
@@ -305,6 +314,8 @@ stock LoadMainConfig() {
 	BroadcastType						= GetConfigValueInt("hint text type?");
 	iDoomTimer							= GetConfigValueInt("doom kill timer?");
 	iSurvivorStaminaMax					= GetConfigValueInt("survivor stamina?");
+	fHealingAwarded						= GetConfigValueFloat("healing multiplier?", 0.5);
+	fBuffingAwarded						= GetConfigValueFloat("buffing multiplier?", 0.1);
 	fBuffingMultTank					= GetConfigValueFloat("buffing multiplier tank?", 0.5);
 	fBuffingMultWitch					= GetConfigValueFloat("buffing multiplier witch?", 0.5);
 	fBuffingMultSpecials				= GetConfigValueFloat("buffing multiplier specials?", 0.2);
@@ -337,19 +348,21 @@ stock LoadMainConfig() {
 	iActionBarSlots						= GetConfigValueInt("action bar slots?");
 	iNumAugments						= GetConfigValueInt("augment slots?", 3);
 	iMenuCommandsToDisplay				= GetConfigValueInt("rpg menu commands to advertise?", 1);
+
 	GetConfigValue(MenuCommand, sizeof(MenuCommand), "rpg menu command?");
 	int ExplodeCount = GetDelimiterCount(MenuCommand, ",") + 1;
 	if (ExplodeCount > 1) {
 		char[][] MenuCommands = new char[ExplodeCount][32];
 		ExplodeString(MenuCommand, ",", MenuCommands, ExplodeCount, 32);
 		Format(MenuCommand, sizeof(MenuCommand), "{O}!{B}%s", MenuCommands[0]);
+
 		int commandsToDisplay = (iMenuCommandsToDisplay < 1) ? ExplodeCount-1 : iMenuCommandsToDisplay;
 		for (int i = 1; i < commandsToDisplay; i++) {
 			if (i + 1 < commandsToDisplay) Format(MenuCommand, sizeof(MenuCommand), "%s, {O}!{B}%s", MenuCommand, MenuCommands[i]);
 			else Format(MenuCommand, sizeof(MenuCommand), "%s, or {O}!{B}%s", MenuCommand, MenuCommands[i]);
 		}
 	}
-	//ReplaceString(MenuCommand, sizeof(MenuCommand), ",", " or ", true);
+	iDisplayTalentUpgradesToTeam		= GetConfigValueInt("display when players upgrade to team?");
 	DoomSUrvivorsRequired				= GetConfigValueInt("doom survivors ignored?");
 	DoomKillTimer						= GetConfigValueInt("doom kill timer?");
 	fVersusTankNotice					= GetConfigValueFloat("versus tank notice?");
@@ -357,7 +370,6 @@ stock LoadMainConfig() {
 	AllowedMegaMob						= GetConfigValueInt("mega mob limit base?");
 	AllowedMobSpawn						= GetConfigValueInt("mob limit base?");
 	AllowedMobSpawnFinale				= GetConfigValueInt("mob finale limit base?");
-	//AllowedPanicInterval				= GetConfigValueInt("mega mob max interval base?");
 	RespawnQueue						= GetConfigValueInt("survivor respawn queue?");
 	MaximumPriority						= GetConfigValueInt("director priority maximum?");
 	fUpgradeExpCost						= GetConfigValueFloat("upgrade experience cost?");
@@ -402,8 +414,6 @@ stock LoadMainConfig() {
 	fSuperCommonTickrate				= GetConfigValueFloat("super common tick rate?");
 	fDrawHudInterval					= GetConfigValueFloat("hud display tick rate?");
 	fSpecialAmmoInterval				= GetConfigValueFloat("special ammo tick rate?");
-	//fEffectOverTimeInterval				= GetConfigValueFloat("effect over time tick rate?");
-	//fStaggerTime						= GetConfigValueFloat("stagger debuff time?");
 	fStaggerTickrate					= GetConfigValueFloat("stagger tickrate?");
 	fRatingFloor						= GetConfigValueFloat("rating floor?");
 	iExperienceDebtLevel				= GetConfigValueInt("experience debt level?");
@@ -414,7 +424,6 @@ stock LoadMainConfig() {
 	iSkyLevelNodeUnlocks				= GetConfigValueInt("sky level default node unlocks?");
 	iCanSurvivorBotsBurn				= GetConfigValueInt("survivor bots debuffs allowed?");
 	iSurvivorBotsAreImmuneToFireDamage	= GetConfigValueInt("survivor bots immune to fire damage?", 1);	// we make survivor bots immune to fire damage by default.
-	//iDeleteCommonsFromExistenceOnDeath	= GetConfigValueInt("delete commons from existence on death?");
 	iShowDetailedDisplayAlways			= GetConfigValueInt("show detailed display to survivors always?");
 	iCanJetpackWhenInCombat				= GetConfigValueInt("can players jetpack when in combat?");
 	fquickScopeTime						= GetConfigValueFloat("delay after zoom for quick scope kill?");
@@ -429,20 +438,16 @@ stock LoadMainConfig() {
 	iAllowPauseLeveling					= GetConfigValueInt("let players pause their leveling?");
 	fMaxDamageResistance				= GetConfigValueFloat("max damage resistance?", 0.99);
 	fStaminaPerPlayerLevel				= GetConfigValueFloat("stamina increase per player level?");
-	//iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?");
-	//iEndRoundIfNoLivingHumanSurvivors	= GetConfigValueInt("end round if no living human survivors?", 1);
+	iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?", 0);
+	iEndRoundIfNoLivingHumanSurvivors	= GetConfigValueInt("end round if no living human survivors?", 1);
 	fTankMovementSpeed_Burning			= GetConfigValueFloat("fire tank movement speed?", 1.0);	// if this key is omitted, a default value is set. these MUST be > 0.0, so the default is hard-coded.
 	fTankMovementSpeed_Hulk				= GetConfigValueFloat("hulk tank movement speed?", 0.75);
 	fTankMovementSpeed_Death			= GetConfigValueFloat("death tank movement speed?", 0.5);
 	iResetPlayerLevelOnDeath			= GetConfigValueInt("reset player level on death?");
-	iStartingPlayerUpgrades				= GetConfigValueInt("new player starting upgrades?", 0);
 	leaderboardPageCount				= GetConfigValueInt("leaderboard players per page?", 5);
 	fForceTankJumpHeight				= GetConfigValueFloat("force tank to jump power?", 500.0);
 	fForceTankJumpRange					= GetConfigValueFloat("force tank to jump range?", 256.0);
 	iResetDirectorPointsOnNewRound		= GetConfigValueInt("reset director points every round?", 1);
-	iMaxServerUpgrades					= GetConfigValueInt("max upgrades allowed?");
-	//iDeleteSupersOnDeath				= GetConfigValueInt("delete super commons on death?", 1);
-	//iShoveStaminaCost					= GetConfigValueInt("shove stamina cost?", 10);
 	iLootEnabled						= GetConfigValueInt("loot system enabled?", 1);
 	fLootChanceTank						= GetConfigValueFloat("loot chance tank?", 1.0);
 	fLootChanceWitch					= GetConfigValueFloat("loot chance witch?", 0.5);
@@ -472,7 +477,6 @@ stock LoadMainConfig() {
 	iExplosionBaseDamage				= GetConfigValueInt("base explosion damage for non pipebomb sources?", 500);
 	fProficiencyLevelDamageIncrease		= GetConfigValueFloat("weapon proficiency level bonus damage?", 0.01);
 	iJetpackEnabled						= GetConfigValueInt("jetpack enabled?", 1);
-	fJumpTimeToActivateJetpack			= GetConfigValueFloat("jump press time to activate jetpack?", 0.4);
 	iNumLootDropChancesPerPlayer[0]		= GetConfigValueInt("roll attempts on common kill?", 1);
 	iNumLootDropChancesPerPlayer[1]		= GetConfigValueInt("roll attempts on supers kill?", 1);
 	iNumLootDropChancesPerPlayer[2]		= GetConfigValueInt("roll attempts on specials kill?", 1);
@@ -506,6 +510,21 @@ stock LoadMainConfig() {
 	fPainPillsHealAmount				= GetConfigValueFloat("on use pain killers heal?", 0.3);
 	iNumAdvertisements					= GetConfigValueInt("number of advertisements?", 0);
 	HostNameTime						= GetConfigValueInt("delay in seconds between advertisements?", 180);
+	iAttributeExperienceRequirement		= GetConfigValueInt("attribute start xp requirement?", 5000);
+	attributeExperienceMultiplier		= GetConfigValueFloat("attribute experience multiplier?", 0.12);
+	fAttributeMultiplier[0]				= GetConfigValueFloat("constitution multiplier?", 0.03);
+	fAttributeModifier[0]				= GetConfigValueFloat("constitution xp modifier?", 2.0);
+	fAttributeMultiplier[1]				= GetConfigValueFloat("agility multiplier?", 0.01);
+	fAttributeModifier[1]				= GetConfigValueFloat("agility xp modifier?", 1.0);
+	fAttributeMultiplier[2]				= GetConfigValueFloat("resilience multiplier?", 0.01);
+	fAttributeModifier[2]				= GetConfigValueFloat("resilience xp modifier?", 0.1);
+	fAttributeMultiplier[3]				= GetConfigValueFloat("technique multiplier?", 0.01);
+	fAttributeModifier[3]				= GetConfigValueFloat("technique xp modifier?", 0.1);
+	fAttributeMultiplier[4]				= GetConfigValueFloat("endurance multiplier?", 0.03);
+	fAttributeModifier[4]				= GetConfigValueFloat("endurance xp modifier?", 1.0);
+	fAttributeMultiplier[5]				= GetConfigValueFloat("luck multiplier?", 0.01);
+	fAttributeModifier[5]				= GetConfigValueFloat("luck xp modifier?", 0.1);
+	fGoverningAttributeModifier			= GetConfigValueFloat("governing attribute xp modifier?", 0.1);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");
@@ -515,9 +534,8 @@ stock LoadMainConfig() {
 	GetConfigValue(defaultLoadoutWeaponPrimary, sizeof(defaultLoadoutWeaponPrimary), "default loadout primary weapon?");
 	GetConfigValue(defaultLoadoutWeaponSecondary, sizeof(defaultLoadoutWeaponSecondary), "default loadout secondary weapon?");
 	GetConfigValue(serverKey, sizeof(serverKey), "server steam key?");
-	LogMessage("Main Config Loaded.");
+	LogMessage("skyrpg has loaded successfully.");
 }
-
 #include "rpg/Array/CustomArray.sp"
 #include "rpg/Forwards.sp"
 #include "rpg/ConnectivityStuff.sp"
@@ -529,6 +547,7 @@ stock LoadMainConfig() {
 #include "rpg/Stocks/SuperCommonStocks.sp"
 #include "rpg/ExperienceChecks.sp"
 #include "rpg/Stocks/Stocks.sp"
+#include "rpg/Stocks/DisplayHUD.sp"
 #include "rpg/Loot/GenerateLoot.sp"
 #include "rpg/Loot/PickupLoot.sp"
 #include "rpg/Commands.sp"
@@ -541,14 +560,17 @@ stock LoadMainConfig() {
 #include "rpg/Menus/TalentMenu.sp"
 #include "rpg/Menus/ActionBarTalentMenu.sp"
 #include "rpg/Menus/HandicapMenu.sp"
-#include "rpg/Menus/AugmentInventory.sp"
-#include "rpg/AugmentModifiers.sp"
+#include "rpg/Augment/AugmentInventory.sp"
+#include "rpg/Augment/GetAugmentComparator.sp"
+#include "rpg/Augment/AugmentModifiers.sp"
+//#include "rpg/Augment/InspectAugmentOnGround.sp"
 #include "rpg/TalentModifiers.sp"
 #include "rpg/ActionBar/ShowAndDrawActionBar.sp"
 #include "rpg/Menus/TeamComposition.sp"
 #include "rpg/ThreatMeter/ThreatMeter.sp"
 #include "rpg/Menus/CharacterSheet.sp"
 #include "rpg/Menus/Proficiency.sp"
+#include "rpg/Menus/Attributes.sp"
 #include "rpg/Menus/Leaderboards.sp"
 #include "rpg/ProfileEditor.sp"
 #include "rpg/Menus/PointsBuyMenu.sp"

@@ -52,6 +52,10 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 		if (healStrength <= 0.0) return 0;
 		WeaponDamage = RoundToCeil(WeaponDamage * healStrength);
 	}
+	if (target != -1) {
+		float fAmplifyPower = GetAbilityStrengthByTrigger(client, client, TRIGGER_amplify, _, _, _, _, RESULT_d, _, true);
+		if (fAmplifyPower > 0.0) baseWeaponTemp += RoundToCeil(WeaponDamage * fAmplifyPower);
+	}
 	// The player, above, receives a flat damage increase of 50% just for having adrenaline active.
 	// Now, we increase their damage if they're in rage ammo, which is a separate thing, although it also provides the adrenaline buff.
 	if (fSurvivorBufferBonus > 0.0 && IsSpecialCommonInRange(client, 'b')) baseWeaponTemp += RoundToCeil(WeaponDamage * fSurvivorBufferBonus);
@@ -127,6 +131,10 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 			}
 		}
 		WeaponDamage = RoundToCeil(WeaponDamage * fEffectiveRangeDamageBonus);
+	}
+	if (bIsSurvivorFatigue[client]) {
+		int damagePenalty = RoundToCeil(WeaponDamage * fFatigueDamagePenalty);
+		WeaponDamage -= damagePenalty;
 	}
 	return WeaponDamage;
 }

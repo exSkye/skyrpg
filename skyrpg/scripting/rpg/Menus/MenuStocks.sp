@@ -2,6 +2,12 @@
 #pragma newdecls required
 */
 
+float GetDistanceBetweenTwoPoints(float a, float b) {
+	if (a > b) return a - b;
+	if (b > a) return b - a;
+	return 0.0;
+}
+
 stock bool CheckKillPositions(client, bool b_AddPosition = false) {
 
 	// If the finale is active, we don't do anything here, and always return false.
@@ -16,46 +22,29 @@ stock bool CheckKillPositions(client, bool b_AddPosition = false) {
 
 	float Origin[3];
 	GetClientAbsOrigin(client, Origin);
-	char coords[64];
-
 	if (!b_AddPosition) {
-
-		float Last_Origin[3];
-		int size				= GetArraySize(h_KilledPosition_X[client]);
-		
+		int size				= GetArraySize(h_KilledPosition[client]);
+		float storedPositions[3];
 		for (int i = 0; i < size; i++) {
-
-			GetArrayString(h_KilledPosition_X[client], i, coords, sizeof(coords));
-			Last_Origin[0]		= StringToFloat(coords);
-			GetArrayString(h_KilledPosition_Y[client], i, coords, sizeof(coords));
-			Last_Origin[1]		= StringToFloat(coords);
-			GetArrayString(h_KilledPosition_Z[client], i, coords, sizeof(coords));
-			Last_Origin[2]		= StringToFloat(coords);
+			storedPositions[0] = GetArrayCell(h_KilledPosition[client], i);
+			storedPositions[1] = GetArrayCell(h_KilledPosition[client], i, 1);
+			storedPositions[2] = GetArrayCell(h_KilledPosition[client], i, 2);
 
 			// If the players current position is too close to any stored positions, return true
-			if (GetVectorDistance(Origin, Last_Origin) <= fAntiFarmDistance) return true;
+			if (GetVectorDistance(Origin, storedPositions) <= fAntiFarmDistance) return true;
 		}
 	}
 	else {
 
-		int newsize = GetArraySize(h_KilledPosition_X[client]);
+		int newsize = GetArraySize(h_KilledPosition[client]);
 
-		ResizeArray(h_KilledPosition_X[client], newsize + 1);
-		Format(coords, sizeof(coords), "%3.4f", Origin[0]);
-		SetArrayString(h_KilledPosition_X[client], newsize, coords);
+		PushArrayCell(h_KilledPosition[client], Origin[0]);
+		SetArrayCell(h_KilledPosition[client], newsize, Origin[1], 1);
+		SetArrayCell(h_KilledPosition[client], newsize, Origin[2], 2);
 
-		ResizeArray(h_KilledPosition_Y[client], newsize + 1);
-		Format(coords, sizeof(coords), "%3.4f", Origin[1]);
-		SetArrayString(h_KilledPosition_Y[client], newsize, coords);
-
-		ResizeArray(h_KilledPosition_Z[client], newsize + 1);
-		Format(coords, sizeof(coords), "%3.4f", Origin[2]);
-		SetArrayString(h_KilledPosition_Z[client], newsize, coords);
-
-		while (GetArraySize(h_KilledPosition_X[client]) > iAntiFarmMax) {
-			RemoveFromArray(h_KilledPosition_X[client], 0);
-			RemoveFromArray(h_KilledPosition_Y[client], 0);
-			RemoveFromArray(h_KilledPosition_Z[client], 0);
+		// if adding the new position put the player over the stored limit, remove the oldest entry.
+		while (GetArraySize(h_KilledPosition[client]) > iAntiFarmMax) {
+			RemoveFromArray(h_KilledPosition[client], 0);
 		}
 	}
 	return false;
@@ -150,18 +139,10 @@ stock float PlayerBuffLevel(client) {
 	return PBL;
 }
 
-stock MaximumPlayerUpgrades(client, bool getNodeCountInstead = false) {
+stock MaximumPlayerUpgrades(int client, bool getNodeCountInstead = false) {
 
 	if (!getNodeCountInstead) {
-		if (SkyLevel[client] < 1 || iSkyLevelMax < 1) return (iMaxServerUpgrades < 0 || PlayerLevel[client] + iStartingPlayerUpgrades < iMaxServerUpgrades)
-																? PlayerLevel[client] + iStartingPlayerUpgrades
-																: iMaxServerUpgrades;
-		int count = 0;
-		for (int i = 1; i < SkyLevel[client] + 1; i++) {
-			count += GetPrestigeLevelNodeUnlocks(i);
-		}
-		int upgradesAllowed = count + PlayerLevel[client] + iStartingPlayerUpgrades;
-		return (iMaxServerUpgrades < 0 || upgradesAllowed <= iMaxServerUpgrades) ? upgradesAllowed : iMaxServerUpgrades;
+		return PlayerLevel[client];
 	}
 	return nodesInExistence;
 }
@@ -228,15 +209,15 @@ stock GetTalentLevel(client, char[] TalentName, bool IsExperience = false) {
 
 stock TryToTellPeopleYouUpgraded(client) {
 
-	if (FreeUpgrades[client] == 0 && GetConfigValueInt("display when players upgrade to team?") == 1) {
+	if (FreeUpgrades[client] == 0 && iDisplayTalentUpgradesToTeam == 1) {
 
 		char text2[512];
-		char PlayerName[64];
+		//char PlayerName[64];
 		char translationText[512];
-		GetFormattedPlayerName(client, PlayerName, sizeof(PlayerName));
+		//GetFormattedPlayerName(client, PlayerName, sizeof(PlayerName));
 		GetTranslationOfTalentName(client, PurchaseTalentName[client], translationText, sizeof(translationText), true);
 		Format(text2, sizeof(text2), "%t", translationText);
-		Format(text2, sizeof(text2), "%t", "Player upgrades ability", PlayerName, text2);
+		Format(text2, sizeof(text2), "%t", "Player upgrades ability", baseName[client], text2);
 		for (int i = 1; i <= MaxClients; i++) {
 			if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
 			Client_PrintToChat(i, true, text2);

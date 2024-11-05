@@ -16,11 +16,11 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			buttons |= IN_SPEED;
 		}
 	}
+
 	bool IsHoldingPrimaryFire = (buttons & IN_ATTACK) ? true : false;
 	bool isClientOnSolidGround = (clientFlags & FL_ONGROUND) ? true : false;
 	bool isClientOnFire = (clientFlags & FL_ONFIRE) ? true : false;
 	bool isClientInWater = (clientFlags & FL_INWATER) ? true : false;
-	bool isClientHoldingReload = (buttons & IN_RELOAD) ? true : false;
 	int weaponEntity = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 	bool weaponIsValid = (weaponEntity > 0 && IsValidEntity(weaponEntity));
 	// call the stagger ability triggers only when a fresh stagger occurs (and not if multiple staggers happen too-often within each other (2.0 seconds is slightly-longer than one stagger.))
@@ -36,6 +36,12 @@ public Action OnPlayerRunCmd(client, &buttons) {
 		}
 		if (isClientInWater) {
 			RemoveAllDebuffs(client, STATUS_EFFECT_ACID);
+		}
+		if (shadowKnightTimeCheck[client] < TheTime) {
+			shadowKnightTimeCheck[client] = TheTime + 1.0;
+			if (iCurrentIncapCount[client] < iMaxIncap && IsSpecialCommonInRange(client, 'w') && IsClientInRangeSpecialAmmo(client, "W")) {
+				iCurrentIncapCount[client] = iMaxIncap;
+			}
 		}
 	}
 	if ((buttons & IN_ZOOM) && ZoomcheckDelayer[client] == INVALID_HANDLE) ZoomcheckDelayer[client] = CreateTimer(0.1, Timer_ZoomcheckDelayer, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -101,13 +107,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 				if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup(client);
 			}
 		}*/
-		bool isClientHoldingJump = (buttons & IN_JUMP) ? true : false;
-		if (isClientHoldingJump) bJumpTime[client] = true;
-		else {
-
-			bJumpTime[client] = false;
-			JumpTime[client] = 0.0;
-		}
+		bool isClientHoldingJetpackKeys = ((buttons & IN_JUMP) && (buttons & IN_DUCK)) ? true : false;
 		if (!IsLegitimateClientAlive(MyAttacker)) StrugglePower[client] = 0;
 
 		if (CombatTime[client] <= TheTime && bIsInCombat[client] && (iPlayersLeaveCombatDuringFinales == 1 || !b_IsFinaleActive)) {
@@ -124,10 +124,17 @@ public Action OnPlayerRunCmd(client, &buttons) {
 		// if (clientTeam == TEAM_SURVIVOR) {
 		// 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", MovementSpeed[client]);
 		// }
-		if (ISDAZED[client] > TheTime) SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", GetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue") * fDazedDebuffEffect);
-		else if (ISDAZED[client] <= TheTime && ISDAZED[client] != 0.0) {
-			BlindPlayer(client, _, 0);	// wipe the dazed effect.
-			ISDAZED[client] = 0.0;
+		if (freezerCheck[client] < TheTime && freezerTime[client] < TheTime) {
+			freezerCheck[client] = TheTime + 1.0;
+			if (IsSpecialCommonInRange(client, 'r')) {
+				freezerTime[client] = TheTime + 1.0;
+				FreezerInRange[client] = true;
+				SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 0.5);
+			}
+			else {
+				FreezerInRange[client] = false;
+				SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
+			}
 		}
 		if (clientIsSurvivor) {
 			bool theClientHasAnActiveProgressBar = ActiveProgressBar(client);
@@ -137,13 +144,6 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			//new CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 
 			//Format(EntityName, sizeof(EntityName), "}");
-			if (weaponIsValid && isClientHoldingReload && medItem[client] == 0) {
-				//GetInfectedAbilityStrengthByTrigger(client, client, "holdReload");
-				if (bHasChainsaw[client] && GetEntProp(weaponEntity, Prop_Data, "m_iClip1") < 10) {
-					SetEntProp(weaponEntity, Prop_Data, "m_iClip1", 30);
-					buttons &= ~IN_RELOAD;
-				}
-			}
 			int PlayerMaxStamina = GetPlayerStamina(client);
 
 			if (MyAttacker == -1 && (IsClientIncapacitated || medItem[client] > 0)) {
@@ -191,7 +191,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 									float fPainPillsHeal = GetTempHealth(healTarget) + (GetMaximumHealth(healTarget) * fPainPillsHealAmount);
 									HealPlayer(client, healTarget, fPainPillsHeal, 'h', true);//SetTempHealth(client, client, GetTempHealth(client) + (GetMaximumHealth(client) * 0.3), false);		// pills add 10% of your total health in temporary health.
 									medItem[client] = 0;
-									AcceptEntityInput(weaponEntity, "Kill");
+									if (IsValidEntity(weaponEntity)) AcceptEntityInput(weaponEntity, "Kill");
 									GetAbilityStrengthByTrigger(client, healTarget, TRIGGER_usepainpills, _, RoundToCeil(fPainPillsHeal));
 									GetAbilityStrengthByTrigger(client, healTarget, TRIGGER_healsuccess, _, RoundToCeil(fPainPillsHeal));
 								}
@@ -204,14 +204,14 @@ public Action OnPlayerRunCmd(client, &buttons) {
 									}
 									else SurvivorStamina[client] += StaminaBonus;
 									medItem[client] = 0;
-									AcceptEntityInput(weaponEntity, "Kill");
+									if (IsValidEntity(weaponEntity)) AcceptEntityInput(weaponEntity, "Kill");
 								}
 								else if (theClientHasFirstAid) {
 									int iFirstAidHealAmount = GetMaximumHealth(healTarget) - GetClientHealth(healTarget);
 									GiveMaximumHealth(healTarget);
 									RefreshSurvivor(healTarget);
 									medItem[client] = 0;
-									AcceptEntityInput(weaponEntity, "Kill");
+									if (IsValidEntity(weaponEntity)) AcceptEntityInput(weaponEntity, "Kill");
 									GetAbilityStrengthByTrigger(client, healTarget, TRIGGER_usefirstaid, _, iFirstAidHealAmount);
 									GetAbilityStrengthByTrigger(client, healTarget, TRIGGER_healsuccess, _, iFirstAidHealAmount);
 								}
@@ -257,15 +257,15 @@ public Action OnPlayerRunCmd(client, &buttons) {
 					Add or remove conditions from the following line to determine when the jetpack automatically disables.
 					When adding new conditions, consider a switch so server operators can choose which of them they want to use.
 				*/
-				if (bJetpack[client] && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && (!isClientHoldingJump || IsJetpackBroken || MyAttacker != -1)) {
+				if (bJetpack[client] && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && (!isClientHoldingJetpackKeys || IsJetpackBroken || MyAttacker != -1)) {
 					ToggleJetpack(client, true);
 				}
 				bool isSprinting = (iExperimentalMode == 1 && isRunning && isMoving) ? true : false;
 				if ((bJetpack[client] || !bJetpack[client] && !isClientOnSolidGround) ||
-					isClientHoldingJump && SurvivorStamina[client] >= ConsumptionInt && !bIsSurvivorFatigue[client] && !ISSLOW[client] && ISFROZEN[client] == INVALID_HANDLE ||
+					isClientHoldingJetpackKeys && SurvivorStamina[client] >= ConsumptionInt && !bIsSurvivorFatigue[client] ||
 					isSprinting) {
-					if (MyAttacker == -1 && !ISSLOW[client] && ISFROZEN[client] == INVALID_HANDLE) {
-						if (SurvivorConsumptionTime[client] <= TheTime && (isClientHoldingJump || isSprinting)) {
+					if (MyAttacker == -1) {
+						if (SurvivorConsumptionTime[client] <= TheTime && (isClientHoldingJetpackKeys || isSprinting)) {
 							if (SurvivorStamina[client] <= 0) {
 								bIsSurvivorFatigue[client] = true;
 								IsSpecialAmmoEnabled[client][0] = 0.0;
@@ -281,7 +281,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 							else SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 							if (!bIsSurvivorFatigue[client]) SurvivorStamina[client] -= ConsumptionInt;
 						}
-						if (!bIsSurvivorFatigue[client] && !bJetpack[client] && (isClientHoldingJump && (JumpTime[client] >= fJumpTimeToActivateJetpack)) && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= TheTime && MyAttacker == -1) ToggleJetpack(client);
+						if (!bIsSurvivorFatigue[client] && !bJetpack[client] && isClientHoldingJetpackKeys && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= TheTime && MyAttacker == -1) ToggleJetpack(client);
 						if (!bJetpack[client]) MovementSpeed[client] = fSprintSpeed;
 					}
 					buttons &= ~IN_SPEED;

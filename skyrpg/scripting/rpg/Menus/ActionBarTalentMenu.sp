@@ -92,8 +92,12 @@ public TalentInfoScreen_Init (Handle topmenu, MenuAction action, client, param2)
 
 		bool bIsLayerEligible = (TalentStrength > 0) ? true : false;
 		if (!bIsLayerEligible) {
-			bIsLayerEligible = (requiredTalentsRequired < 1 && (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer))) ? true : false;
-			if (bIsLayerEligible) bIsLayerEligible = ((ignoreLayerCount == 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true) < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
+			int thisLayerUpgradeStrength = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1);
+			bIsLayerEligible = (requiredTalentsRequired < 1 && (PlayerCurrentMenuLayer[client] <= 1 || fUpgradesRequiredPerLayer > 1.0 && thisLayerUpgradeStrength >= RoundToCeil(fUpgradesRequiredPerLayer) || fUpgradesRequiredPerLayer <= 1.0 && thisLayerUpgradeStrength >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer))) ? true : false;
+			if (bIsLayerEligible) {
+				int theNextLayerUpgradeStrength = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true);
+				bIsLayerEligible = ((ignoreLayerCount == 1 || fUpgradesRequiredPerLayer > 1.0 && theNextLayerUpgradeStrength < RoundToCeil(fUpgradesRequiredPerLayer) || fUpgradesRequiredPerLayer <= 1.0 && theNextLayerUpgradeStrength < RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true) * fUpgradesRequiredPerLayer)) && UpgradesAvailable[client] + FreeUpgrades[client] >= nodeUnlockCost) ? true : false;
+			}
 		}
 		switch (param2) {
 			case 1: {

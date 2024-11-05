@@ -84,10 +84,13 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 							   (IsCommonInfected(victim)) ? 1 :
 							   (IsWitch(victim)) ? 2 :
 							   (IsLegitimateClientVictim && myCurrentTeam[victim] == TEAM_INFECTED) ? 3 : 4;
-			
-			
-			CallTriggerByHitgroup(attacker, victim, takeDamageEvent[attacker][1], takeDamageEvent[attacker][0], baseWeaponDamage);
 
+			bool defenderInRange = (IsSpecialCommonInRange(victim, 't') || DrawSpecialInfectedAffixes(victim, victim) == 1) ? true : false;
+			if (defenderInRange) {
+				damage_ignore = 0.0;
+				return Plugin_Handled;
+			}
+			CallTriggerByHitgroup(attacker, victim, takeDamageEvent[attacker][1], takeDamageEvent[attacker][0], baseWeaponDamage);
 			int survivorResult = IfSurvivorIsAttackerDoStuff(attacker, victim, baseWeaponDamage, damagetype, victimType, takeDamageEvent[attacker][0], takeDamageEvent[attacker][1], inflictor);
 			LastAttackTime[attacker] = GetEngineTime();
 			if (survivorResult == -1) {
@@ -178,7 +181,7 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 					int i_WitchDamage = GetCharacterSheetData(victim, stringRef, 64, 4, _, attacker);
 					int i_WitchDamageIncreaseFromBuffer = getDamageIncreaseFromBuffer(attacker, i_WitchDamage);
 					if (i_WitchDamageIncreaseFromBuffer > 0) i_WitchDamage += i_WitchDamageIncreaseFromBuffer;
-					//if (IsSpecialCommonInRange(attacker, 'b')) i_WitchDamage *= 2;//i_WitchDamage += GetSpecialCommonDamage(i_WitchDamage, attacker, 'b', victim);
+
 					GetAbilityStrengthByTrigger(victim, attacker, TRIGGER_L, _, i_WitchDamage);
 					if (i_WitchDamage > maxIncomingDamageAllowed) i_WitchDamage = maxIncomingDamageAllowed;
 					SetClientTotalHealth(attacker, victim, i_WitchDamage);
@@ -208,11 +211,12 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 				int effectType = -1;
 				if (IsFireDamage(damagetype)) {
 					effectToCreate = STATUS_EFFECT_BURN;
-					if (survivorIncomingDamage < iFireBaseDamage) survivorIncomingDamage = iFireBaseDamage;
+					survivorIncomingDamage = iFireBaseDamage;
 					effectType = 0;
 				}
 				else if ((damagetype & DMG_SPITTERACID1 || damagetype & DMG_SPITTERACID2)) {
 					effectToCreate = STATUS_EFFECT_ACID;
+					survivorIncomingDamage = 1;
 					effectType = 1;
 				}
 
@@ -233,7 +237,7 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 							}
 						}
 						//PrintToChatAll("DoT Damage: %d %d", survivorIncomingDamage, survivorIncomingDamage * (iBurnCounter + 1));
-						CreateAndAttachFlame(victim, survivorIncomingDamage * (iBurnCounter + 1), fDoTMaxTime, fDoTInterval, FindInfectedClient(true), effectToCreate);
+						CreateAndAttachFlame(victim, survivorIncomingDamage, fDoTMaxTime, fDoTInterval, FindInfectedClient(true), effectToCreate);
 					}
 					damage_ignore = 0.0;
 					return Plugin_Handled;
@@ -295,16 +299,21 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		victimType == 1 && FindListPositionByEntity(victim, Handle:CommonInfected) >= 0 ||
 		victimType == 2 && FindListPositionByEntity(victim, Handle:WitchList) >= 0) {*/
 	if (victimType <= 2) {
-		damage_ignore = 0.0;
-		if (victimType == 2 && !WitchShot(victim)) {
-			SetEntProp(victim, Prop_Send, "m_mobRush", 1);
-			damage_ignore = 1.0;
-			return Plugin_Changed;
-		}
 		if (victimType == 1 && IsFireDamage(damagetype)) {
 			// infected commons auto-die if they touch fire.
 			CalculateInfectedDamageAward(victim);
 			RemoveCommonInfected(victim, true);
+		}
+		if (victimType == 2) {
+			int pos		= FindListPositionByEntity(victim, WitchList);
+			if (pos >= 0) {
+				if (GetArrayCell(WitchList, pos, 1) == WITCH_NOT_ACTIVATED) {
+					SetArrayCell(WitchList, pos, WITCH_ATTACKING, 1);
+					SetEntProp(victim, Prop_Send, "m_mobRush", 1);
+					damage_ignore = 1.0;
+					return Plugin_Changed;
+				}
+			}
 		}
 		return Plugin_Handled;
 	}

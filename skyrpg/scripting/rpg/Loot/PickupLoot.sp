@@ -78,7 +78,7 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 		char key[64];
 		GetClientAuthId(i, AuthId_Steam2, key, 64);
 		// check if the owner (entity classname) is the player trying to pick it up (key)
-		if (StrContains(entityClassname, key) == -1) continue;
+		if (!StrEqualAtPos(entityClassname, key, 5)) continue;
 		lootOwner = i;
 		break;
 	}
@@ -93,37 +93,174 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 	int augmentActivatorRating = GetArrayCell(playerLootOnGround[lootOwner], lootBagPosition, 2);
 	int augmentTargetRating = GetArrayCell(playerLootOnGround[lootOwner], lootBagPosition, 4);
 
-	bool lootCanBeStolen = false;	// i know it starts false, i just prefer how it looks
+	int clientToReceiveLoot = lootOwner;
+	if (lootOwner != client) {
+		bool lootCanBeStolen = true;
+		if (iForceFFALoot != 1) { // if the client picking up the loot has any type of ffa loot enabled
+			if (iDontAllowLootStealing[lootOwner] == 1) { // only allow major/minor to be stolen
+				if (augmentActivatorRating > 0 && augmentTargetRating > 0) lootCanBeStolen = false;
+			}
+			else if (iDontAllowLootStealing[lootOwner] == 0) { // only allow minor loot to be stolen
+				if (augmentActivatorRating > 0 || augmentTargetRating > 0) lootCanBeStolen = false;
+			}
+		}
 
-	if (client != lootOwner && iDontAllowLootStealing[client] < 3) { // if the client picking up the loot has any type of ffa loot enabled
-		if (iDontAllowLootStealing[lootOwner] == 2) {	// all tiers
-			lootCanBeStolen = true;
+		if (lootCanBeStolen) {
+			int itemScoreRoll = GetArrayCell(playerLootOnGround[lootOwner], lootBagPosition);
+			if (itemScoreRoll < iplayerSettingAutoDismantleScore[client]) {
+				// the only players this can be true for are the players who are not the loot owner, so we give it to the loot owner
+				// because it is guaranteed to be within the range of loot the loot owner wants.
+				Format(statusMessageToDisplay[client], 64, "You don't want this loot.");
+				fStatusMessageDisplayTime[client] = GetEngineTime() + 2.0;
+				return false;
+			}
+			clientToReceiveLoot = client;
 		}
-		else if (iDontAllowLootStealing[lootOwner] == 1) { // only allow major/minor to be stolen
-			if (augmentActivatorRating < 1 || augmentTargetRating < 1) lootCanBeStolen = true;
-		}
-		else if (iDontAllowLootStealing[lootOwner] == 0) { // only allow minor loot to be stolen
-			if (augmentActivatorRating == -1 && augmentTargetRating == -1) lootCanBeStolen = true;
-		}
+		else return false;
 	}
-
-	int clientToReceiveLoot = (!lootCanBeStolen) ? lootOwner : client;
-	int itemScoreRoll = GetArrayCell(playerLootOnGround[lootOwner], lootBagPosition);
-	if (itemScoreRoll < iplayerSettingAutoDismantleScore[clientToReceiveLoot]) {
-		// the only players this can be true for are the players who are not the loot owner, so we give it to the loot owner
-		// because it is guaranteed to be within the range of loot the loot owner wants.
-		clientToReceiveLoot = lootOwner;
-	}
-	if (GetArraySize(myAugmentIDCodes[clientToReceiveLoot]) < iInventoryLimit) {
+	int clientInventorySize = GetArraySize(myAugmentIDCodes[clientToReceiveLoot]);
+	if (clientInventorySize < iInventoryLimit) {
+		Format(statusMessageToDisplay[client], 64, "Inventory Size %d/%d", clientInventorySize+1, iInventoryLimit);
+		fStatusMessageDisplayTime[client] = GetEngineTime() + 2.0;
 		char entityOwnername[64];
 		Format(entityOwnername, sizeof(entityOwnername), "%s", baseName[lootOwner]);
-		PickupAugment(clientToReceiveLoot, lootOwner, entityClassname, entityOwnername, lootBagPosition, lootPoolToDrawFrom);
+		PickupAugment(clientToReceiveLoot, lootOwner, entityClassname, entityOwnername, lootBagPosition, lootPoolToDrawFrom, client);
 	}
 	else {
-		augmentParts[lootOwner]++;
+		Format(statusMessageToDisplay[clientToReceiveLoot], 64, "Inventory Full.");
+		fStatusMessageDisplayTime[clientToReceiveLoot] = GetEngineTime() + 2.0;
+		return false;
 	}
 	RemoveFromArray(playerLootOnGround[lootOwner], lootBagPosition);	// we remove from the list wherever this bag was - it may not be at the end.
 	RemoveFromArray(playerLootOnGroundId[lootOwner], lootBagPosition);
-	AcceptEntityInput(entity, "Kill");
+	if (IsValidEntity(entity)) AcceptEntityInput(entity, "Kill");
 	return true;
+}
+
+stock void PickupAugment(int client, int owner, char[] ownerSteamID = "none", char[] ownerName = "none", int pos, int lootPoolToDrawFrom, int clientWhoPickedUpTheAugment) {
+	int size = GetArraySize(myAugmentIDCodes[client]);
+	ResizeArray(myAugmentIDCodes[client], size+1);
+	ResizeArray(myAugmentCategories[client], size+1);
+	ResizeArray(myAugmentOwners[client], size+1);
+	ResizeArray(myAugmentOwnersName[client], size+1);
+	ResizeArray(myAugmentInfo[client], size+1);
+	ResizeArray(myAugmentActivatorEffects[client], size+1);
+	ResizeArray(myAugmentTargetEffects[client], size+1);
+	ResizeArray(myAugmentSavedProfiles[client], size+1);
+	char nosaved[64];
+	Format(nosaved, sizeof(nosaved), "none");
+	SetArrayString(myAugmentSavedProfiles[client], size, nosaved);
+
+	// [0] - category score roll
+	// [1] - category position
+	// [2] - activator score roll
+	// [3] - activator position
+	// [4] - target score roll
+	// [5] = target position
+	// [6] = handicap score bonus (used for upgrading later)
+	//int pos = GetArraySize(playerLootOnGround[owner])-1;
+	char sItemCode[64];
+	GetArrayString(playerLootOnGroundId[owner], pos, sItemCode, sizeof(sItemCode));
+	SetArrayString(myAugmentIDCodes[client], size, sItemCode);
+
+	char buffedCategory[64];
+	if (lootPoolToDrawFrom == 1) GetArrayString(myLootDropCategoriesAllowed[owner], GetArrayCell(playerLootOnGround[owner], pos, 1), buffedCategory, 64);
+	else GetArrayString(myUnlockedLootDropCategoriesAllowed[owner], GetArrayCell(playerLootOnGround[owner], pos, 1), buffedCategory, 64);
+
+	char menuText[64];
+	int len = GetAugmentTranslation(client, buffedCategory, menuText);
+	Format(menuText, 64, "%T", menuText, client);
+
+	SetArrayString(myAugmentCategories[client], size, buffedCategory);
+
+	int augmentItemScore = GetArrayCell(playerLootOnGround[owner], pos);
+	char key[64];
+	GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
+	SetArrayString(myAugmentOwners[client], size, ownerSteamID);
+	SetArrayString(myAugmentOwnersName[client], size, ownerName);
+	SetArrayCell(myAugmentInfo[client], size, augmentItemScore);	// item rating (cell 4 is activatorRating and cell5 is targetRating)
+	SetArrayCell(myAugmentInfo[client], size, 0, 1);			// item cost
+	SetArrayCell(myAugmentInfo[client], size, 0, 2);			// is item for sale
+	SetArrayCell(myAugmentInfo[client], size, -1, 3);			// which augment slot the item is equipped in - -1 for no slot.
+
+
+	int augmentActivatorRating = -1;
+	int augmentTargetRating = -1;
+	char activatorEffects[64];
+	char targetEffects[64];
+
+	int maxpossibleroll = GetArrayCell(playerLootOnGround[owner], pos, 6);
+	SetArrayCell(myAugmentInfo[client], size, maxpossibleroll, 6);
+
+	int maxPossibleActivatorScore = 0;
+	int maxPossibleTargetScore = 0;
+
+	int apos = GetArrayCell(playerLootOnGround[owner], pos, 3);
+	if (apos >= 0) {
+		if (lootPoolToDrawFrom == 1) GetArrayString(myLootDropActivatorEffectsAllowed[owner], apos, activatorEffects, 64);
+		else GetArrayString(myUnlockedLootDropActivatorEffectsAllowed[owner], apos, activatorEffects, 64);
+
+		SetArrayString(myAugmentActivatorEffects[client], size, activatorEffects);
+		augmentActivatorRating = GetArrayCell(playerLootOnGround[owner], pos, 2);
+		maxPossibleActivatorScore = GetArrayCell(playerLootOnGround[owner], pos, 7);
+		SetArrayCell(myAugmentInfo[client], size, maxPossibleActivatorScore, 7);
+	}
+	else {
+		augmentActivatorRating = -1;
+		Format(activatorEffects, 64, "-1");
+		SetArrayString(myAugmentActivatorEffects[client], size, "-1");
+		SetArrayCell(myAugmentInfo[client], size, -1, 7);
+	}
+	SetArrayCell(myAugmentInfo[client], size, augmentActivatorRating, 4);
+
+	int tpos = GetArrayCell(playerLootOnGround[owner], pos, 5);
+	if (tpos >= 0) {
+		if (lootPoolToDrawFrom == 1) GetArrayString(myLootDropTargetEffectsAllowed[owner], tpos, targetEffects, 64);
+		else GetArrayString(myUnlockedLootDropTargetEffectsAllowed[owner], tpos, targetEffects, 64);
+
+		SetArrayString(myAugmentTargetEffects[client], size, targetEffects);
+		augmentTargetRating = GetArrayCell(playerLootOnGround[owner], pos, 4);
+		maxPossibleTargetScore = GetArrayCell(playerLootOnGround[owner], pos, 8);
+		SetArrayCell(myAugmentInfo[client], size, maxPossibleTargetScore, 8);
+	}
+	else {
+		augmentTargetRating = -1;
+		Format(targetEffects, 64, "-1");
+		SetArrayString(myAugmentTargetEffects[client], size, "-1");
+		SetArrayCell(myAugmentInfo[client], size, -1, 8);
+	}
+	SetArrayCell(myAugmentInfo[client], size, augmentTargetRating, 5);
+	char augmentStrengthText[64];
+	if (augmentActivatorRating == -1 && augmentTargetRating == -1) {
+		Format(augmentStrengthText, 64, "{B}Minor");
+	}
+	else {
+		char majorname[64];
+		char perfectname[64];
+		GetAugmentSurname(client, size, majorname, sizeof(majorname), perfectname, sizeof(perfectname), false);
+		if (!StrEqual(majorname, "-1")) Format(majorname, sizeof(majorname), "%t", majorname);
+		if (!StrEqual(perfectname, "-1")) Format(perfectname, sizeof(perfectname), "%t", perfectname);
+		if (!StrEqual(majorname, "-1") && !StrEqual(perfectname, "-1")) Format(augmentStrengthText, 64, "{B}Perfect {O}%s %s", majorname, perfectname);
+		else if (!StrEqual(majorname, "-1")) Format(augmentStrengthText, 64, "{B}Major {O}%s", majorname);
+		else Format(augmentStrengthText, 64, "{B}Major {O}%s", perfectname);
+	}
+	char text[512];
+	Format(text, sizeof(text), "{B}%s {N}{OBTAINTYPE} a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", baseName[clientWhoPickedUpTheAugment], (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
+	if (StrContains(ownerSteamID, key, false) != -1) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "found", true);
+	else {
+		ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "stole", true);
+		Format(text, sizeof(text), "%s {N}from {O}%s", text, ownerName);
+	}
+	if (clientWhoPickedUpTheAugment != client) {
+		Format(text, sizeof(text), "%s {N}but didn't want it and gave it back to {O}%s.", text, baseName[client]);
+	}
+	ReplaceString(text, sizeof(text), "PCT", "%%", true);
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+		Client_PrintToChat(i, true, text);
+	}
+	if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
+	char tquery[512];
+	Format(tquery, sizeof(tquery), "INSERT INTO `%s_loot` (`firstownername`, `firstowner`, `steam_id`, `itemid`, `rating`, `category`, `price`, `isforsale`, `isequipped`, `acteffects`, `actrating`, `tareffects`, `tarrating`, `maxscoreroll`, `maxactroll`, `maxtarroll`) VALUES ('%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%d', '%s', '%d', '%s', '%d', '%d', '%d', '%d');", TheDBPrefix, ownerName, ownerSteamID, key, sItemCode, augmentItemScore, buffedCategory, 0, 0, -1, activatorEffects, augmentActivatorRating, targetEffects, augmentTargetRating, maxpossibleroll, maxPossibleActivatorScore, maxPossibleTargetScore);
+	SQL_TQuery(hDatabase, QueryResults, tquery);
 }

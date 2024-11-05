@@ -27,7 +27,12 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 		return 0.0;
 	}
 	if (GetArraySize(MyTalentStrength[activator]) != ASize) return 0.0;
-
+	// don't let amplify call itself or it's a never-ending loop
+	float fAmplifyPower = 0.0;
+	if (ResultEffects != RESULT_AMPLIFY) {
+		// Any talent with the same trigger but the activation effect of "amplify" will actually increase the power of talents with this ability trigger.
+		fAmplifyPower = GetAbilityStrengthByTrigger(activator, activator, AbilityT, _, _, _, _, RESULT_AMPLIFY, _, true);
+	}
 
 
 
@@ -235,6 +240,13 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 		if (!StrEqual(coherencyTalentNearbyRequired, "-1") && !IsPlayerWithinBuffRange(activator, coherencyTalentNearbyRequired)) continue;
 
 		float fCoherencyRange = GetArrayCell(TriggerValues[activator], COHERENCY_RANGE);
+		
+		int requireEnemyClassInCoherency = GetArrayCell(TriggerValues[activator], REQUIRE_ENEMY_CLASS_IN_COHERENCY);
+		if (requireEnemyClassInCoherency >= 1 && !enemyClassInRange(activator, requireEnemyClassInCoherency, fCoherencyRange)) continue;
+
+		int requireEnemyClassOutOfCoherency = GetArrayCell(TriggerValues[activator], REQUIRE_ENEMY_CLASS_OUT_OF_COHERENCY);
+		if (requireEnemyClassOutOfCoherency >= 1 && enemyClassInRange(activator, requireEnemyClassOutOfCoherency, fCoherencyRange)) continue;
+
 		int requireAllyWithAdren = GetArrayCell(TriggerValues[activator], REQUIRE_ALLY_WITH_ADRENALINE);
 		if (requireAllyWithAdren == 1 && !alliesInRangeWithAdrenaline(activator, fCoherencyRange)) continue;
 
@@ -428,29 +440,37 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 		if (GetArrayCell(TriggerValues[activator], BACKGROUND_TALENT) == 1) bDontActuallyActivate = true;
 		// if (activator == target) Format(MultiplierText, sizeof(MultiplierText), "tS_%s", activatoreffects);
 		// else Format(MultiplierText, sizeof(MultiplierText), "tS_%s", targeteffects);
-		bool bIsStatusEffects = (GetArrayCell(TriggerValues[activator], STATUS_EFFECT_MULTIPLIER) == 1) ? true : false;
+		int multiplicationsRequired = GetArrayCell(TriggerValues[activator], STATUS_EFFECT_MULTIPLIER);
+		int multiplicationsAllowed = (multiplicationsRequired >= 1) ? MyStatusEffects[activator] : 1;
+		if (multiplicationsAllowed < multiplicationsRequired) continue;
 		
+		int iMultiplyLimit = GetArrayCell(TriggerValues[activator], MULTIPLY_LIMIT);
+
 		float fMultiplyRange = GetArrayCell(TriggerValues[activator], MULTIPLY_RANGE);
 		if (fMultiplyRange > 0.0) { // this talent multiplies its strength by the # of a certain type of entities in range.
-			int iMultiplyCount = 0;
 			int typeOfTargetToMultiply = GetArrayCell(TriggerValues[activator], MULTIPLY_TYPE);
 			if (doWeMultiplyThisTargetType(typeOfTargetToMultiply, MULTIPLY_COMMON)) {
-				iMultiplyCount += LivingEntitiesInRangeByType(activator, fMultiplyRange, 0);
+				multiplicationsAllowed += LivingEntitiesInRangeByType(activator, fMultiplyRange, 0);
 			}
 			if (doWeMultiplyThisTargetType(typeOfTargetToMultiply, MULTIPLY_SUPER)) {
-				iMultiplyCount += LivingEntitiesInRangeByType(activator, fMultiplyRange, 1);
+				multiplicationsAllowed += LivingEntitiesInRangeByType(activator, fMultiplyRange, 1);
 			}
 			if (doWeMultiplyThisTargetType(typeOfTargetToMultiply, MULTIPLY_WITCH)) {
-				iMultiplyCount += LivingEntitiesInRangeByType(activator, fMultiplyRange, 2);
+				multiplicationsAllowed += LivingEntitiesInRangeByType(activator, fMultiplyRange, 2);
 			}
 			if (doWeMultiplyThisTargetType(typeOfTargetToMultiply, MULTIPLY_SURVIVOR)) {
-				iMultiplyCount += LivingEntitiesInRangeByType(activator, fMultiplyRange, 3);
+				multiplicationsAllowed += LivingEntitiesInRangeByType(activator, fMultiplyRange, 3);
 			}
 			if (doWeMultiplyThisTargetType(typeOfTargetToMultiply, MULTIPLY_SPECIAL)) {
-				iMultiplyCount += LivingEntitiesInRangeByType(activator, fMultiplyRange, 4);
+				multiplicationsAllowed += LivingEntitiesInRangeByType(activator, fMultiplyRange, 4);
 			}
-			if (iMultiplyCount > 0) p_Strength *= iMultiplyCount;
+			//if (iMultiplyCount > 0) p_Strength *= iMultiplyCount;
 		}
+		if (multiplicationsAllowed > 1) {
+			if (iMultiplyLimit > 0 && multiplicationsAllowed > iMultiplyLimit) multiplicationsAllowed = iMultiplyLimit;
+			p_Strength *= multiplicationsAllowed;
+		}
+		if (multiplicationsAllowed > iMultiplyLimit) multiplicationsAllowed = iMultiplyLimit;
 		fMultiplyRange = GetArrayCell(TriggerValues[activator], STRENGTH_INCREASE_ZOOMED);
 		if (fMultiplyRange > 0.0) {
 			// If we want a cap on when staying zoomed in stops increasing the strength...
@@ -492,21 +512,23 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 			float fEffectActiveTime = GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE);
 			EffectOverTimeActive(activator, i, fEffectActiveTime);
 		}
+		if (fAmplifyPower > 0.0) {
+			LogMessage("Amplify is %3.3f", fAmplifyPower);
+			p_Strength += (fAmplifyPower * p_Strength);
+		}
 		if (bIsCompounding) {
-			if (!bIsStatusEffects) t_Strength += p_Strength;
-			else t_Strength += (p_Strength * MyStatusEffects[activator]);
+			t_Strength += p_Strength;
 		}
 		else {
 			if (!IsOverdriveStacks) {
 				int secondaryTrigger = GetArrayCell(MyUnlockedTalents[activator], pos, 6);
-				if (bIsStatusEffects) p_Strength = (p_Strength * MyStatusEffects[activator]);
 				if (ResultType >= 1) {
 					if (!bDontActuallyActivate) {
 						if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
 						ActivateAbilityEx(activator, targetPlayer, i, damagevalue, targetEffectsInt, p_Strength, p_Time, targetPlayer, _, isRawType,
 											GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffectInt,
 											GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-											abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
+											damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 					}
 				}
 				else {
@@ -515,13 +537,12 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 						ActivateAbilityEx(activator, activator, i, damagevalue, activatorEffectsInt, p_Strength, p_Time, targetPlayer, _, isRawType,
 																	GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffectInt,
 																	GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
-																	abilityTrigger, damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
+																	damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 					}
 				}
 			}
 			else {
-				if (!bIsStatusEffects) t_Strength += p_Strength;
-				else t_Strength += (p_Strength * MyStatusEffects[activator]);
+				t_Strength += p_Strength;
 			}
 		}
 		if (!bDontActuallyActivate || bCooldownAlwaysActivates) {

@@ -30,6 +30,10 @@ public Action Timer_ThreatSystem(Handle timer) {
 
 		return Plugin_Stop;
 	}
+	if (ScenarioEndConditionsMet()) {
+		ExecCheatCommand(FindAHumanClient(), "scenario_end");
+		return Plugin_Continue;
+	}
 	//if (IsLegitimateClient(cThreatEnt)) cThreatEnt = -1;
 	iSurvivalCounter++;
 	SortThreatMeter();
@@ -77,14 +81,14 @@ public Action Timer_ThreatSystem(Handle timer) {
 	if (cThreatOld != cThreatTarget || count >= 20) {
 
 		count = 0;
-		if (cThreatEnt > 0) AcceptEntityInput(cThreatEnt, "Kill");
+		if (IsValidEntity(cThreatEnt)) AcceptEntityInput(cThreatEnt, "Kill");
 		cThreatEnt = -1;
 	}
 
 	if (cThreatEnt == -1 && IsLegitimateClientAlive(cThreatTarget)) {
 
 		cThreatEnt = CreateEntityByName("info_goal_infected_chase");
-		if (cThreatEnt > 0) {			
+		if (IsValidEntity(cThreatEnt)) {
 			cThreatEnt = EntIndexToEntRef(cThreatEnt);
 
 			DispatchSpawn(cThreatEnt);

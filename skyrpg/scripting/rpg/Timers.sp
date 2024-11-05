@@ -8,6 +8,13 @@ public Action Timer_EntityOnFire(Handle timer) {
 	}
 
 	float currentEngineTime = GetEngineTime();
+	// this guarantees a tank will start off every finale.
+	if (b_IsFinaleActive && forceTankToSpawnAtTime < currentEngineTime) {
+		forceTankToSpawnAtTime = currentEngineTime + fFinaleDelayToForceTankSummon;
+		if (ActiveTanks() < DirectorTankLimit()) {
+			ExecCheatCommand(FindAnyRandomClient(), "z_spawn_old", "tank auto");
+		}
+	}
 	for (int i = 0; i < GetArraySize(EntityOnFire); i++) {
 		int Client = GetArrayCell(EntityOnFire, i);
 		bool IsClientAlive = IsLegitimateClientAlive(Client);
@@ -33,6 +40,8 @@ public Action Timer_EntityOnFire(Handle timer) {
 		int Owner = GetArrayCell(EntityOnFire, i, 5);
 		int t_Damage = 0;
 		if (Owner != -1) Owner = FindClientByIdNumber(Owner);
+		// yeah, you're not getting off the hook on a debuff just because the owner has disconnected.
+		// you're not going to get that lucky.
 		// if (Owner == -1) {
 		// 	ExtinguishEntity(Client);
 		// 	RemoveFromArray(EntityOnFire, i);
@@ -49,7 +58,7 @@ public Action Timer_EntityOnFire(Handle timer) {
 			char ModelName[64];
 			GetEntPropString(Client, Prop_Data, "m_ModelName", ModelName, sizeof(ModelName));
 			if (IsClientSurvivor ||
-				!IsSpecialCommonInRangeEx(Client, "jimmy") && StrContains(ModelName, "jimmy", false) == -1 && (Owner > 0 && IsFakeClient(Owner) || !IsSpecialCommonInRange(Client, 't'))) {
+				!IsSpecialCommonInRangeEx(Client, "jimmy", -9) && !StrEqualAtPos(ModelName, "jimmy", strlen(ModelName)-9) && (Owner > 0 && IsFakeClient(Owner) || !IsSpecialCommonInRange(Client, 't'))) {
 				if (IsClientAlive) {
 					float ammoStr = IsClientInRangeSpecialAmmo(Client, "D", _, _, t_Damage);
 					if (ammoStr > 0.0) {
@@ -265,6 +274,7 @@ stock void GiveProfileItems(int client) {
 				CreateTimer(0.5, Timer_GiveSecondPistol, client, TIMER_FLAG_NO_MAPCHANGE);
 			}
 		}
+		CreateTimer(0.5, Timer_GiveLaserBeam, client, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
@@ -455,6 +465,14 @@ stock bool NoHealthySurvivors(bool bMustNotBeABot = false) {
 	return true;
 }
 
+stock FindAHumanClient() {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
+		return i;
+	}
+	return 0;
+}
+
 stock HumanSurvivors() {
 
 	int count = 0;
@@ -496,7 +514,7 @@ public Action Timer_GiveMaximumHealth(Handle timer, any client) {
 
 public Action Timer_DestroyCombustion(Handle timer, any entity)
 {
-	if (!IsValidEntity(entity) || entity < 1) return Plugin_Stop;
+	if (!IsValidEntity(entity)) return Plugin_Stop;
 	AcceptEntityInput(entity, "Kill");
 	return Plugin_Stop;
 }
@@ -620,18 +638,6 @@ stock CheckSkyPointsAward(client) {
 	return Plugin_Stop;
 }*/
 
-public Action Timer_BlindPlayer(Handle timer, any client) {
-
-	if (IsLegitimateClient(client)) BlindPlayer(client);
-	return Plugin_Stop;
-}
-
-public Action Timer_FrozenPlayer(Handle timer, any client) {
-
-	if (IsLegitimateClient(client)) FrozenPlayer(client, _, 0);
-	return Plugin_Stop;
-}
-
 stock float GetActiveZoomTime(client) {
 	int listClient = 0;
 	float activeZoomTimeTime = 0.0;
@@ -737,43 +743,6 @@ stock holdingFireCheckToggle(client, bool insert = false) {
 	holdingFireDelayer[client] = INVALID_HANDLE;
 	return Plugin_Stop;
 }*/
-
-public Action Timer_Blinder(Handle timer, any client) {
-
-	if (ISBLIND[client] == INVALID_HANDLE) return Plugin_Stop;
-
-	if (!b_IsActiveRound || !IsLegitimateClient(client) || !IsSpecialCommonInRange(client, 'l')) {
-
-		BlindPlayer(client);
-		KillTimer(ISBLIND[client]);
-		ISBLIND[client] = INVALID_HANDLE;
-		//CloseHandle(ISBLIND[client]);
-		return Plugin_Stop;
-	}
-	return Plugin_Continue;
-}
-
-public Action Timer_Freezer(Handle timer, any client) {
-	if (!b_IsActiveRound || !IsLegitimateClient(client) || !IsPlayerAlive(client) || !IsSpecialCommonInRange(client, 'r')) {
-		/*
-
-			If the client is scorched, they no longer freeze.
-		*/
-		//KillTimer(ISFROZEN[client]);
-		ISFROZEN[client] = INVALID_HANDLE;
-		FrozenPlayer(client, _, 0);
-		return Plugin_Stop;
-	}
-	float Velocity[3];
-	SetEntityMoveType(client, MOVETYPE_WALK);
-	Velocity[0]	=	GetEntPropFloat(client, Prop_Send, "m_vecVelocity[0]");
-	Velocity[1]	=	GetEntPropFloat(client, Prop_Send, "m_vecVelocity[1]");
-	Velocity[2]	=	GetEntPropFloat(client, Prop_Send, "m_vecVelocity[2]");
-	Velocity[2] += 32.0;
-	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, Velocity);
-	SetEntityMoveType(client, MOVETYPE_NONE);
-	return Plugin_Continue;
-}
 
 // public ReadyUp_FwdChangeTeam(client, team) {
 
@@ -1061,7 +1030,7 @@ public Action Timer_IsNotImmune(Handle timer, any client) {
 	return Plugin_Stop;
 }
 
-/*bool ScenarioEndConditionsMet() {
+bool ScenarioEndConditionsMet() {
 	int numberOfLivingHumanSurvivors 	= LivingHumanSurvivors();
 	int numberOfLivingSurvivors	  		= LivingSurvivors();
 	//int numberOfHumanSurvivors		  	= TotalHumanSurvivors();
@@ -1080,7 +1049,7 @@ public Action Timer_IsNotImmune(Handle timer, any client) {
 	// If all living survivors are dead, or they're all hanging from ledges, or they're all incapped/dead/ledged.
 	else if (numberOfLivingSurvivors < 1 || numberOfLivingSurvivors == LedgedSurvivors() || NoHealthySurvivors()) return true;
 	return false;
-}*/
+}
 
 public Action Timer_CheckIfHooked(Handle timer) {
 
@@ -1241,6 +1210,24 @@ stock GetCommonQueueLimit() {
 	return RoundToCeil((AllowedCommons + RaidCommonBoost()) * fCommonQueueLimit);
 }
 
+public Action Timer_EnrageDamageIncreaseDelay(Handle timer) {
+	if (!b_IsActiveRound) {
+		fEnrageDamageIncreaseCurrent = 0.0;
+		return Plugin_Stop;
+	}
+	fEnrageDamageIncreaseCurrent += fEnrageDamageIncrease;
+	return Plugin_Continue;
+}
+
+public Action Timer_EnrageHordeBoostDelay(Handle timer) {
+	if (!b_IsActiveRound) {
+		fEnrageHordeBoostCurrent = 0.0;
+		return Plugin_Stop;
+	}
+	fEnrageHordeBoostCurrent += fEnrageHordeBoost;
+	return Plugin_Continue;
+}
+
 public Action Timer_SettingsCheck(Handle timer) {
 
 	if (!b_IsActiveRound) {
@@ -1254,7 +1241,7 @@ public Action Timer_SettingsCheck(Handle timer) {
 	}
 
 	int RaidLevelCounter = RaidCommonBoost();
-	int EnrageBoost = (IsEnrageActive()) ? RoundToCeil(RaidLevelCounter * fEnrageMultiplier) : 0;
+	int EnrageBoost = (IsEnrageActive()) ? RoundToCeil(RaidLevelCounter * fEnrageHordeBoostCurrent) : 0;
 
 	if (!bIsSettingsCheck) return Plugin_Continue;
 	bIsSettingsCheck = false;
@@ -1297,24 +1284,6 @@ bool IsSurvivorsHealthy() {
 	}
 	return false;
 }
-
-/*public Action:Timer_IsSpecialCommonInRange(Handle:timer) {
-	if (!b_IsActiveRound) return Plugin_Stop;
-	static commonInfected = 0;
-
-	for (new i = 1; i <= MaxClients; i++) {
-		if (!IsLegitimateClientAlive(i)) continue;
-		if (myCurrentTeam[i] != TEAM_SURVIVOR) continue;
-		commonInfected = 0;
-		IsSpecialCommonInRange(i, 'x', _, _, commonInfected);			// kamikazi
-		if (commonInfected > 0) { // if it's a kamikazi, we force it to die, so it can trigger its effects on players in the vicinity.
-			ClearSpecialCommon(commonInfected);
-			commonInfected = 0;
-		}
-		IsSpecialCommonInRange(i, 'X', _, _, commonInfected);			// life drainer
-	}
-	return Plugin_Continue;
-}*/
 
 public Action Timer_RespawnQueue(Handle timer) {
 
@@ -1621,7 +1590,7 @@ public Action Timer_SpecialAmmoData(Handle timer, any client) {
 			f_TimeRemaining -= fSpecialAmmoInterval;
 			if (f_TimeRemaining <= 0.0) {
 				RemoveFromArray(SpecialAmmoData, i);
-				if (WorldEnt > 0 && IsValidEntity(WorldEnt)) AcceptEntityInput(WorldEnt, "Kill");
+				if (IsValidEntity(WorldEnt)) AcceptEntityInput(WorldEnt, "Kill");
 				continue;
 			}
 			// Anything that was changed needs to be reinserted.
@@ -1717,7 +1686,6 @@ public Action Timer_AmmoActiveTimer(Handle timer, any client) {
 	//new currTalentStrength = 0;
 	float talentTimeRemaining = 0.0;
 	int triggerRequirementsAreMet = 0;
-	if (bJumpTime[client]) JumpTime[client] += fSpecialAmmoInterval;
 	// if (!IsFakeClient(client)) {
 	// 	if (!bIsHideThreat[client]) SendPanelToClientAndClose(ShowThreatMenu(client), client, ShowThreatMenu_Init, 1); //ShowThreatMenu(i);
 	// 	else if (DisplayActionBar[client]) ShowActionBar(client);
@@ -1769,7 +1737,7 @@ public Action Timer_ForcedThreat(Handle timer, any client) {
 	if (IsLegitimateClient(client)) {
 
 		ClientActiveStance[client] = 0;
-		if(iChaseEnt[client] > 0 && IsValidEntity(iChaseEnt[client])) AcceptEntityInput(iChaseEnt[client], "Kill");
+		if(IsValidEntity(iChaseEnt[client])) AcceptEntityInput(iChaseEnt[client], "Kill");
 		iChaseEnt[client] = -1;
 	}
 	return Plugin_Stop;
@@ -1804,8 +1772,7 @@ public Action Timer_RemoveActiveCooldown(Handle timer, Handle packi) {
 }
 
 public Action Timer_DeleteLootBag(Handle timer, any entity) {
-	if (!b_IsActiveRound) return Plugin_Stop;
-	if (!IsValidEntity(entity) || entity < 1) return Plugin_Stop;
+	if (!IsValidEntity(entity)) return Plugin_Stop;
 
 	char text[512];
 	GetEntPropString(entity, Prop_Data, "m_iName", text, sizeof(text));

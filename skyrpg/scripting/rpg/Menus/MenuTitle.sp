@@ -21,8 +21,9 @@ stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bo
 
 		int CheckRPGMode = iRPGMode;
 		if (CheckRPGMode > 0) {
+			int thisLayerUpgradeStrength = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1);
 
-			bool bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1) >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
+			bool bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || fUpgradesRequiredPerLayer > 1.0 && thisLayerUpgradeStrength >= RoundToCeil(fUpgradesRequiredPerLayer) || fUpgradesRequiredPerLayer <= 1.0 && thisLayerUpgradeStrength >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
 
 			int TotalPoints = TotalPointsAssigned(client);
 			char PlayerLevelText[256];
@@ -44,7 +45,7 @@ stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bo
 						//int allUpgradesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, true);//true for skip attributes, too?
 						//int totalPossibleNodesThisLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true);
 						int totalPossibleNodesThisLayerWithoutAttributes = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, true, true);
-						int upgradesRequiredThisLayer = RoundToCeil(totalPossibleNodesThisLayerWithoutAttributes * fUpgradesRequiredPerLayer);
+						int upgradesRequiredThisLayer = (fUpgradesRequiredPerLayer <= 1.0) ? RoundToCeil(totalPossibleNodesThisLayerWithoutAttributes * fUpgradesRequiredPerLayer) : RoundToCeil(fUpgradesRequiredPerLayer);
 						if (strengthOfCurrentLayer > upgradesRequiredThisLayer) {
 							strengthOfCurrentLayer = 0;
 							WipeTalentPoints(client);

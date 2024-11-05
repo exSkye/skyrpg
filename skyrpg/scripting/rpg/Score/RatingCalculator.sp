@@ -201,28 +201,24 @@ stock float GetTankingContribution(survivor, infected) {
 	return ((DamageTaken * 1.0) / (TotalHealth * 1.0));
 }
 
-stock TruRating(client) {
-
-	int TrueRating = (IsFakeClient(client)) ? RatingPerLevelSurvivorBots : RatingPerLevel;
-	//TrueRating *= PlayerLevel[client];
-	TrueRating *= CartelLevel(client);
-	TrueRating += Rating[client];
-	return TrueRating;
-}
-
 stock GetDifficultyRating(client) {
 	if (!IsLegitimateClient(client) || myCurrentTeam[client] != TEAM_SURVIVOR || !b_IsLoaded[client]) return 1;
 	bool isClientFake = IsFakeClient(client);
 	int iRatingPerLevel = (RatingPerLevel < 1 && !isClientFake || RatingPerLevelSurvivorBots < 1 && isClientFake) ? 0 : (!isClientFake) ? RatingPerLevel : RatingPerLevelSurvivorBots;
-	if (iRatingPerLevel > 0) iRatingPerLevel *= TotalPointsAssigned(client);
+	int iRatingPerTalentLevel = RatingPerTalentPoint;
+	if (iRatingPerLevel > 0) {
+		iRatingPerTalentLevel *= TotalPointsAssigned(client);
+		iRatingPerLevel *= PlayerLevel[client];
+	}
 	int trueAugmentLevel = (!isClientFake && playerCurrentAugmentLevel[client] > 0) ? playerCurrentAugmentLevel[client] * RatingPerAugmentLevel : 0;
 	//if (iRatingPerAugmentLevel < 0) iRatingPerAugmentLevel = 0;
-	return iRatingPerLevel + trueAugmentLevel + Rating[client];
+	return iRatingPerLevel + iRatingPerTalentLevel + trueAugmentLevel + Rating[client];
 }
 
 stock ReceiveInfectedDamageAward(client, infected, e_reward, float p_reward, t_reward, h_reward , bu_reward, he_reward, bool TheRoundHasEnded = false) {
 	int RPGMode									= iRPGMode;
 	if (RPGMode < 0) return;
+	PrintToChat(client, "%T", "exited combat", client, orange);
 	//new RPGBroadcast							= StringToInt(GetConfigValue("award broadcast?"));
 	char InfectedName[64];
 	//decl String:InfectedTeam[64];
@@ -307,36 +303,42 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, float p_reward, t_r
 	if (RPGMode > 0 && PlayerLevel[client] < iMaxLevel) {
 		if (!TheRoundHasEnded && DisplayType > 0 && (infected == 0 || enemytype > 0)) {								// \x04Jockey \x01killed: \x04 \x03experience
 			char rewardText[64];
+
 			if (e_reward > 0) {
 				AddCommasToString(e_reward, rewardText, sizeof(rewardText));
-				if (infected > 0) PrintToChat(client, "%T", "base experience reward", client, orange, InfectedName, white, green, rewardText, blue);
-				else if (infected == 0) PrintToChat(client, "%T", "damage experience reward", client, orange, green, white, green, rewardText, blue);
+				if (infected > 0) PrintToChat(client, "%T", "base experience reward", client, orange, InfectedName, orange, blue, rewardText, green, blue);
+				else if (infected == 0) PrintToChat(client, "%T", "damage experience reward", client, orange, blue, rewardText, green, blue);
+				AddAttributeExperience(client, ATTRIBUTE_AGILITY, e_reward);
 			}
 			if (DisplayType == 2) {
 				if (RestedAwardBonus > 0) {
 					AddCommasToString(RestedAwardBonus, rewardText, sizeof(rewardText));
-					PrintToChat(client, "%T", "rested experience reward", client, green, white, green, rewardText, blue);
+					PrintToChat(client, "%T", "rested experience reward", client, orange, blue, rewardText, green, blue);
 				}
 				if (ExperienceBooster > 0) {
 					AddCommasToString(ExperienceBooster, rewardText, sizeof(rewardText));
-					PrintToChat(client, "%T", "booster experience reward", client, green, white, green, rewardText, blue);
+					PrintToChat(client, "%T", "booster experience reward", client, orange, blue, rewardText, green, blue);
 				}
 			}
 			if (t_reward > 0) {
 				AddCommasToString(t_reward, rewardText, sizeof(rewardText));
-				PrintToChat(client, "%T", "tanking experience reward", client, green, white, green, rewardText, blue);
+				PrintToChat(client, "%T", "tanking experience reward", client, orange, blue, rewardText, green, blue);
+				AddAttributeExperience(client, ATTRIBUTE_CONSTITUTION, t_reward);
 			}
 			if (h_reward > 0) {
 				AddCommasToString(h_reward, rewardText, sizeof(rewardText));
-				PrintToChat(client, "%T", "healing experience reward", client, green, white, green, rewardText, blue);
+				PrintToChat(client, "%T", "healing experience reward", client, orange, blue, rewardText, green, blue);
+				AddAttributeExperience(client, ATTRIBUTE_ENDURANCE, h_reward);
 			}
 			if (bu_reward > 0) {
 				AddCommasToString(bu_reward, rewardText, sizeof(rewardText));
-				PrintToChat(client, "%T", "buffing experience reward", client, green, white, green, rewardText, blue);
+				PrintToChat(client, "%T", "buffing experience reward", client, orange, blue, rewardText, green, blue);
+				AddAttributeExperience(client, ATTRIBUTE_ENDURANCE, bu_reward);
 			}
 			if (he_reward > 0) {
 				AddCommasToString(he_reward, rewardText, sizeof(rewardText));
-				PrintToChat(client, "%T", "hexing experience reward", client, green, white, green, rewardText, blue);
+				PrintToChat(client, "%T", "hexing experience reward", client, orange, blue, rewardText, green, blue);
+				AddAttributeExperience(client, ATTRIBUTE_ENDURANCE, he_reward);
 			}
 		}
 		int TotalExperienceEarned = (e_reward + RestedAwardBonus + ExperienceBooster + t_reward + h_reward + bu_reward + he_reward);

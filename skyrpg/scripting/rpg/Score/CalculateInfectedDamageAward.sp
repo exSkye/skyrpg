@@ -26,17 +26,26 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 	//new Float:RatingReductionMult = 0.0;
 	int t_Contribution = 0;
 	float TheAbilityMultiplier = 0.0;
-	if (IsLegitimateClientKiller && ClientType == 0 && killerClientTeam == TEAM_SURVIVOR) {
-		GetAbilityStrengthByTrigger(killerblow, client, TRIGGER_specialkill);
-		TheAbilityMultiplier = GetAbilityMultiplier(killerblow, "I");
-		if (TheAbilityMultiplier > 0.0) { // heal because you dealt the killing blow
-			HealPlayer(killerblow, killerblow, TheAbilityMultiplier * GetMaximumHealth(killerblow), 'h', true);
+	if (IsLegitimateClientKiller && killerClientTeam == TEAM_SURVIVOR) {
+		int weaponEntity = GetEntPropEnt(killerblow, Prop_Data, "m_hActiveWeapon");
+		if (bHasChainsaw[killerblow]) {
+			int fuelRemaining = GetEntProp(weaponEntity, Prop_Data, "m_iClip1");
+			if (fuelRemaining < 30) {
+				SetEntProp(weaponEntity, Prop_Data, "m_iClip1", fuelRemaining + 1);
+			}
 		}
-		TheAbilityMultiplier = GetAbilityMultiplier(killerblow, "l");
-		if (TheAbilityMultiplier > 0.0) {
-			// Creates fire on the target and deals AOE explosion.
-			CreateExplosion(client, RoundToCeil(lastBaseDamage[killerblow] * TheAbilityMultiplier), killerblow, true);
-			CreateFireEx(client);
+		if (ClientType == 0) {
+			GetAbilityStrengthByTrigger(killerblow, client, TRIGGER_specialkill);
+			TheAbilityMultiplier = GetAbilityMultiplier(killerblow, "I");
+			if (TheAbilityMultiplier > 0.0) { // heal because you dealt the killing blow
+				HealPlayer(killerblow, killerblow, TheAbilityMultiplier * GetMaximumHealth(killerblow), 'h', true);
+			}
+			TheAbilityMultiplier = GetAbilityMultiplier(killerblow, "l");
+			if (TheAbilityMultiplier > 0.0) {
+				// Creates fire on the target and deals AOE explosion.
+				CreateExplosion(client, RoundToCeil(lastBaseDamage[killerblow] * TheAbilityMultiplier), killerblow, true);
+				CreateFireEx(client);
+			}
 		}
 	}
 	//new owner = 0;
@@ -48,11 +57,10 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 		char TheEffect[10];
 		posOverride = FindListPositionByEntity(client, CommonAffixes);
 		GetCommonValueAtPosEx(TheEffect, sizeof(TheEffect), superPos, SUPER_COMMON_AURA_EFFECT);
-		CreateBomberExplosion(client, client, TheEffect);	// bomber aoe
+		CreateBomberExplosion(client, client, TheEffect, _, superPos);	// bomber aoe
 	}
 	int iLivingSurvivors = LivingSurvivors();
-	//decl String:MyName[64];
-	char killerName[64];
+
 	char killedName[64];
 	if (ClientType != 3 && (ClientType > 0 || IsLegitimateClientClient)) {
 		if (IsLegitimateClientClient) GetClientName(client, killedName, sizeof(killedName));
@@ -66,13 +74,7 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 		if (iClientTypeToDisplayOnKill == -1 || ClientType <= iClientTypeToDisplayOnKill) {
 			if (!IsLegitimateClientKiller) PrintToChatAll("%t", "killed special infected", orange, killedName, white);
 			else {
-				GetFormattedPlayerName(killerblow, killerName, sizeof(killerName));
-				char advertisement[512];
-				Format(advertisement, sizeof(advertisement), "%t", "player killed special infected", blue, killerName, white, orange, killedName);
-				for (int i = 1; i <= MaxClients; i++) {
-					if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
-					Client_PrintToChat(i, true, advertisement);
-				}
+				PrintToChatAll("%t", "player killed special infected", blue, baseName[killerblow], white, orange, killedName);
 			}
 		}
 	}
@@ -97,7 +99,11 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 		SurvivorPoints = 0.0;
 		i_DamageContribution = 0.0000;
 
-		if (!IsLegitimateClient(i) || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
+		if (!IsLegitimateClient(i) || myCurrentTeam[i] != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
+		if (iAntiFarmMax > 0) {
+			if (CheckKillPositions(i)) continue;
+			CheckKillPositions(i, true);
+		}
 		if (ClientType == CLIENT_COMMON) {
 			pos = FindListPositionByEntity(client, CommonInfected[i]);
 			if (pos == -1) continue;
@@ -125,7 +131,6 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 
 			SurvivorDamage = GetArrayCell(SpecialCommon[i], pos, 2);
 		}
-		if (!IsPlayerAlive(i)) continue;
 		// to prevent abuse farming of higher handicap levels, players must contribute a certain percentage in at least one category.
 		float scoreMult = GetScoreMultiplier(i);
 		if (scoreMult > 0.0) {
@@ -136,15 +141,11 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 				RatingBonusHealing = RoundToCeil(GetRatingRewardForHealing(i, client, pos, ClientType, infectedDamageTrackerPos) * scoreMult);
 			}
 		}
-		if (iAntiFarmMax > 0) {
-			if (CheckKillPositions(i)) continue;
-			CheckKillPositions(i, true);
-		}
 		if (killerblow != i) GetAbilityStrengthByTrigger(i, client, TRIGGER_assist);
 		if (RatingBonus > 0 || RatingBonusTank > 0 || RatingBonusBuffing > 0 || RatingBonusHealing > 0) RollLoot(i, client);
 		if (!bSomeoneHurtThisInfected) bSomeoneHurtThisInfected = true;
 		CheckMinimumRate(i);
-		if (PlayerLevel[i] >= iLevelRequiredToEarnScore || handicapLevel[i] > 0) {
+		if (handicapLevel[i] > 0) {
 			
 			char ratingBonusText[64];
 			char ratingBonusTankText[64];
@@ -331,7 +332,7 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 			numberOfCommonsKilledThisRound++;
 		}
 	}
-	if (IsLegitimateClientClient && clientTeam == TEAM_INFECTED) {
+	if (ClientType == CLIENT_SPECIAL_INFECTED) {
 
 		if (clientZombieClass == ZOMBIECLASS_TANK) bIsDefenderTank[client] = false;
 
@@ -351,5 +352,9 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 
 			b_IsFinaleTanks = true;	// next time the event tank spawns, it will allow it to spawn multiple tanks.
 		}
+	}
+	else {
+		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+		SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
 	}
 }

@@ -21,53 +21,33 @@ stock GetStatusEffects(client, EffectType = 0, char[] theStringToStoreItIn, theS
 		if (DoomTimer != 0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Dm%d]", theStringToStoreItIn, iDoomTimer - DoomTimer);
 		if (bIsSurvivorFatigue[client]) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Fa]", theStringToStoreItIn);
 
-		if (FireCount > 0) iNumStatusEffects++;
-		if (FireCount >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bu++]", theStringToStoreItIn);
-		else if (FireCount >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bu++]", theStringToStoreItIn);
-		else if (FireCount > 0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bu]", theStringToStoreItIn);
+		if (FireCount > 0) {
+			iNumStatusEffects++;
+			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bu]", theStringToStoreItIn);
+		}
 
-		if (AcidCount > 0) iNumStatusEffects++;
-		if (AcidCount >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ab++]", theStringToStoreItIn);
-		else if (AcidCount >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ab+]", theStringToStoreItIn);
-		else if (AcidCount > 0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ab]", theStringToStoreItIn);
+		if (AcidCount > 0) {
+			iNumStatusEffects++;
+			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ab]", theStringToStoreItIn);
+		}
 
 		Count = GetClientStatusEffect(client, STATUS_EFFECT_REFLECT);
-		if (Count > 0) iNumStatusEffects++;
-		if (Count >= 3) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Re++]", theStringToStoreItIn);
-		else if (Count >= 2) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Re+]", theStringToStoreItIn);
-		else if (Count > 0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Re]", theStringToStoreItIn);
-
-		if (ISBLIND[client] != INVALID_HANDLE) {
-
-			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bl]", theStringToStoreItIn);
+		if (Count > 0) {
 			iNumStatusEffects++;
+			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Re]", theStringToStoreItIn);
 		}
+
 		if (ISEXPLODE[client] != INVALID_HANDLE || IsClientInRangeSpecialAmmo(client, "x") > 0.0) {
 
 			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Ex]", theStringToStoreItIn);
 			iNumStatusEffects++;
 		}
-		if (ISFROZEN[client] != INVALID_HANDLE) {
+		if (FreezerInRange[client]) {
 
 			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Fr]", theStringToStoreItIn);
 			iNumStatusEffects++;
 		}
-		float isSlowSpeed = IsClientInRangeSpecialAmmo(client, "s");
-		if (ISSLOW[client] || isSlowSpeed > 0.0) {
-			if (isSlowSpeed > 0.0) playerInSlowAmmo[client] = true;
-			else playerInSlowAmmo[client] = false;
-			if (fSlowSpeed[client] == 1.0) {
-				if (ISSLOW[client]) ISSLOW[client] = false;
-			}
-			else {
-				if (fSlowSpeed[client] < 1.0) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Sl]", theStringToStoreItIn);
-				else Format(theStringToStoreItIn, theSizeOfTheString, "%s[Sp]", theStringToStoreItIn);
-				iNumStatusEffects++;
-			}
-		}
-		//if (ISSLOW[client] != INVALID_HANDLE) Format(theStringToStoreItIn, theSizeOfTheString, "[Sl]%s", theStringToStoreItIn);
-		
-		if (ISFROZEN[client] != INVALID_HANDLE && FireCount > 0) {
+		if (FreezerInRange[client] && FireCount > 0) {
 
 			Format(theStringToStoreItIn, theSizeOfTheString, "%s[St]", theStringToStoreItIn);
 			iNumStatusEffects++;
@@ -88,16 +68,9 @@ stock GetStatusEffects(client, EffectType = 0, char[] theStringToStoreItIn, theS
 			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Bi]", theStringToStoreItIn);
 			iNumStatusEffects++;
 		}
-		if (ISDAZED[client] > GetEngineTime()) {
-
-			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Dz]", theStringToStoreItIn);
-			iNumStatusEffects++;
-		}
 		
 		if (bHasWeakness[client] > 0) {
-
-			if (bHasWeakness[client] < 3) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Wk]", theStringToStoreItIn);
-			else Format(theStringToStoreItIn, theSizeOfTheString, "%s[Shadow]", theStringToStoreItIn);
+			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Wk]", theStringToStoreItIn);
 			iNumStatusEffects++;
 		}
 		
@@ -111,7 +84,7 @@ stock GetStatusEffects(client, EffectType = 0, char[] theStringToStoreItIn, theS
 
 		Format(theStringToStoreItIn, theSizeOfTheString, "[+]");
 		if (!bIsInCombat[client]) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Oc]", theStringToStoreItIn);
-		if ((clientButtons & IN_DUCK)) {
+		if ((clientFlags & FL_ONGROUND) && (clientButtons & IN_DUCK)) {
 
 			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Cr]", theStringToStoreItIn);
 			iNumStatusEffects++;

@@ -208,6 +208,8 @@ public void CharacterSheetMenu(client) {
 stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombieclass = 0, attacker = 0) {
 	//new Float:fResult;
 	int iResult;
+	int baseDamage;
+	int baseHealth;
 	float fMultiplier;
 	//new Float:AbilityMultiplier = (request % 2 == 0) ? GetAbilityMultiplier(client, "X", 4) : 0.0;
 	int theCount = LivingSurvivorCount();
@@ -217,21 +219,25 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 						// equal requests return floats
 		//iResult = (iDontStoreInfectedInArray == 1) ? GetCommonBaseHealth() : GetCommonBaseHealth(client);
 		iResult = GetCommonBaseHealth(client);
+		baseDamage = iResult;
 	}
 	// common infected damage
 	if (request == 2) {
 		fMultiplier = fCommonDamageLevel;
 		iResult = iCommonInfectedBaseDamage + RoundToCeil(iCommonInfectedBaseDamage * (myCurrentDifficulty * fMultiplier));
+		baseDamage = iCommonInfectedBaseDamage;
 	}
 	// witch health
 	if (request == 3) {
 		fMultiplier = fWitchHealthMult;
 		iResult = iWitchHealthBase + RoundToCeil(iWitchHealthBase * (myCurrentDifficulty * fWitchHealthMult));
+		baseHealth = iWitchHealthBase;
 	}
 	// witch infected damage
 	if (request == 4) {
 		fMultiplier = fWitchDamageScaleLevel;
 		iResult = iWitchDamageInitial + RoundToCeil(iWitchDamageInitial * (myCurrentDifficulty * fMultiplier));
+		baseDamage = iWitchDamageInitial;
 	}
 	// only if a zombieclass has been specified.
 	if (zombieclass != 0) {
@@ -243,12 +249,14 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 		fMultiplier = fHealthPlayerLevel[zombieclass];
 		iResult = iBaseSpecialInfectedHealth[zombieclass];
 		iResult += RoundToCeil(iResult * (myCurrentDifficulty * fMultiplier));
+		baseHealth = iBaseSpecialInfectedHealth[zombieclass];
 	}
 	// special infected damage
 	if (request == 6) {
 		fMultiplier = fDamagePlayerLevel[zombieclass];
 		iResult = iBaseSpecialDamage[zombieclass];
 		iResult += RoundToFloor(iResult * (myCurrentDifficulty * fMultiplier));
+		baseDamage = iBaseSpecialDamage[zombieclass];
 	}// even requests are for damage.
 	if (request != 7) {
 		if (GetArraySize(HandicapSelectedValues[client]) != 4) SetClientHandicapValues(client, true);
@@ -258,7 +266,7 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 			if (fSurvivorHealthBonus > 0.0 && iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
 			if (handicapLevel[client] > 0) {
 				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 1);
-				int healthBonus = RoundToCeil(iResult * handicapLevelBonus);
+				int healthBonus = RoundToCeil(baseHealth * ((myCurrentDifficulty * fMultiplier) * handicapLevelBonus));
 				if (healthBonus > 0) iResult += healthBonus;
 			}
 		}
@@ -266,7 +274,7 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 			if (fSurvivorDamageBonus > 0.0 && iSurvivorModifierRequired > 0 && theCount >= iSurvivorModifierRequired) iResult += RoundToCeil(iResult * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorDamageBonus));
 			if (handicapLevel[client] > 0) {
 				handicapLevelBonus = GetArrayCell(HandicapSelectedValues[client], 0);
-				int damageBonus = RoundToCeil(iResult * handicapLevelBonus);
+				int damageBonus = RoundToCeil(baseDamage * ((myCurrentDifficulty * fMultiplier) * handicapLevelBonus));
 				if (damageBonus > 0) iResult += damageBonus;
 			}
 		}
