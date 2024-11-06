@@ -6,14 +6,17 @@ public Action OnPlayerRunCmd(client, &buttons) {
 	bool IsBiledOn = ISBILED[client];
 	float TheTime = GetEngineTime();
 	int MyAttacker = L4D2_GetInfectedAttacker(client);
-	bool isRunning = (buttons & IN_SPEED) ? true : false;
+	bool isHoldingShift = (buttons & IN_SPEED) ? true : false;
+	clientIsWalking[client] = isHoldingShift;
 	bool isMoving = (buttons & (IN_FORWARD|IN_BACK|IN_MOVELEFT|IN_MOVERIGHT)) ? true : false;
 	if (iExperimentalMode == 1 && clientIsSurvivor && !IsFakeClient(client)) {
-		if (isRunning && !bIsSurvivorFatigue[client]) {
+		if (isHoldingShift && !bIsSurvivorFatigue[client]) {
 			buttons &= ~IN_SPEED;
+			clientIsWalking[client] = false;
 		}
 		else if (isMoving) {
 			buttons |= IN_SPEED;
+			clientIsWalking[client] = true;
 		}
 	}
 
@@ -260,7 +263,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 				if (bJetpack[client] && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && (!isClientHoldingJetpackKeys || IsJetpackBroken || MyAttacker != -1)) {
 					ToggleJetpack(client, true);
 				}
-				bool isSprinting = (iExperimentalMode == 1 && isRunning && isMoving) ? true : false;
+				bool isSprinting = (iExperimentalMode == 1 && isHoldingShift && isMoving) ? true : false;
 				if ((bJetpack[client] || !bJetpack[client] && !isClientOnSolidGround) ||
 					isClientHoldingJetpackKeys && SurvivorStamina[client] >= ConsumptionInt && !bIsSurvivorFatigue[client] ||
 					isSprinting) {

@@ -525,6 +525,7 @@ stock LoadMainConfig() {
 	fAttributeMultiplier[5]				= GetConfigValueFloat("luck multiplier?", 0.01);
 	fAttributeModifier[5]				= GetConfigValueFloat("luck xp modifier?", 0.1);
 	fGoverningAttributeModifier			= GetConfigValueFloat("governing attribute xp modifier?", 0.1);
+	iFancyBorders						= GetConfigValueInt("fancy borders?", 1);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");

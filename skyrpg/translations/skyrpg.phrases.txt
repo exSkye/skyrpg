@@ -865,7 +865,7 @@
 	"Survivor Sheet Info"
 	{
 		"#format"			"{1:s}"
-		"en"				"{PLAYTIME}\nMax Health: {MYHP}\nAvg Augment Score: {AUGAVGLVL}\nHealth RGN: {HPRGN}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}\n \nConstitution:  {CON}\nAgility:\t\t\t{AGI}\nResilience:\t {RES}\nTechnique:\t {TEC}\nEndurance:\t{END}\nLuck:\t\t\t {LUC}\n \nMelee Heal: {HEALSTRMEL}\nBullet Heal: {HEALSTRGUN}"
+		"en"				"{PLAYTIME}\nMax Health: {MYHP}\nAvg Augment Score: {AUGAVGLVL}\nHealth RGN: {HPRGN}\nMax Stamina: {MYSTAM}\nDamage: {WDMG}\nMelee Heal: {HEALSTRMEL}\nBullet Heal: {HEALSTRGUN}"
 	}
 	"Infected Sheet Info"
 	{

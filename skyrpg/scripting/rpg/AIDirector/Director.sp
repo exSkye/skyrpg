@@ -24,7 +24,7 @@ public Action Timer_DirectorPurchaseTimer(Handle timer) {
 	}
 	else if (iTankRush == 0) {
 		float fCurrentTime = GetEngineTime();
-		if (iInfectedCount < (iSurvivors + iSurvivorBots) && fInfectedSpawnDelay < fCurrentTime) {
+		if (fInfectedSpawnDelay < fCurrentTime && iInfectedCount < GetSpecialInfectedLimit()) {
 
 			float fSpawnHandicap = fSpecialInfectedDelayHandicap * LivingSerfs;
 
@@ -37,23 +37,7 @@ public Action Timer_DirectorPurchaseTimer(Handle timer) {
 			float fSpawnDelayNext = GetRandomFloat(fSpawnMinWait, fSpawnMaxWait);
 
 			fInfectedSpawnDelay = fCurrentTime + fSpawnDelayNext;
-			SpawnAnyInfected(theClient);
-		}
-	}
-	if (requiredAlwaysTanks != 0) {
-
-		if (theTankStartTime == -1) theTankStartTime = GetConfigValueInt("tank rush delay?");//theTankStartTime = GetRandomInt(30, 60);
-		if (theTankStartTime == 0 || RPGRoundTime(true) >= theTankStartTime) {
-
-			theTankStartTime = 0;
-
-			if (iInfectedCount - iTankCount < (iSurvivors)) SpawnAnyInfected(theClient);
-			//if (!b_IsFinaleActive && iTankCount < iTankLimit && iTankCount < iTanksAlways) {
-			// no finale active			don't force on this server		or if we do and not on cooldown
-			if (!b_IsFinaleActive && (iTanksAlwaysEnforceCooldown == 0 || f_TankCooldown == -1.0) && ((requiredAlwaysTanks > 0 && iTankCount < iTankLimit + requiredAlwaysTanks) || (requiredAlwaysTanks == 0 && iTankCount < iSurvivors + iSurvivorBots))) {
-
-				if (IsLegitimateClientAlive(theClient))	ExecCheatCommand(theClient, "z_spawn_old", "tank auto");
-			}
+			if (!SurvivorsBeingQuiet()) SpawnAnyInfected(theClient);
 		}
 	}
 	if (Counter == -1 || b_IsSurvivalIntermission || LivingSerfs < 1) {

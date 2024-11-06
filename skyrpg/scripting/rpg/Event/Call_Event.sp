@@ -416,7 +416,8 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 				int ensnareBonus = RaidCommonBoost(_, true);
 				if (ensnareBonus < 1) ensnareBonus = 1;
 				if (IsEnsnarer(attacker)) {
-					if (iInfectedLimit == -2 && iEnsnaredCount > ensnareBonus ||
+					if (iInfectedLimit == -3 && iEnsnaredCount > RoundToCeil((livingSurvivors * 1.0) / 2.0) ||
+					iInfectedLimit == -2 && iEnsnaredCount > ensnareBonus ||
 					iInfectedLimit == -1 ||
 					iInfectedLimit == 0 && iEnsnaredCount > livingSurvivors ||
 					iInfectedLimit > 0 && iEnsnaredCount > iInfectedLimit ||

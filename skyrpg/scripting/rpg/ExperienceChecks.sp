@@ -56,6 +56,7 @@ void AddAttributeExperience(int client, int attribute, int experience, bool clie
 	// if the client is loading, set their total experience acquired.
 	if (clientDataIsLoading) SetArrayCell(attributeData[client], attribute, experience, 3);
 	else {
+		if (GetArraySize(attributeData[client]) != 6) return;
 		// applies a modifier to the amount of experience earned based on the attribute.
 		experience = RoundToCeil(experience * fAttributeModifier[attribute]);
 		// client is earning experience through activity, add it to their total experience for this attribute.

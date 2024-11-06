@@ -683,7 +683,7 @@ stock void FindRandomSurvivorClient(int client, bool bIsTeleportTo = false, bool
 	return false;
 }*/
 
-stock CheckTankSubroutine(tank, survivor = 0, damage = 0, bool TankIsVictim = false) {
+stock void CheckTankSubroutine(int tank, int survivor = 0, int damage = 0, bool TankIsVictim = false) {
 
 	if (iRPGMode == -1) return;
 	if (!IsLegitimateClientAlive(tank) || FindZombieClass(tank) != ZOMBIECLASS_TANK) return;	
@@ -4924,6 +4924,10 @@ public OnEntityCreated(entity, const char[] classname) {
 stock OnEntityCreatedEx(entity, const char[] classname, bool creationOverride = false) {
 	bool bIsCommonInfected = IsCommonInfected(entity);
 	bool bIsWitch = (!bIsCommonInfected) ? IsWitch(entity) : false;
+	if (!b_IsActiveRound && bIsCommonInfected) {
+		AcceptEntityInput(entity, "Kill");
+		return;
+	}
 	if (bIsWitch || bIsCommonInfected) {
 		//SetInfectedHealth(entity, 50000);
 		if (bIsWitch) OnWitchCreated(entity);
@@ -4948,6 +4952,14 @@ stock OnEntityCreatedEx(entity, const char[] classname, bool creationOverride = 
 		}
 		//SDKHook(entity, SDKHook_TraceAttack, OnTraceAttack);
 	}
+}
+
+bool SurvivorsBeingQuiet() {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClientAlive(i) || IsFakeClient(i) || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
+		if (!clientIsWalking[i]) return false;
+	}
+	return true;
 }
 
 bool IsWitch(entity) {

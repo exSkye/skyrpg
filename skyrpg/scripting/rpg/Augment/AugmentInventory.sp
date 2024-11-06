@@ -282,7 +282,7 @@ public Handle Inspect_Augment(client, slot) {
 	AddCommasToString(augmentParts[client], scrap, 64);
 	char augAvgLvl[64];
 	AddCommasToString(playerCurrentAugmentAverageLevel[client], augAvgLvl, 64);
-	Format(text, sizeof(text), "Avg Augment Lv. %s\nScrap: %s\n \n%s\n%s", augAvgLvl, scrap, augmentName, augmentCategory);
+	Format(text, sizeof(text), "Avg Augment Lv. %s\nMaterials: %s\n \n%s\n%s", augAvgLvl, scrap, augmentName, augmentCategory);
 	if (!StrEqual(augmentActivator, "-1")) Format(text, sizeof(text), "%s\n%s", text, augmentActivator);
 	if (!StrEqual(augmentTarget, "-1")) Format(text, sizeof(text), "%s\n%s", text, augmentTarget);
 	Format(text, sizeof(text), "%s\n \n", text);

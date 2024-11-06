@@ -19,7 +19,7 @@ void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int
 	if (healthCost > 0) SetClientTotalHealth(activator, activator, healthCost);
 
 	if (g_TalentStrength > 0.0) {
-		float fAmplifyPower = GetAbilityStrengthByTrigger(activator, activator, TRIGGER_amplify, _, _, _, _, effectInt, _, true);
+		float fAmplifyPower = GetAbilityStrengthByTrigger(activator, target, TRIGGER_amplify, _, _, _, _, effectInt, _, true);
 		fAmplifyPower *= g_TalentStrength;
 		g_TalentStrength += fAmplifyPower;
 		// When a node successfully fires, it can call custom ability triggers.

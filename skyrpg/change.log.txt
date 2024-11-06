@@ -1,3 +1,23 @@
+Version 4.4.x
+	- Added some new cvars for config.cfg that may not necessarily be in there, but will set default values if not.
+		"fancy borders?"	"1"	-> Puts a bunch of ----- around the +x crafting materials earned...
+						This is part of a feature I was developing.
+		The rest of the cvars are the attribute leveling cvars.
+		They were introduced in 4.3.x but are not explained.
+		"constitution xp modifier?"	-> the attribute xp modifier multiples the xp earned to determine the attribute
+						experience earned.
+		"governing attribute xp modifier?" -> All talents are governed by an attribute. When a talent fires, the player
+						earns experience for that attribute depending on this modifier.
+		"constitution multiplier?"	-> like the xp modifier exists for all attributes. This determines the bonus it
+						applies to talents it governs for each attribute level.
+		"attribute start xp requirement?" 	"100000"
+						-> the start xp requirement is the requirement to advance beyond level 1.
+		"attribute experience multiplier?"	"0.18"
+						-> the amount to raise the attribute xp requirement on levelup.
+
+	- This concludes the official feature updates.
+	Future updates will be bug fixes, if any issues arise.
+
 Version 4.3.x
 	- Redesigned CARTEL attribute system to be a leveling system where experience is earned for doing different actions
 	  and based on the governing attribute of firing talents.

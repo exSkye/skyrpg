@@ -30,7 +30,9 @@ stock bool IsClientInRangeSpecialAmmoBoolean(client, char[] EffectT = "any") {
 		// TalentInfo[2] = Talent Damage
 		// TalentInfo[3] = Talent Interval
 		int owner = FindClientByIdNumber(GetArrayCell(SpecialAmmoData, i, 7));
+		if (!IsLegitimateClientAlive(owner)) continue;
 		int pos			= GetArrayCell(SpecialAmmoData, i, 3);
+		if (pos < 0) continue;
 		if (!StrEqual(EffectT, "any")) {
 			IsClientInRangeSAValues[owner]				= GetArrayCell(a_Menu_Talents, pos, 1);
 			GetArrayString(IsClientInRangeSAValues[owner], SPELL_AMMO_EFFECT, value, sizeof(value));
@@ -81,6 +83,7 @@ stock float IsClientInRangeSpecialAmmo(client, char[] EffectT, AmmoPosition = -1
 		// TalentInfo[2] = Talent Damage
 		// TalentInfo[3] = Talent Interval
 		int owner = FindClientByIdNumber(GetArrayCell(SpecialAmmoData, i, 7));
+		if (!IsLegitimateClientAlive(owner)) continue;
 		int pos			= GetArrayCell(SpecialAmmoData, i, 3);
 		if (pos < 0) continue;
 		IsClientInRangeSAValues[owner]				= GetArrayCell(a_Menu_Talents, pos, 1);

@@ -39,9 +39,12 @@ stock RollLoot(client, enemyClient) {
 	}
 	if (numOfAugmentPartsToReturn > 0) {
 		augmentParts[client] += numOfAugmentPartsToReturn;
-		if (numOfAugmentPartsToReturn > 1) {
-			char text[64];
-			Format(text, 64, "{G}+%d {O}scrap", numOfAugmentPartsToReturn);
+		if (numOfAugmentPartsToReturn > 0) {
+			char text[512];
+			Format(text, sizeof(text), "{G}+%d {O}Crafting {B}Materials", numOfAugmentPartsToReturn);
+			if (iFancyBorders == 1) {
+				Format(text, sizeof(text), "{O}-----------------------\n%s\n{O}-----------------------", text);
+			}
 			Client_PrintToChat(client, true, text);
 		}
 	}

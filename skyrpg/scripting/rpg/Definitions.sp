@@ -17,7 +17,7 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v4.3"
+#define PLUGIN_VERSION					"v4.4"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"skyy"
 #define PLUGIN_NAME						"RPG Construction Set"
@@ -514,6 +514,8 @@
 #define ATTRIBUTE_ENDURANCE		4
 #define ATTRIBUTE_LUCK			5
 
+bool clientIsWalking[MAXPLAYERS + 1];
+int iFancyBorders;
 float fGoverningAttributeModifier;
 float fAttributeModifier[6];
 float fAttributeMultiplier[6];

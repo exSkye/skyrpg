@@ -112,11 +112,12 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 				// because it is guaranteed to be within the range of loot the loot owner wants.
 				Format(statusMessageToDisplay[client], 64, "You don't want this loot.");
 				fStatusMessageDisplayTime[client] = GetEngineTime() + 2.0;
-				return false;
+				clientToReceiveLoot = lootOwner;
+				//return false;
 			}
-			clientToReceiveLoot = client;
+			else clientToReceiveLoot = client;
 		}
-		else return false;
+		else clientToReceiveLoot = lootOwner;
 	}
 	int clientInventorySize = GetArraySize(myAugmentIDCodes[clientToReceiveLoot]);
 	if (clientInventorySize < iInventoryLimit) {
