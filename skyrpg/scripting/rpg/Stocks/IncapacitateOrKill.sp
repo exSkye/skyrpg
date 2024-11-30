@@ -115,7 +115,7 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool bIsFalling 
 			if (attacker > 0) GetAbilityStrengthByTrigger(attacker, client, TRIGGER_e, _, healthvalue);
 			if (IsLegitimateClientAlive(attacker) && FindZombieClass(attacker) == ZOMBIECLASS_TANK) {
 
-				if (IsFakeClient(attacker)) ChangeTankState(attacker, "death");
+				if (IsFakeClient(attacker)) ChangeTankState(attacker, TANKSTATE_DEATH);
 			}
 			if (!IsFakeClient(client)) SavePlayerData(client);
 		}
@@ -124,7 +124,7 @@ stock IncapacitateOrKill(client, attacker = 0, healthvalue = 0, bool bIsFalling 
 }
 
 void CheckForRatingLossOnDeath(int client) {
-	if (fRatingPercentLostOnDeath > 0.0) {
+	if (iHandicapLevelsAreScoreBased == 1 && PlayerLevel[client] >= iScoreLostOnDeathLevelRequired && fRatingPercentLostOnDeath > 0.0) {
 		Rating[client] = RoundToCeil(Rating[client] * (1.0 - fRatingPercentLostOnDeath)) + 1;
 		int minimumRating = RoundToCeil(BestRating[client] * fRatingFloor);
 		if (Rating[client] < minimumRating) Rating[client] = minimumRating;
@@ -132,6 +132,7 @@ void CheckForRatingLossOnDeath(int client) {
 		if (handicapLevel[client] > 0 && handicapLevel[client] <= GetArraySize(a_HandicapLevels)) {
 			OnDeathHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
 			int scoreRequired	 = GetArrayCell(OnDeathHandicapValues[client], HANDICAP_SCORE_REQUIRED);
+
 			if (Rating[client] < scoreRequired) {
 				handicapLevel[client] = 0;
 				SetClientHandicapValues(client);
@@ -139,5 +140,18 @@ void CheckForRatingLossOnDeath(int client) {
 				PrintToChat(client, "\x04Score requirement for current handicap level not met. \x03Handicap level reset.");
 			}
 		}
+	}
+	else if (iHandicapLevelsAreScoreBased != 1 && handicapLevel[client] > 0) {
+		if (PlayerLevel[client] >= iScoreLostOnDeathLevelRequired && fRatingPercentLostOnDeath > 0.0) {
+			Rating[client] = RoundToCeil(Rating[client] * (1.0 - fRatingPercentLostOnDeath)) + 1;
+			int minRating = RoundToCeil(BestRating[client] * fRatingFloor);
+			if (Rating[client] < minRating) Rating[client] = minRating;
+		}
+		handicapLevel[client]--;
+		handicapLevelAllowed[client] = handicapLevel[client];
+		SetClientHandicapValues(client);
+		FormatPlayerName(client);
+		if (handicapLevel[client] > 0) PrintToChat(client, "\x04Handicap restricted.\n\x03Handicap set to \x05%d", handicapLevel[client]);
+		else PrintToChat(client, "\x04Handicap disabled.");
 	}
 }

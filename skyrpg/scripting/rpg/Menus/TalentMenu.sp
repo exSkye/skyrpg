@@ -297,6 +297,12 @@ public Handle TalentInfoScreen(client) {
 	float f_CooldownNow = GetTalentInfo(client, PurchaseValues[client], 3);
 	float f_CooldownNext = GetTalentInfo(client, PurchaseValues[client], 3, true);
 
+	float spellCooldownReduction = GetAbilityMultiplier(client, "L");
+	if (spellCooldownReduction > 0.0) {
+		f_CooldownNow -= (f_CooldownNow * spellCooldownReduction);
+		f_CooldownNext -= (f_CooldownNext * spellCooldownReduction);
+	}
+
 	char TalentIdCode[64];
 	char TalentIdNum[64];
 	FormatKeyValue(TalentIdNum, sizeof(TalentIdNum), PurchaseKeys[client], PurchaseValues[client], "id_number");

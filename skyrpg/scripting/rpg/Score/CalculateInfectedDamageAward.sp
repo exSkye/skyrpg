@@ -27,14 +27,15 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 	int t_Contribution = 0;
 	float TheAbilityMultiplier = 0.0;
 	if (IsLegitimateClientKiller && killerClientTeam == TEAM_SURVIVOR) {
-		int weaponEntity = GetEntPropEnt(killerblow, Prop_Data, "m_hActiveWeapon");
-		if (bHasChainsaw[killerblow]) {
+		int weaponEntity = GetEntPropEnt(killerblow, Prop_Send, "m_hActiveWeapon");
+		if (bHasChainsaw[killerblow] && IsValidEntityEx(weaponEntity)) {
 			int fuelRemaining = GetEntProp(weaponEntity, Prop_Data, "m_iClip1");
 			if (fuelRemaining < 30) {
 				SetEntProp(weaponEntity, Prop_Data, "m_iClip1", fuelRemaining + 1);
 			}
 		}
 		if (ClientType == 0) {
+			L4D2_SetEntityGlow(client, L4D2Glow_None, 500, 1, {0, 0, 0}, false);
 			GetAbilityStrengthByTrigger(killerblow, client, TRIGGER_specialkill);
 			TheAbilityMultiplier = GetAbilityMultiplier(killerblow, "I");
 			if (TheAbilityMultiplier > 0.0) { // heal because you dealt the killing blow
@@ -145,103 +146,101 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 		if (RatingBonus > 0 || RatingBonusTank > 0 || RatingBonusBuffing > 0 || RatingBonusHealing > 0) RollLoot(i, client);
 		if (!bSomeoneHurtThisInfected) bSomeoneHurtThisInfected = true;
 		CheckMinimumRate(i);
-		if (handicapLevel[i] > 0) {
-			
-			char ratingBonusText[64];
-			char ratingBonusTankText[64];
-			char ratingBonusBuffingText[64];
-			char ratingBonusHealingText[64];
-			if (!survivorsRequiredForBonusRating) {
-				if (RatingBonus > 0) {
-					if (ClientType <= iClientTypeToDisplayOnKill) {
-						AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
-						Format(ratingBonusText, sizeof(ratingBonusText), "%T", "rating increase", i, white, blue, ratingBonusText, orange);
-					}
-					Rating[i] += RatingBonus;
+
+		char ratingBonusText[64];
+		char ratingBonusTankText[64];
+		char ratingBonusBuffingText[64];
+		char ratingBonusHealingText[64];
+		if (!survivorsRequiredForBonusRating) {
+			if (RatingBonus > 0) {
+				if (ClientType <= iClientTypeToDisplayOnKill) {
+					AddCommasToString(RatingBonus, ratingBonusText, sizeof(ratingBonusText));
+					Format(ratingBonusText, sizeof(ratingBonusText), "%T", "rating increase", i, white, blue, ratingBonusText, orange);
 				}
-				if (RatingBonusTank > 0) {
-					if (ClientType <= iClientTypeToDisplayOnKill) {
-						AddCommasToString(RatingBonusTank, ratingBonusTankText, sizeof(ratingBonusTankText));
-						Format(ratingBonusTankText, sizeof(ratingBonusTankText), "%T", "rating increase for tanking", i, white, blue, ratingBonusTankText, orange);
-					}
-					Rating[i] += RatingBonusTank;
-				}
-				if (RatingBonusBuffing > 0) {
-					if (ClientType <= iClientTypeToDisplayOnKill) {
-						AddCommasToString(RatingBonusBuffing, ratingBonusBuffingText, sizeof(ratingBonusBuffingText));
-						Format(ratingBonusBuffingText, sizeof(ratingBonusBuffingText), "%T", "rating increase for buffing", i, white, blue, ratingBonusBuffingText, orange);
-					}
-					Rating[i] += RatingBonusBuffing;
-				}
-				if (RatingBonusHealing > 0) {
-					if (ClientType <= iClientTypeToDisplayOnKill) {
-						AddCommasToString(RatingBonusHealing, ratingBonusHealingText, sizeof(ratingBonusHealingText));
-						Format(ratingBonusHealingText, sizeof(ratingBonusHealingText), "%T", "rating increase for healing", i, white, blue, ratingBonusHealingText, orange);
-					}
-					Rating[i] += RatingBonusHealing;
-				}
+				Rating[i] += RatingBonus;
 			}
-			else {
-				if (RatingBonus > 0) {
-					RatingTeamBonus = RoundToCeil(RatingBonus * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-					if (ClientType <= iClientTypeToDisplayOnKill) {
-						AddCommasToString(RatingBonus+RatingTeamBonus, ratingBonusText, sizeof(ratingBonusText));
-						Format(ratingBonusText, sizeof(ratingBonusText), "%T", "rating increase", i, white, blue, ratingBonusText, orange);
-					}
-					Rating[i] += RatingBonus;
+			if (RatingBonusTank > 0) {
+				if (ClientType <= iClientTypeToDisplayOnKill) {
+					AddCommasToString(RatingBonusTank, ratingBonusTankText, sizeof(ratingBonusTankText));
+					Format(ratingBonusTankText, sizeof(ratingBonusTankText), "%T", "rating increase for tanking", i, white, blue, ratingBonusTankText, orange);
 				}
-				if (RatingBonusTank > 0) {
-					RatingTeamBonusTank = RoundToCeil(RatingBonusTank * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-					if (ClientType <= iClientTypeToDisplayOnKill) {
-						AddCommasToString(RatingBonusTank+RatingTeamBonusTank, ratingBonusTankText, sizeof(ratingBonusTankText));
-						Format(ratingBonusTankText, sizeof(ratingBonusTankText), "%T", "rating increase for tanking", i, white, blue, ratingBonusTankText, orange);
-					}
-					Rating[i] += RatingBonusTank;
-				}
-				if (RatingBonusBuffing > 0) {
-					RatingTeamBonusBuffing = RoundToCeil(RatingBonusBuffing * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-					if (ClientType <= iClientTypeToDisplayOnKill) {
-						AddCommasToString(RatingBonusBuffing+RatingTeamBonusBuffing, ratingBonusBuffingText, sizeof(ratingBonusBuffingText));
-						Format(ratingBonusBuffingText, sizeof(ratingBonusBuffingText), "%T", "rating increase for buffing", i, white, blue, ratingBonusBuffingText, orange);
-					}
-					Rating[i] += RatingBonusBuffing;
-				}
-				if (RatingBonusHealing > 0) {
-					RatingTeamBonusHealing = RoundToCeil(RatingBonusHealing * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
-					if (ClientType <= iClientTypeToDisplayOnKill) {
-						AddCommasToString(RatingBonusHealing+RatingTeamBonusHealing, ratingBonusHealingText, sizeof(ratingBonusHealingText));
-						Format(ratingBonusHealingText, sizeof(ratingBonusHealingText), "%T", "rating increase for healing", i, white, blue, ratingBonusHealingText, orange);
-					}
-					Rating[i] += RatingBonusHealing;
-				}
+				Rating[i] += RatingBonusTank;
 			}
-			if (!IsFakeClient(i) && ClientType <= iClientTypeToDisplayOnKill) {
-				bool isModified = false;
-				char printer[512];
-				if (RatingBonus > 0) {
+			if (RatingBonusBuffing > 0) {
+				if (ClientType <= iClientTypeToDisplayOnKill) {
+					AddCommasToString(RatingBonusBuffing, ratingBonusBuffingText, sizeof(ratingBonusBuffingText));
+					Format(ratingBonusBuffingText, sizeof(ratingBonusBuffingText), "%T", "rating increase for buffing", i, white, blue, ratingBonusBuffingText, orange);
+				}
+				Rating[i] += RatingBonusBuffing;
+			}
+			if (RatingBonusHealing > 0) {
+				if (ClientType <= iClientTypeToDisplayOnKill) {
+					AddCommasToString(RatingBonusHealing, ratingBonusHealingText, sizeof(ratingBonusHealingText));
+					Format(ratingBonusHealingText, sizeof(ratingBonusHealingText), "%T", "rating increase for healing", i, white, blue, ratingBonusHealingText, orange);
+				}
+				Rating[i] += RatingBonusHealing;
+			}
+		}
+		else {
+			if (RatingBonus > 0) {
+				RatingTeamBonus = RoundToCeil(RatingBonus * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
+				if (ClientType <= iClientTypeToDisplayOnKill) {
+					AddCommasToString(RatingBonus+RatingTeamBonus, ratingBonusText, sizeof(ratingBonusText));
+					Format(ratingBonusText, sizeof(ratingBonusText), "%T", "rating increase", i, white, blue, ratingBonusText, orange);
+				}
+				Rating[i] += RatingBonus;
+			}
+			if (RatingBonusTank > 0) {
+				RatingTeamBonusTank = RoundToCeil(RatingBonusTank * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
+				if (ClientType <= iClientTypeToDisplayOnKill) {
+					AddCommasToString(RatingBonusTank+RatingTeamBonusTank, ratingBonusTankText, sizeof(ratingBonusTankText));
+					Format(ratingBonusTankText, sizeof(ratingBonusTankText), "%T", "rating increase for tanking", i, white, blue, ratingBonusTankText, orange);
+				}
+				Rating[i] += RatingBonusTank;
+			}
+			if (RatingBonusBuffing > 0) {
+				RatingTeamBonusBuffing = RoundToCeil(RatingBonusBuffing * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
+				if (ClientType <= iClientTypeToDisplayOnKill) {
+					AddCommasToString(RatingBonusBuffing+RatingTeamBonusBuffing, ratingBonusBuffingText, sizeof(ratingBonusBuffingText));
+					Format(ratingBonusBuffingText, sizeof(ratingBonusBuffingText), "%T", "rating increase for buffing", i, white, blue, ratingBonusBuffingText, orange);
+				}
+				Rating[i] += RatingBonusBuffing;
+			}
+			if (RatingBonusHealing > 0) {
+				RatingTeamBonusHealing = RoundToCeil(RatingBonusHealing * ((iLivingSurvivors - iTeamRatingRequired) * fTeamRatingBonus));
+				if (ClientType <= iClientTypeToDisplayOnKill) {
+					AddCommasToString(RatingBonusHealing+RatingTeamBonusHealing, ratingBonusHealingText, sizeof(ratingBonusHealingText));
+					Format(ratingBonusHealingText, sizeof(ratingBonusHealingText), "%T", "rating increase for healing", i, white, blue, ratingBonusHealingText, orange);
+				}
+				Rating[i] += RatingBonusHealing;
+			}
+		}
+		if (!IsFakeClient(i) && ClientType <= iClientTypeToDisplayOnKill) {
+			bool isModified = false;
+			char printer[512];
+			if (RatingBonus > 0) {
+				isModified = true;
+				Format(printer, sizeof(printer), "%s", ratingBonusText);
+			}
+			if (RatingBonusTank > 0) {
+				if (isModified) Format(printer, sizeof(printer), "%s\n%s", printer, ratingBonusTankText);
+				else {
+					Format(printer, sizeof(printer), "%s", ratingBonusTankText);
 					isModified = true;
-					Format(printer, sizeof(printer), "%s", ratingBonusText);
 				}
-				if (RatingBonusTank > 0) {
-					if (isModified) Format(printer, sizeof(printer), "%s\n%s", printer, ratingBonusTankText);
-					else {
-						Format(printer, sizeof(printer), "%s", ratingBonusTankText);
-						isModified = true;
-					}
-				}
-				if (RatingBonusBuffing > 0) {
-					if (isModified) Format(printer, sizeof(printer), "%s\n%s", printer, ratingBonusBuffingText);
-					else {
-						Format(printer, sizeof(printer), "%s", ratingBonusBuffingText);
-						isModified = true;
-					}
-				}
-				if (RatingBonusHealing > 0) {
-					if (isModified) Format(printer, sizeof(printer), "%s\n%s", printer, ratingBonusHealingText);
-					else Format(printer, sizeof(printer), "%s", ratingBonusHealingText);
-				}
-				if (isModified) PrintToChat(i, "%s", printer);
 			}
+			if (RatingBonusBuffing > 0) {
+				if (isModified) Format(printer, sizeof(printer), "%s\n%s", printer, ratingBonusBuffingText);
+				else {
+					Format(printer, sizeof(printer), "%s", ratingBonusBuffingText);
+					isModified = true;
+				}
+			}
+			if (RatingBonusHealing > 0) {
+				if (isModified) Format(printer, sizeof(printer), "%s\n%s", printer, ratingBonusHealingText);
+				else Format(printer, sizeof(printer), "%s", ratingBonusHealingText);
+			}
+			if (isModified) PrintToChat(i, "%s", printer);
 		}
 		bIsSettingsCheck = true;		// whenever rating is earned for anything other than common infected kills, we want to check the settings to see if a boost to commons is necessary.
 		if (i == killerblow) {
@@ -310,18 +309,20 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 				if (curLuck > 0) fModifiedDefibChance += (curLuck * fFallenSurvivorDefibChanceLuck);
 				if (fModifiedDefibChance >= 1.0 || GetRandomInt(1, RoundToCeil(1.0 / fModifiedDefibChance)) == 1) {
 					int defib = CreateEntityByName("weapon_defibrillator_spawn");
-					float vel[3];
-					vel[0] = GetRandomFloat(-10000.0, 1000.0);
-					vel[1] = GetRandomFloat(-1000.0, 1000.0);
-					vel[2] = GetRandomFloat(100.0, 1000.0);
+					if (IsValidEntityEx(defib)) {
+						float vel[3];
+						vel[0] = GetRandomFloat(-10000.0, 1000.0);
+						vel[1] = GetRandomFloat(-1000.0, 1000.0);
+						vel[2] = GetRandomFloat(100.0, 1000.0);
 
-					float Origin[3];
-					GetEntPropVector(client, Prop_Send, "m_vecOrigin", Origin);
-					Origin[2] += 32.0;
-					DispatchKeyValue(defib, "spawnflags", "1");
-					DispatchSpawn(defib);
-					ActivateEntity(defib);
-					TeleportEntity(defib, Origin, NULL_VECTOR, vel);
+						float Origin[3];
+						GetEntPropVector(client, Prop_Send, "m_vecOrigin", Origin);
+						Origin[2] += 32.0;
+						DispatchKeyValue(defib, "spawnflags", "1");
+						DispatchSpawn(defib);
+						ActivateEntity(defib);
+						TeleportEntity(defib, Origin, NULL_VECTOR, vel);
+					}
 				}
 			}
 			numberOfSupersKilledThisRound++;
@@ -345,7 +346,8 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 		ClearArray(TankState_Array[client]);
 		MyBirthday[client] = 0;
 		CreateMyHealthPool(client, true);
-		ChangeHook(client);
+		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+		SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
 		ForcePlayerSuicide(client);
 
 		if (b_IsFinaleActive && GetInfectedCount(ZOMBIECLASS_TANK) < 1) {
@@ -353,8 +355,8 @@ void CalculateInfectedDamageAward(int client, int killerblow = 0, int superPos =
 			b_IsFinaleTanks = true;	// next time the event tank spawns, it will allow it to spawn multiple tanks.
 		}
 	}
-	else {
-		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-		SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
-	}
+	// else {
+	// 	SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+	// 	SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
+	// }
 }

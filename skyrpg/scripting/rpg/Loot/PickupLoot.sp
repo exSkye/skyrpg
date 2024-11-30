@@ -11,7 +11,7 @@ stock void Autoloot(client) {
 		if (!StrBeginsWith(entityClassname, "loot")) continue;
 		GetEntPropVector(i, Prop_Send, "m_vecOrigin", pos);
 		if (GetVectorDistance(myPos, pos) > 64.0) continue;
-		IsPlayerTryingToPickupLoot(client, i, entityClassname);
+		IsPlayerTryingToPickupLoot(client, false, entityClassname);
 	}
 }
 // char[] string = "hello"
@@ -35,9 +35,10 @@ stock bool StrEqualAtPos(char[] string, char[] prefix, int pos) {
 	return true;
 }
 
-stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname = "none") {
+stock bool IsPlayerTryingToPickupLoot(client, bool isLootBag = true, char[] classname = "none") {
 	char entityClassname[64];
-	if (entity == -1) {
+	int entity = -1;
+	if (isLootBag) {
 		entity = GetClientAimTarget(client, false);
 		if (entity == -1) return false;
 		GetEntityClassname(entity, entityClassname, sizeof(entityClassname));
@@ -72,17 +73,19 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 		//Client_PrintToChat(i, true, text);
 		skipClient[i] = false;
 	}
-	int lootOwner = -1;
-	for (int i = 1; i <= MaxClients; i++) {
-		if (skipClient[i]) continue;
-		char key[64];
-		GetClientAuthId(i, AuthId_Steam2, key, 64);
-		// check if the owner (entity classname) is the player trying to pick it up (key)
-		if (!StrEqualAtPos(entityClassname, key, 5)) continue;
-		lootOwner = i;
-		break;
+	int lootOwner = (isLootBag) ? -1 : client;
+	if (lootOwner == -1) {
+		for (int i = 1; i <= MaxClients; i++) {
+			if (skipClient[i]) continue;
+			char key[64];
+			GetClientAuthId(i, AuthId_Steam2, key, 64);
+			// check if the owner (entity classname) is the player trying to pick it up (key)
+			if (!StrEqualAtPos(entityClassname, key, 5)) continue;
+			lootOwner = i;
+			break;
+		}
 	}
-	if (GetArraySize(playerLootOnGround[lootOwner]) < 1) return false;
+	if (lootOwner < 1 || GetArraySize(playerLootOnGround[lootOwner]) < 1) return false;
 	char splitClassname[2][64];
 	ExplodeString(entityClassname, "-", splitClassname, 2, 64);
 	int lootBagPosition = thisAugmentArrayPos(lootOwner, StringToInt(splitClassname[0][FindDelim(splitClassname[0], "+")]));
@@ -93,16 +96,23 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 	int augmentActivatorRating = GetArrayCell(playerLootOnGround[lootOwner], lootBagPosition, 2);
 	int augmentTargetRating = GetArrayCell(playerLootOnGround[lootOwner], lootBagPosition, 4);
 
+	int lootReason = LOOTREASON_NOTSET;
 	int clientToReceiveLoot = lootOwner;
 	if (lootOwner != client) {
-		bool lootCanBeStolen = true;
-		if (iForceFFALoot != 1) { // if the client picking up the loot has any type of ffa loot enabled
+		bool lootCanBeStolen = (iForceFFALoot != 1 && (iDontAllowLootStealing[lootOwner] == 3 || iDontAllowLootStealing[client] == 3)) ? false : true;
+		if (iForceFFALoot == 1) lootReason = LOOTREASON_FORCEDSHARING;
+		else if (lootCanBeStolen) { // if the client picking up the loot has any type of ffa loot enabled
 			if (iDontAllowLootStealing[lootOwner] == 1) { // only allow major/minor to be stolen
 				if (augmentActivatorRating > 0 && augmentTargetRating > 0) lootCanBeStolen = false;
 			}
 			else if (iDontAllowLootStealing[lootOwner] == 0) { // only allow minor loot to be stolen
 				if (augmentActivatorRating > 0 || augmentTargetRating > 0) lootCanBeStolen = false;
 			}
+			if (!lootCanBeStolen) lootReason = LOOTREASON_NOTSHARING;
+		}
+		if (!lootCanBeStolen && lootReason == LOOTREASON_NOTSET) {
+			if (iDontAllowLootStealing[lootOwner] == 3) lootReason = LOOTREASON_NOTSHARING;
+			else lootReason = LOOTREASON_CLIENTDOESNTWANTIT;
 		}
 
 		if (lootCanBeStolen) {
@@ -110,35 +120,59 @@ stock bool IsPlayerTryingToPickupLoot(client, int entity = -1, char[] classname 
 			if (itemScoreRoll < iplayerSettingAutoDismantleScore[client]) {
 				// the only players this can be true for are the players who are not the loot owner, so we give it to the loot owner
 				// because it is guaranteed to be within the range of loot the loot owner wants.
-				Format(statusMessageToDisplay[client], 64, "You don't want this loot.");
-				fStatusMessageDisplayTime[client] = GetEngineTime() + 2.0;
 				clientToReceiveLoot = lootOwner;
+				lootReason = LOOTREASON_CLIENTDOESNTWANTIT;
 				//return false;
 			}
-			else clientToReceiveLoot = client;
+			else {
+				clientToReceiveLoot = client;
+				lootReason = LOOTREASON_CLIENTSTOLELOOT;
+			}
 		}
 		else clientToReceiveLoot = lootOwner;
 	}
+	else lootReason = LOOTREASON_CLIENTISOWNER;
+
+	if (lootReason == LOOTREASON_CLIENTDOESNTWANTIT) {
+		Format(statusMessageToDisplay[client], 64, "You don't want this loot.");
+		fStatusMessageDisplayTime[client] = GetEngineTime() + fDisplayLootPickupMessageTime;
+		return false;
+	}
+
 	int clientInventorySize = GetArraySize(myAugmentIDCodes[clientToReceiveLoot]);
-	if (clientInventorySize < iInventoryLimit) {
-		Format(statusMessageToDisplay[client], 64, "Inventory Size %d/%d", clientInventorySize+1, iInventoryLimit);
-		fStatusMessageDisplayTime[client] = GetEngineTime() + 2.0;
+	int clientInventoryLimit = iInventoryLimit;
+	if (bHasDonorPrivileges[clientToReceiveLoot]) clientInventoryLimit += iDonorInventoryIncrease;
+	
+	if (clientInventorySize < clientInventoryLimit) {
+		Format(statusMessageToDisplay[clientToReceiveLoot], 64, "Inventory Size %d/%d", clientInventorySize+1, clientInventoryLimit);
+		fStatusMessageDisplayTime[clientToReceiveLoot] = GetEngineTime() + fDisplayLootPickupMessageTime;
 		char entityOwnername[64];
 		Format(entityOwnername, sizeof(entityOwnername), "%s", baseName[lootOwner]);
-		PickupAugment(clientToReceiveLoot, lootOwner, entityClassname, entityOwnername, lootBagPosition, lootPoolToDrawFrom, client);
+		PickupAugment(clientToReceiveLoot, lootOwner, entityClassname, entityOwnername, lootBagPosition, lootPoolToDrawFrom, client, lootReason);
 	}
 	else {
 		Format(statusMessageToDisplay[clientToReceiveLoot], 64, "Inventory Full.");
-		fStatusMessageDisplayTime[clientToReceiveLoot] = GetEngineTime() + 2.0;
+		fStatusMessageDisplayTime[clientToReceiveLoot] = GetEngineTime() + fDisplayLootPickupMessageTime;
 		return false;
 	}
 	RemoveFromArray(playerLootOnGround[lootOwner], lootBagPosition);	// we remove from the list wherever this bag was - it may not be at the end.
 	RemoveFromArray(playerLootOnGroundId[lootOwner], lootBagPosition);
-	if (IsValidEntity(entity)) AcceptEntityInput(entity, "Kill");
+	if (isLootBag && IsValidEntityEx(entity)) RemoveEntity(entity);//AcceptEntityInput(entity, "Kill");
 	return true;
 }
 
-stock void PickupAugment(int client, int owner, char[] ownerSteamID = "none", char[] ownerName = "none", int pos, int lootPoolToDrawFrom, int clientWhoPickedUpTheAugment) {
+stock void PickupAugment(int client, int owner, char[] ownerSteamID = "none", char[] ownerName = "none", int pos, int lootPoolToDrawFrom, int clientWhoPickedUpTheAugment, int lootReason) {
+	if (pos >= GetArraySize(playerLootOnGround[owner])) {
+		augmentParts[owner]++;
+		char text[512];
+		Format(text, sizeof(text), "{G}+1 {O}Crafting {B}Materials");
+		if (iFancyBorders == 1) {
+			Format(text, sizeof(text), "{O}-----------------------\n%s\n{O}-----------------------", text);
+		}
+		Client_PrintToChat(owner, true, text);
+		return;
+	}
+
 	int size = GetArraySize(myAugmentIDCodes[client]);
 	ResizeArray(myAugmentIDCodes[client], size+1);
 	ResizeArray(myAugmentCategories[client], size+1);
@@ -246,14 +280,18 @@ stock void PickupAugment(int client, int owner, char[] ownerSteamID = "none", ch
 		else Format(augmentStrengthText, 64, "{B}Major {O}%s", perfectname);
 	}
 	char text[512];
-	Format(text, sizeof(text), "{B}%s {N}{OBTAINTYPE} a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}augment", baseName[clientWhoPickedUpTheAugment], (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
-	if (StrContains(ownerSteamID, key, false) != -1) ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "found", true);
-	else {
-		ReplaceString(text, sizeof(text), "{OBTAINTYPE}", "stole", true);
-		Format(text, sizeof(text), "%s {N}from {O}%s", text, ownerName);
+	// I need fast...
+	if (lootReason == LOOTREASON_CLIENTISOWNER) {
+		Format(text, sizeof(text), "{B}%s {N}looted a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}gear drop", baseName[clientWhoPickedUpTheAugment], (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
 	}
-	if (clientWhoPickedUpTheAugment != client) {
-		Format(text, sizeof(text), "%s {N}but didn't want it and gave it back to {O}%s.", text, baseName[client]);
+	else if (lootReason == LOOTREASON_FORCEDSHARING) {
+		Format(text, sizeof(text), "{B}%s {N}looted {B}%s{N}'s {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}gear drop", baseName[clientWhoPickedUpTheAugment], baseName[owner], (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len]);
+	}
+	else if (lootReason == LOOTREASON_NOTSHARING) {
+		Format(text, sizeof(text), "{B}%s {N}picked up a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}gear drop {N}for {B}%s", baseName[clientWhoPickedUpTheAugment], (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len], baseName[owner]);
+	}
+	else if (lootReason == LOOTREASON_CLIENTSTOLELOOT) {
+		Format(text, sizeof(text), "{B}%s {N}stole a {B}+{OG}%3.1f{O}PCT %s {OG}%s {O}%s {B}gear drop {N}from {B}%s{N}", baseName[clientWhoPickedUpTheAugment], (augmentItemScore * fAugmentRatingMultiplier) * 100.0, augmentStrengthText, menuText, buffedCategory[len], baseName[owner]);
 	}
 	ReplaceString(text, sizeof(text), "PCT", "%%", true);
 	for (int i = 1; i <= MaxClients; i++) {

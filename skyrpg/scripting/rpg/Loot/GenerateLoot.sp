@@ -51,14 +51,21 @@ stock RollLoot(client, enemyClient) {
 }
 
 stock void CreateItemDrop(int owner, int client, int pos) {
+	char text[64];
+	GetClientAuthId(owner, AuthId_Steam2, text, 64);
+	Format(text, sizeof(text), "loot_%s+%d-%d", text, pos, iLootDropsForUnlockedTalentsOnly[owner]);
+	if (iGenerateLootBags != 1) {
+		IsPlayerTryingToPickupLoot(owner, false, text);
+		return;
+	}
+
+	int entity = CreateEntityByName("prop_physics_override");
+	if (!IsValidEntityEx(entity)) return;
+
 	float Origin[3];
 	if (IsLegitimateClient(client)) GetClientAbsOrigin(client, Origin);
 	else GetEntPropVector(client, Prop_Send, "m_vecOrigin", Origin);
 
-	char text[64];
-	GetClientAuthId(owner, AuthId_Steam2, text, 64);
-	Format(text, sizeof(text), "loot_%s+%d-%d", text, pos, iLootDropsForUnlockedTalentsOnly[owner]);
-	int entity = CreateEntityByName("prop_physics_override");
 	DispatchKeyValue(entity, "targetname", text);
 	DispatchKeyValue(entity, "spawnflags", "1029");
 	DispatchKeyValue(entity, "solid", "6");
@@ -90,9 +97,9 @@ stock void CreateItemDrop(int owner, int client, int pos) {
 	CreateTimer(fLootBagExpirationTimeInSeconds, Timer_DeleteLootBag, entity, TIMER_FLAG_NO_MAPCHANGE);
 
 	float vel[3];
-	vel[0] = GetRandomFloat(-10000.0, 1000.0);
-	vel[1] = GetRandomFloat(-1000.0, 1000.0);
-	vel[2] = GetRandomFloat(100.0, 1000.0);
+	vel[0] = GetRandomFloat(-100.0, 100.0);
+	vel[1] = GetRandomFloat(-100.0, 100.0);
+	vel[2] = GetRandomFloat(10.0, 100.0);
 
 	Origin[2] += 32.0;
 	TeleportEntity(entity, Origin, NULL_VECTOR, vel);
@@ -110,6 +117,13 @@ stock int GenerateAugment(int client, int spawnTarget) {
 	int potentialItemRating = GetRandomInt(min, max+lootFindBonus);
 	if (potentialItemRating < iplayerSettingAutoDismantleScore[client]) {
 		// we give the player augment parts instead because they don't want this item.
+		return -2;
+	}
+	int clientInventoryLimit = iInventoryLimit;
+	if (bHasDonorPrivileges[client]) clientInventoryLimit += iDonorInventoryIncrease;
+	if (GetArraySize(myAugmentIDCodes[client]) >= clientInventoryLimit) {
+		Format(statusMessageToDisplay[client], 64, "Inventory Full. Scrapping all drops.");
+		fStatusMessageDisplayTime[client] = GetEngineTime() + fDisplayLootPickupMessageTime;
 		return -2;
 	}
 	int lootPool = (iLootDropsForUnlockedTalentsOnly[client] == 1) ? GetArraySize(myLootDropCategoriesAllowed[client]) : GetArraySize(myUnlockedLootDropCategoriesAllowed[client]);

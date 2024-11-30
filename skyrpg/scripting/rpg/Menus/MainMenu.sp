@@ -1,4 +1,4 @@
-stock BuildMenu(client, char[] TheMenuName = "none") {
+stock BuildMenu(client, char[] TheMenuName = "none", int numberOfMenusToMoveBackFrom = 1) {
 
 	if (b_IsLoading[client]) {
 
@@ -9,8 +9,8 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 	char MenuName[64];
 	if (StrEqual(TheMenuName, "none", false) && GetArraySize(MenuStructure[client]) > 0) {
 
-		GetArrayString(MenuStructure[client], GetArraySize(MenuStructure[client]) - 1, MenuName, sizeof(MenuName));
-		RemoveFromArray(MenuStructure[client], GetArraySize(MenuStructure[client]) - 1);
+		GetArrayString(MenuStructure[client], GetArraySize(MenuStructure[client]) - numberOfMenusToMoveBackFrom, MenuName, sizeof(MenuName));
+		RemoveFromArray(MenuStructure[client], GetArraySize(MenuStructure[client]) - numberOfMenusToMoveBackFrom);
 	}
 	else Format(MenuName, sizeof(MenuName), "%s", TheMenuName);
 	ShowPlayerLayerInformation[client] = (StrEqual(MenuName, "talentsmenu")) ? true : false;
@@ -83,14 +83,13 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 		//if (ActionBarSlot[client] != -1 && ActionBarOption != 1) continue;
 		
 		// Reset data in display requirement variables to default values.
-		Format(teamsAllowed, sizeof(teamsAllowed), "123");			// 1 (Spectator) 2 (Survivor) 3 (Infected) players allowed.
-		Format(gamemodesAllowed, sizeof(gamemodesAllowed), "123");	// 1 (Coop) 2 (Versus) 3 (Survival) game mode variants allowed.
-		Format(flagsAllowed, sizeof(flagsAllowed), "-1");			// -1 means no flag requirements specified.
+		//Format(teamsAllowed, sizeof(teamsAllowed), "123");			// 1 (Spectator) 2 (Survivor) 3 (Infected) players allowed.
+		//Format(gamemodesAllowed, sizeof(gamemodesAllowed), "123");	// 1 (Coop) 2 (Versus) 3 (Survival) game mode variants allowed.
 		//TheDBPrefix
 		// Collect the display requirement variables values.
-		FormatKeyValue(teamsAllowed, sizeof(teamsAllowed), MenuKeys[client], MenuValues[client], "team?", teamsAllowed);
-		FormatKeyValue(gamemodesAllowed, sizeof(gamemodesAllowed), MenuKeys[client], MenuValues[client], "gamemode?", gamemodesAllowed);
-		FormatKeyValue(flagsAllowed, sizeof(flagsAllowed), MenuKeys[client], MenuValues[client], "flags?", flagsAllowed);
+		FormatKeyValue(teamsAllowed, sizeof(teamsAllowed), MenuKeys[client], MenuValues[client], "team?", "123");
+		FormatKeyValue(gamemodesAllowed, sizeof(gamemodesAllowed), MenuKeys[client], MenuValues[client], "gamemode?", "123");
+		FormatKeyValue(flagsAllowed, sizeof(flagsAllowed), MenuKeys[client], MenuValues[client], "flags?", "-1");
 		FormatKeyValue(configname, sizeof(configname), MenuKeys[client], MenuValues[client], "config?");
 		bool configIsForTalents = (IsTalentConfig(configname) || StrEqual(configname, CONFIG_SURVIVORTALENTS));
 		FormatKeyValue(s_TalentDependency, sizeof(s_TalentDependency), MenuKeys[client], MenuValues[client], "talent dependency?");
@@ -122,6 +121,7 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 		if (StrEqual(configname, "level up") && PlayerLevel[client] == iMaxLevel) continue;
 		if (StrEqual(configname, "autolevel toggle") && iAllowPauseLeveling != 1) continue;
 		if (StrEqual(configname, "prestige") && (SkyLevel[client] >= iSkyLevelMax || PlayerLevel[client] < iMaxLevel)) continue;
+		if (StrEqual(configname, "nohandicap") && handicapLevel[client] < 1) continue;
 		// if (StrEqual(configname, "handicap") && PlayerLevel[client] < iLevelRequiredToEarnScore) continue;
 		//if (StrEqual(configname, "respec", false) && bIsInCombat[client] && b_IsActiveRound) continue;
 
@@ -138,15 +138,12 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 			else continue;
 		}
 		if (iIsReadMenuName == 1) {
-
 			if (StrEqual(configname, "autolevel toggle")) {
-
 				if (iIsLevelingPaused[client] == 1 && b_IsActiveRound) Format(text, sizeof(text), "%T", "auto level (locked)", client, fDeathPenalty * 100.0, pct);
 				else if (iIsLevelingPaused[client] == 1) Format(text, sizeof(text), "%T", "auto level (disabled)", client, fDeathPenalty * 100.0, pct);
 				else Format(text, sizeof(text), "%T", "auto level (enabled)", client, fDeathPenalty * 100.0, pct);
 			}
 			else if (StrEqual(configname, "trails toggle")) {
-
 				if (iIsBulletTrails[client] == 0) Format(text, sizeof(text), "%T", "bullet trails (disabled)", client);
 				else Format(text, sizeof(text), "%T", "bullet trails (enabled)", client);
 			}
@@ -156,6 +153,17 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 				else if (iDontAllowLootStealing[client] == 2) Format(text, sizeof(text), "%T", "ffa loot (all)", client);
 				else if (iDontAllowLootStealing[client] == 1) Format(text, sizeof(text), "%T", "ffa loot (major)", client);
 				else if (iDontAllowLootStealing[client] == 0) Format(text, sizeof(text), "%T", "ffa loot (minor)", client);
+			}
+			else if (StrEqual(configname, "effects toggle")) {
+				if (iTypeOfSpecialEffectsToShow[client] == SPECIALEFFECTS_ALL) Format(text, sizeof(text), "%T", "special effects (all)", client);
+				else if (iTypeOfSpecialEffectsToShow[client] == SPECIALEFFECTS_FRIENDLY) Format(text, sizeof(text), "%T", "special effects (allies)", client);
+				else if (iTypeOfSpecialEffectsToShow[client] == SPECIALEFFECTS_ME) Format(text, sizeof(text), "%T", "special effects (me)", client);
+				else if (iTypeOfSpecialEffectsToShow[client] == SPECIALEFFECTS_NONE) Format(text, sizeof(text), "%T", "special effects (disabled)", client);
+			}
+			else if (StrEqual(configname, "shake toggle")) {
+				if (iTypeOfScreenShake[client] == SCREENSHAKE_FULL) Format(text, sizeof(text), "%T", "screen shake (full)", client);
+				else if (iTypeOfScreenShake[client] == SCREENSHAKE_HALF) Format(text, sizeof(text), "%T", "screen shake (half)", client);
+				else if (iTypeOfScreenShake[client] == SCREENSHAKE_MINIMAL) Format(text, sizeof(text), "%T", "screen shake (minimal)", client);
 			}
 			else if (StrEqual(configname, "lootdrop toggle")) {
 				int curUpgrades = GetArraySize(possibleLootPool[client]);
@@ -271,6 +279,18 @@ stock BuildMenu(client, char[] TheMenuName = "none") {
 		int addLayerToTranslation = GetKeyValueInt(MenuKeys[client], MenuValues[client], "add layer to menu option?");
 		if (addLayerToTranslation == 1) Format(text, sizeof(text), "%s %d", text, PlayerCurrentMenuLayer[client]);
 
+		if (StrContains(text, "{LUA}", false) != -1) {
+			char luaText[64];
+			Format(luaText, sizeof(luaText), "%d", UpgradesAvailable[client] + FreeUpgrades[client]);
+			ReplaceString(text, sizeof(text), "{LUA}", luaText);
+		}
+		if (StrContains(text, "{INVLIMIT}", false) != -1) {
+			char invLimit[64];
+			int cInventoryLimit = iInventoryLimit;
+			if (bHasDonorPrivileges[client]) cInventoryLimit += iDonorInventoryIncrease;
+			Format(invLimit, sizeof(invLimit), "%d/%d", GetArraySize(myAugmentIDCodes[client]), cInventoryLimit);
+			ReplaceString(text, sizeof(text), "{INVLIMIT}", invLimit);
+		}
 		AddMenuItem(menu, text, text);
 	}
 	if (!StrEqual(MenuName, "main", false)) SetMenuExitBackButton(menu, true);
@@ -303,9 +323,10 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 		// Get the real position to use based on the slot that was pressed.
 		// This position was stored above in the accompanying menu function.
 		GetArrayString(RPGMenuPosition[client], slot, pos, sizeof(pos));
-		MenuKeys[client]			= GetArrayCell(a_Menu_Main, StringToInt(pos), 0);
-		MenuValues[client]			= GetArrayCell(a_Menu_Main, StringToInt(pos), 1);
-		MenuSection[client]			= GetArrayCell(a_Menu_Main, StringToInt(pos), 2);
+		int ipos = StringToInt(pos);
+		MenuKeys[client]			= GetArrayCell(a_Menu_Main, ipos, 0);
+		MenuValues[client]			= GetArrayCell(a_Menu_Main, ipos, 1);
+		MenuSection[client]			= GetArrayCell(a_Menu_Main, ipos, 2);
 		GetArrayString(MenuSection[client], 0, menuname, sizeof(menuname));
 
 		int showLayerInfo = GetKeyValueInt(MenuKeys[client], MenuValues[client], "show layer info?");
@@ -343,12 +364,16 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 			}
 			else BuildMenu(client, t_MenuName);
 		}
+		else if (StrEqual(config, "store inv", false)) {
+			BuildStoreInventory(client);
+		}
+		else if (StrEqual(config, "store shop", false)) {
+			BuildStore(client);
+		}
 		else if (StrEqual(config, "spawnloadout", false)) {
-
 			SpawnLoadoutEditor(client);
 		}
 		else if (StrEqual(config, "composition", false)) {
-
 			GetTeamComposition(client);
 		}
 		else if (StrEqual(config, "autolevel toggle", false)) {
@@ -366,6 +391,16 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 		else if (StrEqual(config, "lootmode toggle", false)) {
 			if (iDontAllowLootStealing[client] == 3) iDontAllowLootStealing[client] = 0;
 			else iDontAllowLootStealing[client]++;
+			BuildMenu(client);
+		}
+		else if (StrEqual(config, "effects toggle")) {
+			if (iTypeOfSpecialEffectsToShow[client] == SPECIALEFFECTS_ALL) iTypeOfSpecialEffectsToShow[client] = 0;
+			else iTypeOfSpecialEffectsToShow[client]++;
+			BuildMenu(client);
+		}
+		else if (StrEqual(config, "shake toggle")) {
+			if (iTypeOfScreenShake[client] == SCREENSHAKE_FULL) iTypeOfScreenShake[client] = 0;
+			else iTypeOfScreenShake[client]++;
 			BuildMenu(client);
 		}
 		else if (StrEqual(config, "lootdrop toggle")) {
@@ -439,10 +474,10 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 			//ShowThreatMenu(client);
 			bIsHideThreat[client] = false;
 		}
-		else if (GetArraySize(a_Store) > 0 && StrEqual(config, CONFIG_STORE)) {
+		// else if (GetArraySize(a_Store) > 0 && StrEqual(config, CONFIG_STORE)) {
 
-			BuildStoreMenu(client);
-		}
+		// 	BuildStoreMenu(client);
+		// }
 		else if (configIsForTalents) {
 
 			// In previous versions of RPG, players could see, but couldn't open specific menus if the director talents were active.
@@ -471,8 +506,9 @@ public BuildMenuHandle(Handle menu, MenuAction action, int client, int slot) {
 		else if (StrEqual(config, "attributes", false)) {
 			LoadAttributesMenu(client);
 		}
-		else if (StrEqual(config, "nohandicap", false) && handicapLevel[client] >= 0) {
-			handicapLevel[client] = -1;
+		else if (StrEqual(config, "nohandicap", false)) {
+			handicapLevel[client] = 0;
+			FormatPlayerName(client);
 			BuildMenu(client);
 		}
 		/*else {

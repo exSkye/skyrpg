@@ -57,7 +57,7 @@ public ReadyUp_RoundIsOver(gamemode) {
 public int ReadyUp_GroupMemberStatus(int client, int groupStatus) {
 
 	if (IsLegitimateClient(client)) {
-		if (HasCommandAccess(client, "donator package flag?") || groupStatus == 1) IsGroupMember[client] = true;
+		if (HasCommandAccess(client, sDonatorFlags) || groupStatus == 1) IsGroupMember[client] = true;
 		else IsGroupMember[client] = false;
 
 		CheckGroupStatus(client);

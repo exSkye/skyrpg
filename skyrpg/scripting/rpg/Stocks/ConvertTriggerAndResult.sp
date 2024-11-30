@@ -55,17 +55,24 @@ int ConvertEffectToInt(char[] resultEffects) {
 	return -1;
 }
 
-int ConvertStringToColorCode(char[] string) {
-	if (StrEqual(string, "green", false)) return 0;
-	if (StrEqual(string, "red", false)) return 1;
-	if (StrEqual(string, "blue", false)) return 2;
-	if (StrEqual(string, "purple", false)) return 3;
-	if (StrEqual(string, "yellow", false)) return 4;
-	if (StrEqual(string, "orange", false)) return 5;
-	if (StrEqual(string, "black", false)) return 6;
-	if (StrEqual(string, "brightblue", false)) return 7;
-	if (StrEqual(string, "darkgreen", false)) return 8;
-	if (StrEqual(string, "white", false)) return 9;
+int ConvertStringRewardToInt(char[] s) {
+	if (StrEqual(s, "materials", false)) return 0;
+	if (StrEqual(s, "xpbooster", false)) return 1;
+	if (StrEqual(s, "itemgive", false)) return 2;
+	return -1;
+}
+
+int ConvertStringToColorCode(char[] s) {
+	if (StrEqual(s, "green", false)) return 0;
+	if (StrEqual(s, "red", false)) return 1;
+	if (StrEqual(s, "blue", false)) return 2;
+	if (StrEqual(s, "purple", false)) return 3;
+	if (StrEqual(s, "yellow", false)) return 4;
+	if (StrEqual(s, "orange", false)) return 5;
+	if (StrEqual(s, "black", false)) return 6;
+	if (StrEqual(s, "brightblue", false)) return 7;
+	if (StrEqual(s, "darkgreen", false)) return 8;
+	if (StrEqual(s, "white", false)) return 9;
 	return 0;
 }
 

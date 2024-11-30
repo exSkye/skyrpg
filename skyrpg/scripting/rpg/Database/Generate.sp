@@ -48,10 +48,9 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `dismantleminor` int(4) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
-
-		GetConfigValue(text, sizeof(text), "sky points menu name?");
-		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `hla` int(4) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
+
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `time played` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `talent points` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
@@ -157,6 +156,11 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `end` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `luc` int(32) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `seffects` int(4) NOT NULL DEFAULT '0';", TheDBPrefix);
+		SQL_TQuery(hDatabase, QueryResults, tquery);
+		Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `sshake` int(4) NOT NULL DEFAULT '0';", TheDBPrefix);
 		SQL_TQuery(hDatabase, QueryResults, tquery);
 
 
@@ -293,13 +297,22 @@ public void DBConnect(Handle owner, Handle hndl, const char[] error, any data)
 		}
 
 		size				=	GetArraySize(a_Store);
-
-		for (int i = 0; i < size; i++) {
-
-			DatabaseSection			=	GetArrayCell(a_Store, i, 2);
-			GetArrayString(DatabaseSection, 0, text, sizeof(text));
-			Format(tquery, sizeof(tquery), "ALTER TABLE `%s` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
+		if (size > 0) {
+			Format(tquery, sizeof(tquery), "CREATE TABLE IF NOT EXISTS `%s_store` (`steam_id` varchar(64) NOT NULL, PRIMARY KEY (`steam_id`)) ENGINE=InnoDB;", TheDBPrefix);
 			SQL_TQuery(hDatabase, QueryResults, tquery);
+
+			Format(tquery, sizeof(tquery), "ALTER TABLE `%s_store` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, spmn);
+			SQL_TQuery(hDatabase, QueryResults, tquery);
+			Format(tquery, sizeof(tquery), "ALTER TABLE `%s_store` ADD `%s time` int(32) NOT NULL DEFAULT '-1';", TheDBPrefix, spmn);
+			SQL_TQuery(hDatabase, QueryResults, tquery);
+			LogMessage("Creating sky store data.");
+			for (int i = 0; i < size; i++) {
+				DatabaseSection			=	GetArrayCell(a_Store, i, 2);
+				GetArrayString(DatabaseSection, 0, text, sizeof(text));
+				Format(tquery, sizeof(tquery), "ALTER TABLE `%s_store` ADD `%s` int(32) NOT NULL DEFAULT '0';", TheDBPrefix, text);
+				LogMessage(tquery);
+				SQL_TQuery(hDatabase, QueryResults, tquery);
+			}
 		}
 	}
 

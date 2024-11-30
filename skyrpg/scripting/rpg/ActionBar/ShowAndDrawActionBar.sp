@@ -354,12 +354,8 @@ stock GetAbilityText(client, char[] TheString, TheSize, Handle Keys, Handle Valu
 		float fAbilityCooldown = GetArrayCell(Values, ABILITY_COOLDOWN);
 
 		TheAbilityMultiplier = GetAbilityMultiplier(client, "L");
-		if (TheAbilityMultiplier != -1.0) {
-
-			if (TheAbilityMultiplier < 0.0) TheAbilityMultiplier = 0.1;
-			else if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
-				fAbilityCooldown -= (fAbilityCooldown * TheAbilityMultiplier);
-			}
+		if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
+			fAbilityCooldown -= (fAbilityCooldown * TheAbilityMultiplier);
 		}
 		if (fAbilityCooldown > 0.0) Format(text2, sizeof(text2), "%T", "Ability Cooldown", client, fAbilityCooldown);
 		else Format(text2, sizeof(text2), "%T", "No Ability Cooldown", client);

@@ -150,20 +150,16 @@ stock AdvertiseAction(client, char[] TalentName, bool isSpell = false) {
 	}
 }
 
-stock float GetSpellCooldown(client, char[] spellChar = "o", int pos) {	// by default, pass ANY value other than L
+stock float GetSpellCooldown(client, char[] spellChar = "o", int pos, bool skipCooldownCheck = false) {	// by default, pass ANY value other than L
 
 	float SpellCooldown = GetAbilityValue(client, ABILITY_COOLDOWN, pos);
 	if (SpellCooldown == -1.0) return 0.0;
-	float TheAbilityMultiplier = (!StrEqual(spellChar, "L")) ? GetAbilityMultiplier(client, "L", -1) : -1.0;
-
-	if (TheAbilityMultiplier != -1.0) {
-
-		if (TheAbilityMultiplier < 0.0) TheAbilityMultiplier = 0.1;
-		else if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
-
-			SpellCooldown -= (SpellCooldown * TheAbilityMultiplier);
-			if (SpellCooldown < 0.0) SpellCooldown = 0.0;
-		}
+	if (skipCooldownCheck) return SpellCooldown;
+	if (StrEqual(spellChar, "L", true)) return -1.0;
+	float TheAbilityMultiplier = GetAbilityMultiplier(client, "L", -1);
+	if (TheAbilityMultiplier > 0.0) {
+		SpellCooldown -= (SpellCooldown * TheAbilityMultiplier);
+		if (SpellCooldown < 0.0) SpellCooldown = 0.0;
 	}
 	return SpellCooldown;
 }
@@ -201,7 +197,7 @@ stock bool UseAbility(client, target = -1, char[] TalentName, Handle Values, flo
 		else if (StrEqual(Effects, "r", true)) {
 
 			if (!IsPlayerAlive(client) && b_HasDeathLocation[client] && GetTime() - clientDeathTime[client] < 60) {
-
+				playerRespawnCounter[client] = 0;
 				RespawnImmunity[client] = true;
 				MyRespawnTarget[client] = -1;
 				SDKCall(hRoundRespawn, client);
@@ -222,10 +218,11 @@ stock bool UseAbility(client, target = -1, char[] TalentName, Handle Values, flo
 		}
 		else if (StrEqual(Effects, "P", true)) {
 			// Toggles between pistol / magnum
-			if (MySecondary > 0 && IsValidEntity(MySecondary)) {
+			if (IsValidEntityEx(MySecondary)) {
 				GetEntityClassname(MySecondary, MyWeapon, sizeof(MyWeapon));
 				RemovePlayerItem(client, MySecondary);
-				AcceptEntityInput(MySecondary, "Kill");
+				//AcceptEntityInput(MySecondary, "Kill");
+				RemoveEntity(MySecondary);
 			}
 			if (StrContains(MyWeapon, "magnum", false) == -1 && StrContains(MyWeapon, "pistol", false) != -1) {
 

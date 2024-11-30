@@ -200,6 +200,18 @@ stock SuperCommonsInPlay(char[] Name) {
 	return count;
 }
 
+stock int GetCommonPosByValue(int client, int pos = SUPER_COMMON_DEATH_EFFECT, char[] comparator = "e") {
+	int size = GetArraySize(a_CommonAffixes);
+	for (int i = 0; i < size; i++) {
+		GetCommonPosVals[client] = GetArrayCell(a_CommonAffixes, i, 1);
+
+		char text[10];
+		GetArrayString(GetCommonPosVals[client], pos, text, sizeof(text));
+		if (StrEqual(text, comparator, true)) return i;
+	}
+	return -1;
+}
+
 /*
 
 	This function is called when a common infected is spawned, and attempts to roll for affixes.
@@ -421,6 +433,13 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0, int 
 	}
 
 	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_INFECTED || i == client) continue;
+		if (FindZombieClass(i) == ZOMBIECLASS_TANK) {
+			ChangeTankState(i, TANKSTATE_BOMBER, _, _, basedamage);
+		}
+	}
+
+	for (int i = 1; i <= MaxClients; i++) {
 
 		if (!IsLegitimateClientAlive(i) || PlayerLevel[i] < AfxLevelReq) continue;
 		GetClientAbsOrigin(i, TargetPosition);
@@ -454,7 +473,7 @@ stock CreateBomberExplosion(client, target, char[] Effects, basedamage = 0, int 
 	if (StrContains(Effects, "e", true) != -1 || StrContains(Effects, "x", true) != -1) {
 
 		CreateExplosion(target);	// boom boom audio and effect on the location.
-		if (!IsFakeClient(target)) ScreenShake(target);
+		if (!IsFakeClient(target) && iTypeOfSpecialEffectsToShow[target] >= SPECIALEFFECTS_ALL) ScreenShake(target);
 	}
 	if (StrContains(Effects, "B", true) != -1) {
 
@@ -654,8 +673,6 @@ bool ForceClearSpecialCommon(int entity, int client = 0, bool killMob = true, in
 		if (pos >= 0) RemoveFromArray(SpecialCommon[i], pos);
 	}
 	if (client == 0 && killMob && IsCommonInfected(entity)) {
-		//SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
-		//SDKUnhook(entity, SDKHook_TraceAttack, OnTraceAttack);
 		if (!CommonInfectedModelEx(entity, "fallen", -19)) AcceptEntityInput(entity, "BecomeRagdoll");
 		else SetEntProp(entity, Prop_Data, "m_iHealth", 1);
 	}

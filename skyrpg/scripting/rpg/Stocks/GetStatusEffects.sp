@@ -79,6 +79,7 @@ stock GetStatusEffects(client, EffectType = 0, char[] theStringToStoreItIn, theS
 			Format(theStringToStoreItIn, theSizeOfTheString, "%s[Re]", theStringToStoreItIn);
 			iNumStatusEffects++;
 		}
+		if (jetpackInterruptionTime >= GetEngineTime()) Format(theStringToStoreItIn, theSizeOfTheString, "%s[Jp]", theStringToStoreItIn);
 	}
 	else if (EffectType == 1) {		// POSITIVE EFFECTS
 

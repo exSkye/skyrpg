@@ -26,19 +26,17 @@ stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bo
 			bool bIsLayerEligible = (PlayerCurrentMenuLayer[client] <= 1 || fUpgradesRequiredPerLayer > 1.0 && thisLayerUpgradeStrength >= RoundToCeil(fUpgradesRequiredPerLayer) || fUpgradesRequiredPerLayer <= 1.0 && thisLayerUpgradeStrength >= RoundToCeil(GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client] - 1, _, _, _, true, true) * fUpgradesRequiredPerLayer)) ? true : false;
 
 			int TotalPoints = TotalPointsAssigned(client);
-			char PlayerLevelText[256];
 			if (typeOfDataToShow == 0) {
-				MenuExperienceBar(client, _, _, PlayerLevelText, sizeof(PlayerLevelText));
-				if (typeOfDataToShow == 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted, scrap, avgAugLvl, GetArraySize(myAugmentIDCodes[client]), iInventoryLimit);
-				else if (typeOfDataToShow == 1) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Player Level Text minor", client, PlayerLevel[client], iMaxLevel, currExperience, PlayerLevelText, targExperience, ratingFormatted, scrap, avgAugLvl, GetArraySize(myAugmentIDCodes[client]), iInventoryLimit);
-				if (SkyLevel[client] > 0) Format(PlayerLevelText, sizeof(PlayerLevelText), "%T", "Prestige Level Text", client, SkyLevel[client], iSkyLevelMax, PlayerLevelText);
+				int maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
+				MenuExperienceBar(client, _, _, text, sizeof(text));
+				int clientInventoryLimit = iInventoryLimit;
+				if (bHasDonorPrivileges[client]) clientInventoryLimit += iDonorInventoryIncrease;
+				Format(text, sizeof(text), "%T", "Player Level Text", client, PlayerLevel[client], iMaxLevel, currExperience, text, targExperience, ratingFormatted, scrap, avgAugLvl, GetArraySize(myAugmentIDCodes[client]), clientInventoryLimit, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client], SkyPoints[client]);
+				if (SkyLevel[client] > 0) Format(text, sizeof(text), "%T", "Prestige Level Text", client, SkyLevel[client], iSkyLevelMax, text);
 			}
-			int maximumPlayerUpgradesToShow = (iShowTotalNodesOnTalentTree == 1) ? MaximumPlayerUpgrades(client, true) : MaximumPlayerUpgrades(client);
 			if (CheckRPGMode != 0) {
 				//decl String:upgradeCap[64];
 				//(iMaxServerUpgrades < 1) ? Format(upgradeCap, sizeof(upgradeCap), "N/A") : Format(upgradeCap, sizeof(upgradeCap), "%d", iMaxServerUpgrades);
-				if (typeOfDataToShow == 0) Format(text, sizeof(text), "%T", "RPG Header", client, PlayerLevelText, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
-				else if (typeOfDataToShow == 1) Format(text, sizeof(text), "%T", "RPG Header minor", client, TotalPoints, maximumPlayerUpgradesToShow, UpgradesAvailable[client] + FreeUpgrades[client]);
 				if (ShowLayerEligibility) {
 					if (bIsLayerEligible) {
 						int strengthOfCurrentLayer = GetLayerUpgradeStrength(client, PlayerCurrentMenuLayer[client], _, _, _, _, true);
@@ -50,7 +48,7 @@ stock void BuildMenuTitle(int client, Handle menu, int bot = 0, int type = 0, bo
 							strengthOfCurrentLayer = 0;
 							WipeTalentPoints(client);
 						}
-						Format(text, sizeof(text), "%T", "RPG Layer Eligible", client, text, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, upgradesRequiredThisLayer);
+						Format(text, sizeof(text), "%T", "RPG Layer Eligible", client, text, PlayerCurrentMenuLayer[client], strengthOfCurrentLayer, upgradesRequiredThisLayer, UpgradesAvailable[client] + FreeUpgrades[client]);
 					}
 					else Format(text, sizeof(text), "%T", "RPG Layer Not Eligible", client, text, PlayerCurrentMenuLayer[client]);
 				}

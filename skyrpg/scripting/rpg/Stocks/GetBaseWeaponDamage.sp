@@ -30,6 +30,8 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 	DamageValues[client] = GetArrayCell(a_WeaponDamages, myCurrentWeaponPos[client], 1);
 	WeaponDamage = GetArrayCell(DamageValues[client], WEAPONINFO_DAMAGE);
 
+	int minWeaponDamageAllowed = 0;
+
 	int coherencyDamageBonus = RoundToCeil(GetCoherencyStrength(client, TARGET_ABILITY_EFFECTS, "d", COHERENCY_RANGE));
 	// if (IsDataSheet) // we don't need this if statement anymore since the dontActivateTalentCooldown boolean is set based on the variable.
 	if (!isHealing) {
@@ -110,6 +112,7 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 	// if effective range > range, reduce effective range based on the weapon range increase talents, so that snipers receive their range damage bonus faster
 	// if range > effective range, then weapon range talents increase effective range, so damage drop off doesn't start until further away.
 	if (!IsMelee) {
+		minWeaponDamageAllowed = RoundToCeil(WeaponDamage * fMinWeaponDamageAllowed);
 		float fEffectiveRangeDamageBonus = 2.0;
 		if (WeaponEffectiveRange > WeaponRange) {	// Scale weapons like Snipers that you should deal more damage the FURTHER away you are.
 			if (Distance <= WeaponRange) {
@@ -131,6 +134,7 @@ stock int GetBaseWeaponDamage(int client, int target, float impactX = 0.0, float
 			}
 		}
 		WeaponDamage = RoundToCeil(WeaponDamage * fEffectiveRangeDamageBonus);
+		if (WeaponDamage < minWeaponDamageAllowed) WeaponDamage = minWeaponDamageAllowed;
 	}
 	if (bIsSurvivorFatigue[client]) {
 		int damagePenalty = RoundToCeil(WeaponDamage * fFatigueDamagePenalty);

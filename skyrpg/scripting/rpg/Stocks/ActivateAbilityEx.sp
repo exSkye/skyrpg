@@ -1,6 +1,6 @@
 void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int effectInt, float g_TalentStrength, float g_TalentTime, int victim = 0,
 						char[] Trigger = "0", int isRaw = 0, float AoERange = 0.0, int secondaryEffects = -1,
-						float secondaryAoERange = 0.0, int hitgroup = -1, int secondaryTrigger = -1,
+						float secondaryAoERange = 0.0, int hitgroup = -1,
 						int damagetype = -1, char[] nameOfItemToGivePlayer = "-1", int activatorCallAbilityTrigger = -1, int entityIdToPassThrough = -1, float healthActivationCost = 0.0, int targetCallAbilityTrigger = -1) {
 	//return;
 
@@ -19,11 +19,9 @@ void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int
 	if (healthCost > 0) SetClientTotalHealth(activator, activator, healthCost);
 
 	if (g_TalentStrength > 0.0) {
-		float fAmplifyPower = GetAbilityStrengthByTrigger(activator, target, TRIGGER_amplify, _, _, _, _, effectInt, _, true);
-		fAmplifyPower *= g_TalentStrength;
-		g_TalentStrength += fAmplifyPower;
-		// When a node successfully fires, it can call custom ability triggers.
-		if (secondaryTrigger != -1) GetAbilityStrengthByTrigger(activator, target, secondaryTrigger, _, RoundToCeil(g_TalentStrength), _, _, _, _, _, _, hitgroup, _, damagetype);
+		// float fAmplifyPower = GetAbilityStrengthByTrigger(activator, target, TRIGGER_amplify, _, _, _, _, effectInt, _, true);
+		// fAmplifyPower *= g_TalentStrength;
+		// g_TalentStrength += fAmplifyPower;
 
 		int iDamage = (isRaw == 1 || d_Damage == 0) ? RoundToCeil(g_TalentStrength) : RoundToCeil(d_Damage * g_TalentStrength);
 		int talentStr = RoundToCeil(g_TalentStrength);
@@ -95,7 +93,7 @@ void ActivateAbilityEx(int activator, int target, int menuPos, int d_Damage, int
 						int totalMagSize = bulletsFired + bulletsRemaining;
 						float fMagazineExhausted = ((bulletsFired * 1.0)/(totalMagSize * 1.0));
 
-						ActivateAbilityEx(activator, target, menuPos, d_Damage, secondaryEffects, (fMagazineExhausted * g_TalentStrength), g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, _, damagetype);
+						ActivateAbilityEx(activator, target, menuPos, d_Damage, secondaryEffects, (fMagazineExhausted * g_TalentStrength), g_TalentTime, victim, Trigger, isRaw, secondaryAoERange, _, _, hitgroup, damagetype);
 					}
 				}
 			}

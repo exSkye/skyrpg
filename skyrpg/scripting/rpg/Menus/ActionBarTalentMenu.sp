@@ -120,6 +120,7 @@ public TalentInfoScreen_Init (Handle topmenu, MenuAction action, client, param2)
 							PurchaseTalentPoints[client]++;
 							AddTalentPoints(client, menuPos, PurchaseTalentPoints[client]);
 							SetClientTalentStrength(client);
+							FormatPlayerName(client);
 							SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
 						}
 					}
@@ -133,6 +134,7 @@ public TalentInfoScreen_Init (Handle topmenu, MenuAction action, client, param2)
 						// in those talents if it's the case, locking the nodes.
 						GetLayerUpgradeStrength(client, currentLayer, true);
 						SetClientTalentStrength(client);
+						FormatPlayerName(client);
 						SendPanelToClientAndClose(TalentInfoScreen(client), client, TalentInfoScreen_Init, MENU_TIME_FOREVER);
 					}
 				}

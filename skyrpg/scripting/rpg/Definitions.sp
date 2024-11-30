@@ -17,10 +17,10 @@
 #define MAX_CHAT_LENGTH					1024
 #define COOPRECORD_DB					"db_season_coop"
 #define SURVRECORD_DB					"db_season_surv"
-#define PLUGIN_VERSION					"v4.4"
+#define PLUGIN_VERSION					"v4.5"
 #define PROFILE_VERSION					"v1.5"
 #define PLUGIN_CONTACT					"skyy"
-#define PLUGIN_NAME						"RPG Construction Set"
+#define PLUGIN_NAME						"skyrpg"
 #define PLUGIN_DESCRIPTION				"a build-your-own rpg adventure for source engine."
 #define CONFIG_EVENTS					"rpg/events.cfg"
 #define CONFIG_MAINMENU					"rpg/mainmenu.cfg"
@@ -78,6 +78,8 @@
 #define TANKSTATE_DEATH							3
 #define TANKSTATE_TELEPORT						4
 #define TANKSTATE_HULK							5
+#define TANKSTATE_BOMBER						6
+#define TANKSTATE_FREEZER						7
 #define EFFECTOVERTIME_ACTIVATETALENT			0
 #define EFFECTOVERTIME_GETACTIVETIME			1
 #define EFFECTOVERTIME_GETCOOLDOWN				2
@@ -506,14 +508,75 @@
 #define POINTS_DESCRIPTION 25
 #define POINTS_IS_RESPAWN 26
 #define POINTS_EXPERIENCE_MULTIPLIER 27
-
 #define ATTRIBUTE_CONSTITUTION	0
 #define ATTRIBUTE_AGILITY		1
 #define ATTRIBUTE_RESILIENCE	2
 #define ATTRIBUTE_TECHNIQUE		3
 #define ATTRIBUTE_ENDURANCE		4
 #define ATTRIBUTE_LUCK			5
+#define SPECIALEFFECTS_ALL 3
+#define SPECIALEFFECTS_FRIENDLY 2
+#define SPECIALEFFECTS_ME 1
+#define SPECIALEFFECTS_NONE 0
+#define SCREENSHAKE_FULL 2
+#define SCREENSHAKE_HALF 1
+#define SCREENSHAKE_MINIMAL 0
+#define CLIENT_NO_WEAPONS_EQUIPPED -1
+// Store
+#define STORE_SKYPOINT_COST 0
+#define STORE_REWARD_TYPE 1
+#define STORE_REWARD_AMOUNT 2
+#define STORE_REWARD_TIME 3
+#define STORE_ITEM_TO_GIVE 4
+#define STORE_ITEM_TYPE_IS_MATERIALS 0
+#define STORE_ITEM_TYPE_IS_XPBOOSTER 1
+#define STORE_ITEM_TYPE_IS_ITEMGIVE 2
+#define STORE_ITEM_TYPE_IS_VENDING_MACHINE 3
+#define LOOTREASON_NOTSET -1
+#define LOOTREASON_FORCEDSHARING 0
+#define LOOTREASON_NOTSHARING 1
+#define LOOTREASON_CLIENTDOESNTWANTIT 2
+#define LOOTREASON_CLIENTSTOLELOOT 3
+#define LOOTREASON_CLIENTISOWNER 4
 
+int iDonorInventoryIncrease;
+bool bHasDonorPrivileges[MAXPLAYERS + 1];
+int playerRespawnCounter[MAXPLAYERS + 1];
+int iDisableRescueClosets;
+float fJetpackInterruptionTime;
+float jetpackInterruptionTime;
+int PlayerWhoBiledMe[MAXPLAYERS + 1];
+int currentRockOwner;
+float fTankStateTickrate;
+float fWeaknessCheck[MAXPLAYERS + 1];
+float fDebuffIntervalCheck;
+Handle ActiveTankRocks;
+float fTankStateCheck[MAXPLAYERS + 1];
+float fBomberExplosionDelay[MAXPLAYERS + 1];
+Handle GetCommonPosVals[MAXPLAYERS + 1];
+float fSurvivorsNearCheck[MAXPLAYERS + 1];
+int iScoreLostOnDeathLevelRequired;
+int handicapLevelAllowed[MAXPLAYERS + 1];
+int iHandicapLevelsAreScoreBased;
+float fMinWeaponDamageAllowed;
+float fStartingStaminaPercentage;
+float fSoloDifficultyExperienceBonus;
+Handle SavePlayerValues[MAXPLAYERS + 1];
+int iNewPlayerSkyPoints;
+Handle StoreLoader[MAXPLAYERS + 1];
+int iBaseCommonLimitIncreasePerPlayer;
+Handle StoreInventory[MAXPLAYERS + 1];
+int skyPointsAwardTime[MAXPLAYERS + 1];
+int iSkyPointsTimeRequired;
+int iSkyPointsTimeRequiredDonator;
+int iSkyPointsAwardAmount;
+int iGrindMode;
+float fGrindMultiplier;
+int iTypeOfScreenShake[MAXPLAYERS + 1];
+int iTypeOfSpecialEffectsToShow[MAXPLAYERS + 1];
+float fEnrageTankMovementSpeed;
+float fDisplayLootPickupMessageTime;
+int iGenerateLootBags;
 bool clientIsWalking[MAXPLAYERS + 1];
 int iFancyBorders;
 float fGoverningAttributeModifier;
@@ -645,6 +708,7 @@ int iAugmentActivatorRerollCost;
 int iAugmentTargetRerollCost;
 int augmentSlotToEquipOn[MAXPLAYERS + 1];
 int iMaximumCommonsPerPlayer;
+int iMaximumCommonsPerSurvivor;
 bool hasMeleeWeaponEquipped[MAXPLAYERS + 1];
 int iMaximumTanksPerPlayer;
 Handle ModelsToPrecache;
@@ -897,6 +961,7 @@ int RestedExperience[MAXPLAYERS + 1];
 int MapRoundsPlayed;
 char LastSpoken[MAXPLAYERS + 1][512];
 Handle RPGMenuPosition[MAXPLAYERS + 1];
+Handle StoreMenuPosition[MAXPLAYERS + 1];
 bool b_IsInSaferoom[MAXPLAYERS + 1];
 Handle hDatabase												=	INVALID_HANDLE;
 char ConfigPathDirectory[64];
@@ -1183,6 +1248,7 @@ float fUpgradeExpCost;
 int iWitchHealthBase;
 float fWitchHealthMult;
 int RatingPerTalentPoint;
+int RatingPerTalentPointBots;
 int RatingPerLevel;
 int RatingPerAugmentLevel;
 int RatingPerLevelSurvivorBots;
@@ -1224,6 +1290,7 @@ Handle MyGroup[MAXPLAYERS + 1];
 int iCommonsLimitUpper;
 bool bIsInCheckpoint[MAXPLAYERS + 1];
 float fCoopSurvBon;
+float fCoopSoloSurvBon;
 int iMinSurvivors;
 int PassiveEffectDisplay[MAXPLAYERS + 1];
 char sServerDifficulty[64];
@@ -1330,6 +1397,8 @@ char ClientStatusEffects[MAXPLAYERS + 1][2][64];
 float fTankMovementSpeed_Burning;
 float fTankMovementSpeed_Hulk;
 float fTankMovementSpeed_Death;
+float fTankMovementSpeed_Bomber;
+float fTankMovementSpeed_Freezer;
 int iResetPlayerLevelOnDeath;
 char serverKey[64];
 bool playerHasAdrenaline[MAXPLAYERS + 1];
@@ -1435,7 +1504,7 @@ stock CreateAllArrays() {
 	if (TalentPassivePositions == INVALID_HANDLE) TalentPassivePositions = CreateArray(8);
 	if (TalentPassiveColors == INVALID_HANDLE) TalentPassiveColors = CreateArray(8);
 	if (TalentPassiveSizes == INVALID_HANDLE) TalentPassiveSizes = CreateArray(8);
-
+	if (ActiveTankRocks == INVALID_HANDLE) ActiveTankRocks = CreateArray(8);
 	if (TalentDrawPositions == INVALID_HANDLE) TalentDrawPositions = CreateArray(8);
 	if (TalentDrawColors == INVALID_HANDLE) TalentDrawColors = CreateArray(8);
 	if (CommonDrawPositions == INVALID_HANDLE) CommonDrawPositions = CreateArray(8);
@@ -1580,6 +1649,7 @@ stock BuildArraysOnClientFirstLoad(int client) {
 	if (TalentActionValues[client] == INVALID_HANDLE) TalentActionValues[client] = CreateArray(16);
 	if (TalentExperienceValues[client] == INVALID_HANDLE) TalentExperienceValues[client] = CreateArray(16);
 	if (TalentTreeValues[client] == INVALID_HANDLE) TalentTreeValues[client] = CreateArray(16);
+	if (SavePlayerValues[client] == INVALID_HANDLE) SavePlayerValues[client] = CreateArray(16);
 	if (TheLeaderboards[client] == INVALID_HANDLE) TheLeaderboards[client] = CreateArray(16);
 	if (TheLeaderboardsDataFirst[client] == INVALID_HANDLE) TheLeaderboardsDataFirst[client] = CreateArray(8);
 	if (TheLeaderboardsDataSecond[client] == INVALID_HANDLE) TheLeaderboardsDataSecond[client] = CreateArray(8);
@@ -1635,6 +1705,7 @@ stock BuildArraysOnClientFirstLoad(int client) {
 	if (BoosterKeys[client] == INVALID_HANDLE) BoosterKeys[client]							= CreateArray(16);
 	if (BoosterValues[client] == INVALID_HANDLE) BoosterValues[client]						= CreateArray(16);
 	if (RPGMenuPosition[client] == INVALID_HANDLE) RPGMenuPosition[client]						= CreateArray(16);
+	if (StoreMenuPosition[client] == INVALID_HANDLE) StoreMenuPosition[client] = CreateArray(16);
 	if (h_KilledPosition[client] == INVALID_HANDLE) h_KilledPosition[client]				= CreateArray(3);
 	if (RCAffixes[client] == INVALID_HANDLE) RCAffixes[client] = CreateArray(16);
 	if (SurvivorsIgnored[client] == INVALID_HANDLE) SurvivorsIgnored[client] = CreateArray(16);
@@ -1696,6 +1767,9 @@ stock BuildArraysOnClientFirstLoad(int client) {
 	if (OnDeathHandicapValues[client] == INVALID_HANDLE) OnDeathHandicapValues[client] = CreateArray(8);
 	if (augmentInventoryPosition[client] == INVALID_HANDLE) augmentInventoryPosition[client] = CreateArray(4);
 	if (attributeData[client] == INVALID_HANDLE) attributeData[client] = CreateArray(6);
+	if (StoreInventory[client] == INVALID_HANDLE) StoreInventory[client] = CreateArray(16);
+	if (StoreLoader[client] == INVALID_HANDLE) StoreLoader[client] = CreateArray(16);
+	if (GetCommonPosVals[client] == INVALID_HANDLE) GetCommonPosVals[client] = CreateArray(16);
 
 	int ASize = GetArraySize(a_Menu_Talents);
 	ResizeArray(MyTalentStrength[client], ASize);

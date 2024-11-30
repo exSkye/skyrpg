@@ -122,9 +122,11 @@ stock bool QuickCommandAccessEx(client, char[] sCommand, bool b_IsTeamOnly = fal
 						if (!StrEqual(CheatCommand, "melee")) ExecCheatCommand(client, CheatCommand, CheatParameter);
 						else {
 							int ent			= CreateEntityByName("weapon_melee");
-							DispatchKeyValue(ent, "melee_script_name", CheatParameter);
-							DispatchSpawn(ent);
-							EquipPlayerWeapon(client, ent);
+							if (IsValidEntityEx(ent)) {
+								DispatchKeyValue(ent, "melee_script_name", CheatParameter);
+								DispatchSpawn(ent);
+								EquipPlayerWeapon(client, ent);
+							}
 						}
 						return true;
 					}
@@ -251,10 +253,12 @@ stock bool QuickCommandAccessEx(client, char[] sCommand, bool b_IsTeamOnly = fal
 									if (TargetClient == -1)	L4D_RemoveWeaponSlot(client, L4DWeaponSlot_Secondary);
 									else L4D_RemoveWeaponSlot(TargetClient, L4DWeaponSlot_Secondary);
 									int ent			= CreateEntityByName("weapon_melee");
-									DispatchKeyValue(ent, "melee_script_name", CheatParameter);
-									DispatchSpawn(ent);
-									if (TargetClient == -1) EquipPlayerWeapon(client, ent);
-									else EquipPlayerWeapon(TargetClient, ent);
+									if (IsValidEntityEx(ent)) {
+										DispatchKeyValue(ent, "melee_script_name", CheatParameter);
+										DispatchSpawn(ent);
+										if (TargetClient == -1) EquipPlayerWeapon(client, ent);
+										else EquipPlayerWeapon(TargetClient, ent);
+									}
 								}
 								else {
 									if (StrBeginsWith(CheatParameter, "pistol")) L4D_RemoveWeaponSlot(client, L4DWeaponSlot_Secondary);

@@ -12,6 +12,7 @@ void MySQL_Init()
 	iServerLevelRequirement		= GetConfigValueInt("server level requirement?");
 	RatingPerLevel				= GetConfigValueInt("rating level multiplier?");
 	RatingPerTalentPoint		= GetConfigValueInt("rating per talent point multiplier?", 500);
+	RatingPerTalentPointBots	= GetConfigValueInt("rating per talent point bots?", 100);
 	RatingPerAugmentLevel		= GetConfigValueInt("rating per augment level multiplier?", 1);
 	RatingPerLevelSurvivorBots	= GetConfigValueInt("rating level multiplier survivor bots?");
 	InfectedTalentLevel			= GetConfigValueInt("talent level multiplier?");

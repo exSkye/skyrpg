@@ -1,10 +1,12 @@
 stock GetExperienceRequirement(newlevel) {
 	int baseExperienceCounter = (newlevel > iHardcoreMode) ? iHardcoreMode : newlevel;
 	int hardExperienceCounter = (newlevel > iHardcoreMode) ? newlevel - iHardcoreMode : 0;
+	int grindExperienceCounter = (newlevel > iGrindMode) ? newlevel - iGrindMode : 0;
 
 	float fExpMult = fExperienceMultiplier * (baseExperienceCounter - 1);
 	float fExpHard = fExperienceMultiplierHardcore * (hardExperienceCounter - 1);
-	return iExperienceStart + RoundToCeil(iExperienceStart * (fExpMult + fExpHard));
+	float fExpGrind = fGrindMultiplier * (grindExperienceCounter - 1);
+	return iExperienceStart + RoundToCeil(iExperienceStart * (fExpMult + fExpHard + fExpGrind));
 }
 
 stock CheckExperienceRequirement(client, bool bot = false, iLevel = 0, previousLevelRequirement = 0) {
@@ -15,23 +17,28 @@ stock CheckExperienceRequirement(client, bool bot = false, iLevel = 0, previousL
 		experienceRequirement			=	iExperienceStart;
 		float experienceMultiplier	=	0.0;
 		float hardcoreMultiplier	=	0.0;
+		float grindMultiplier		=	0.0;
 
 		int baseExperienceCounter = (levelToCalculateFor > iHardcoreMode) ? iHardcoreMode : levelToCalculateFor;
 		int hardExperienceCounter = (levelToCalculateFor > iHardcoreMode) ? levelToCalculateFor - iHardcoreMode : 0;
+		int grndExperienceCounter = (levelToCalculateFor > iGrindMode) ? levelToCalculateFor - iGrindMode : 0;
 
 		if (iUseLinearLeveling == 1) {
 			experienceMultiplier 			=	fExperienceMultiplier * (baseExperienceCounter - 1);
 			hardcoreMultiplier				=	fExperienceMultiplierHardcore * (hardExperienceCounter - 1);
-			experienceRequirement			=	iExperienceStart + RoundToCeil(iExperienceStart * (experienceMultiplier + hardcoreMultiplier));
+			grindMultiplier					=	fGrindMultiplier * (grndExperienceCounter - 1);
+			experienceRequirement			=	iExperienceStart + RoundToCeil(iExperienceStart * (experienceMultiplier + hardcoreMultiplier + grindMultiplier));
 		}
 		else if (previousLevelRequirement != 0) {
 			if (PlayerLevel[client] < iHardcoreMode) experienceRequirement			=	previousLevelRequirement + RoundToCeil(previousLevelRequirement * fExperienceMultiplier);
-			else experienceRequirement			=	previousLevelRequirement + RoundToCeil(previousLevelRequirement * fExperienceMultiplierHardcore);
+			else if (PlayerLevel[client] < iGrindMode) experienceRequirement			=	previousLevelRequirement + RoundToCeil(previousLevelRequirement * fExperienceMultiplierHardcore);
+			else experienceRequirement += previousLevelRequirement + RoundToCeil(previousLevelRequirement * fGrindMultiplier);
 		}
 		else if (levelToCalculateFor > 1) {
 			for (int i = 1; i < levelToCalculateFor; i++) {
 				if (i < iHardcoreMode) experienceRequirement		+=	RoundToCeil(experienceRequirement * fExperienceMultiplier);
-				else experienceRequirement		+=	RoundToCeil(experienceRequirement * fExperienceMultiplierHardcore);
+				else if (i < iGrindMode) experienceRequirement		+=	RoundToCeil(experienceRequirement * fExperienceMultiplierHardcore);
+				else experienceRequirement += RoundToCeil(experienceRequirement * fGrindMultiplier);
 			}
 		}
 	}

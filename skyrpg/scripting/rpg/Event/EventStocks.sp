@@ -7,7 +7,7 @@ stock GetPrestigeLevelNodeUnlocks(level) {
 	return level;
 }
 
-stock DoBurn(attacker, victim, baseWeaponDamage) {
+stock DoBurn(attacker, victim, baseWeaponDamage, bool isAoE = false) {
 	//if (iTankRush == 1 && FindZombieClass(victim) == ZOMBIECLASS_TANK) return;
 	bool IsLegitimateClientVictim = IsLegitimateClientAlive(victim);
 	if (IsLegitimateClientVictim) {
@@ -108,7 +108,7 @@ stock Defibrillator(client, target = 0, bool IgnoreDistance = false) {
 	}
 }
 
-stock InventoryItem(client, char[] EntityName = "none", bool bIsPickup = false, entity = -1) {
+stock void InventoryItem(client, char[] EntityName = "none", bool bIsPickup = false, int entity = -1) {
 
 	char ItemName[64];
 
@@ -124,6 +124,7 @@ stock InventoryItem(client, char[] EntityName = "none", bool bIsPickup = false, 
 	else {		// Creating the entity. Defaults to -1
 
 		entity	= CreateEntityByName(Classname[0]);
+		if (!IsValidEntityEx(entity)) return;
 		DispatchKeyValue(entity, "targetname", Classname[1]);
 		DispatchKeyValue(entity, "rendermode", "5");
 		DispatchKeyValue(entity, "spawnflags", "0");
@@ -221,15 +222,6 @@ stock ToggleJetpack(client, DisableJetpack = false) {
 		SetEntityMoveType(client, MOVETYPE_WALK);
 		bJetpack[client] = false;
 	}
-}
-
-stock bool IsEveryoneBoosterTime() {
-
-	for (int i = 1; i <= MaxClients; i++) {
-
-		if (IsLegitimateClient(i) && !IsFakeClient(i) && myCurrentTeam[i] != TEAM_SPECTATOR && !HasBoosterTime(i)) return false;
-	}
-	return true;
 }
 
 stock FindCommonInfectedTargetInArray(Handle hArray, target) {

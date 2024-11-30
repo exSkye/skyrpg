@@ -3,6 +3,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 	bool clientIsSurvivor = (myCurrentTeam[client] == TEAM_SURVIVOR) ? true : false;
 	bool IsClientIncapacitated = IsIncapacitated(client);
 	bool IsClientAlive = IsLegitimateClientAlive(client);
+	int clientZombieClass = FindZombieClass(client);
 	bool IsBiledOn = ISBILED[client];
 	float TheTime = GetEngineTime();
 	int MyAttacker = L4D2_GetInfectedAttacker(client);
@@ -46,10 +47,14 @@ public Action OnPlayerRunCmd(client, &buttons) {
 				iCurrentIncapCount[client] = iMaxIncap;
 			}
 		}
+		if (fWeaknessCheck[client] < TheTime) {
+			fWeaknessCheck[client] = TheTime + fDebuffIntervalCheck;
+			bHasWeakness[client] = PlayerHasWeakness(client);
+		}
 	}
 	if ((buttons & IN_ZOOM) && ZoomcheckDelayer[client] == INVALID_HANDLE) ZoomcheckDelayer[client] = CreateTimer(0.1, Timer_ZoomcheckDelayer, client, TIMER_FLAG_NO_MAPCHANGE);
 	if (IsHoldingPrimaryFire && medItem[client] == 0) {
-		if (!clientIsSurvivor && FindZombieClass(client) == ZOMBIECLASS_SMOKER) {
+		if (!clientIsSurvivor && clientZombieClass == ZOMBIECLASS_SMOKER) {
 			int victim = L4D2_GetSurvivorVictim(client);
 			if (victim != -1) GetAbilityStrengthByTrigger(client, victim, TRIGGER_v, _, 0);
 		}
@@ -70,34 +75,64 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			lootPickupCooldownTime[client] = TheTime + fBagPickupDelay;
 			IsPlayerTryingToPickupLoot(client);
 		}
-		if (b_IsRoundIsOver && (ReadyUpGameMode == 3 || StrContains(TheCurrentMap, "zerowarn", false) != -1)) {
-			int entity = GetClientAimTarget(client, false);
-			if (entity != -1) {
-				char EName[64];
-				GetEntityClassname(entity, EName, sizeof(EName));
-				if (StrContains(EName, "weapon", false) != -1 || StrContains(EName, "physics", false) != -1) return Plugin_Continue;
-				buttons &= ~IN_USE;
-				return Plugin_Changed;
+		int entity = GetClientAimTarget(client, false);
+		if (entity != -1) {
+			char EName[64];
+			GetEntityClassname(entity, EName, sizeof(EName));
+			if (b_IsRoundIsOver) {
+				if (ReadyUpGameMode == 3 || StrContains(TheCurrentMap, "zerowarn", false) != -1) {
+					if (StrContains(EName, "weapon", false) != -1 || StrContains(EName, "physics", false) != -1) return Plugin_Continue;
+					buttons &= ~IN_USE;
+					return Plugin_Changed;
+				}
+			}
+			else {
+				if (jetpackInterruptionTime < TheTime && StrContains(EName, "button", false) != -1) {
+					jetpackInterruptionTime = TheTime + fJetpackInterruptionTime;
+					for (int i = 1; i <= MaxClients; i++) {
+						if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR || !bJetpack[i]) continue;
+						ToggleJetpack(i, true);
+					}
+				}
 			}
 		}
 	}
-	if (IsClientAlive && b_IsActiveRound) {
-		if (myCurrentTeam[client] == TEAM_INFECTED && FindZombieClass(client) == ZOMBIECLASS_TANK) {
+	if (IsClientAlive) {
+		if (myCurrentTeam[client] == TEAM_INFECTED && clientZombieClass == ZOMBIECLASS_TANK) {
 			if (!IsAirborne[client] && !isClientOnSolidGround) IsAirborne[client] = true;	// when the tank lands, aoe explosion!
 			else if (IsAirborne[client] && isClientOnSolidGround) {
 				IsAirborne[client] = false;	// the tank has landed; explosion;
 				CreateExplosion(client, _, client, true);
 			}
 			int myLifetime = GetTime() - MyBirthday[client];
-			if (MyBirthday[client] > 0) {
-				int numSurvivorsNear = NearbySurvivors(client, 2056.0);
+			if (MyBirthday[client] > 0 && fSurvivorsNearCheck[client] < TheTime) {
+				fSurvivorsNearCheck[client] = TheTime + 1.0;
+				/*
+					THIS IS SPAMMY WHEN TANKS ARE ALIVE. DO SOMETHING ABOUT IT.
+				*/
+				int numSurvivorsNear = NearbySurvivors(client, 1024.0);
 				//if there are no nearby survivors (tank spawned ahead or people are rushing)
 				if (numSurvivorsNear < 1) {
 					// if we've been around for a while, kill the tank
 					if (myLifetime > 120) DeleteMeFromExistence(client);
-					else SetSpeedMultiplierBase(client, 2.0);	// otherwise make him super fast so he can catch the survivors.
+					else SetSpeedMultiplierBase(client, fEnrageTankMovementSpeed);	// otherwise make him super fast so he can catch the survivors.
 				}	// but if survivors are nearby, reset the tanks speed based on his current mutation.
 				else CheckTankSubroutine(client);
+			}
+			if (fTankStateCheck[client] < TheTime) {
+				fTankStateCheck[client] = TheTime + fTankStateTickrate;
+				if (fBomberExplosionDelay[client] < TheTime && ChangeTankState(client, TANKSTATE_BOMBER, _, true)) {
+					fBomberExplosionDelay[client] = TheTime + 5.0;
+					int bomberExplosion = GetArrayCell(TankState_Array[client], 0, 1);
+					int pos = GetCommonPosByValue(client, SUPER_COMMON_DEATH_EFFECT, "e");
+					if (pos >= 0) CreateBomberExplosion(client, client, "e", bomberExplosion, pos);
+				}
+				if (ChangeTankState(client, TANKSTATE_FREEZER, _, true) != 1 && IsSpecialCommonInRange(client, 'r')) {
+					ChangeTankState(client, TANKSTATE_FREEZER);
+				}
+				else if (ChangeTankState(client, TANKSTATE_FIRE, _, true) != 1 && IsSpecialCommonInRange(client, 'f')) {
+					ChangeTankState(client, TANKSTATE_FIRE);
+				}
 			}
 		}
 
@@ -110,9 +145,6 @@ public Action OnPlayerRunCmd(client, &buttons) {
 				if (SurvivorsSaferoomWaiting()) SurvivorBotsRegroup(client);
 			}
 		}*/
-		bool isClientHoldingJetpackKeys = ((buttons & IN_JUMP) && (buttons & IN_DUCK)) ? true : false;
-		if (!IsLegitimateClientAlive(MyAttacker)) StrugglePower[client] = 0;
-
 		if (CombatTime[client] <= TheTime && bIsInCombat[client] && (iPlayersLeaveCombatDuringFinales == 1 || !b_IsFinaleActive)) {
 
 			bIsInCombat[client] = false;
@@ -121,25 +153,24 @@ public Action OnPlayerRunCmd(client, &buttons) {
 			if (!IsSurvivalMode) AwardExperience(client);
 		}
 		else if (CombatTime[client] > TheTime || b_IsFinaleActive && iPlayersLeaveCombatDuringFinales == 0) {
+			if (iCanJetpackWhenInCombat != 1) ToggleJetpack(client, true);
 			bIsInCombat[client] = true;
 		}
-		//if (GetClientTeam(client) == TEAM_INFECTED) SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
-		// if (clientTeam == TEAM_SURVIVOR) {
-		// 	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", MovementSpeed[client]);
-		// }
-		if (freezerCheck[client] < TheTime && freezerTime[client] < TheTime) {
-			freezerCheck[client] = TheTime + 1.0;
-			if (IsSpecialCommonInRange(client, 'r')) {
-				freezerTime[client] = TheTime + 1.0;
-				FreezerInRange[client] = true;
-				SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 0.5);
-			}
-			else {
-				FreezerInRange[client] = false;
-				SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
-			}
-		}
 		if (clientIsSurvivor) {
+			bool isClientHoldingJetpackKeys = ((buttons & IN_JUMP) && (buttons & IN_DUCK)) ? true : false;
+
+			if (freezerCheck[client] < TheTime && freezerTime[client] < TheTime) {
+				freezerCheck[client] = TheTime + fDebuffIntervalCheck;
+				if (IsSpecialCommonInRange(client, 'r')) {
+					freezerTime[client] = TheTime + 1.0;
+					FreezerInRange[client] = true;
+					SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 0.25);
+				}
+				else {
+					FreezerInRange[client] = false;
+					SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.0);
+				}
+			}
 			bool theClientHasAnActiveProgressBar = ActiveProgressBar(client);
 			bool theClientHasPainPills = (medItem[client] != 1) ? false : true;
 			bool theClientHasAdrenaline = (medItem[client] != 2) ? false : true;
@@ -180,7 +211,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 					}*/
 				}
 				bool playerOnLedge = IsLedged(client);
-				if (IsClientAlive && (medItem[client] > 0 && IsHoldingPrimaryFire && !IsClientIncapacitated || isHoldingUseKey && IsClientIncapacitated && !playerOnLedge)) {
+				if (IsClientAlive && isClientOnSolidGround && (medItem[client] > 0 && IsHoldingPrimaryFire && !IsClientIncapacitated || isHoldingUseKey && IsClientIncapacitated && !playerOnLedge)) {
 					if (!IsClientIncapacitated) buttons &= ~IN_ATTACK;
 					else buttons &= ~IN_USE;
 					if (UseItemTime[client] < TheTime) {
@@ -194,7 +225,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 									float fPainPillsHeal = GetTempHealth(healTarget) + (GetMaximumHealth(healTarget) * fPainPillsHealAmount);
 									HealPlayer(client, healTarget, fPainPillsHeal, 'h', true);//SetTempHealth(client, client, GetTempHealth(client) + (GetMaximumHealth(client) * 0.3), false);		// pills add 10% of your total health in temporary health.
 									medItem[client] = 0;
-									if (IsValidEntity(weaponEntity)) AcceptEntityInput(weaponEntity, "Kill");
+									if (IsValidEntityEx(weaponEntity)) RemoveEntity(weaponEntity);//AcceptEntityInput(weaponEntity, "Kill");
 									GetAbilityStrengthByTrigger(client, healTarget, TRIGGER_usepainpills, _, RoundToCeil(fPainPillsHeal));
 									GetAbilityStrengthByTrigger(client, healTarget, TRIGGER_healsuccess, _, RoundToCeil(fPainPillsHeal));
 								}
@@ -207,14 +238,14 @@ public Action OnPlayerRunCmd(client, &buttons) {
 									}
 									else SurvivorStamina[client] += StaminaBonus;
 									medItem[client] = 0;
-									if (IsValidEntity(weaponEntity)) AcceptEntityInput(weaponEntity, "Kill");
+									if (IsValidEntityEx(weaponEntity)) RemoveEntity(weaponEntity);//AcceptEntityInput(weaponEntity, "Kill");
 								}
 								else if (theClientHasFirstAid) {
 									int iFirstAidHealAmount = GetMaximumHealth(healTarget) - GetClientHealth(healTarget);
 									GiveMaximumHealth(healTarget);
 									RefreshSurvivor(healTarget);
 									medItem[client] = 0;
-									if (IsValidEntity(weaponEntity)) AcceptEntityInput(weaponEntity, "Kill");
+									if (IsValidEntityEx(weaponEntity)) RemoveEntity(weaponEntity);//AcceptEntityInput(weaponEntity, "Kill");
 									GetAbilityStrengthByTrigger(client, healTarget, TRIGGER_usefirstaid, _, iFirstAidHealAmount);
 									GetAbilityStrengthByTrigger(client, healTarget, TRIGGER_healsuccess, _, iFirstAidHealAmount);
 								}
@@ -254,7 +285,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 				Format(ActiveSpecialAmmo[client], sizeof(ActiveSpecialAmmo[]), "none");
 			}
 			if ((ReadyUp_GetGameMode() != 3 || !b_IsSurvivalIntermission) && iRPGMode >= 1) {
-				bool IsJetpackBroken = (isClientOnFire || IsBiledOn);
+				bool IsJetpackBroken = (isClientOnFire || IsBiledOn || theClientHasAnActiveProgressBar);
 				if (!IsJetpackBroken) IsJetpackBroken = AnyTanksNearby(client);
 				/*
 					Add or remove conditions from the following line to determine when the jetpack automatically disables.
@@ -284,7 +315,7 @@ public Action OnPlayerRunCmd(client, &buttons) {
 							else SurvivorConsumptionTime[client] = TheTime + fStamSprintInterval;
 							if (!bIsSurvivorFatigue[client]) SurvivorStamina[client] -= ConsumptionInt;
 						}
-						if (!bIsSurvivorFatigue[client] && !bJetpack[client] && isClientHoldingJetpackKeys && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= TheTime && MyAttacker == -1) ToggleJetpack(client);
+						if (b_IsActiveRound && jetpackInterruptionTime < TheTime && !bIsSurvivorFatigue[client] && !bJetpack[client] && isClientHoldingJetpackKeys && (iCanJetpackWhenInCombat == 1 || !bIsInCombat[client]) && !IsJetpackBroken && JetpackRecoveryTime[client] <= TheTime && MyAttacker == -1) ToggleJetpack(client);
 						if (!bJetpack[client]) MovementSpeed[client] = fSprintSpeed;
 					}
 					buttons &= ~IN_SPEED;

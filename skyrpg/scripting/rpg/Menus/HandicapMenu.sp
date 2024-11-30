@@ -25,7 +25,8 @@ stock HandicapMenu(client) {
 		AddCommasToString(RoundToCeil((lootFindBonus * fAugmentRatingMultiplier) * 100.0), lootfind, 10);
 		char scorebonus[10];
 		AddCommasToString(RoundToCeil(scoreMult * 100.0), scorebonus, 10);
-		if (scoreMissing == 0) Format(text, sizeof(text), "%T", "handicap level unlocked", client, menuName, damage, pct, health, pct, lootfind, pct, pct, scorebonus);
+		if (iHandicapLevelsAreScoreBased == 1 && scoreMissing == 0 ||
+			iHandicapLevelsAreScoreBased != 1 && handicapLevelAllowed[client] >= i+1) Format(text, sizeof(text), "%T", "handicap level unlocked", client, menuName, damage, pct, health, pct, lootfind, pct, pct, scorebonus);
 		else {
 			AddCommasToString(scoreMissing, text, sizeof(text));
 			Format(text, sizeof(text), "%T", "handicap level locked", client, menuName, damage, pct, health, pct, lootfind, pct, text, pct, scorebonus);
@@ -39,7 +40,7 @@ stock HandicapMenu(client) {
 stock void SetClientHandicapValues(client, bool skipArrayCheck = false) {
 	if (skipArrayCheck || GetArraySize(HandicapSelectedValues[client]) != 4) ResizeArray(HandicapSelectedValues[client], 4);
 	if (IsFakeClient(client)) return;
-	if (handicapLevel[client] < 1 || handicapLevel[client]-1 > GetArraySize(a_HandicapLevels)) {
+	if (handicapLevel[client] < 1 || handicapLevel[client] > GetArraySize(a_HandicapLevels)) {
 		handicapLevel[client] = -1;
 		SetArrayCell(HandicapSelectedValues[client], 0, 0.0);
 		SetArrayCell(HandicapSelectedValues[client], 1, 0.0);
@@ -48,7 +49,8 @@ stock void SetClientHandicapValues(client, bool skipArrayCheck = false) {
 		return;
 	}
 	SetHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
-	if (BestRating[client] < GetArrayCell(SetHandicapValues[client], HANDICAP_SCORE_REQUIRED)) {
+	if (iHandicapLevelsAreScoreBased == 1 && BestRating[client] < GetArrayCell(SetHandicapValues[client], HANDICAP_SCORE_REQUIRED) ||
+		iHandicapLevelsAreScoreBased != 1 && handicapLevelAllowed[client] < handicapLevel[client]) {
 		// useful for if a server operator ever changes handicap scores and so players who are no longer eligible would be affected here.
 		handicapLevel[client] = -1;
 		SetArrayCell(HandicapSelectedValues[client], 0, 0.0);
@@ -98,7 +100,7 @@ stock void SetBotClientHandicapValues(int clientToIgnore = 0) {
 		}
 		return;
 	}
-	if (handicapLevel[client]-1 > GetArraySize(a_HandicapLevels)) {
+	if (handicapLevel[client] > GetArraySize(a_HandicapLevels)) {
 		handicapLevel[client] = 1;
 	}
 	SetHandicapValues[client]	= GetArrayCell(a_HandicapLevels, handicapLevel[client]-1, 1);
@@ -122,7 +124,9 @@ public HandicapMenu_Handle(Handle menu, MenuAction action, client, slot) {
 	if (action == MenuAction_Select) {
 		HandicapValues[client]	= GetArrayCell(a_HandicapLevels, slot, 1);
 		int scoreRequired	 = GetArrayCell(HandicapValues[client], HANDICAP_SCORE_REQUIRED);
-		if (Rating[client] >= scoreRequired && (handicapLevel[client] > slot+1 || !b_IsActiveRound)) {
+
+		if ((iHandicapLevelsAreScoreBased == 1 && Rating[client] >= scoreRequired ||
+			iHandicapLevelsAreScoreBased != 1 && handicapLevelAllowed[client] >= slot+1) && (handicapLevel[client] > slot+1 || !b_IsActiveRound)) {
 			handicapLevel[client] = slot+1;
 			SetClientHandicapValues(client);
 			FormatPlayerName(client);

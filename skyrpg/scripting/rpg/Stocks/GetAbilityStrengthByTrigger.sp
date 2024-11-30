@@ -28,11 +28,11 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 	}
 	if (GetArraySize(MyTalentStrength[activator]) != ASize) return 0.0;
 	// don't let amplify call itself or it's a never-ending loop
-	float fAmplifyPower = 0.0;
-	if (ResultEffects != RESULT_AMPLIFY) {
-		// Any talent with the same trigger but the activation effect of "amplify" will actually increase the power of talents with this ability trigger.
-		fAmplifyPower = GetAbilityStrengthByTrigger(activator, activator, AbilityT, _, _, _, _, RESULT_AMPLIFY, _, true);
-	}
+	//float fAmplifyPower = 0.0;
+	// if (ResultEffects != RESULT_AMPLIFY) {
+	// 	// Any talent with the same trigger but the activation effect of "amplify" will actually increase the power of talents with this ability trigger.
+	// 	fAmplifyPower = GetAbilityStrengthByTrigger(activator, activator, AbilityT, _, _, _, _, RESULT_AMPLIFY, _, true);
+	// }
 
 
 
@@ -172,6 +172,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 
 	int size = GetArraySize(MyUnlockedTalents[activator]);
 
+	float spellCooldownReduction = GetAbilityMultiplier(activator, "L");
 	for (int pos = 0; pos < size; pos++) {
 		// If a talent that doesn't actually activate gets called and bDontActuallyActivate defaults to false in the call, it'll toggle the state of bDontActuallyActivate to true
 		// So when this event occurs, we want to reset the value of bDontActuallyActivate back to the specific calls requested value and repeat the scenario described as necessary.
@@ -512,22 +513,20 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 			float fEffectActiveTime = GetArrayCell(TriggerValues[activator], TALENT_ACTIVE_STRENGTH_VALUE);
 			EffectOverTimeActive(activator, i, fEffectActiveTime);
 		}
-		if (fAmplifyPower > 0.0) {
-			LogMessage("Amplify is %3.3f", fAmplifyPower);
-			p_Strength += (fAmplifyPower * p_Strength);
-		}
+		// if (fAmplifyPower > 0.0) {
+		// 	p_Strength += (fAmplifyPower * p_Strength);
+		// }
 		if (bIsCompounding) {
 			t_Strength += p_Strength;
 		}
 		else {
 			if (!IsOverdriveStacks) {
-				int secondaryTrigger = GetArrayCell(MyUnlockedTalents[activator], pos, 6);
 				if (ResultType >= 1) {
 					if (!bDontActuallyActivate) {
 						if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
 						ActivateAbilityEx(activator, targetPlayer, i, damagevalue, targetEffectsInt, p_Strength, p_Time, targetPlayer, _, isRawType,
 											GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffectInt,
-											GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
+											GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup,
 											damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 					}
 				}
@@ -536,7 +535,7 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 						if (iContributionTypeCategory >= 0) SetArrayCell(playerContributionTracker[activator], iContributionTypeCategory, GetArrayCell(playerContributionTracker[activator], iContributionTypeCategory) - GetArrayCell(TriggerValues[activator], CONTRIBUTION_COST));
 						ActivateAbilityEx(activator, activator, i, damagevalue, activatorEffectsInt, p_Strength, p_Time, targetPlayer, _, isRawType,
 																	GetArrayCell(TriggerValues[activator], PRIMARY_AOE), secondaryEffectInt,
-																	GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup, secondaryTrigger,
+																	GetArrayCell(TriggerValues[activator], SECONDARY_AOE), hitgroup,
 																	damagetype, nameOfItemToGivePlayer, activatorCallAbilityTrigger, entityIdToPassThrough, fPercentageHealthActivationCost, targetCallAbilityTrigger);
 					}
 				}
@@ -548,11 +547,17 @@ stock float GetAbilityStrengthByTrigger(activator, targetPlayer = 0, int Ability
 		if (!bDontActuallyActivate || bCooldownAlwaysActivates) {
 			// certain ammos need to reward buffing/hexing experience at this time.
 			if (!isEffectOverTimeActive) {
-				if (f_Cooldown > 0.0) CreateCooldown(activator, i, f_Cooldown);
+				if (f_Cooldown > 0.0) {
+					if (spellCooldownReduction > 0.0) f_Cooldown -= (f_Cooldown * spellCooldownReduction);
+					CreateCooldown(activator, i, f_Cooldown);
+				}
 			}
 			else {
 				float f_ActiveCooldown = GetArrayCell(TriggerValues[activator], ACTIVE_EFFECT_INTERVAL);
-				if (f_ActiveCooldown > 0.0) CreateActiveCooldown(activator, i, f_ActiveCooldown);
+				if (f_ActiveCooldown > 0.0) {
+					if (spellCooldownReduction > 0.0) f_ActiveCooldown -= (f_ActiveCooldown * spellCooldownReduction);
+					CreateActiveCooldown(activator, i, f_ActiveCooldown);
+				}
 			}
 		}
 		p_Strength = 0.0;

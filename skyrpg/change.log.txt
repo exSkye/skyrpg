@@ -1,3 +1,16 @@
+Version 4.5
+	- Fixed explosion damage
+		- Fixed grenade experience not working as well.
+
+	- Added several new tank types
+		- Teleporter tank returns teleporting tank to wherever the rock explodes.
+		- Freezer and Bomber tanks have been added as well.
+		- New tank cvars for movement speed during different tank variants added to config.cfg
+	- Fixed the witches not working properly.
+		- Known issue: Sometimes a witch will die twice and double print in chat.
+	- Fixed the crashing issues.
+		- No known crashes at this time.
+
 Version 4.4.x
 	- Added some new cvars for config.cfg that may not necessarily be in there, but will set default values if not.
 		"fancy borders?"	"1"	-> Puts a bunch of ----- around the +x crafting materials earned...

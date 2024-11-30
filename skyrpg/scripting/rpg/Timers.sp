@@ -244,6 +244,13 @@ public Action Timer_HealImmunity(Handle timer, any client) {
 // 	return Plugin_Stop;
 // }
 
+public Action Timer_CheckIfStuck(Handle timer, any client) {
+	if (IsLegitimateClient(client)) {
+		L4D_WarpToValidPositionIfStuck(client);
+	}
+	return Plugin_Stop;
+}
+
 public Action Timer_ResetShotgunCooldown(Handle timer, any client) {
 	if (IsLegitimateClient(client)) shotgunCooldown[client] = false;
 	return Plugin_Stop;
@@ -423,7 +430,7 @@ public Action Timer_ShowHUD(Handle timer, any client) {
 	}
 	GetAbilityStrengthByTrigger(client, client, TRIGGER_pacifist, _, _, _, _, _, _, _, 0);
 	GetAbilityStrengthByTrigger(client, client, TRIGGER_p, _, _, _, _, _, _, _, 0); // percentage passives
-	RemoveStoreTime(client);
+
 	LastPlayLength[client]++;
 	if (iEnrageTime > 0 && ReadyUpGameMode != 3 && CurrentRPGMode >= 1 && ThisRoundTime >= iEnrageTime) {
 		if (SurvivorEnrage[client][1] == 0.0) {
@@ -486,12 +493,8 @@ stock HumanSurvivors() {
 public Action Timer_TeleportRespawn(Handle timer, any client) {
 
 	if (b_IsActiveRound && IsLegitimateClient(client) && myCurrentTeam[client] == TEAM_SURVIVOR) {
-		//ChangeHook(client, true);
-
 		int target = MyRespawnTarget[client];
-
 		if (target != client && IsLegitimateClientAlive(target)) {
-
 			GetClientAbsOrigin(target, DeathLocation[target]);
 			TeleportEntity(client, DeathLocation[target], NULL_VECTOR, NULL_VECTOR);
 			MyRespawnTarget[client] = client;
@@ -514,8 +517,7 @@ public Action Timer_GiveMaximumHealth(Handle timer, any client) {
 
 public Action Timer_DestroyCombustion(Handle timer, any entity)
 {
-	if (!IsValidEntity(entity)) return Plugin_Stop;
-	AcceptEntityInput(entity, "Kill");
+	if (IsValidEntityEx(entity)) RemoveEntity(entity);//AcceptEntityInput(entity, "Kill");
 	return Plugin_Stop;
 }
 
@@ -730,41 +732,6 @@ stock holdingFireCheckToggle(client, bool insert = false) {
 	return;
 }
 
-/*public Action:Timer_HoldingFireDelayer(Handle:timer, any:client) {
-	if (!IsLegitimateClient(client)) return Plugin_Stop;
-	new weaponEntity = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
-	new bulletsRemaining = 0;
-	if (IsValidEntity(weaponEntity)) bulletsRemaining = GetEntProp(weaponEntity, Prop_Send, "m_iClip1");
-	if (bulletsRemaining > 0 && GetEntProp(weaponEntity, Prop_Data, "m_bInReload") != 1 && L4D2_GetInfectedAttacker(client) == -1) {
-		// trigger nodes that fire when a player zooms in (like effects over time)
-		holdingFireCheckToggle(client, true);
-	}
-	else holdingFireCheckToggle(client);
-	holdingFireDelayer[client] = INVALID_HANDLE;
-	return Plugin_Stop;
-}*/
-
-// public ReadyUp_FwdChangeTeam(client, team) {
-
-// 	if (IsLegitimateClient(client)) {
-
-// 		if (team == TEAM_SURVIVOR) {
-
-// 			ChangeHook(client, true);
-// 			if (!b_IsLoading[client] && !b_IsLoaded[client]) OnClientLoaded(client);
-// 		}
-// 		else if (team != TEAM_SURVIVOR) {
-
-// 			//LogToFile(LogPathDirectory, "%N is no longer a survivor, unhooking.", client);
-// 			// if (bIsInCombat[client]) {
-
-// 			// 	IncapacitateOrKill(client, _, _, true, false, true);
-// 			// }
-// 			ChangeHook(client);
-// 		}
-// 	}
-// }
-
 public ReadyUp_FwdChangeTeam(client, team) {
 	if (bIsInCombat[client]) IncapacitateOrKill(client, _, _, true, true, true);
 	CreateTimer(0.2, Timer_ChangeTeamCheck, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -774,20 +741,21 @@ public Action Timer_ChangeTeamCheck(Handle timer, any client) {
 	if (!IsLegitimateClient(client)) return Plugin_Stop;
 	myCurrentTeam[client] = GetClientTeam(client);
 	if (myCurrentTeam[client] == TEAM_SURVIVOR) {
-		//ChangeHook(client, true);
 		if (!b_IsLoaded[client]) OnClientLoaded(client);
 	}
-	//else ChangeHook(client);
+	//EquipBackpack(client, myCurrentTeam[client]);
 	return Plugin_Stop;
 }
 
 stock void ChangeHook(client, bool bHook = false) {
 
 	b_IsHooked[client] = bHook;
-	SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-	SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
-	SDKUnhook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
-	if (b_IsHooked[client]) {
+	if (!b_IsHooked[client]) {
+		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+		SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
+		SDKUnhook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
+	}
+	else {
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 		SDKHook(client, SDKHook_TraceAttack, OnTraceAttack);
 		SDKHook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
@@ -962,7 +930,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 	if (specialAmmoResult > 0.0) DamageValue += RoundToCeil(strengthBase * (1.0 - specialAmmoResult));
 
 	if (!IsFakeClient(client)) {
-		ScreenShake(client);
+		if (iTypeOfSpecialEffectsToShow[client] >= SPECIALEFFECTS_ALL) ScreenShake(client);
 		SetClientTotalHealth(_, client, DamageValue);
 	}
 	bool isTargetClientABot;
@@ -980,7 +948,7 @@ public Action Timer_Explode(Handle timer, Handle packagey) {
 
 		CreateExplosion(i);	// boom boom audio and effect on the location.
 		isTargetClientABot = IsFakeClient(i);
-		if (!isTargetClientABot) ScreenShake(i);
+		if (!isTargetClientABot && iTypeOfSpecialEffectsToShow[i] >= SPECIALEFFECTS_ALL) ScreenShake(i);
 
 		//if (DamageValue > GetClientHealth(i)) IncapacitateOrKill(i);
 		//else SetEntityHealth(i, GetClientHealth(i) - DamageValue);
@@ -1030,6 +998,13 @@ public Action Timer_IsNotImmune(Handle timer, any client) {
 	return Plugin_Stop;
 }
 
+public Action Timer_CheckIfTankIsStuck(Handle timer, any client) {
+	if (IsLegitimateClientAlive(client)) {
+		L4D_WarpToValidPositionIfStuck(client);
+	}
+	return Plugin_Stop;
+}
+
 bool ScenarioEndConditionsMet() {
 	int numberOfLivingHumanSurvivors 	= LivingHumanSurvivors();
 	int numberOfLivingSurvivors	  		= LivingSurvivors();
@@ -1046,8 +1021,8 @@ bool ScenarioEndConditionsMet() {
 		// either there are no living human survivors and we require it, or all survivors are dead.
 		if (numberOfLivingSurvivors < 1) return true;
 	}
-	// If all living survivors are dead, or they're all hanging from ledges, or they're all incapped/dead/ledged.
-	else if (numberOfLivingSurvivors < 1 || numberOfLivingSurvivors == LedgedSurvivors() || NoHealthySurvivors()) return true;
+	else if (iEndRoundIfNoHealthySurvivors == 1 && NoHealthySurvivors()) return true;
+	else if (iEndRoundIfNoHealthySurvivors == 2 && (numberOfLivingSurvivors < 1 || numberOfLivingSurvivors == LedgedSurvivors())) return true;
 	return false;
 }
 
@@ -1203,11 +1178,15 @@ public Action Timer_TankCooldown(Handle timer) {
 }
 
 stock GetSuperCommonLimit() {
-	return RoundToCeil((AllowedCommons + RaidCommonBoost()) * fSuperCommonLimit);
+	int humanSerfs = LivingHumanSurvivors()-1;
+	int AllowedCommonsBaseCommonLimitPerHumanSurvivor = (humanSerfs > 0) ? (humanSerfs * iBaseCommonLimitIncreasePerPlayer) * humanSerfs : 0;
+	return RoundToCeil((AllowedCommons + AllowedCommonsBaseCommonLimitPerHumanSurvivor + RaidCommonBoost()) * fSuperCommonLimit);
 }
 
 stock GetCommonQueueLimit() {
-	return RoundToCeil((AllowedCommons + RaidCommonBoost()) * fCommonQueueLimit);
+	int humanSerfs = LivingHumanSurvivors()-1;
+	int AllowedCommonsBaseCommonLimitPerHumanSurvivor = (humanSerfs > 0) ? (humanSerfs * iBaseCommonLimitIncreasePerPlayer) * humanSerfs : 0;
+	return RoundToCeil((AllowedCommons + AllowedCommonsBaseCommonLimitPerHumanSurvivor + RaidCommonBoost()) * fCommonQueueLimit);
 }
 
 public Action Timer_EnrageDamageIncreaseDelay(Handle timer) {
@@ -1235,7 +1214,7 @@ public Action Timer_SettingsCheck(Handle timer) {
 		SetConVarInt(FindConVar("z_common_limit"), 0);	// no commons unless active round.
 		return Plugin_Stop;
 	}
-	if (RPGRoundTime(true) < iCommonInfectedSpawnDelayOnNewRound) {
+	if (iCommonInfectedSpawnDelayOnNewRound > 0 && RPGRoundTime(true) < iCommonInfectedSpawnDelayOnNewRound) {
 		SetConVarInt(FindConVar("z_common_limit"), 0);
 		return Plugin_Continue;
 	}
@@ -1246,7 +1225,9 @@ public Action Timer_SettingsCheck(Handle timer) {
 	if (!bIsSettingsCheck) return Plugin_Continue;
 	bIsSettingsCheck = false;
 
-	int CommonAllowed = AllowedCommons + RaidLevelCounter + EnrageBoost;
+	int humanSerfs = LivingHumanSurvivors()-1;
+	int AllowedCommonsBaseCommonLimitPerHumanSurvivor = (humanSerfs > 0) ? (humanSerfs * iBaseCommonLimitIncreasePerPlayer) * humanSerfs : 0;
+	int CommonAllowed = AllowedCommons + AllowedCommonsBaseCommonLimitPerHumanSurvivor + RaidLevelCounter + EnrageBoost;
 	if (CommonAllowed <= iCommonsLimitUpper) SetConVarInt(FindConVar("z_common_limit"), CommonAllowed);
 	else SetConVarInt(FindConVar("z_common_limit"), iCommonsLimitUpper);
 	if (iTankRush != 1) {
@@ -1286,60 +1267,42 @@ bool IsSurvivorsHealthy() {
 }
 
 public Action Timer_RespawnQueue(Handle timer) {
-
-	static Counter										=	-1;
-	static TimeRemaining								=	0;
-	static RandomClient									=	-1;
 	static char text[64];
-
 	if (!b_IsActiveRound || b_IsFinaleActive) {
-
-		Counter = -1;
 		return Plugin_Stop;
 	}
-	if (TotalHumanSurvivors() > iSurvivorRespawnRestrict) {
-
-		/*	When there are a lot of players on the server, we want to maintain the difficulty that is experienced by lower level players.
-			To prevent inflation on an exponential level, we just remove systems that aren't needed to compensate for players when there
-			are less players in the server.
-			Due to higher survivability and other important factors, removing the respawn queue feels like a pretty solid balance choice.
-		*/
+	if (iSurvivorRespawnRestrict > 0 && TotalHumanSurvivors() > iSurvivorRespawnRestrict) {
 		return Plugin_Continue;
 	}
 
-	static bool bIsHealth = false;
-	bIsHealth = IsSurvivorsHealthy();
-
-	if (!IsSurvivalMode && bIsHealth) Counter++;
-	else Counter = iSurvivalCounter;
-	TimeRemaining = RespawnQueue - Counter;
-	if (TimeRemaining <= 0) RandomClient = FindAnyRandomClient(true);
-
+	bool bIsHealth = IsSurvivorsHealthy();
 	for (int i = 1; i <= MaxClients; i++) {
-
-		if (!IsLegitimateClient(i) || myCurrentTeam[i] != TEAM_SURVIVOR || IsPlayerAlive(i)) continue;
+		if (!IsLegitimateClient(i) || IsPlayerAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
+		playerRespawnCounter[i]++;
+		int TimeRemaining = RespawnQueue - playerRespawnCounter[i];
 		if (TimeRemaining > 0) {
-
 			if (!IsFakeClient(i)) {
+				int minutes = RoundToFloor((TimeRemaining * 1.0) / 60.0);
+				int seconds = TimeRemaining % 60;
 
-				if (bIsHealth) Format(text, sizeof(text), "%T", "respawn queue", i, TimeRemaining);
-				else Format(text, sizeof(text), "%T", "respawn queue paused", i, TimeRemaining);
+				if (bIsHealth) Format(text, sizeof(text), "%T", "respawn queue", i, minutes, seconds);
+				else Format(text, sizeof(text), "%T", "respawn queue paused", i, minutes, seconds);
 				PrintHintText(i, text);
 			}
+			continue;
 		}
-		else if (IsLegitimateClientAlive(RandomClient)) {
+		int RandomClient = FindAnyRandomClient(true);
+		if (!IsLegitimateClientAlive(RandomClient)) return Plugin_Continue;
 
-			GetClientAbsOrigin(RandomClient, DeathLocation[i]);
-			SDKCall(hRoundRespawn, i);
-			b_HasDeathLocation[i] = true;
-			MyRespawnTarget[i] = -1;
-			CreateTimer(3.0, Timer_TeleportRespawn, i, TIMER_FLAG_NO_MAPCHANGE);
-			CreateTimer(3.0, Timer_GiveMaximumHealth, i, TIMER_FLAG_NO_MAPCHANGE);
+		playerRespawnCounter[i] = 0;
 
-			RandomClient = FindAnyRandomClient(true);
-		}
+		GetClientAbsOrigin(RandomClient, DeathLocation[i]);
+		SDKCall(hRoundRespawn, i);
+		b_HasDeathLocation[i] = true;
+		MyRespawnTarget[i] = -1;
+		CreateTimer(3.0, Timer_TeleportRespawn, i, TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(3.0, Timer_GiveMaximumHealth, i, TIMER_FLAG_NO_MAPCHANGE);
 	}
-	if (Counter >= RespawnQueue) Counter = 0;
 	return Plugin_Continue;
 }
 
@@ -1590,7 +1553,7 @@ public Action Timer_SpecialAmmoData(Handle timer, any client) {
 			f_TimeRemaining -= fSpecialAmmoInterval;
 			if (f_TimeRemaining <= 0.0) {
 				RemoveFromArray(SpecialAmmoData, i);
-				if (IsValidEntity(WorldEnt)) AcceptEntityInput(WorldEnt, "Kill");
+				if (IsValidEntityEx(WorldEnt)) RemoveEntity(WorldEnt);//AcceptEntityInput(WorldEnt, "Kill");
 				continue;
 			}
 			// Anything that was changed needs to be reinserted.
@@ -1680,7 +1643,7 @@ public Action Timer_AmmoActiveTimer(Handle timer, any client) {
 		return Plugin_Stop;
 	}
 	if (myCurrentTeam[client] != TEAM_SURVIVOR) return Plugin_Continue;
-	bHasWeakness[client] = PlayerHasWeakness(client);
+	//bHasWeakness[client] = PlayerHasWeakness(client);
 	//SortThreatMeter();
 	char result[64];
 	//new currTalentStrength = 0;
@@ -1737,7 +1700,7 @@ public Action Timer_ForcedThreat(Handle timer, any client) {
 	if (IsLegitimateClient(client)) {
 
 		ClientActiveStance[client] = 0;
-		if(IsValidEntity(iChaseEnt[client])) AcceptEntityInput(iChaseEnt[client], "Kill");
+		if(IsValidEntityEx(iChaseEnt[client])) RemoveEntity(iChaseEnt[client]);//AcceptEntityInput(iChaseEnt[client], "Kill");
 		iChaseEnt[client] = -1;
 	}
 	return Plugin_Stop;
@@ -1772,12 +1735,12 @@ public Action Timer_RemoveActiveCooldown(Handle timer, Handle packi) {
 }
 
 public Action Timer_DeleteLootBag(Handle timer, any entity) {
-	if (!IsValidEntity(entity)) return Plugin_Stop;
+	if (!IsValidEntityEx(entity)) return Plugin_Stop;
 
 	char text[512];
 	GetEntPropString(entity, Prop_Data, "m_iName", text, sizeof(text));
 	if (!StrBeginsWith(text, "loot")) return Plugin_Stop;
-	AcceptEntityInput(entity, "Kill");	// delete the loot bag.
+	RemoveEntity(entity);//AcceptEntityInput(entity, "Kill");	// delete the loot bag.
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || IsFakeClient(i)) continue;
 		char key[64];

@@ -24,7 +24,7 @@ public ReadyUp_ReadyUpStart() {
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || !b_IsLoaded[i]) continue;
-		if (myCurrentTeam[i] == TEAM_SURVIVOR && ReadyUpGameMode != 3) {
+		if (GetClientTeam(i) == TEAM_SURVIVOR && ReadyUpGameMode != 3) {
 			CreateTimer(1.0, Timer_Pregame, i, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 		if (TeleportPlayers) TeleportEntity(i, teleportIntoSaferoom, NULL_VECTOR, NULL_VECTOR);
@@ -45,9 +45,7 @@ public ReadyUp_ReadyUpStart() {
 		// Anti-Farm/Anti-Camping system stuff.
 		ClearArray(h_KilledPosition[i]);		// We clear all positions from the array.
 		if (!IsFakeClient(i)) continue;
-		if (b_IsLoaded[i]) GiveMaximumHealth(i);
 	}
-	RefreshSurvivorBots();
 }
 
 public ReadyUp_ReadyUpEnd() {
@@ -61,43 +59,7 @@ public ReadyUpEnd_Complete() {
 		CreateTimer(30.0, Timer_CheckDifficulty, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CheckDifficulty();
 		b_IsMissionFailed = false;
-		ClearArray(CommonAffixes);
 		b_IsCheckpointDoorStartOpened = false;
-		char pct[4];
-		Format(pct, sizeof(pct), "%");
-		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsLegitimateClient(i)) continue;
-			if (IsFakeClient(i) && !b_IsLoaded[i]) IsClientLoadedEx(i);
-			if (!IsFakeClient(i) && RoundExperienceMultiplier[i] > 0.0) {
-				char saferoomName[64];
-				GetClientName(i, saferoomName, sizeof(saferoomName));
-				PrintToChatAll("%t", "round bonus multiplier", blue, saferoomName, white, orange, (1.0 + RoundExperienceMultiplier[i]) * 100.0, orange, pct, white);
-			}
-		}
-		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsLegitimateClient(i) || !b_IsLoaded[i]) continue;
-			staggerCooldownOnTriggers[i] = false;
-			ISBILED[i] = false;
-			bHasWeakness[i] = 0;
-			SurvivorEnrage[i][0] = 0.0;
-			SurvivorEnrage[i][1] = 0.0;
-			ISDAZED[i] = 0.0;
-			if (myCurrentTeam[i] == TEAM_SURVIVOR) {
-				SurvivorStamina[i] = GetPlayerStamina(i) - 1;
-				SetMaximumHealth(i);
-				GiveMaximumHealth(i);
-			}
-			bIsSurvivorFatigue[i] = false;
-			LastWeaponDamage[i] = 1;
-			HealingContribution[i] = 0;
-			TankingContribution[i] = 0;
-			DamageContribution[i] = 0;
-			PointsContribution[i] = 0.0;
-			HexingContribution[i] = 0;
-			BuffingContribution[i] = 0;
-			b_IsFloating[i] = false;
-			//SetMyWeapons(i);
-		}
 	}
 }
 
@@ -143,7 +105,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			//SetMyWeapons(i);
 			if (IsFakeClient(i)) continue;
 			bIsMeleeCooldown[i] = false;
-			iCurrentIncapCount[i] = 0;
 			if (GroupMemberBonus > 0.0) {
 				if (IsGroupMember[i]) PrintToChat(i, "%T", "group member bonus", i, blue, GroupMemberBonus * 100.0, pct, green, orange);
 				else PrintToChat(i, "%T", "group member benefit", i, orange, blue, GroupMemberBonus * 100.0, pct, green, blue);
@@ -155,12 +116,17 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		RoundTime					=	GetTime();
 		int ent = -1;
 		if (ReadyUpGameMode != 3) {
-			while ((ent = FindEntityByClassname(ent, "witch")) != -1) {
-				// Some maps, like Hard Rain pre-spawn a ton of witches - we want to add them to the witch table.
-				OnWitchCreated(ent);
-				SDKHook(ent, SDKHook_OnTakeDamage, OnTakeDamage);
-				SDKHook(ent, SDKHook_TraceAttack, OnTraceAttack);
+			if (iDisableRescueClosets == 1) {
+				while ((ent = FindEntityByClassname(ent, "info_survivor_rescue")) > 0) {
+					RemoveEntity(ent);
+				}
 			}
+			// while ((ent = FindEntityByClassname(ent, "witch")) != -1) {
+			// 	// Some maps, like Hard Rain pre-spawn a ton of witches - we want to add them to the witch table.
+			// 	OnWitchCreated(ent);
+			// 	SDKHook(ent, SDKHook_OnTakeDamage, OnTakeDamage);
+			// 	SDKHook(ent, SDKHook_TraceAttack, OnTraceAttack);
+			// }
 			char thetext[64];
 			GetConfigValue(thetext, sizeof(thetext), "path setting?");
 			if (ReadyUpGameMode != 3 && !StrEqual(thetext, "none")) {
@@ -189,10 +155,7 @@ public ReadyUp_CheckpointDoorStartOpened() {
 			if (!IsPlayerAlive(i)) SDKCall(hRoundRespawn, i);
 			VerifyMinimumRating(i);
 			HealImmunity[i] = false;
-			if (b_IsLoaded[i]) {
-				SetMaximumHealth(i);
-				GiveMaximumHealth(i);
-			}
+			if (b_IsLoaded[i]) SetMaximumHealth(i);
 		}
 		f_TankCooldown				=	-1.0;
 		ResetCDImmunity(-1);
@@ -211,7 +174,6 @@ public ReadyUp_CheckpointDoorStartOpened() {
 		//CreateTimer(fDrawHudInterval, Timer_ShowHUD, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		//CreateTimer(fSpecialAmmoInterval, Timer_ShowActionBar, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		if (iCommonAffixes > 0) {
-			ClearArray(CommonAffixes);
 			CreateTimer(1.0, Timer_CommonAffixes, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 		ClearRelevantData();

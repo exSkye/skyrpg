@@ -132,13 +132,14 @@ stock bool PlayerCastSpell(client) {
 
 	int CurrentEntity			=	GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 
-	if (!IsValidEntity(CurrentEntity) || CurrentEntity < 1) return false;
+	if (!IsValidEntityEx(CurrentEntity)) return false;
 	char EntityName[64];
 
 
 	GetEdictClassname(CurrentEntity, EntityName, sizeof(EntityName));
 
 	int Entity					=	CreateEntityByName(EntityName);
+	if (!IsValidEntityEx(Entity)) return false;
 	DispatchSpawn(Entity);
 
 	float Origin[3];
@@ -150,7 +151,7 @@ stock bool PlayerCastSpell(client) {
 	SetEntityMoveType(Entity, MOVETYPE_VPHYSICS);
 
 	if (GetWeaponSlot(Entity) < 2) SetEntProp(Entity, Prop_Send, "m_iClip1", GetEntProp(CurrentEntity, Prop_Send, "m_iClip1"));
-	if (CurrentEntity > 0) AcceptEntityInput(CurrentEntity, "Kill");
+	if (IsValidEntityEx(CurrentEntity)) RemoveEntity(CurrentEntity);//AcceptEntityInput(CurrentEntity, "Kill");
 
 	return true;
 }

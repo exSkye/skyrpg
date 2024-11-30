@@ -212,7 +212,7 @@ stock GetCharacterSheetData(client, char[] stringRef, theSize, request, zombiecl
 	int baseHealth;
 	float fMultiplier;
 	//new Float:AbilityMultiplier = (request % 2 == 0) ? GetAbilityMultiplier(client, "X", 4) : 0.0;
-	int theCount = LivingSurvivorCount();
+	int theCount = LivingHumanSurvivors();
 	int myCurrentDifficulty = GetDifficultyRating(client);
 	// common infected health
 	if (request == 1) {	// odd requests return integers

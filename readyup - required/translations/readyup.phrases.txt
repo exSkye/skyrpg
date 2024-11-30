@@ -11,7 +11,7 @@
 	"readyup panel info"
 	{
 		"#format"		"{1:s},{2:i},{3:i},{4:i},{5:i}"
-		"en"			" \nReady Up! v. {1}\nSurvivors: ({2}) {3} / {4}\nReady: {5}\n "
+		"en"			" \nReady-Up! v.{1}\nSurvivors: ({2}) {3}/{4}\nReady: {5}\n "
 	}
 	"bot count adjusted"
 	{
@@ -66,12 +66,12 @@
 	"hud enabled"
 	{
 		"#format"		"{1:s},{2:s}"
-		"en"			"{1} HUD Display {2}enabled"
+		"en"			"{1} Ready-Up! Menu Display {2}enabled"
 	}
 	"hud disabled"
 	{
 		"#format"		"{1:s},{2:s}"
-		"en"			"{1} HUD Display {2}disabled"
+		"en"			"{1} Ready-Up! Menu Display {2}disabled"
 	}
 	"not ready"
 	{
@@ -111,12 +111,12 @@
 	"client connected"
 	{
 		"#format"		"{1:s},{2:s},{3:s},{4:s}"
-		"en"			"{1} {2}{3} {4}is connecting..."
+		"en"			"{1} {2}{3} {4}is loading in to the game..."
 	}
 	"client loaded"
 	{
 		"#format"		"{1:s},{2:s},{3:s},{4:s}"
-		"en"			"{1} {2}{3} {4}has entered the game."
+		"en"			"{1} {2}{3} {4}has entered the fray!"
 	}
 	"connection timeout"
 	{
@@ -173,17 +173,17 @@
 	}
 	"hide hud"
 	{
-		"en"			"hide HUD"
+		"en"			"Hide this Ready-Up! Menu"
 	}
 	"intermission"
 	{
 		"#format"		"{1:s}"
-		"en"			"{1} Pre-game will occur before the second half"
+		"en"			"{1} See you at the next intermission!"
 	}
 	"timer match countdown aborted"
 	{
 		"#format"		"{1:s}"
-		"en"			"{1}Majority override aborted..."
+		"en"			"{1}Round-Start countdown aborted!"
 	}
 	"timer match countdown"
 	{

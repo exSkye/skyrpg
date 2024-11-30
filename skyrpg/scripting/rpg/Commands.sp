@@ -19,7 +19,6 @@ public Action Cmd_debugrpg(client, args) {
 public Action Cmd_ResetTPL(client, args) { PlayerLevelUpgrades[client] = 0; return Plugin_Handled; }
 
 public Action CMD_TeamChatCommand(client, args) {
-
 	if (QuickCommandAccess(client, args, true)) {
 
 		// Set colors for chat
@@ -30,7 +29,6 @@ public Action CMD_TeamChatCommand(client, args) {
 }
 
 public Action CMD_ChatCommand(client, args) {
-
 	if (QuickCommandAccess(client, args, false)) {
 
 		// Set Colors for chat
@@ -119,8 +117,10 @@ stock DeleteAndCreateNewData(client, bool IsBot = false) {
 		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `steam_id` = '%s';", TheDBPrefix, key);
 		SQL_TQuery(hDatabase, QueryResults, tquery, client);
 
+		int oldSkyPoints = SkyPoints[client];
 		ResetData(client);
 		CreateNewPlayerEx(client);
+		SkyPoints[client] = oldSkyPoints;
 
 		PrintToChat(client, "data erased, new data created.");	// not bothering with a translation here, since it's a debugging command.
 	}
@@ -157,10 +157,11 @@ public Action CMD_DirectorTalentToggle(client, args) {
 
 public Action CMD_AutoDismantle(client, args) {
 	int lootFindBonus = 0;
+	if (GetArraySize(HandicapSelectedValues[client]) < 1) return Plugin_Handled;
 	if (handicapLevel[client] > 0) lootFindBonus = GetArrayCell(HandicapSelectedValues[client], 2);
 	if (args < 1) {
-		PrintToChat(client, "\x04!autodismantle <score>\n\x03augments that roll under %d score will be auto-dismantled. \x04limit: \x03%d", iplayerSettingAutoDismantleScore[client], BestRating[client] + lootFindBonus);
-		PrintToChat(client, "\x04!autodismantle clear/perfect/major/minor - \x03Deletes \x04all/perfect/major/minor augments \x03not equipped or favourited.");
+		PrintToChat(client, "\x04!autodismantle <score>\n\x03gear that roll under %d score will be auto-dismantled. \x04limit: \x03%d", iplayerSettingAutoDismantleScore[client], BestRating[client] + lootFindBonus);
+		PrintToChat(client, "\x04!autodismantle clear/perfect/major/minor - \x03Deletes \x04all/perfect/major/minor gear \x03not equipped or favourited.");
 		return Plugin_Handled;
 	}
 
@@ -172,7 +173,9 @@ public Action CMD_AutoDismantle(client, args) {
 	int refunded = 0;
 	char effects[64];
 	int isEquipped = 0;
-	if (StrEqual(arg, "clear")) {
+	int result = (StrEqual(arg, "clear")) ? 1 : (StrEqual(arg, "minor")) ? 2 : (StrEqual(arg, "major")) ? 3 : (StrEqual(arg, "perfect")) ? 4 : 0;
+	if (b_IsActiveRound && result > 0) result = -1;
+	if (result == 1) {
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `isequipped` = '-1' AND `steam_id` = '%s';", TheDBPrefix, key);
@@ -193,10 +196,10 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentSavedProfiles[client], i);
 			refunded++;
 		}
-		PrintToChat(client, "\x04Deleted \x03all \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
+		PrintToChat(client, "\x04Deleted \x03all \x04non-favourited, non-equipped gear.\n+\x03%d \x05scrap", refunded);
 		augmentParts[client] += refunded;
 	}
-	else if (StrEqual(arg, "minor")) {
+	else if (result == 2) {
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `isequipped` = '-1' AND `acteffects` = '-1' AND `tareffects` = '-1' AND `steam_id` = '%s';", TheDBPrefix, key);
@@ -220,10 +223,10 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentSavedProfiles[client], i);
 			refunded++;
 		}
-		PrintToChat(client, "\x04Deleted all \x03Minor \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
+		PrintToChat(client, "\x04Deleted all \x03Minor \x04non-favourited, non-equipped gear.\n+\x03%d \x05scrap", refunded);
 		augmentParts[client] += refunded;
 	}
-	else if (StrEqual(arg, "major")) {
+	else if (result == 3) {
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE (`isequipped` = '-1' AND `acteffects` = '-1' AND `tareffects` != '-1' AND `steam_id` = '%s') OR (`isequipped` = '-1' AND `acteffects` != '-1' AND `tareffects` = '-1' AND `steam_id` = '%s');", TheDBPrefix, key, key);
@@ -247,10 +250,10 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentSavedProfiles[client], i);
 			refunded++;
 		}
-		PrintToChat(client, "\x04Deleted all \x03Major \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
+		PrintToChat(client, "\x04Deleted all \x03Major \x04non-favourited, non-equipped gear.\n+\x03%d \x05scrap", refunded);
 		augmentParts[client] += refunded;
 	}
-	else if (StrEqual(arg, "perfect")) {
+	else if (result == 4) {
 		GetClientAuthId(client, AuthId_Steam2, key, sizeof(key));
 		if (!StrEqual(serverKey, "-1")) Format(key, sizeof(key), "%s%s", serverKey, key);
 		Format(tquery, sizeof(tquery), "DELETE FROM `%s_loot` WHERE `isequipped` = '-1' AND `acteffects` != '-1' AND `tareffects` != '-1' AND `steam_id` = '%s';", TheDBPrefix, key, key);
@@ -273,18 +276,17 @@ public Action CMD_AutoDismantle(client, args) {
 			RemoveFromArray(myAugmentSavedProfiles[client], i);
 			refunded++;
 		}
-		PrintToChat(client, "\x04Deleted all \x03Perfect \x04non-favourited, non-equipped augments.\n+\x03%d \x05scrap", refunded);
+		PrintToChat(client, "\x04Deleted all \x03Perfect \x04non-favourited, non-equipped gear.\n+\x03%d \x05scrap", refunded);
 		augmentParts[client] += refunded;
 	}
-	else {
+	if (result > 0) BuildMenu(client);
+	if (result == 0) {
 		int auto = StringToInt(arg);
 		if (auto > 0 && auto <= BestRating[client] + lootFindBonus) {
 			iplayerSettingAutoDismantleScore[client] = auto;
-			PrintToChat(client, "\x04I will auto dismantle any augments of \x03%d \x04score or lower.", iplayerSettingAutoDismantleScore[client]);
+			PrintToChat(client, "\x04Dismantling gear that drops below \x03%d \x04score.", iplayerSettingAutoDismantleScore[client]);
 		}
-		return Plugin_Handled;
-	}// if any dismantling occurs, we forcefully open the menu so they can't do anything in the inventory.
-	BuildMenu(client);
+	}
 	return Plugin_Handled;
 }
 
@@ -340,6 +342,12 @@ public Action CMD_ActionBar(client, args) {
 		DisplayActionBar[client] = false;
 		ActionBarSlot[client] = -1;
 	}
+	return Plugin_Handled;
+}
+
+public Action CMD_LoadAugments(client, args) {
+	PrintToChat(client, "\x04Reloading your gear.");
+	LoadClientAugments(client);
 	return Plugin_Handled;
 }
 
@@ -461,6 +469,7 @@ public Action CMD_DropWeapon(int client, int args) {
 	GetEdictClassname(CurrentEntity, EntityName, sizeof(EntityName));
 	if (StrContains(EntityName, "melee", false) != -1) return Plugin_Handled;
 	int Entity					=	CreateEntityByName(EntityName);
+	if (!IsValidEntityEx(Entity)) return Plugin_Handled;
 	DispatchSpawn(Entity);
 	lastEntityDropped[client] = Entity;
 	GetAbilityStrengthByTrigger(client, client, TRIGGER_dropitem, _, _, _, _, _, _, _, _, _, _, _, _, _, Entity);
@@ -471,7 +480,7 @@ public Action CMD_DropWeapon(int client, int args) {
 	TeleportEntity(Entity, Origin, NULL_VECTOR, NULL_VECTOR);
 	SetEntityMoveType(Entity, MOVETYPE_VPHYSICS);
 	if (GetWeaponSlot(Entity) < 2) SetEntProp(Entity, Prop_Send, "m_iClip1", GetEntProp(CurrentEntity, Prop_Send, "m_iClip1"));
-	if (IsValidEntity(CurrentEntity)) AcceptEntityInput(CurrentEntity, "Kill");
+	if (IsValidEntityEx(CurrentEntity)) RemoveEntity(CurrentEntity);//AcceptEntityInput(CurrentEntity, "Kill");
 	return Plugin_Handled;
 }
 
@@ -570,8 +579,8 @@ stock RegisterConsoleCommands() {
 		RegConsoleCmd(thetext, CMD_DataErase);
 		GetConfigValue(thetext, sizeof(thetext), "rpg bot data erase?");
 		RegConsoleCmd(thetext, CMD_DataEraseBot);
-		//GetConfigValue(thetext, sizeof(thetext), "give store points command?");
-		//RegConsoleCmd(thetext, CMD_GiveStorePoints);
+		GetConfigValue(thetext, sizeof(thetext), "give store points command?");
+		RegConsoleCmd(thetext, CMD_GiveStorePoints);
 		// GetConfigValue(thetext, sizeof(thetext), "give augment command?");
 		// RegConsoleCmd(thetext, CMD_GiveInventoryItem);
 		GetConfigValue(thetext, sizeof(thetext), "give level command?");

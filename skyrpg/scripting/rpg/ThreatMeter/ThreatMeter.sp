@@ -25,7 +25,7 @@ public Action Timer_ThreatSystem(Handle timer) {
 		iTopThreat = 0;
 		// it happens due to ent shifting
 		//if (!IsLegitimateClient(cThreatEnt) && cThreatEnt != -1 && EntRefToEntIndex(cThreatEnt) != INVALID_ENT_REFERENCE) AcceptEntityInput(cThreatEnt, "Kill");
-		if (!IsLegitimateClient(cThreatEnt) && cThreatEnt > 0) AcceptEntityInput(cThreatEnt, "Kill");
+		if (!IsLegitimateClient(cThreatEnt) && IsValidEntityEx(cThreatEnt)) RemoveEntity(cThreatEnt);//AcceptEntityInput(cThreatEnt, "Kill");
 		cThreatEnt = -1;
 
 		return Plugin_Stop;
@@ -33,6 +33,20 @@ public Action Timer_ThreatSystem(Handle timer) {
 	if (ScenarioEndConditionsMet()) {
 		ExecCheatCommand(FindAHumanClient(), "scenario_end");
 		return Plugin_Continue;
+	}
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClientAlive(i) || IsFakeClient(i) || myCurrentTeam[i] == TEAM_SPECTATOR) continue;
+		skyPointsAwardTime[i]--;
+		if (skyPointsAwardTime[i] > 0) continue;
+		if (skyPointsAwardTime[i] == 0) {	// new players start @ -1
+			SkyPoints[i] += iSkyPointsAwardAmount;
+			char spname[64];
+			Format(spname, sizeof(spname), "%t", spmn);
+			PrintToChatAll("%t", "player awarded sky points", blue, baseName[i], white, green, iSkyPointsAwardAmount, orange, spname);
+		}
+
+		if (!bHasDonorPrivileges[i]) skyPointsAwardTime[i] = iSkyPointsTimeRequired * 60;
+		else skyPointsAwardTime[i] = iSkyPointsTimeRequiredDonator * 60;
 	}
 	//if (IsLegitimateClient(cThreatEnt)) cThreatEnt = -1;
 	iSurvivalCounter++;
@@ -81,14 +95,14 @@ public Action Timer_ThreatSystem(Handle timer) {
 	if (cThreatOld != cThreatTarget || count >= 20) {
 
 		count = 0;
-		if (IsValidEntity(cThreatEnt)) AcceptEntityInput(cThreatEnt, "Kill");
+		if (IsValidEntityEx(cThreatEnt)) RemoveEntity(cThreatEnt);//AcceptEntityInput(cThreatEnt, "Kill");
 		cThreatEnt = -1;
 	}
 
 	if (cThreatEnt == -1 && IsLegitimateClientAlive(cThreatTarget)) {
 
 		cThreatEnt = CreateEntityByName("info_goal_infected_chase");
-		if (IsValidEntity(cThreatEnt)) {
+		if (IsValidEntityEx(cThreatEnt)) {
 			cThreatEnt = EntIndexToEntRef(cThreatEnt);
 
 			DispatchSpawn(cThreatEnt);

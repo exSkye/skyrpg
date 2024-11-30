@@ -1,7 +1,7 @@
 stock CreateGravityAmmo(client, float Force, Range, bool UseTheForceLuke=false) {
 
 	int entity		= CreateEntityByName("point_push");
-	if (!IsValidEntity(entity)) return -1;
+	if (!IsValidEntityEx(entity)) return -1;
 	char value[64];
 
 	float Origin[3];
@@ -247,16 +247,14 @@ stock float GetSpecialAmmoStrength(client, char[] TalentName, int resulttype = 0
 		i_FirstPoint			=	GetArrayCell(SpecialAmmoStrengthValues[client], SPELL_COOLDOWN_FIRST_POINT);
 		i_FirstPoint_Temp	=	(i_FirstPoint * attributeMult);
 		i_FirstPoint		+= i_FirstPoint_Temp;
-		float TheAbilityMultiplier = GetAbilityMultiplier(client, "L");
-		if (TheAbilityMultiplier != -1.0) {
-			if (TheAbilityMultiplier < 0.0) TheAbilityMultiplier = 0.1;
-			else if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
-				i_FirstPoint		*= TheAbilityMultiplier;
-			}
-		}
 		f_Str			=	i_FirstPoint;
 		f_Str			+=	i_CooldownStart;
 		f_Str -= GetAbilityStrengthByTrigger(client, _, TRIGGER_spellbuff, _, _, _, _, RESULT_cooldown, 0, true);
+		float TheAbilityMultiplier = GetAbilityMultiplier(client, "L");
+		if (TheAbilityMultiplier > 0.0) { //cooldowns are reduced
+			//PrintToChat(client, "focused reduction: %3.3f", TheAbilityMultiplier);
+			f_Str		-= (f_Str * TheAbilityMultiplier);
+		}
 		//float minimumCooldown = GetSpecialAmmoStrength(client, TalentName, _, _, _, pos);
 		// If talents reduce the cooldown time, we need to make sure the cooldown is never less than the active time - or they could have multiple of the same spell active at one time.
 		//if (f_Str < minimumCooldown) f_Str = minimumCooldown;//f_Str = GetSpecialAmmoStrength(client, TalentName, _, bGetNextUpgrade, TalentStrengthOverride);

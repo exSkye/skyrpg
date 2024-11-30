@@ -536,49 +536,35 @@ stock bool IsClientInRange(int client, int target, float range) {
 	return false;
 }
 
-stock bool CheckTankState(int client, char[] StateName) {
-
-	char text[64];
+stock bool CheckTankState(int client, int StateName) {
 	for (int i = 0; i < GetArraySize(TankState_Array[client]); i++) {
-
-		GetArrayString(TankState_Array[client], i, text, sizeof(text));
-		if (StrEqual(text, StateName)) return true;	
+		int activeTankState = GetArrayCell(TankState_Array[client], i);
+		if (activeTankState == StateName) return true;
 	}
 	//if (GetArraySize(TankState_Array[client]))
 	return false;
 }
 
-stock int ChangeTankState(int client, char[] StateName, bool IsDelete = false, bool GetState = false) {
-
-	if (!b_IsActiveRound) return -1;
-	if (!IsLegitimateClientAlive(client) || FindZombieClass(client) != ZOMBIECLASS_TANK) return -3;
-
-	char text[64];
+stock int ChangeTankState(int client, int StateName, bool IsDelete = false, bool GetState = false, int baseDamage = 0) {
+	int activeTankState = TANKSTATE_TIRED;
 	int size = GetArraySize(TankState_Array[client]);
-
-	char sCurState[64];
-	if (size > 0) GetArrayString(TankState_Array[client], 0, sCurState, sizeof(sCurState));
+	if (size > 0) activeTankState = GetArrayCell(TankState_Array[client], 0);
 
 	if (GetState || IsDelete) {
-
-		//if (size < 1 && IsDelete) return 0;
 		if (size < 1) return 0;
-		if (StrEqual(text, StateName)) {
-
+		if (activeTankState == StateName) {
 			if (!IsDelete) return 1;
 			ClearArray(TankState_Array[client]);
 			return -1;
 		}
 	}
 	else {
-
-		if (iTanksPreset == 0 && size > 0 && !StrEqual(sCurState, StateName) || size < 1) {
-
-			if (size > 0) SetArrayString(TankState_Array[client], 0, StateName);
-			else PushArrayString(TankState_Array[client], StateName);
+		if (iTanksPreset == 0 && size > 0 && activeTankState != StateName || size < 1) {
+			if (size > 0) SetArrayCell(TankState_Array[client], 0, StateName);
+			else PushArrayCell(TankState_Array[client], StateName);
+			SetArrayCell(TankState_Array[client], 0, baseDamage, 1);
 
 			if (iTanksPreset == 1) {
-
 				char sTank[64];
 				Format(sTank, sizeof(sTank), "tank spawn:%s", StateName);
 				char sText[64];
@@ -588,31 +574,45 @@ stock int ChangeTankState(int client, char[] StateName, bool IsDelete = false, b
 					PrintToChat(i, "%T", "tank spawn notification", i, orange, sText, white, blue);
 				}
 			}
-
-			if (StrEqual(StateName, "hulk")) {
+			if (StateName == TANKSTATE_HULK) {
 				SetSpeedMultiplierBase(client, fTankMovementSpeed_Hulk);
 				SetEntityRenderMode(client, RENDER_TRANSCOLOR);
 				SetEntityRenderColor(client, 0, 255, 0, 255);
+				L4D2_SetEntityGlow(client, L4D2Glow_Constant, 1000, 1, {0, 150, 0}, false);
 			}
-			else if (StrEqual(StateName, "death")) {
-
+			else if (StateName == TANKSTATE_DEATH) {
 				//ClearArray(Handle:TankState_Array[client]);	// you who walks through the valley of death loses everything.
 				SetSpeedMultiplierBase(client, fTankMovementSpeed_Death);
 				SetEntityRenderMode(client, RENDER_TRANSCOLOR);
 				SetEntityRenderColor(client, 0, 0, 0, 255);
+				L4D2_SetEntityGlow(client, L4D2Glow_Constant, 1000, 1, {0, 0, 0}, false);
 			}
-			else if (StrEqual(StateName, "burn")) {
+			else if (StateName == TANKSTATE_FIRE) {
 				SetSpeedMultiplierBase(client, fTankMovementSpeed_Burning);
 				SetEntityRenderMode(client, RENDER_TRANSCOLOR);
 				SetEntityRenderColor(client, 255, 0, 0, 200);
+				L4D2_SetEntityGlow(client, L4D2Glow_Constant, 1000, 1, {255, 0, 0}, false);
 			}
-			else if (StrEqual(StateName, "teleporter")) {
-
+			else if (StateName == TANKSTATE_TELEPORT) {
 				SetEntityRenderMode(client, RENDER_TRANSCOLOR);
 				SetEntityRenderColor(client, 50, 50, 255, 200);
+				L4D2_SetEntityGlow(client, L4D2Glow_Constant, 1000, 1, {50, 50, 255}, false);
 
 				if (b_IsActiveRound) FindRandomSurvivorClient(client, true);
 			}
+			else if (StateName == TANKSTATE_FREEZER) {
+				SetSpeedMultiplierBase(client, fTankMovementSpeed_Freezer);
+				SetEntityRenderMode(client, RENDER_TRANSCOLOR);
+				SetEntityRenderColor(client, 173, 216, 230, 200);
+				L4D2_SetEntityGlow(client, L4D2Glow_Constant, 1000, 1, {173, 216, 230}, false);
+			}
+			else if (StateName == TANKSTATE_BOMBER) {
+				SetSpeedMultiplierBase(client, fTankMovementSpeed_Bomber);
+				SetEntityRenderMode(client, RENDER_TRANSCOLOR);
+				SetEntityRenderColor(client, 140, 0, 0, 200);
+				L4D2_SetEntityGlow(client, L4D2Glow_Constant, 1000, 1, {140, 0, 0}, false);
+			}
+			TankState[client] = StateName;
 		}
 		return 2;
 	}
@@ -684,123 +684,68 @@ stock void FindRandomSurvivorClient(int client, bool bIsTeleportTo = false, bool
 }*/
 
 stock void CheckTankSubroutine(int tank, int survivor = 0, int damage = 0, bool TankIsVictim = false) {
-
-	if (iRPGMode == -1) return;
-	if (!IsLegitimateClientAlive(tank) || FindZombieClass(tank) != ZOMBIECLASS_TANK) return;	
-
-	//if (IsSurvivalMode) return;
-
-	int DeathState		= ChangeTankState(tank, "death", _, true);
-
-	if (DeathState != 1 && (IsSpecialCommonInRange(tank, 'w') || IsClientInRangeSpecialAmmo(tank, "W") > 0.0)) {
-
-		//ChangeTankState(client, "hulk", true);
-		ChangeTankState(tank, "death");
-	}
-	int tankFlags = GetEntityFlags(tank);
-
-	//if (survivor == 0 && damage == 0 && !(GetEntityFlags(tank) & FL_ONFIRE) && !SurvivorsInRange(tank)) ChangeTankState(tank, "teleporter");
-
-	//new TankEnrageMechanic			= GetConfigValueInt("boss tank enrage count?");
-	//new Float:TankTeleportMechanic	= GetConfigValueFloat("boss tank teleport distance?");
-
-	if (tankFlags & FL_INWATER) {
-
-		ChangeTankState(tank, "burn", true);
-	}
-	//bool IsDeath = false;
-
-	//new DeathState		= ChangeTankState(tank, "death", _, true);
-	int BurnState		= ChangeTankState(tank, "burn", _, true);
-	//bool IsOnFire = false;
-	if ((tankFlags & FL_ONFIRE) && BurnState != 1) {
-
-		ExtinguishEntity(tank);
+	if (TankState[tank] != TANKSTATE_DEATH && (IsSpecialCommonInRange(tank, 'w') || IsClientInRangeSpecialAmmo(tank, "W") > 0.0)) {
+		ChangeTankState(tank, TANKSTATE_DEATH);
 	}
 	bool IsBiled	= IsCoveredInBile(tank);
-	int IsHulkState		= ChangeTankState(tank, "hulk", _, true);
 
-	if (bIsDefenderTank[tank] || DeathState == 1) {
-		SetSpeedMultiplierBase(tank, fTankMovementSpeed_Death);
-		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-		if (bIsDefenderTank[tank]) SetEntityRenderColor(tank, 0, 0, 255, 255);
-		else SetEntityRenderColor(tank, 0, 0, 0, 150);
-	}
-	else if (IsHulkState == 1) {
-		SetSpeedMultiplierBase(tank, fTankMovementSpeed_Hulk);
-
-		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-		SetEntityRenderColor(tank, 0, 255, 0, 200);
-	}
-	else if (BurnState == 1) {
-
-		SetSpeedMultiplierBase(tank, fTankMovementSpeed_Burning);
-
-		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-		SetEntityRenderColor(tank, 255, 0, 0, 200);
-		if (!(tankFlags & FL_ONFIRE)) IgniteEntity(tank, 3.0);
-	}
-	if (BurnState != 1) ExtinguishEntity(tank);
-	/*if (BurnState) {
-
-		SetSpeedMultiplierBase(tank, 1.0);
-		ChangeTankState(tank, "hulk", true);
-		IsHulkState = 0;
-		SetEntityRenderMode(tank, RENDER_TRANSCOLOR);
-		SetEntityRenderColor(tank, 255, 0, 0, 255);
-	}*/
 	bool IsLegitimateClientSurvivor = IsLegitimateClient(survivor);
 	int survivorTeam = -1;
 	if (IsLegitimateClientSurvivor) survivorTeam = myCurrentTeam[survivor];
 	if (survivor == 0 || !IsLegitimateClientSurvivor || survivorTeam != TEAM_SURVIVOR) return;
 
-	//char ClassRoles[64];
-
-	//new Float:IsSurvivorWeak = IsClientInRangeSpecialAmmo(survivor, "W");
-	//new Float:IsSurvivorReflect = 0.0;
 	bool IsSurvivorBiled = false;
 	if (!TankIsVictim) {
-
-		if (BurnState == 1) {
-
-			int Count = GetClientStatusEffect(survivor, STATUS_EFFECT_BURN);
-
-			if (!IsSurvivorBiled && Count < iDebuffLimit) {
-
-				//if (IsSurvivorReflect) CreateAndAttachFlame(tank, RoundToCeil(damage * 0.1), 10.0, 1.0, survivor, "burn");
-				//else
-				Count++;
-				CreateAndAttachFlame(survivor, RoundToCeil((damage * fBurnPercentage) / Count), fDoTMaxTime, fDoTInterval, tank, STATUS_EFFECT_BURN);
-			}
-		}
-		if (DeathState == 0) ChangeTankState(tank, "hulk");
-		else if (IsHulkState == 1) ChangeTankState(tank, "death");
-		else if (DeathState == 1) {
-
-			int SurvivorHealth = GetClientTotalHealth(survivor);
-
-			int SurvivorHalfHealth = SurvivorHealth / 2;
-			if (SurvivorHalfHealth / GetMaximumHealth(survivor) > 0.25) {
-
-				SetClientTotalHealth(tank, survivor, SurvivorHalfHealth);
-				AddSpecialInfectedDamage(survivor, tank, SurvivorHalfHealth, CONTRIBUTION_AWARD_TANKING);
-			}
-		}
-		else if (IsHulkState == 1) {
-
-			CreateExplosion(survivor, damage, tank, true);
-		}
-	}
-	else {
-
 		if (IsBiled) {
-
-			if (BurnState == 1) ChangeTankState(tank, "hulk");
 			if (!ISBILED[survivor]) {
 				SDKCall(g_hCallVomitOnPlayer, survivor, tank, true);
 				CreateTimer(15.0, Timer_RemoveBileStatus, survivor, TIMER_FLAG_NO_MAPCHANGE);
 				ISBILED[survivor] = true;
 			}
+		}
+		IsSurvivorBiled = ISBILED[survivor];
+		if (TankState[tank] == TANKSTATE_FREEZER) {
+			freezerTime[survivor] = GetEngineTime() + 1.0;
+			FreezerInRange[survivor] = true;
+			SetEntPropFloat(survivor, Prop_Send, "m_flLaggedMovementValue", 0.25);
+		}
+		else if (TankState[tank] == TANKSTATE_FIRE) {
+			bool isFlameSuperInRange = IsSpecialCommonInRange(tank, 'f');
+			if (isFlameSuperInRange) {
+				int flamerSuperPos = GetCommonPosByValue(tank, _, "f");
+				if (flamerSuperPos >= 0) {
+					float flamerAuraDistance = GetCommonValueFloatAtPosEx(flamerSuperPos, SUPER_COMMON_RANGE_MAX);
+					flamerAuraDistance *= 0.5;
+					for (int i = 1; i <= MaxClients; i++) {
+						if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
+						if (GetPlayerDistance(tank, i) > flamerAuraDistance) continue;
+						DoBurn(tank, i, damage);
+					}
+				}
+			}
+			else if (!IsSurvivorBiled) {
+				int Count = GetClientStatusEffect(survivor, STATUS_EFFECT_BURN);
+				if (Count < iDebuffLimit) {
+					Count++;
+					CreateAndAttachFlame(survivor, RoundToCeil((damage * fBurnPercentage) / Count), fDoTMaxTime, fDoTInterval, tank, STATUS_EFFECT_BURN);
+				}
+			}
+		}
+		else if (TankState[tank] == TANKSTATE_DEATH) {
+			int SurvivorHealth = GetClientTotalHealth(survivor);
+			int SurvivorHalfHealth = SurvivorHealth / 2;
+			if (SurvivorHalfHealth / GetMaximumHealth(survivor) > 0.25) {
+				SetClientTotalHealth(tank, survivor, SurvivorHalfHealth);
+				AddSpecialInfectedDamage(survivor, tank, SurvivorHalfHealth, CONTRIBUTION_AWARD_TANKING);
+			}
+		}
+		else if (TankState[tank] == TANKSTATE_HULK) {
+			CreateExplosion(survivor, damage, tank, true);
+		}
+	}
+	else {
+		if (IsBiled) {
+			if (TankState[tank] != TANKSTATE_HULK) ChangeTankState(tank, TANKSTATE_HULK);
 		}
 	}
 }
@@ -829,7 +774,7 @@ void EnforceCurrentWeaponAmmoCapacity(int client) {
 public Action Timer_SetMyWeapons(Handle timer, any client) {
 	if (IsLegitimateClient(client)) {
 		if (!IsClientInGame(client)) return Plugin_Continue;
-		SetMyWeapons(client);
+		if (SetMyWeapons(client) == CLIENT_NO_WEAPONS_EQUIPPED) return Plugin_Continue;
 		maximumReserves[client] = GetWeaponResult(client, 2);
 		EnforceCurrentWeaponAmmoCapacity(client);
 	}
@@ -948,7 +893,8 @@ stock int IfInfectedIsAttackerDoStuff(attacker, victim) {
 	float ammoStr = IsClientInRangeSpecialAmmo(victim, "R", _, _, totalIncomingDamage);
 	if (!bIsInfectedSwarm && ammoStr > 0.0) ReflectIncomingDamage = RoundToCeil(totalIncomingDamage * ammoStr);
 	if (ReflectIncomingDamage > 0) AddSpecialInfectedDamage(victim, attacker, ReflectIncomingDamage);
-	if (IsSpecialCommonInRange(attacker, 'f')) DoBurn(attacker, victim, totalIncomingDamage);
+	bool isFlameSuperInRange = IsSpecialCommonInRange(attacker, 'f');
+	if (isFlameSuperInRange) DoBurn(attacker, victim, totalIncomingDamage);
 	return totalIncomingDamage;
 }
 
@@ -979,6 +925,9 @@ stock int TryToDamagePlayerInfected(attacker, victim, baseWeaponDamage, damagety
 	if ((fireDamage && iIsSpecialFire != 1 || (!hasMeleeWeaponEquipped[attacker] && zombieclass == ZOMBIECLASS_TANK && TankState[victim] == TANKSTATE_DEATH)) && IsPlayerAlive(victim)) return -1;
 	if (fireDamage && zombieclass == ZOMBIECLASS_TANK && TankState[victim] == TANKSTATE_FIRE) return -1;
 
+	bool isExplosionDamage = ((damagetype & DMG_BLAST) || (damagetype & DMG_BLAST_SURFACE));
+	if (isExplosionDamage) GetProficiencyData(attacker, 7, RoundToCeil(baseWeaponDamage * fProficiencyExperienceEarned));
+
 	if (fireDamage) {
 		CreateAndAttachFlame(victim, baseWeaponDamage, 10.0, 0.5, attacker, STATUS_EFFECT_BURN);
 	}
@@ -997,7 +946,7 @@ stock int TryToDamageNonPlayerInfected(int attacker, int victim, int baseWeaponD
 	//bool isDifferentVictim = (LastAttackedUser[attacker] == victim) ? false : true;
 	bool isVictimSpecial = IsSpecialCommon(victim);
 	bool fireDamage = IsFireDamage(damagetype);
-
+	
 	if (!fireDamage) {
 		GetAbilityStrengthByTrigger(attacker, victim, TRIGGER_D, _, baseWeaponDamage, _, _, _, _, _, _, hitgroup, _, damagetype);
 	}
@@ -1027,9 +976,11 @@ stock int TryToDamageNonPlayerInfected(int attacker, int victim, int baseWeaponD
 		}
 	}
 	else if (IsCommonInfected(victim)) {
+		bool isExplosionDamage = ((damagetype & DMG_BLAST) || (damagetype & DMG_BLAST_SURFACE));
 		if (!fireDamage) {
 			if (AddCommonInfectedDamage(attacker, victim, baseWeaponDamage, _, damagetype, ammotype, hitgroup) > 1) return -2;
 		}
+		else if (isExplosionDamage) CheckTeammateDamagesEx(attacker, victim, baseWeaponDamage, hitgroup, true, _, true);
 		else CheckTeammateDamagesEx(attacker, victim, baseWeaponDamage, hitgroup, true, true);
 	}
 	//CombatTime[attacker] = GetEngineTime() + fOutOfCombatTime;
@@ -1291,7 +1242,7 @@ stock AddSpecialCommonDamage(client, entity, playerDamage, bool IsStatusDamage =
 			if (handicapHealthBonus > 0) CommonHealth += handicapHealthBonus;
 		}
 		// only add raid health if > 4 survivors.
-		int theCount = LivingSurvivorCount();
+		int theCount = LivingHumanSurvivors();
 		if (iSurvivorModifierRequired > 0 && fSurvivorHealthBonus > 0.0 && theCount >= iSurvivorModifierRequired) CommonHealth += RoundToCeil(CommonHealth * ((theCount - (iSurvivorModifierRequired - 1)) * fSurvivorHealthBonus));
 		int my_size	= GetArraySize(SpecialCommon[client]);
 		//ResizeArray(SpecialCommon[client], my_size + 1);
@@ -1318,6 +1269,14 @@ stock AddSpecialCommonDamage(client, entity, playerDamage, bool IsStatusDamage =
 		}
 	}
 	return 1;
+}
+
+void ResetStoreInventory(int client) {
+	int size = GetArraySize(a_Store);
+	ResizeArray(StoreInventory[client], size);
+	for (int i = 0; i < size; i++) {
+		SetArrayCell(StoreInventory[client], i, 0);
+	}
 }
 
 void AwardExperience(client, type = 0, AMOUNT = 0, bool TheRoundHasEnded=false) {
@@ -2306,9 +2265,10 @@ stock BeanBag(client, float force) {
 	}
 }
 
-stock CreateExplosion(client, damage = 0, attacker = 0, bool IsAOE = false, float fRange = 96.0) {
+stock void CreateExplosion(client, damage = 0, attacker = 0, bool IsAOE = false, float fRange = 96.0) {
 
 	int entity 				= CreateEntityByName("env_explosion");
+	if (!IsValidEntityEx(entity)) return;
 	float loc[3];
 	float tloc[3];
 	int totalIncomingDamage = damage, aClient = 0;
@@ -2340,7 +2300,7 @@ stock CreateExplosion(client, damage = 0, attacker = 0, bool IsAOE = false, floa
 				}
 				if (zombieclass == ZOMBIECLASS_TANK) {
 					// tank aoe jump explosion.
-					ScreenShake(i);
+					if (iTypeOfSpecialEffectsToShow[i] == SPECIALEFFECTS_ALL) ScreenShake(i);
 				}
 			}
 			return;
@@ -2355,7 +2315,7 @@ stock CreateExplosion(client, damage = 0, attacker = 0, bool IsAOE = false, floa
 		else if (IsLegitimateClientAlive(client) && IsLegitimateClientAlive(attacker) && FindZombieClass(attacker) == ZOMBIECLASS_TANK) {
 			if ((GetEntityFlags(client) & FL_ONGROUND)) {
 
-				if (GetClientTotalHealth(client) <= totalIncomingDamage) ChangeTankState(attacker, "hulk", true);
+				if (GetClientTotalHealth(client) <= totalIncomingDamage) ChangeTankState(attacker, TANKSTATE_HULK, true);
 
 				SetClientTotalHealth(attacker, client, totalIncomingDamage);
 				AddSpecialInfectedDamage(client, attacker, totalIncomingDamage, CONTRIBUTION_AWARD_TANKING);	// bool is tanking instead.
@@ -2371,9 +2331,10 @@ stock CreateExplosion(client, damage = 0, attacker = 0, bool IsAOE = false, floa
 	}
 }
 
-stock CreateAmmoExplosion(client, float PosX=0.0, float PosY=0.0, float PosZ=0.0) {
+stock void CreateAmmoExplosion(client, float PosX=0.0, float PosY=0.0, float PosZ=0.0) {
 
 	int entity 				= CreateEntityByName("env_explosion");
+	if (!IsValidEntityEx(entity)) return;
 	float loc[3];
 	loc[0] = PosX;
 	loc[1] = PosY;
@@ -2389,27 +2350,34 @@ stock CreateAmmoExplosion(client, float PosX=0.0, float PosY=0.0, float PosZ=0.0
 	AcceptEntityInput(entity, "explode");
 }
 
-stock ScreenShake(int client, char[] amp = "16.0", char[] freq = "1.5", char[] dur = "0.9") {
+stock void ScreenShake(int client, char[] amp = "16.0", char[] freq = "1.5", char[] dur = "0.9", bool useClientShakePreferences = true) {
 	int entity = CreateEntityByName("env_shake");
+	if (!IsValidEntityEx(entity)) return;
 
 	float loc[3];
 	GetClientAbsOrigin(client, loc);
-
-	if(entity >= 0) {
-		DispatchKeyValue(entity, "spawnflags", "8");
-		DispatchKeyValue(entity, "amplitude", amp);
-		DispatchKeyValue(entity, "frequency", freq);
-		DispatchKeyValue(entity, "duration", dur);
-		DispatchKeyValue(entity, "radius", "0.0");
-		DispatchSpawn(entity);
-		ActivateEntity(entity);
-		AcceptEntityInput(entity, "Enable");
-		TeleportEntity(entity, loc, NULL_VECTOR, NULL_VECTOR);
-		AcceptEntityInput(entity, "StartShake");
-		SetVariantString("OnUser1 !self:Kill::1.1:1");
-		AcceptEntityInput(entity, "AddOutput");
-		AcceptEntityInput(entity, "FireUser1");
+	if (useClientShakePreferences) {
+		if (iTypeOfScreenShake[client] == SCREENSHAKE_HALF) {
+			Format(amp, 6, "%3.1f", StringToFloat(amp) * 0.5);
+		}
+		else if (iTypeOfScreenShake[client] == SCREENSHAKE_MINIMAL) {
+			Format(amp, 6, "%3.1f", StringToFloat(amp) * 0.25);
+		}
 	}
+
+	DispatchKeyValue(entity, "spawnflags", "8");
+	DispatchKeyValue(entity, "amplitude", amp);
+	DispatchKeyValue(entity, "frequency", freq);
+	DispatchKeyValue(entity, "duration", dur);
+	DispatchKeyValue(entity, "radius", "0.0");
+	DispatchSpawn(entity);
+	ActivateEntity(entity);
+	AcceptEntityInput(entity, "Enable");
+	TeleportEntity(entity, loc, NULL_VECTOR, NULL_VECTOR);
+	AcceptEntityInput(entity, "StartShake");
+	SetVariantString("OnUser1 !self:Kill::1.1:1");
+	AcceptEntityInput(entity, "AddOutput");
+	AcceptEntityInput(entity, "FireUser1");
 }
 
 stock ZeroGravity(client, victim, float g_TalentStrength, float g_TalentTime) {
@@ -2937,9 +2905,11 @@ stock CreateFireEx(client) {
 //static const String:MODEL_PIPEBOMB[] = "models/w_models/weapons/w_eq_pipebomb.mdl;"
 
 static const char MODEL_GASCAN[] = "models/props_junk/gascan001a.mdl";
-stock CreateFire(const float BombOrigin[3])
+stock void CreateFire(const float BombOrigin[3])
 {
 	int entity = CreateEntityByName("prop_physics");
+	if (!IsValidEntityEx(entity)) return;
+
 	DispatchKeyValue(entity, "physdamagescale", "0.0");
 	if (!IsModelPrecached(MODEL_GASCAN))
 	{
@@ -3218,7 +3188,7 @@ void ReflectDamage(int client, int target, int AttackDamage) {
 	if (iDisplayHealthBars == 1 && enemytype >= 2) DisplayInfectedHealthBars(client, target);
 }
 
-int CheckTeammateDamagesEx(int client, int target, int TotalDamage, int hitgroup = -1, bool deathIsConfirmed = false, bool igniteEntityOnDeath = false) {
+int CheckTeammateDamagesEx(int client, int target, int TotalDamage, int hitgroup = -1, bool deathIsConfirmed = false, bool igniteEntityOnDeath = false, bool isExplosion = false) {
 	if (TotalDamage < 1) return 0;
 	if (deathIsConfirmed || CheckTeammateDamages(target, client) >= 1.0 || CheckTeammateDamages(target, client, true) >= 1.0) {
 		char eName[64];
@@ -3264,6 +3234,7 @@ int CheckTeammateDamagesEx(int client, int target, int TotalDamage, int hitgroup
 				CalculateInfectedDamageAward(target, client);
 				RemoveCommonInfected(target, igniteEntityOnDeath);
 				AddAttributeExperience(client, ATTRIBUTE_LUCK, 1);
+				if (isExplosion) GetProficiencyData(client, 7, 1);
 			}
 		}
 		return TotalDamage;
@@ -3303,7 +3274,7 @@ stock CreateAcid(client, victim, float radius = 128.0) {
 			else GetEntPropVector(victim, Prop_Send, "m_vecOrigin", pos);
 			pos[2] += 96.0;
 			int acidball = CreateEntityByName("spitter_projectile");
-			if (IsValidEntity(acidball)) {
+			if (IsValidEntityEx(acidball)) {
 				DispatchSpawn(acidball);
 				SetEntPropEnt(acidball, Prop_Send, "m_hThrower", client);
 				SetEntPropFloat(acidball, Prop_Send, "m_DmgRadius", radius);
@@ -3357,13 +3328,13 @@ stock int GiveAmmoBack(client, rawToReturn = 0, float percentageToReturn = 0.0, 
 
 stock bool GetResultByVScript(client, char[] scriptCallByRef, bool printResults = false) {
 	int entity = CreateEntityByName("logic_script");
-	if (entity >= 1) {
+	if (IsValidEntityEx(entity)) {
 		DispatchSpawn(entity);
 		char text[96];
 		Format(text, sizeof(text), "Convars.SetValue(\"sm_vscript_res\", \"\" + %s + \"\");", scriptCallByRef);
 		SetVariantString(text);
 		AcceptEntityInput(entity, "RunScriptCode");
-		AcceptEntityInput(entity, "Kill");
+		RemoveEntity(entity);//AcceptEntityInput(entity, "Kill");
 		GetConVarString(staggerBuffer, text, sizeof(text));
 		SetConVarString(staggerBuffer, "");
 		if (StrEqual(text, "true", false)) return true;
@@ -3438,8 +3409,8 @@ stock ConfirmExperienceAction(client, bool TheRoundHasEnded = false, bool IsAllo
 	}
 	if (ExperienceLevel[client] >= ExperienceRequirement && PlayerLevel[client] < thisPlayerMaxLevel && (iIsLevelingPaused[client] == 0 || IsAllowLevelUp)) {
 
-		char Name[64];
-		GetClientName(client, Name, sizeof(Name));
+		//char Name[64];
+		//GetClientName(client, Name, sizeof(Name));
 		//else GetSurvivorBotName(client, Name, sizeof(Name));
 		int count = 0;
 		int MaxLevel = thisPlayerMaxLevel;
@@ -3472,11 +3443,11 @@ stock ConfirmExperienceAction(client, bool TheRoundHasEnded = false, bool IsAllo
 					PlayerLevelUpgrades[client] = 0;
 				}
 
-				if (count == 1) PrintToChatAll("%t", "player level up", green, white, green, Name, PlayerLevel[client]);
+				if (count == 1) PrintToChatAll("%t", "player level up", green, white, green, baseName[client], PlayerLevel[client]);
 				else {
 					char formattedLevel[64];
 					AddCommasToString(PlayerLevel[client], formattedLevel, sizeof(formattedLevel));
-					PrintToChatAll("%t", "player multiple level up", blue, Name, white, green, count, white, blue, formattedLevel);
+					PrintToChatAll("%t", "player multiple level up", blue, baseName[client], white, green, count, white, blue, formattedLevel);
 				}
 				FormatPlayerName(client);
 			}
@@ -3677,9 +3648,11 @@ stock ResetContributionTracker(client) {
 	for (int i = 0; i < 4; i++) SetArrayCell(playerContributionTracker[client], i, 0);
 }
 
-stock CreateCombustion(client, float g_Strength, float f_Time)
+stock void CreateCombustion(client, float g_Strength, float f_Time)
 {
 	int entity				= CreateEntityByName("env_fire");
+	if (!IsValidEntityEx(entity)) return;
+
 	float loc[3];
 	GetClientAbsOrigin(client, loc);
 
@@ -4071,7 +4044,7 @@ stock bool IsAbilityActive(client, char[] TalentName, float timeToAdd = 0.0, cha
 	float AmmoCooldownTime		 = GetAbilityValue(client, ABILITY_ACTIVE_TIME, pos);
 	if (AmmoCooldownTime == -1.0) return false;
 
-	float fAmmoCooldownTime = GetSpellCooldown(client, _, pos);
+	float fAmmoCooldownTime = GetSpellCooldown(client, _, pos, true);
 	AmmoCooldownTime				 = AmmoCooldownTime - (fAmmoCooldownTime - fCooldownRemaining) + timeToAdd;
 
 	if (AmmoCooldownTime < 0.0) return false;
@@ -4194,38 +4167,60 @@ stock TotalSurvivors() {
 	return count;
 }
 
-stock ChangeInfectedClass(client, zombieclass = 0, bool dontChangeClass = false) {
-	bool clientIsFake = IsLegitimateClient(client) && IsFakeClient(client);
-	if (clientIsFake || IsLegitimateClient(client)) {
+stock bool IsValidEntityEx(int entity) {
+	if (entity > 0 && IsValidEntity(entity)) return true;
+	return false;
+}
+
+stock void ChangeInfectedClass(int client, int zombieclass) {
+	bool isLegitimate = IsLegitimateClient(client);
+	bool clientIsFake = isLegitimate && IsFakeClient(client);
+	if (clientIsFake) {
+		float pos[3];
+		GetClientAbsOrigin(client, pos);
+
+		SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+		SDKUnhook(client, SDKHook_TraceAttack, OnTraceAttack);
+
+		KickClient(client);
+		int special = L4D2_SpawnSpecial(zombieclass, pos, NULL_VECTOR);
+		//L4D2_SetEntityGlow(special, L4D2Glow_Constant, 500, 1, {0, 255, 0}, false);
+		return;
+	}
+	
+	if (isLegitimate) {
 		if (myCurrentTeam[client] == TEAM_INFECTED) {
-			if (!dontChangeClass) {
-				if (!IsGhost(client)) SetEntProp(client, Prop_Data, "m_takedamage", 1, 1);
-				int wi;
-				while ((wi = GetPlayerWeaponSlot(client, 0)) != -1) {
-					if (wi > 0) {
-						RemovePlayerItem(client, wi);
-						if (IsValidEntity(wi)) AcceptEntityInput(wi, "Kill");
-					}
+			bool ghost = IsGhost(client);
+			if (!ghost) SetEntProp(client, Prop_Data, "m_takedamage", 1, 1);
+			int wi;
+			while ((wi = GetPlayerWeaponSlot(client, 0)) != -1) {
+				if (wi > 0) {
+					RemovePlayerItem(client, wi);
+					RemoveEntity(wi);//AcceptEntityInput(wi, "Kill");
 				}
-				SDKCall(g_hSetClass, client, zombieclass);
-				if (clientIsFake) {
-					if (zombieclass == 1) SetClientInfo(client, "name", "Smoker");
-					else if (zombieclass == 2) SetClientInfo(client, "name", "Boomer");
-					else if (zombieclass == 3) SetClientInfo(client, "name", "Hunter");
-					else if (zombieclass == 4) SetClientInfo(client, "name", "Spitter");
-					else if (zombieclass == 5) SetClientInfo(client, "name", "Jockey");
-					else if (zombieclass == 6) SetClientInfo(client, "name", "Charger");
-					else if (zombieclass == 8) SetClientInfo(client, "name", "Tank");
-				}
-				AcceptEntityInput(MakeCompatEntRef(GetEntProp(client, Prop_Send, "m_customAbility")), "Kill");
-				if (IsPlayerAlive(client)) SetEntProp(client, Prop_Send, "m_customAbility", GetEntData(SDKCall(g_hCreateAbility, client), g_oAbility));
-				if (!IsGhost(client)) SetEntProp(client, Prop_Data, "m_takedamage", 2, 1);		// client can be killed again.
 			}
-			SpeedMultiplier[client] = 1.0;		// defaulting the speed. It'll get modified in speed modifer spawn talents.
-			SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", SpeedMultiplier[client]);
-			SetSpecialInfectedHealth(client, zombieclass);
+			SDKCall(g_hSetClass, client, zombieclass);
+			if (clientIsFake) {
+				if (zombieclass == 1) SetClientInfo(client, "name", "Smoker");
+				else if (zombieclass == 2) SetClientInfo(client, "name", "Boomer");
+				else if (zombieclass == 3) SetClientInfo(client, "name", "Hunter");
+				else if (zombieclass == 4) SetClientInfo(client, "name", "Spitter");
+				else if (zombieclass == 5) SetClientInfo(client, "name", "Jockey");
+				else if (zombieclass == 6) SetClientInfo(client, "name", "Charger");
+				else if (zombieclass == 8) SetClientInfo(client, "name", "Tank");
+			}
+			RemoveEntity(MakeCompatEntRef(GetEntProp(client, Prop_Send, "m_customAbility")));
+			SetEntProp(client, Prop_Send, "m_customAbility", GetEntData(SDKCall(g_hCreateAbility, client), g_oAbility));
+			if (!ghost) SetEntProp(client, Prop_Data, "m_takedamage", 2, 1);		// client can be killed again.
+			SetSpawnStuffForInfectedBots(client, zombieclass);
 		}
 	}
+}
+
+stock void SetSpawnStuffForInfectedBots(int client, int zombieclass = 0) {
+	SpeedMultiplier[client] = 1.0;		// defaulting the speed. It'll get modified in speed modifer spawn talents.
+	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", SpeedMultiplier[client]);
+	SetSpecialInfectedHealth(client, zombieclass);
 }
 
 stock bool HasIdlePlayer(int bot) {
@@ -4245,10 +4240,10 @@ stock bool IsClientIdle(int client) {
 	return false;
 }
 
-stock SetSpecialInfectedHealth(attacker, zombieclass = 0) {
+stock SetSpecialInfectedHealth(int attacker, int zombieclass = 0) {
 	int t_InfectedHealth = 0;
 	int myzombieclass = (zombieclass == 0) ? FindZombieClass(attacker) : zombieclass;
-	if (myzombieclass == 7 || myzombieclass == 9 || myzombieclass == -1) return;
+	if (myzombieclass == 7 || myzombieclass == 9 || myzombieclass < 1) return;
 
 	t_InfectedHealth = (myzombieclass != ZOMBIECLASS_TANK) ? iBaseSpecialInfectedHealth[myzombieclass - 1] : iBaseSpecialInfectedHealth[myzombieclass - 2];
 
@@ -4503,7 +4498,7 @@ stock CreatePlayerExplosion(client, damageToDealToEligibleTargets, bool bDontHur
 
 	float realPlayerOrigin[3];
 	CreateExplosion(client);
-	ScreenShake(client);
+	if (iTypeOfSpecialEffectsToShow[client] >= SPECIALEFFECTS_ME) ScreenShake(client);
 	CreateExplosionRingOnClient(client, 512.0);
 
 	for (int realPlayer = 1; realPlayer <= MaxClients; realPlayer++) {
@@ -4512,8 +4507,8 @@ stock CreatePlayerExplosion(client, damageToDealToEligibleTargets, bool bDontHur
 		if (myCurrentTeam[realPlayer] == myCurrentTeam[client] || myCurrentTeam[realPlayer] == TEAM_SURVIVOR && (PlayerLevel[realPlayer] < 20 || IsFakeClient(realPlayer))) continue;
 		GetEntPropVector(realPlayer, Prop_Send, "m_vecOrigin", realPlayerOrigin);
 		if (GetVectorDistance(originOfExplosion, realPlayerOrigin) > fRangeOfExplosion) continue;
-		if (!IsFakeClient(realPlayer)) ScreenShake(realPlayer);
-		if (FindZombieClass(realPlayer) == ZOMBIECLASS_TANK) ChangeTankState(realPlayer, "fire", true);
+		if (!IsFakeClient(realPlayer) && iTypeOfSpecialEffectsToShow[realPlayer] >= SPECIALEFFECTS_FRIENDLY) ScreenShake(realPlayer);
+		if (FindZombieClass(realPlayer) == ZOMBIECLASS_TANK) ChangeTankState(realPlayer, TANKSTATE_FIRE, true);
 		if (myCurrentTeam[realPlayer] == TEAM_INFECTED) AddSpecialInfectedDamage(client, realPlayer, damageToDealToEligibleTargets);
 		else SetClientTotalHealth(client, realPlayer, damageToDealToEligibleTargets);
 	}
@@ -4588,8 +4583,6 @@ void RemoveCommonInfected(int entity, bool ignite = false) {
 		int pos = FindListPositionByEntity(entity, CommonInfected[i]);
 		if (pos >= 0) RemoveFromArray(CommonInfected[i], pos);
 	}
-	// SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
-	// SDKUnhook(entity, SDKHook_TraceAttack, OnTraceAttack);
 	if (!ignite) {
 		if (!CommonInfectedModel(entity, FALLEN_SURVIVOR_MODEL)) AcceptEntityInput(entity, "BecomeRagdoll");
 		else SetEntProp(entity, Prop_Data, "m_iHealth", 1);
@@ -4621,16 +4614,24 @@ stock OnWitchCreated(entity, bool bIsDestroyed = false, lastHitAttacker = 0) {
 			When a new witch is created, we add them to the list, and then we
 			make sure all survivor players lists are the same size.
 		*/
-		PushArrayCell(WitchList, entity);
-		//SetInfectedHealth(entity, 50000);
-		//SDKHook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
+		int pos		= FindListPositionByEntity(entity, WitchList);
+		if (pos >= 0) {
+			SetArrayCell(WitchList, pos, WITCH_NOT_ACTIVATED, 1);
+		}
+		else {
+			pos		= GetArraySize(WitchList);
+			PushArrayCell(WitchList, entity);
+			SetArrayCell(WitchList, pos, WITCH_NOT_ACTIVATED, 1);
+		}
+
+		SDKHook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
 		if (damagePos == -1) {
 			damagePos = GetArraySize(damageOfWitch);
 			//ResizeArray(damageOfWitch, damagePos+1);
 			PushArrayCell(damageOfWitch, entity);
 		}
 		SetArrayCell(damageOfWitch, damagePos, 0, 1);
-		//SDKHook(entity, SDKHook_TraceAttack, OnTraceAttack);
+		SDKHook(entity, SDKHook_TraceAttack, OnTraceAttack);
 
 		//CreateMyHealthPool(entity);
 	}
@@ -4646,7 +4647,7 @@ stock OnWitchCreated(entity, bool bIsDestroyed = false, lastHitAttacker = 0) {
 			LogMessage("[WITCH_LIST] Witch %d Killed", entity);
 			// SDKUnhook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
 			// SDKUnhook(entity, SDKHook_TraceAttack, OnTraceAttack);
-			if (IsWitch(entity)) AcceptEntityInput(entity, "Kill");
+			if (IsWitch(entity)) RemoveEntity(entity);//AcceptEntityInput(entity, "Kill");
 			RemoveFromArray(WitchList, pos);		// Delete the witch. Forever. now occurs in CalculateInfectedDamageAward()
 		}
 		if (damagePos >= 0) RemoveFromArray(damageOfWitch, damagePos);
@@ -4878,6 +4879,24 @@ stock bool IsVectorsCrossed(client, float torigin[3], float aorigin[3], float f_
 }
 
 public OnEntityDestroyed(entity) {
+	int rock = FindListPositionByEntity(entity, ActiveTankRocks);
+	if (rock >= 0) {
+		int tankToTeleport = GetArrayCell(ActiveTankRocks, rock, 1);
+		if (IsLegitimateClientAlive(tankToTeleport) && FindZombieClass(tankToTeleport) == ZOMBIECLASS_TANK) {
+			float rockPos[3];
+			GetEntPropVector(entity, Prop_Send, "m_vecOrigin", rockPos);
+			if (SurvivorsInRangeOfPosition(rockPos, 64.0)) {
+				ChangeTankState(tankToTeleport, TANKSTATE_HULK);
+			}
+			else {
+				TeleportEntity(tankToTeleport, rockPos, NULL_VECTOR, NULL_VECTOR);
+				CreateTimer(0.1, Timer_CheckIfTankIsStuck, tankToTeleport, TIMER_FLAG_NO_MAPCHANGE);
+			}
+		}
+		RemoveFromArray(ActiveTankRocks, rock);
+		L4D2_SetEntityGlow(entity, L4D2Glow_None, 1000, 1, {130, 0, 0}, false);
+		return;
+	}
 	if (!IsWitch(entity) && !IsCommonInfected(entity)) return;
 	if (!b_IsActiveRound) return;
 
@@ -4891,30 +4910,41 @@ public OnEntityDestroyed(entity) {
 	}
 }
 
+bool SurvivorsInRangeOfPosition(float pos[3], float range) {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_SURVIVOR) continue;
+		float cpos[3];
+		GetEntPropVector(i, Prop_Send, "m_vecOrigin", cpos);
+		if (GetVectorDistance(cpos, pos) > range) continue;
+		return true;
+	}
+	return false;
+}
+
 bool IsPlayerZoomed(client) {
 	return (GetEntPropEnt(client, Prop_Send, "m_hZoomOwner") == -1) ? false : true;
 }
 
-stock GetRockOwner(ent) {
+stock int GetRockOwner(ent) {
 	float fTankPos[3];
 	float fRockPos[3];
 	int tank = -1;
 	GetEntPropVector(ent, Prop_Send, "m_vecOrigin", fRockPos);
 	for (int i = 1; i <= MaxClients; i++) {
-
-		if (!IsLegitimateClientAlive(i) || myCurrentTeam[i] != TEAM_INFECTED || FindZombieClass(i) != ZOMBIECLASS_TANK) continue;
+		if (!IsLegitimateClientAlive(i) || FindZombieClass(i) != ZOMBIECLASS_TANK) continue;
 		GetClientAbsOrigin(i, fTankPos);
-		if (GetVectorDistance(fTankPos, fRockPos) >= 64.0) continue;
+		PrintToChatAll("%3.3f", GetVectorDistance(fTankPos, fRockPos));
+		if (GetVectorDistance(fTankPos, fRockPos) >= 128.0) continue;
 
 		tank = i;
 		break;
 	}
 	if (tank != -1) {
-		PrintToChatAll("\x04Tank \x03evolves \x04into Burn Tank!");
-		ChangeTankState(tank, "burn");
+		ChangeTankState(tank, TANKSTATE_FIRE);
 		FindRandomSurvivorClient(tank, true);
 		IsPlayerOnGroundOutsideOfTankZone(tank);
 	}
+	return tank;
 }
 
 public OnEntityCreated(entity, const char[] classname) {
@@ -4924,22 +4954,24 @@ public OnEntityCreated(entity, const char[] classname) {
 stock OnEntityCreatedEx(entity, const char[] classname, bool creationOverride = false) {
 	bool bIsCommonInfected = IsCommonInfected(entity);
 	bool bIsWitch = (!bIsCommonInfected) ? IsWitch(entity) : false;
-	if (!b_IsActiveRound && bIsCommonInfected) {
-		AcceptEntityInput(entity, "Kill");
-		return;
-	}
-	if (bIsWitch || bIsCommonInfected) {
-		//SetInfectedHealth(entity, 50000);
-		if (bIsWitch) OnWitchCreated(entity);
-		SDKHook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
-		SDKHook(entity, SDKHook_TraceAttack, OnTraceAttack);
-	}
-	if (!b_IsActiveRound) return;
+	// if (!b_IsActiveRound && bIsCommonInfected) {
+	// 	if (IsValidEntityEx(entity)) RemoveEntity(entity);//AcceptEntityInput(entity, "Kill");
+	// 	return;
+	// }
+	if (bIsWitch) OnWitchCreated(entity);
+	//SDKHook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
+	//SDKHook(entity, SDKHook_TraceAttack, OnTraceAttack);
+	//if (!b_IsActiveRound) return;
 	if (StrEqual(classname, "tank_rock", false)) {
-		//CreateTimer(1.4, Timer_DestroyRock, entity, TIMER_FLAG_NO_MAPCHANGE);
-		GetRockOwner(entity);
+		int rock = FindListPositionByEntity(entity, ActiveTankRocks);
+		if (rock == -1) {
+			rock = GetArraySize(ActiveTankRocks);
+			PushArrayCell(ActiveTankRocks, entity);
+		}
+		SetArrayCell(ActiveTankRocks, rock, currentRockOwner, 1);
+		L4D2_SetEntityGlow(entity, L4D2Glow_Constant, 1000, 1, {130, 0, 0}, false);
 	}
-	if (creationOverride || bIsCommonInfected) {
+	if (!bIsWitch && (creationOverride || bIsCommonInfected)) {
 		// SetInfectedHealth(entity, 500);
 		if (CreateCommonAffix(entity) == 0) {
 			if (GetArraySize(CommonInfectedQueue) > 0) {
@@ -4950,6 +4982,8 @@ stock OnEntityCreatedEx(entity, const char[] classname, bool creationOverride = 
 			}
 			InitCommonInfected(entity);
 		}
+		SDKHook(entity, SDKHook_OnTakeDamage, OnTakeDamage);
+		SDKHook(entity, SDKHook_TraceAttack, OnTraceAttack);
 		//SDKHook(entity, SDKHook_TraceAttack, OnTraceAttack);
 	}
 }
@@ -5386,14 +5420,14 @@ stock MenuExperienceBar(client, currXP = -1, nextXP = -1, char[] eBar, theSize) 
 	ePct = ((currXP * 1.0) / (nextXP * 1.0)) * 100.0;
 
 	float eCnt = 0.0;
-	Format(eBar, theSize, "<__________>");
+	Format(eBar, theSize, "<....................>");
 
 	for (int i = 1; i + 1 <= strlen(eBar); i++) {
 
 		if (eCnt < ePct) {
 
-			eBar[i] = '~';
-			eCnt += 10.0;
+			eBar[i] = '|';
+			eCnt += 5.0;
 		}
 	}
 }
@@ -5415,11 +5449,12 @@ stock void GetFormattedPlayerName(int client, char[] stringToStoreFormat, int st
 	char avgAugLvl[10];
 	AddCommasToString(playerCurrentAugmentAverageLevel[client], avgAugLvl, sizeof(avgAugLvl));
 	if (iRPGMode > 0) {
+		int TotalPoints = TotalPointsAssigned(client);
 		if (myCurrentTeam[client] == TEAM_SURVIVOR) {
-			if (handicapLevel[client] > 0) Format(stringToStoreFormat, stringToStoreFormatSize, "{B}H.{G}%d {B}A.{G}%s {B}T.{G}%d {B}%s", handicapLevel[client], avgAugLvl, PlayerLevel[client], baseName[client]);
-			else Format(stringToStoreFormat, stringToStoreFormatSize, "{B}A.{G}%s {B}T.{G}%d {B}%s", avgAugLvl, PlayerLevel[client], baseName[client]);
+			if (handicapLevel[client] > 0) Format(stringToStoreFormat, stringToStoreFormatSize, "{O}({G}%d{O}) {B}Level {G}%d {B}%s", handicapLevel[client], TotalPoints, baseName[client]);
+			else Format(stringToStoreFormat, stringToStoreFormatSize, "{B}Level {G}%d {B}%s", TotalPoints, baseName[client]);
 		}
-		else if (myCurrentTeam[client] == TEAM_INFECTED) Format(stringToStoreFormat, stringToStoreFormatSize, "{R}T.{G}%d {R}%s", PlayerLevel[client], baseName[client]);
+		else if (myCurrentTeam[client] == TEAM_INFECTED) Format(stringToStoreFormat, stringToStoreFormatSize, "{R}Level {G}%d {R}%s", TotalPoints, baseName[client]);
 	}
 }
 
@@ -5437,16 +5472,15 @@ public bool ChatTrigger(client, args, bool teamOnly) {
 	}
 	Format(LastSpoken[client], sizeof(LastSpoken[]), "%s", sBuffer);
 	int clientTeam = myCurrentTeam[client];
-	char avgAugLvl[10];
-	AddCommasToString(playerCurrentAugmentAverageLevel[client], avgAugLvl, sizeof(avgAugLvl));
 	if (iRPGMode > 0) {
+		int iCurRealLevel = TotalPointsAssigned(client);
 		if (clientTeam == TEAM_SURVIVOR) {
-			if (handicapLevel[client] > 0) Format(Message, MAX_CHAT_LENGTH, "{B}H.{G}%d {B}A.{G}%s {B}T.{G}%d {B}%s {N}-> {B}%s", handicapLevel[client], avgAugLvl, PlayerLevel[client], baseName[client], sBuffer);
-			else Format(Message, MAX_CHAT_LENGTH, "{B}A.{G}%s {B}T.{G}%d {B}%s {N}-> {B}%s", avgAugLvl, PlayerLevel[client], baseName[client], sBuffer);
+			if (handicapLevel[client] > 0) Format(Message, MAX_CHAT_LENGTH, "{O}({G}%d{O}) {B}Level {G}%d {B}%s {N}-> {B}%s", handicapLevel[client], iCurRealLevel, baseName[client], sBuffer);
+			else Format(Message, MAX_CHAT_LENGTH, "{B}Level {G}%d {B}%s {N}-> {B}%s", iCurRealLevel, baseName[client], sBuffer);
 		}
-		else if (clientTeam == TEAM_INFECTED) Format(Message, MAX_CHAT_LENGTH, "{R}T.{G}%d {R}%s {N}-> {R}%s", PlayerLevel[client], baseName[client], sBuffer);
-		else if (clientTeam == TEAM_SPECTATOR) Format(Message, MAX_CHAT_LENGTH, "{GRA}T.{G}%d {GRA}%s {N}-> {GRA}%s", PlayerLevel[client], baseName[client], sBuffer);
-		if (SkyLevel[client] >= 1) Format(Message, MAX_CHAT_LENGTH, "{N}Prestige{G}%d %s", SkyLevel[client], Message);
+		else if (clientTeam == TEAM_INFECTED) Format(Message, MAX_CHAT_LENGTH, "{R}Level {G}%d {R}%s {N}-> {R}%s", iCurRealLevel, baseName[client], sBuffer);
+		else if (clientTeam == TEAM_SPECTATOR) Format(Message, MAX_CHAT_LENGTH, "{GRA}Level {G}%d {GRA}%s {N}-> {GRA}%s", iCurRealLevel, baseName[client], sBuffer);
+		if (SkyLevel[client] >= 1) Format(Message, MAX_CHAT_LENGTH, "{N}Sky Level {G}%d %s", SkyLevel[client], Message);
 	}
 
 	if (clientTeam == TEAM_SPECTATOR) Format(Message, MAX_CHAT_LENGTH, "{GRA}SPEC %s", Message);
@@ -5658,9 +5692,12 @@ stock GetSpecialInfectedLimit(bool IsTankLimit = false) {
 }
 
 stock RaidCommonBoost(bool bInfectedTalentStrength = false, bool IsEnsnareMultiplier = false) {
-
 	int totalTeamRating = 0;
-	int maxRatingForCommons = iMaximumCommonsPerPlayer * RaidLevMult;
+	int numLivingSurvivors = LivingHumanSurvivors();
+	int maxCommonsPerSurvivor = numLivingSurvivors * iMaximumCommonsPerSurvivor;
+	int maxCommonsAllowedCurrently = (numLivingSurvivors > 1 && maxCommonsPerSurvivor < iMaximumCommonsPerPlayer) ? maxCommonsPerSurvivor : iMaximumCommonsPerPlayer;
+
+	int maxRatingForCommons = maxCommonsAllowedCurrently * RaidLevMult;
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsLegitimateClient(i) || myCurrentTeam[i] != TEAM_SURVIVOR || IsFakeClient(i)) continue;
 		if (Rating[i] < 0) Rating[i] = 0;
@@ -5672,7 +5709,6 @@ stock RaidCommonBoost(bool bInfectedTalentStrength = false, bool IsEnsnareMultip
 	else if (IsEnsnareMultiplier) Multiplier = iEnsnareLevelMultiplier;
 
 	if (iIgnoredRating > 0) {
-
 		int ignoredRating = TotalSurvivors() * iIgnoredRating;
 		if (ignoredRating > iIgnoredRatingMax) ignoredRating = iIgnoredRatingMax;
 
@@ -5686,12 +5722,9 @@ stock RaidCommonBoost(bool bInfectedTalentStrength = false, bool IsEnsnareMultip
 }
 
 stock HumanSurvivorLevels() {
-
 	int fff = 0;
 	for (int i = 1; i <= MaxClients; i++) {
-
 		if (IsLegitimateClient(i) && !IsFakeClient(i) && myCurrentTeam[i] == TEAM_SURVIVOR) {
-
 			if (Rating[i] < 0) Rating[i] = 0;
 			fff += Rating[i];
 		}
@@ -5699,10 +5732,8 @@ stock HumanSurvivorLevels() {
 	//if (StringToInt(GetConfigValue("infected bot level type?")) == 1) return f;	// player combined level
 	//if (LivingHumanSurvivors() > 0) return f / LivingHumanSurvivors();
 	if (iIgnoredRating > 0) {
-
 		int ignoredRating = TotalSurvivors() * iIgnoredRating;
 		if (ignoredRating > iIgnoredRatingMax) ignoredRating = iIgnoredRatingMax;
-
 		fff -= ignoredRating;
 		if (fff < 0) fff = 0;
 	}
@@ -5846,18 +5877,6 @@ stock GetHitgroupType(int hitgroup) {
 	return HITGROUP_OTHER;										// not a limb
 }
 
-// stock bool CheckIfLimbDamage(attacker, victim, Handle event, damage) {
-// 	if (myCurrentTeam[attacker] == TEAM_SURVIVOR) {
-// 		if (!b_IsHooked[attacker]) ChangeHook(attacker, true);
-// 		int hitgroup = GetEventInt(event, "hitgroup");
-// 		if (hitgroup >= 4 && hitgroup <= 7) {
-// 			GetAbilityStrengthByTrigger(attacker, victim, "limbshot", _, damage, _, _, _, _, _, _, hitgroup);
-// 			return true;
-// 		}
-// 	}
-// 	return false;
-// }
-
 void CallTriggerByHitgroup(int attacker, int victim, int hitgroup, int ammotype, int damage) {
 	int type = GetHitgroupType(hitgroup);
 	if (type == HITGROUP_LIMB) GetAbilityStrengthByTrigger(attacker, victim, TRIGGER_limbshot, _, damage, _, _, _, _, _, _, hitgroup, _, ammotype);
@@ -5865,78 +5884,6 @@ void CallTriggerByHitgroup(int attacker, int victim, int hitgroup, int ammotype,
 		GetAbilityStrengthByTrigger(attacker, victim, TRIGGER_headshot, _, damage, _, _, _, _, _, _, hitgroup, _, ammotype);
 		if (IsCommonInfected(victim) && !IsSpecialCommon(victim)) AddCommonInfectedDamage(attacker, victim, GetCommonBaseHealth(attacker));	// if someone shoots a common infected in the head, we want to auto-kill it.
 	}
-}
-
-/*
-	GetAbilityStrengthByTrigger(activator, target = 0, String:AbilityT[], zombieclass = 0, damagevalue = 0,
-										bool:IsOverdriveStacks = false, bool:IsCleanse = false, String:ResultEffects[] = "none", ResultType = 0,
-										bool:bDontActuallyActivate = false, typeOfValuesToRetrieve = 1, hitgroup = -1)
-*/
-
-// stock bool CheckIfHeadshot(attacker, victim, Handle event, damage) {
-// 	if (myCurrentTeam[attacker] == TEAM_SURVIVOR) {
-// 		if (!b_IsHooked[attacker]) ChangeHook(attacker, true);
-// 		int hitgroup = GetEventInt(event, "hitgroup");
-// 		if (hitgroup == 1) {
-// 			ConsecutiveHeadshots[attacker]++;
-// 			GetAbilityStrengthByTrigger(attacker, victim, "headshot", _, damage, _, _, _, _, _, _, hitgroup);
-// 			if (IsCommonInfected(victim) && !IsSpecialCommon(victim)) {
-// 				AddCommonInfectedDamage(attacker, victim, GetCommonBaseHealth(attacker));	// if someone shoots a common infected in the head, we want to auto-kill it.
-// 			}
-// 			LastHitWasHeadshot[attacker] = true;
-// 			return true;
-// 		}
-// 		ConsecutiveHeadshots[attacker] = 0;
-// 		LastHitWasHeadshot[attacker] = false;
-// 	}
-// 	return false;
-// }
-
-stock bool EquipBackpack(client) {
-
-	if (eBackpack[client] > 0 && IsValidEntity(eBackpack[client])) {
-
-		AcceptEntityInput(eBackpack[client], "Kill");
-		eBackpack[client] = 0;
-	}
-
-	if (eBackpack[client] > 0 && IsValidEntity(eBackpack[client]) || !IsLegitimateClientAlive(client)) return false;	// backpack is already created.
-	float Origin[3];
-
-	int entity = CreateEntityByName("prop_dynamic_override");
-
-	GetClientAbsOrigin(client, Origin);
-
-	char text[64];
-	Format(text, sizeof(text), "%d", client);
-	DispatchKeyValue(entity, "model", sBackpackModel);
-	//DispatchKeyValue(entity, "parentname", text);
-	DispatchSpawn(entity);
-
-	SetVariantString("!activator");
-	AcceptEntityInput(entity, "SetParent", client);
-	SetVariantString("spine");
-	AcceptEntityInput(entity, "SetParentAttachment");
-
-	// Lux
-	AcceptEntityInput(entity, "DisableCollision");
-	SetEntProp(entity, Prop_Send, "m_noGhostCollision", 1, 1);
-	SetEntProp(entity, Prop_Data, "m_CollisionGroup", 0x0004);
-	float dFault[3];
-	SetEntPropVector(entity, Prop_Send, "m_vecMins", dFault);
-	SetEntPropVector(entity, Prop_Send, "m_vecMaxs", dFault);
-	// Lux
-
-	//TeleportEntity(entity, g_vPos[index], g_vAng[index], NULL_VECTOR);
-	SetEntProp(entity, Prop_Data, "m_iEFlags", 0);
-
-
-	Origin[0] += 10.0;
-
-	TeleportEntity(entity, Origin, NULL_VECTOR, NULL_VECTOR);
-	eBackpack[client] = entity;
-
-	return true;
 }
 
 stock bool GetClientStance(client, float fChaseTime = 20.0) {
@@ -5981,7 +5928,7 @@ stock bool GetClientStance(client, float fChaseTime = 20.0) {
 	if (ClientActiveStance[client] == 1) return false;
 
 	int entity = CreateEntityByName("info_goal_infected_chase");
-	if (entity > 0) {
+	if (IsValidEntityEx(entity)) {
 		
 		iChaseEnt[client] = entity;//EntIndexToEntRef(entity);
 

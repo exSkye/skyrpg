@@ -193,9 +193,11 @@ stock bool UnequipAugment_Confirm(client, char[] augmentID) {
 		GetArrayString(myAugmentIDCodes[client], i, text, sizeof(text));
 		if (!StrEqual(text, augmentID)) continue;
 		GetArrayString(myAugmentSavedProfiles[client], i, text, sizeof(text));
-		bool isSaved = (StrEqual(text, "none")) ? true : false;
+		bool isSaved = (StrEqual(text, "none")) ? false : true;
 		if (!isSaved) SetArrayCell(myAugmentInfo[client], i, -1, 3);
 		else SetArrayCell(myAugmentInfo[client], i, -3, 3);
+
+		//int isEquipped = GetArrayCell(myAugmentInfo[client], slot, 3);
 
 		char sql[512];
 		Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, ((!isSaved) ? -1 : -3), augmentID);
@@ -282,7 +284,7 @@ public Handle Inspect_Augment(client, slot) {
 	AddCommasToString(augmentParts[client], scrap, 64);
 	char augAvgLvl[64];
 	AddCommasToString(playerCurrentAugmentAverageLevel[client], augAvgLvl, 64);
-	Format(text, sizeof(text), "Avg Augment Lv. %s\nMaterials: %s\n \n%s\n%s", augAvgLvl, scrap, augmentName, augmentCategory);
+	Format(text, sizeof(text), "Avg Gear Score: %s\nMaterials: %s\n \n%s\n%s", augAvgLvl, scrap, augmentName, augmentCategory);
 	if (!StrEqual(augmentActivator, "-1")) Format(text, sizeof(text), "%s\n%s", text, augmentActivator);
 	if (!StrEqual(augmentTarget, "-1")) Format(text, sizeof(text), "%s\n%s", text, augmentTarget);
 	Format(text, sizeof(text), "%s\n \n", text);
@@ -294,7 +296,7 @@ public Handle Inspect_Augment(client, slot) {
 	int iThisAugmentLevel = (currentCategoryScoreRoll + currentActivatorScoreRoll + currentTargetScoreRoll) / iAugmentLevelDivisor;
 	char myAugLevelFormatted[10];
 	AddCommasToString(iThisAugmentLevel, myAugLevelFormatted, sizeof(myAugLevelFormatted));
-	Format(text, sizeof(text), "Augment Score: %s", myAugLevelFormatted);
+	Format(text, sizeof(text), "Gear Score: %s", myAugLevelFormatted);
 	
 	if (isNotOriginalOwner) {
 		// client is not the original owner of this augment.
@@ -306,7 +308,7 @@ public Handle Inspect_Augment(client, slot) {
 	char profilesThisAugmentIsSavedIn[512];
 	GetArrayString(myAugmentSavedProfiles[client], slot, profilesThisAugmentIsSavedIn, sizeof(profilesThisAugmentIsSavedIn));
 	if (StrEqual(profilesThisAugmentIsSavedIn, "none")) {
-		Format(text, sizeof(text), "%s\nThis augment is not saved to any profiles.", text);
+		Format(text, sizeof(text), "%s\nThis gear is not saved to any profiles.", text);
 	}
 	else Format(text, sizeof(text), "%s\nSaved to:\n%s", text, profilesThisAugmentIsSavedIn);
 	Format(text, sizeof(text), "%s\n \n \n", text);
@@ -471,7 +473,7 @@ public Inspect_Augment_Handle (Handle topmenu, MenuAction action, client, param2
 			SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -2, 3);
 			SendPanelToClientAndClose(Inspect_Augment(client, AugmentClientIsInspecting[client]), client, Inspect_Augment_Handle, MENU_TIME_FOREVER);
 		}
-		else if (StrEqual(menuSelection, "unlock augment")) {			
+		else if (StrEqual(menuSelection, "unlock augment")) {
 			Format(sql, sizeof(sql), "UPDATE `%s_loot` SET `isequipped` = '%d' WHERE (`itemid` = '%s');", TheDBPrefix, ((!isSaved) ? -1 : -3), itemCode);
 			SQL_TQuery(hDatabase, QueryResults, sql, client);
 			if (!isSaved) SetArrayCell(myAugmentInfo[client], AugmentClientIsInspecting[client], -1, 3);
@@ -823,7 +825,9 @@ stock Augments_Inventory(client) {
 	Format(pct, 4, "%");
 	int size = GetArraySize(myAugmentIDCodes[client]);
 	char text[512];
-	Format(text, 512, "Inventory limit:\t%d/%d\nMaterials:\t%d", size, iInventoryLimit, augmentParts[client]);
+	int clientInventoryLimit = iInventoryLimit;
+	if (bHasDonorPrivileges[client]) clientInventoryLimit += iDonorInventoryIncrease;
+	Format(text, 512, "Inventory limit:\t%d/%d\nMaterials:\t%d", size, clientInventoryLimit, augmentParts[client]);
 	SetMenuTitle(menu, text);
 	//SortADTArray(myAugmentInfo[client], Sort_Ascending, Sort_Integer);
 	if (size > 0) {

@@ -35,6 +35,7 @@ public void OnPluginStart() {
 	RegAdminCmd("resettpl", Cmd_ResetTPL, ADMFLAG_KICK);
 	RegAdminCmd("deleteprofiles", CMD_DeleteProfiles, ADMFLAG_ROOT);
 	// These are mandatory because of quick commands, so I hardcode the entries.
+	RegConsoleCmd("reload_inventory", CMD_LoadAugments);
 	RegConsoleCmd("autodismantle", CMD_AutoDismantle);
 	RegConsoleCmd("rollloot", CMD_RollLoot);
 	RegConsoleCmd("price", CMD_SetAugmentPrice);
@@ -300,6 +301,7 @@ stock LoadMainConfig() {
 		iBaseSpecialDamage[i]			= GetConfigValueInt(text3);
 		iBaseSpecialInfectedHealth[i]	= GetConfigValueInt(text4);
 	}
+
 	fAcidDamagePlayerLevel				= GetConfigValueFloat("acid damage spitter player level?");
 	fAcidDamageSupersPlayerLevel		= GetConfigValueFloat("acid damage supers player level?");
 	fPointsMultiplierInfected			= GetConfigValueFloat("points multiplier infected?");
@@ -348,7 +350,6 @@ stock LoadMainConfig() {
 	iActionBarSlots						= GetConfigValueInt("action bar slots?");
 	iNumAugments						= GetConfigValueInt("augment slots?", 3);
 	iMenuCommandsToDisplay				= GetConfigValueInt("rpg menu commands to advertise?", 1);
-
 	GetConfigValue(MenuCommand, sizeof(MenuCommand), "rpg menu command?");
 	int ExplodeCount = GetDelimiterCount(MenuCommand, ",") + 1;
 	if (ExplodeCount > 1) {
@@ -407,6 +408,7 @@ stock LoadMainConfig() {
 	iCommonsLimitUpper					= GetConfigValueInt("commons limit max?");
 	FinSurvBon							= GetConfigValueFloat("finale survival bonus?");
 	fCoopSurvBon 						= GetConfigValueFloat("coop round survival bonus?");
+	fCoopSoloSurvBon					= GetConfigValueFloat("solo round survival bonus?");
 	iMaxIncap							= GetConfigValueInt("survivor max incap?");
 	iMaxLayers							= GetConfigValueInt("max talent layers?");
 	iCommonInfectedBaseDamage			= GetConfigValueInt("common infected base damage?");
@@ -440,9 +442,11 @@ stock LoadMainConfig() {
 	fStaminaPerPlayerLevel				= GetConfigValueFloat("stamina increase per player level?");
 	iEndRoundIfNoHealthySurvivors		= GetConfigValueInt("end round if all survivors are incapped?", 0);
 	iEndRoundIfNoLivingHumanSurvivors	= GetConfigValueInt("end round if no living human survivors?", 1);
-	fTankMovementSpeed_Burning			= GetConfigValueFloat("fire tank movement speed?", 1.0);	// if this key is omitted, a default value is set. these MUST be > 0.0, so the default is hard-coded.
-	fTankMovementSpeed_Hulk				= GetConfigValueFloat("hulk tank movement speed?", 0.75);
+	fTankMovementSpeed_Burning			= GetConfigValueFloat("fire tank movement speed?", 2.0);	// if this key is omitted, a default value is set. these MUST be > 0.0, so the default is hard-coded.
+	fTankMovementSpeed_Hulk				= GetConfigValueFloat("hulk tank movement speed?", 1.5);
 	fTankMovementSpeed_Death			= GetConfigValueFloat("death tank movement speed?", 0.5);
+	fTankMovementSpeed_Freezer			= GetConfigValueFloat("freezer tank movement speed?", 1.5);
+	fTankMovementSpeed_Bomber			= GetConfigValueFloat("bomber tank movement speed?", 1.0);
 	iResetPlayerLevelOnDeath			= GetConfigValueInt("reset player level on death?");
 	leaderboardPageCount				= GetConfigValueInt("leaderboard players per page?", 5);
 	fForceTankJumpHeight				= GetConfigValueFloat("force tank to jump power?", 500.0);
@@ -483,10 +487,12 @@ stock LoadMainConfig() {
 	iNumLootDropChancesPerPlayer[3]		= GetConfigValueInt("roll attempts on witch kill?", 1);
 	iNumLootDropChancesPerPlayer[4]		= GetConfigValueInt("roll attempts on tank kill?", 1);
 	iInventoryLimit						= GetConfigValueInt("max persistent loot inventory size?", 50);
+	iDonorInventoryIncrease				= GetConfigValueInt("donor inventory limit increase?", 50);
 	iLevelRequiredToEarnScore			= GetConfigValueInt("level required to earn score?", 10);
 	fNoHandicapScoreMultiplier			= GetConfigValueFloat("base score multiplier (no handicap?)", 0.05);
 	iMaximumTanksPerPlayer				= GetConfigValueInt("maximum tank spawns per player?", 2);
 	iMaximumCommonsPerPlayer			= GetConfigValueInt("maximum common increase per player?", 30);
+	iMaximumCommonsPerSurvivor			= GetConfigValueInt("maximum common increase per survivor?", 3);
 	iAugmentCategoryRerollCost			= GetConfigValueInt("augment category reroll cost?", 100);
 	iAugmentActivatorRerollCost			= GetConfigValueInt("augment activator reroll cost?", 200);
 	iAugmentTargetRerollCost			= GetConfigValueInt("augment target reroll cost?", 300);
@@ -526,6 +532,25 @@ stock LoadMainConfig() {
 	fAttributeModifier[5]				= GetConfigValueFloat("luck xp modifier?", 0.1);
 	fGoverningAttributeModifier			= GetConfigValueFloat("governing attribute xp modifier?", 0.1);
 	iFancyBorders						= GetConfigValueInt("fancy borders?", 1);
+	iGenerateLootBags					= GetConfigValueInt("generate loot bags?", 1);
+	fDisplayLootPickupMessageTime		= GetConfigValueFloat("loot interact message time?", 3.0);
+	fEnrageTankMovementSpeed			= GetConfigValueFloat("enrage tank movement speed?", 1.5);
+	iGrindMode							= GetConfigValueInt("grind mode?", 130);
+	fGrindMultiplier					= GetConfigValueFloat("requirement multiplier grind?", 0.02);
+	iSkyPointsTimeRequired				= GetConfigValueInt("sky points time required?", 15);
+	iSkyPointsTimeRequiredDonator		= GetConfigValueInt("sky points time required donator?", 10);
+	iSkyPointsAwardAmount				= GetConfigValueInt("sky points award amount?", 1);
+	iBaseCommonLimitIncreasePerPlayer	= GetConfigValueInt("base common limit increase per player?", 10);
+	iNewPlayerSkyPoints					= GetConfigValueInt("new player starting sky points?", 5);
+	fSoloDifficultyExperienceBonus		= GetConfigValueFloat("experience bonus if solo survivor?", 0.5);
+	fStartingStaminaPercentage			= GetConfigValueFloat("starting stamina percentage on load?", 0.8);
+	fMinWeaponDamageAllowed				= GetConfigValueFloat("minimum weapon damage after penalties?", 0.2);
+	iHandicapLevelsAreScoreBased		= GetConfigValueInt("handicap levels are score-based?", 0);
+	iScoreLostOnDeathLevelRequired		= GetConfigValueInt("level required to lose score on death?", 1);
+	fDebuffIntervalCheck				= GetConfigValueFloat("debuff interval tick rate?", 0.2);
+	fTankStateTickrate					= GetConfigValueFloat("tankstate check tick rate?", 0.2);
+	fJetpackInterruptionTime			= GetConfigValueFloat("jetpack interruption time on button press?", 120.0);
+	iDisableRescueClosets				= GetConfigValueInt("disable rescue closets?", 1);
 
 	GetConfigValue(acmd, sizeof(acmd), "action slot command?");
 	GetConfigValue(abcmd, sizeof(abcmd), "abilitybar menu command?");

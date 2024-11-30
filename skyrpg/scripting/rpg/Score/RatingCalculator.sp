@@ -4,7 +4,9 @@ stock CheckMinimumRate(client) {
 
 stock float GetScoreMultiplier(int client) {
 	if (GetArraySize(HandicapSelectedValues[client]) != 4) SetClientHandicapValues(client, true);
-	float scoreMultiplier = (handicapLevel[client] > 0 && handicapLevel[client] < GetArraySize(a_HandicapLevels)) ? GetArrayCell(HandicapSelectedValues[client], 3) : fNoHandicapScoreMultiplier;
+	float scoreMultiplier = fNoHandicapScoreMultiplier;
+	if (handicapLevel[client] > 0) scoreMultiplier = GetArrayCell(HandicapSelectedValues[client], 3);
+
 	return scoreMultiplier;
 }
 
@@ -205,7 +207,7 @@ stock GetDifficultyRating(client) {
 	if (!IsLegitimateClient(client) || myCurrentTeam[client] != TEAM_SURVIVOR || !b_IsLoaded[client]) return 1;
 	bool isClientFake = IsFakeClient(client);
 	int iRatingPerLevel = (RatingPerLevel < 1 && !isClientFake || RatingPerLevelSurvivorBots < 1 && isClientFake) ? 0 : (!isClientFake) ? RatingPerLevel : RatingPerLevelSurvivorBots;
-	int iRatingPerTalentLevel = RatingPerTalentPoint;
+	int iRatingPerTalentLevel = (!isClientFake) ? RatingPerTalentPoint : RatingPerTalentPointBots;
 	if (iRatingPerLevel > 0) {
 		iRatingPerTalentLevel *= TotalPointsAssigned(client);
 		iRatingPerLevel *= PlayerLevel[client];
@@ -215,7 +217,7 @@ stock GetDifficultyRating(client) {
 	return iRatingPerLevel + iRatingPerTalentLevel + trueAugmentLevel + Rating[client];
 }
 
-stock ReceiveInfectedDamageAward(client, infected, e_reward, float p_reward, t_reward, h_reward , bu_reward, he_reward, bool TheRoundHasEnded = false) {
+stock ReceiveInfectedDamageAward(int client, int infected, int base_e_reward, float p_reward, int base_t_reward, int base_h_reward , int base_bu_reward, int base_he_reward, bool TheRoundHasEnded = false) {
 	int RPGMode									= iRPGMode;
 	if (RPGMode < 0) return;
 	PrintToChat(client, "%T", "exited combat", client, orange);
@@ -243,22 +245,27 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, float p_reward, t_r
 		}
 		Format(InfectedName, sizeof(InfectedName), "%s %s", sDirectorTeam, InfectedName);
 	}
+	int e_reward = 0;
+	int h_reward = 0;
+	int t_reward = 0;
+	int bu_reward = 0;
+	int he_reward = 0;
 	//new Float:fRoundMultiplier = 1.0;
 	if (RoundExperienceMultiplier[client] > 0.0) {
 		//fRoundMultiplier += RoundExperienceMultiplier[client];
-		if (e_reward > 0) e_reward = RoundToCeil(e_reward * RoundExperienceMultiplier[client]);
-		if (h_reward > 0) h_reward = RoundToCeil(h_reward * RoundExperienceMultiplier[client]);
-		if (t_reward > 0) t_reward = RoundToCeil(t_reward * RoundExperienceMultiplier[client]);
-		if (bu_reward > 0) bu_reward = RoundToCeil(bu_reward * RoundExperienceMultiplier[client]);
-		if (he_reward > 0) he_reward = RoundToCeil(he_reward * RoundExperienceMultiplier[client]);
+		if (base_e_reward > 0) e_reward = RoundToCeil(base_e_reward * RoundExperienceMultiplier[client]);
+		if (base_h_reward > 0) h_reward = RoundToCeil(base_h_reward * RoundExperienceMultiplier[client]);
+		if (base_t_reward > 0) t_reward = RoundToCeil(base_t_reward * RoundExperienceMultiplier[client]);
+		if (base_bu_reward > 0) bu_reward = RoundToCeil(base_bu_reward * RoundExperienceMultiplier[client]);
+		if (base_he_reward > 0) he_reward = RoundToCeil(base_he_reward * RoundExperienceMultiplier[client]);
 	}
 	int RestedAwardBonus = 0;
 	if (RestedExperience[client] > 0) {
-		if (e_reward > 0) RestedAwardBonus = RoundToFloor(e_reward * fRestedExpMult);
-		if (h_reward > 0) RestedAwardBonus += RoundToFloor(h_reward * fRestedExpMult);
-		if (t_reward > 0) RestedAwardBonus += RoundToFloor(t_reward * fRestedExpMult);
-		if (bu_reward > 0) RestedAwardBonus += RoundToFloor(bu_reward * fRestedExpMult);
-		if (he_reward > 0) RestedAwardBonus += RoundToFloor(he_reward * fRestedExpMult);
+		if (base_e_reward > 0) RestedAwardBonus = RoundToFloor(base_e_reward * fRestedExpMult);
+		if (base_h_reward > 0) RestedAwardBonus += RoundToFloor(base_h_reward * fRestedExpMult);
+		if (base_t_reward > 0) RestedAwardBonus += RoundToFloor(base_t_reward * fRestedExpMult);
+		if (base_bu_reward > 0) RestedAwardBonus += RoundToFloor(base_bu_reward * fRestedExpMult);
+		if (base_he_reward > 0) RestedAwardBonus += RoundToFloor(base_he_reward * fRestedExpMult);
 
 		if (RestedAwardBonus >= RestedExperience[client]) {
 			RestedAwardBonus = RestedExperience[client];
@@ -281,11 +288,19 @@ stock ReceiveInfectedDamageAward(client, infected, e_reward, float p_reward, t_r
 	if (!BotsOnSurvivorTeam() && TotalHumanSurvivors() <= iSurvivorBotsBonusLimit && fSurvivorBotsNoneBonus > 0.0) multiplierBonus += fSurvivorBotsNoneBonus;
 
 	if (multiplierBonus > 0.0) {
-		if (e_reward > 0) e_reward += RoundToCeil(multiplierBonus * e_reward);
-		if (h_reward > 0) h_reward += RoundToCeil(multiplierBonus * h_reward);
-		if (t_reward > 0) t_reward += RoundToCeil(multiplierBonus * t_reward);
-		if (bu_reward > 0) bu_reward += RoundToCeil(multiplierBonus * bu_reward);
-		if (he_reward > 0) he_reward += RoundToCeil(multiplierBonus * he_reward);
+		if (base_e_reward > 0) e_reward += RoundToCeil(multiplierBonus * base_e_reward);
+		if (base_h_reward > 0) h_reward += RoundToCeil(multiplierBonus * base_h_reward);
+		if (base_t_reward > 0) t_reward += RoundToCeil(multiplierBonus * base_t_reward);
+		if (base_bu_reward > 0) bu_reward += RoundToCeil(multiplierBonus * base_bu_reward);
+		if (base_he_reward > 0) he_reward += RoundToCeil(multiplierBonus * base_he_reward);
+	}
+	// multiplicative bonus if the survivor is the last one alive. all other bonuses are additive.
+	if (theCount == 1 && fSoloDifficultyExperienceBonus > 0.0) {
+		if (e_reward > 0) e_reward += RoundToCeil(fSoloDifficultyExperienceBonus * e_reward);
+		if (h_reward > 0) h_reward += RoundToCeil(fSoloDifficultyExperienceBonus * h_reward);
+		if (t_reward > 0) t_reward += RoundToCeil(fSoloDifficultyExperienceBonus * t_reward);
+		if (bu_reward > 0) bu_reward += RoundToCeil(fSoloDifficultyExperienceBonus * bu_reward);
+		if (he_reward > 0) he_reward += RoundToCeil(fSoloDifficultyExperienceBonus * he_reward);
 	}
 	if (e_reward < 1) e_reward = 0;
 	if (h_reward < 1) h_reward = 0;

@@ -47,21 +47,24 @@ stock DisplayHUD(client, statusType) {
 						GetCommonValueAtPosEx(EnemyName, sizeof(EnemyName), superPos, SUPER_COMMON_NAME);
 					}
 					else if (enemytype == CLIENT_WITCH) Format(EnemyName, sizeof(EnemyName), "Witch");
-					else GetClientName(enemycombatant, EnemyName, sizeof(EnemyName));
+					else if (myCurrentTeam[enemycombatant] == TEAM_INFECTED) GetClientName(enemycombatant, EnemyName, sizeof(EnemyName));
+					else if (myCurrentTeam[enemycombatant] == TEAM_SURVIVOR) {
+						EnemyName = baseName[enemycombatant];
+					}
 					if (iDisplayHealthBars == 1) DisplayInfectedHealthBars(client, enemycombatant, EnemyName);
 					if (enemytype != 4) {
 						AddCommasToString(enemyHealth, targetHealthText, sizeof(targetHealthText));
-						int infectedHealthVal = GetInfectedHealthBar(client, enemycombatant, _, targetMaxHealthText, _, true);
-						if (infectedHealthVal > 0) {
-							AddCommasToString(infectedHealthVal, targetMaxHealthText, sizeof(targetMaxHealthText));
-							Format(text, sizeof(text), "%s: %s/%sHP\n%s\n%s", EnemyName, targetHealthText, targetMaxHealthText, positiveStatusEffects[client], negativeStatusEffects[client]);
-						}
-						else Format(text, sizeof(text), "%s: %sHP\n%s\n%s", EnemyName, targetHealthText, positiveStatusEffects[client], negativeStatusEffects[client]);
+						// int infectedHealthVal = GetInfectedHealthBar(client, enemycombatant, _, targetMaxHealthText, _, true);
+						// if (infectedHealthVal > 0) {
+						// 	AddCommasToString(infectedHealthVal, targetMaxHealthText, sizeof(targetMaxHealthText));
+						Format(text, sizeof(text), "%s: %sHP\n%s\n%s", EnemyName, targetHealthText, positiveStatusEffects[client], negativeStatusEffects[client]);
+						// }
+						// else Format(text, sizeof(text), "%s: %sHP\n%s\n%s", EnemyName, targetHealthText, positiveStatusEffects[client], negativeStatusEffects[client]);
 					}
 					else {
 						AddCommasToString(GetTargetHealth(client, enemycombatant, true), targetHealthText, sizeof(targetHealthText));
-						AddCommasToString(GetMaximumHealth(enemycombatant), targetMaxHealthText, sizeof(targetMaxHealthText));
-						Format(text, sizeof(text), "%s: %s/%sHP\n%s\n%s", EnemyName, targetHealthText, targetMaxHealthText, positiveStatusEffects[client], negativeStatusEffects[client]);
+						//AddCommasToString(GetMaximumHealth(enemycombatant), targetMaxHealthText, sizeof(targetMaxHealthText));
+						Format(text, sizeof(text), "%s: %sHP\n%s\n%s", EnemyName, targetHealthText, positiveStatusEffects[client], negativeStatusEffects[client]);
 					}
 				}
 			}

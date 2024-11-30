@@ -191,6 +191,7 @@ public APLRes AskPluginLoad2(Handle g_Me, bool b_IsLate, char[] s_Error, int s_E
 		return APLRes_Failure;
 	}
 
+
 	RegPluginLibrary(PLUGIN_LIBRARY);
 	g_IsFirstClientLoaded = CreateGlobalForward("ReadyUp_FirstClientLoaded", ET_Ignore);
 	g_FirstClientSpawn = CreateGlobalForward("ReadyUp_FirstClientSpawn", ET_Ignore);
@@ -305,9 +306,21 @@ stock Now_IsLoadConfigForward() {
 		else {
 			ClearArray(a_PluginLoadQueue);
 			ClearArray(a_PluginLoadQueue_Count);
+
+			FirstMapSaferoomStuff();
 		}
 
 		b_IsParseConfig								= false;
+	}
+}
+
+stock void FirstMapSaferoomStuff() {
+	if (GetGamemodeType() != 3) {
+		CheckIfWeCreateSaferoomDoor();
+	}
+	DeleteTheStructuresWeDontWantInTheMap();
+	if (GetArraySize(StructuresToBuild_Models) > 0) {
+		buildCustomStructures();
 	}
 }
 
@@ -974,29 +987,36 @@ bool IsThereADoorToLock() {
 }
 
 void CheckIfWeCreateSaferoomDoor() {
-	if (!b_IsFirstClientSpawn) {
-		b_IsFirstClientSpawn = true;
-		if (IsThereADoorToLock() && i_IsReadyUpIgnored == 0) {
-			ToggleSaferoomDoor(false);	// true to lock.
-		}
-		Call_StartForward(g_FirstClientSpawn);
-		Call_Finish();
+	if (IsThereADoorToLock()) {
+		ToggleSaferoomDoor(false);	// true to lock.
 	}
 }
 
 public Action Event_PlayerSpawn(Handle event, char[] event_name, bool dontBroadcast) {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	CheckIfWeCreateSaferoomDoor();
 	if (GetGamemodeType() == 2) return Plugin_Continue;
 	if (!IsClientActual(client) || GetClientTeam(client) != TEAM_SURVIVOR) return Plugin_Continue;
+	if (!b_IsFirstClientSpawn) {
+		b_IsFirstClientSpawn = true;
+		Call_StartForward(g_FirstClientSpawn);
+		Call_Finish();
+	}
 	if (b_IsRoundOver && !b_IsFirstHumanSpawn && !b_IsFirstRound && !b_IsTransition) {
-		if (i_IsReadyUpHalftime == 1) b_IsIntermission = true;
-		else b_IsIntermission = false;
+		CheckIfWeCreateSaferoomDoor();
+		// if (i_IsReadyUpHalftime == 1) b_IsIntermission = true;
+		// else b_IsIntermission = false;
 		b_IsFirstHumanSpawn = true;
-		bIsReadyUpEligible = true;
-		Now_OnReadyUpStart();
+		// bIsReadyUpEligible = true;
+		// Now_OnReadyUpStart();
 	}
 	return Plugin_Continue;
+}
+
+public Action Timer_StartReadyUp(Handle timer) {
+	b_IsIntermission = true;
+	bIsReadyUpEligible = true;
+	Now_OnReadyUpStart();
+	return Plugin_Stop;
 }
 
 public Action Event_MissionLost(Handle event, char[] event_name, bool dontBroadcast) {
@@ -1021,6 +1041,9 @@ stock void Call_MissionLost() {
 		b_IsRoundOver								= true;
 		bIsReadyUpEligible							= true;
 		i_RoundCount++;
+		if (!IsEligibleMap(1)) {
+			CreateTimer(10.0, Timer_StartReadyUp, _, TIMER_FLAG_NO_MAPCHANGE);
+		}
 		Now_CheckIsMapComplete();
 	}
 }
@@ -1290,8 +1313,8 @@ stock Now_OnReadyUpStart() {
 		Call_Finish();
 	}
 	ToggleSaferoomDoor(false);	// true to unlock.
-	if (GetArraySize(StructuresToBuild_Models) > 0) {
-		buildCustomStructures();
+	if (b_IsIntermission) {
+		FirstMapSaferoomStuff();
 	}
 	if (GetGamemodeType() != 3) {
 		Call_StartForward(g_IsSaferoomLocked);
@@ -1530,20 +1553,23 @@ public OnClientPostAdminCheck(int client) {
 		if (i_IsHudDisabled == 0 && b_IsHideHud[client]) b_IsHideHud[client] = false;
 		if (!b_IsTransition) {
 			if (!b_IsFirstClientLoaded) {
-				if (GetGamemodeType() != 3) {
-					CheckIfWeCreateSaferoomDoor();
-				}
+				// if (GetGamemodeType() != 3) {
+				// 	CheckIfWeCreateSaferoomDoor();
+				// }
 				if (i_IsWarmupAllTalk == 1 && i_IsReadyUpIgnored == 0) Now_ChangeAllTalk(true);
 				Now_RegisterCommands();
 				Call_StartForward(g_IsFirstClientLoaded);
 				Call_Finish();
-				DeleteTheStructuresWeDontWantInTheMap();
+				//DeleteTheStructuresWeDontWantInTheMap();
 				Call_StartForward(g_GetMaxSurvivorCount);
 				Call_PushCell(iMaxSurvivorsAllowed);
 				Call_Finish();
 				b_IsFirstClientLoaded = true;
 				b_IsReadyUp = true;
 				b_IsAllClientsLoaded = false;
+				//if (GetArraySize(StructuresToBuild_Models) > 0) {
+				//	buildCustomStructures();
+				//}
 				if (g_IsFreezeTimer == INVALID_HANDLE) {
 					g_IsFreezeTimer					= CreateTimer(1.0, Timer_IsFreeze, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 				}

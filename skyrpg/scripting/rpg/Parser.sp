@@ -1873,6 +1873,59 @@ stock SetConfigArrays(char[] Config, Handle Main, Handle Keys, Handle Values, Ha
 			else SetArrayCell(TalentValue, i, StringToInt(text));	//int
 		}
 	}
+	else if (StrEqual(Config, CONFIG_STORE)) {
+		if (FindStringInArray(TalentKey, "sky points?") == -1) {
+			PushArrayString(TalentKey, "sky points?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "reward?") == -1) {
+			PushArrayString(TalentKey, "reward?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "amount?") == -1) {
+			PushArrayString(TalentKey, "amount?");
+			PushArrayString(TalentValue, "-1.0");
+		}
+		if (FindStringInArray(TalentKey, "timebased?") == -1) {
+			PushArrayString(TalentKey, "timebased?");
+			PushArrayString(TalentValue, "-1");
+		}
+		if (FindStringInArray(TalentKey, "itemname?") == -1) {
+			PushArrayString(TalentKey, "itemname?");
+			PushArrayString(TalentValue, "-1");
+		}
+		sortSize = GetArraySize(TalentKey);
+		pos = 0;
+		while (pos < sortSize) {
+			GetArrayString(TalentKey, pos, text, sizeof(text));
+			if (
+			pos == STORE_SKYPOINT_COST && !StrEqual(text, "sky points?") ||
+			pos == STORE_REWARD_TYPE && !StrEqual(text, "reward?") ||
+			pos == STORE_REWARD_AMOUNT && !StrEqual(text, "amount?") ||
+			pos == STORE_REWARD_TIME && !StrEqual(text, "timebased?") ||
+			pos == STORE_ITEM_TO_GIVE && !StrEqual(text, "itemname?")) {
+				PushArrayString(TalentKey, text);
+				GetArrayString(TalentValue, pos, text, sizeof(text));
+				PushArrayString(TalentValue, text);
+				RemoveFromArray(TalentKey, pos);
+				RemoveFromArray(TalentValue, pos);
+				continue;
+			}
+			pos++;
+		}
+		for (int i = 0; i < sortSize; i++) {
+			if (i == STORE_ITEM_TO_GIVE) continue;
+			
+			GetArrayString(TalentValue, i, text, sizeof(text));
+			if (i == STORE_REWARD_TYPE) {
+				int rewardInt = ConvertStringRewardToInt(text);
+				SetArrayCell(TalentValue, STORE_REWARD_TYPE, rewardInt);
+				continue;
+			}
+			if (StrContains(text, ".") != -1) SetArrayCell(TalentValue, i, StringToFloat(text));	//float
+			else SetArrayCell(TalentValue, i, StringToInt(text));	//int
+		}
+	}
 	else if (StrEqual(Config, CONFIG_WEAPONS)) {
 		if (FindStringInArray(TalentKey, "damage") == -1) {
 			PushArrayString(TalentKey, "damage");

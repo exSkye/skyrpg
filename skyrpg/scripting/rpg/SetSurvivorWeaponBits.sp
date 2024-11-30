@@ -1,12 +1,15 @@
-stock SetMyWeapons(client) {
-	if (!IsLegitimateClient(client) || GetClientTeam(client) != TEAM_SURVIVOR) return;
+stock int SetMyWeapons(client) {
+	if (!IsLegitimateClient(client) || GetClientTeam(client) != TEAM_SURVIVOR) return 0;
 	char PlayerWeapon[64];
-	int g_iActiveWeaponOffset = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
-	int iWeapon = GetEntDataEnt2(client, g_iActiveWeaponOffset);
-	GetClientWeapon(client, PlayerWeapon, 64);
+	// int g_iActiveWeaponOffset = FindSendPropInfo("CTerrorPlayer", "m_hActiveWeapon");
+	// int iWeapon = GetEntDataEnt2(client, g_iActiveWeaponOffset);
+	int ent = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	if (ent < 1) return -1;
+	GetEntityClassname(ent, PlayerWeapon, sizeof(PlayerWeapon));
+	//GetClientWeapon(client, PlayerWeapon, 64);
 
 	bool bIsMeleeWeapon = StrEqualAtPos(PlayerWeapon, "melee", 7);
-	if (!bIsMeleeWeapon && StrEqual(PlayerWeapon, lastCurrentWeapon[client])) return;
+	if (!bIsMeleeWeapon && StrEqual(PlayerWeapon, lastCurrentWeapon[client])) return 0;
 	lastCurrentWeapon[client] = PlayerWeapon;
 	CreateProgressBar(client, 0.0, true);
 
@@ -34,18 +37,19 @@ stock SetMyWeapons(client) {
 		!StrEqualAtPos(PlayerWeapon, "rifle", 7) &&
 		!bIsMeleeWeapon &&
 		!StrEqualAtPos(PlayerWeapon, "pistol", 7) &&
-		!StrEqualAtPos(PlayerWeapon, "chainsaw", 7)) return;
+		!StrEqualAtPos(PlayerWeapon, "chainsaw", 7)) return 0;
 
 	// this is a valid weapon, so store the weapon id
-	myCurrentWeaponId[client] = iWeapon;
+	myCurrentWeaponId[client] = ent;
 	if (bIsMeleeWeapon || bHasChainsaw[client]) {
 		if (!bHasChainsaw[client]) {
-			GetEntityClassname(iWeapon, PlayerWeapon, sizeof(PlayerWeapon));
-			GetEntPropString(iWeapon, Prop_Data, "m_strMapSetScriptName", MyCurrentWeapon[client], 64);
+			//GetEntityClassname(iWeapon, PlayerWeapon, sizeof(PlayerWeapon));
+			GetEntPropString(ent, Prop_Data, "m_strMapSetScriptName", MyCurrentWeapon[client], 64);
+			PlayerWeapon = MyCurrentWeapon[client];
 		}
 		else {
-			iWeapon = GetPlayerWeaponSlot(client, 1);
-			GetEntityClassname(iWeapon, MyCurrentWeapon[client], 64);
+			int iWeapon = GetPlayerWeaponSlot(client, 1);
+			MyCurrentWeapon[client] = PlayerWeapon;
 		}
 		hasMeleeWeaponEquipped[client] = true;
 		currentWeaponCategory[client]  =																											4096;	// MELEE WEAPONS ONLY (NO GUNS)-------------22
@@ -109,7 +113,7 @@ stock SetMyWeapons(client) {
 	if (IsValidEntity(primaryWeapon)) {
 		char myPrimaryWeapon[64];
 		GetEntityClassname(primaryWeapon, myPrimaryWeapon, 64);
-		if (StrEqual(myPrimaryWeapon, lastPrimaryWeapon[client])) return;
+		if (StrEqual(myPrimaryWeapon, lastPrimaryWeapon[client])) return 0;
 		lastPrimaryWeapon[client] = myPrimaryWeapon;
 		for (int i = 0; i < size; i++) {
 			WeaponResultSection[client] = GetArrayCell(a_WeaponDamages, i, 2);
@@ -122,4 +126,5 @@ stock SetMyWeapons(client) {
 			break;
 		}
 	}
+	return 1;
 }

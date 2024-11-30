@@ -3,6 +3,132 @@
 
 "Phrases"
 {
+	"100 materials"
+	{
+		"en"				"+100 Crafting Materials"
+	}
+	"200 materials"
+	{
+		"en"				"+200 Crafting Materials"
+	}
+	"300 materials"
+	{
+		"en"				"+300 Crafting Materials"
+	}
+	"400 materials"
+	{
+		"en"				"+400 Crafting Materials"
+	}
+	"1.0 xpbooster"
+	{
+		"en"				"+100{PCT} XP Booster"
+	}
+	"2.0 xpbooster"
+	{
+		"en"				"+200{PCT} XP Booster"
+	}
+	"3.0 xpbooster"
+	{
+		"en"				"+300{PCT} XP Booster"
+	}
+	"4.0 xpbooster"
+	{
+		"en"				"+400{PCT} XP Booster"
+	}
+	"withdraw store item confirmation"
+	{
+		"#format"			"{1:s},{2:i}"
+		"en"				"Withdraw {1} ({2} in inventory)"
+	}
+	"withdraw store item"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s},{6:i},{7:s}"
+		"en"				"{1}You withdraw {2}{3} {4}and have {5}{6} {7}remaining."
+	}
+	"store xpbooster add"
+	{
+		"#format"			"{1:s},{2:s},{3:3.1f},{4:s},{5:s},{6:s},{7:s},{8:3.1f},{9:s},{10:s}"
+		"en"				"{1}Round Survival Multiplier: {2}{3}{4}{5} {6}-> {7}{8}{9}{10}"
+	}
+	"store crafting material add"
+	{
+		"#format"			"{1:s},{2:s},{3:i},{4:s},{5:s},{6:i}"
+		"en"				"{1}Crafting Materials: {2}{3} {4}-> {5}{6}"
+	}
+	"store item give"
+	{
+		"#format"			"{1:s},{2:s},{3:s}"
+		"en"				"{1}Item Received: {2}{3}"
+	}
+	"store item listing"
+	{
+		"#format"			"{1:s},{2:i}"
+		"en"				"{1} (Cost: {2} SP)"
+	}
+	"store item confirmation"
+	{
+		"#format"			"{1:s},{2:i}"
+		"en"				"Purchase {1} for {2} SP?"
+	}
+	"store item purchased"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:s}"
+		"en"				"{1}Purchase {2}{3} {4}has been sent to your inventory."
+	}
+	"sky store menu"
+	{
+		"en"				"Sky Points Store"
+	}
+	"buy from store"
+	{
+		"en"				"Buy Store Items\nSpend your Sky Points here."
+	}
+	"access store inventory"
+	{
+		"en"				"Store Inventory\nPurchased store items appear in your inventory\nto be used at your discretion."
+	}
+	"store points"
+	{
+		"en"				"Sky Points"
+	}
+	"Player Level Text"
+	{						// Inventory limit: {9}/{10}\t\tMaterials: {7}
+		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:i},{10:i},{11:i},{12:i},{13:i},{14:i}"
+		"en"				"{3}xp {4} {5}xp\nLv.{11}\t\t\t\t\tGear Score:\t{8}\nSky Points:\t{14}\t Materials:\t{7}\n \nScore:\t{6}"
+	}
+	"player awarded sky points"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s},{7:s}"
+		"en"				"{1}{2} {3}has been awarded {4}{5} {6}{7}"
+	}
+	"special effects (all)"
+	{
+		"en"				"Special Effects: ALL\nYou will experience all special effects\nwhich includes screen shakes and other elements."
+	}
+	"special effects (allies)"
+	{
+		"en"				"Special Effects: FRIENDLY\nYou will experience your special effects\nand ally special effects such as screen shakes."
+	}
+	"special effects (me)"
+	{
+		"en"				"Special Effects: MINE\nYou will only experience your special effects."
+	}
+	"special effects (disabled)"
+	{
+		"en"				"Special Effects: DISABLED\nMost RPG special effects and all screen shake\neffects are disabled."
+	}
+	"screen shake (full)"
+	{
+		"en"				"Screen Shake: FULL\nYou will experience the full effect as it was\ndesigned to be experienced."
+	}
+	"screen shake (half)"
+	{
+		"en"				"Screen Shake: HALF\nScreen Shake intensity from special\neffects is reduced by half."
+	}
+	"screen shake (minimal)"
+	{
+		"en"				"Screen Shake: MINIMAL\nScreen Shake intensity from special\neffects is GREATLY-reduced."
+	}
 	"attribute multiple level increase"
 	{
 		"#format"			"{1:s},{2:s},{3:s},{4:s},{5:i},{6:s},{7:s},{8:s},{9:s},{10:s},{11:s},{12:s},{13:i}"
@@ -437,6 +563,14 @@
 	{
 		"en"				"The Gambler II"
 	}
+	"gambler iii"
+	{
+		"en"				"The Gambler III"
+	}
+	"gambler iv"
+	{
+		"en"				"The Gambler IV"
+	}
 	"gambler i info"
 	{
 		"#format"			"{1:3.2f},{2:s},{3:3.2f},{4:s},{5:3.2f},{6:s},{7:3.2f},{8:i},{9:3.2f},{10:i},{11:i},{12:i},{13:i},{14:i},{15:i},{16:3.2f},{17:s},{18:3.2f},{19:i},{20:i}"
@@ -705,6 +839,18 @@
 	{
 		"en"				"Ammo Time"
 	}
+	"rpbulletaoe augment info"
+	{
+		"en"				"AoE Ammo Regen Percentage"
+	}
+	"rpbulletaoe major surname"
+	{
+		"en"				"Regenerating"
+	}
+	"rpbulletaoe perfect surname"
+	{
+		"en"				"Regenerating"
+	}
 	"augment restricted"
 	{
 		"#format"			"{1:s}"
@@ -770,13 +916,17 @@
 	{
 		"en"				"Toggle Lootdrop"
 	}
+	"effects settings"
+	{
+		"en"				"Effect Settings\nAdjust screen shake frequency and intensity."
+	}
 	"view loot"
 	{
-		"en"				"Loot Inventory"
+		"en"				"Gear (items held: {INVLIMIT})"
 	}
 	"view augment inventory"
 	{
-		"en"				"Browse your Augments\nsay !autodismantle for more info"
+		"en"				"Inventory\nsay !autodismantle in chat for\nauto-disassembly syntax help.\n \n"
 	}
 	"equip augment inventory"
 	{
@@ -1324,11 +1474,11 @@
 	}
 	"server advertisement 2"
 	{
-		"en"	"{O}skyrpg discord: {B}discord.gg/YQqQU4gewu\n{O}skyrpg wiki: {B}http://skyrpg.org/wiki/"
+		"en"	"{O}skyrpg discord: {B}https://discord.gg/mH8Jb7Q3aE"
 	}
 	"server advertisement 3"
 	{
-		"en"	"{O}Left 4 Discord, the {B}3rd largest {O}and most {B}ACTIVE {O}L4D2 discord: {B}discord.gg/Left4Dead2"
+		"en"	"{O}Join the steamgroup @ {B}https://steamcommunity.com/groups/sky-rpg/ {O}for permanent double experience."
 	}
 	"tellah"
 	{
@@ -1380,6 +1530,14 @@
 	{
 		"en"				"Weapon Experience"
 	}
+	"difficulty settings"
+	{
+		"en"				"Difficulty Settings\nHandicap & Gear drop modifiers\nand detailed infected health data."
+	}
+	"gear drop settings"
+	{
+		"en"				"Gear Drop Settings\nThe type of gear you want to find and\nwhether other players can steal your loot."
+	}
 	"attribute data"
 	{
 		"en"				"Attribute Experience"
@@ -1406,11 +1564,11 @@
 	}
 	"priority loot mode"
 	{
-		"en"				"Loot Drops: Priority Mode\nLoot drops will exclusively target\ntalents you have points in."
+		"en"				"Loot Drops: UNLOCKED\nLoot drops will exclusively target\ntalents you have points in."
 	}
 	"unlocked loot mode"
 	{
-		"en"				"Loot Drops: Unlocked Mode\nLoot drops will feature talents in any\nunlocked tree layer."
+		"en"				"Loot Drops: ALL\nLoot drops will feature talents in any\nunlocked tree layer."
 	}
 	"note about unlocking priority loot mode"
 	{
@@ -1419,19 +1577,19 @@
 	}
 	"ffa loot (disabled)"
 	{
-		"en"				"Loot Mode: Random Order\nYou cannot take other players loot\nand they cannot take yours."
+		"en"				"Loot Sharing: DISABLED\nYou cannot take other players loot\nand they cannot take yours.\n \n"
 	}
 	"ffa loot (all)"
 	{
-		"en"				"Loot Mode: FFA (all)\nYou can steal loot from players with FFA loot enabled.\nThey can steal all your bags."
+		"en"				"Loot Sharing: ALL\nYou can steal loot from players with Loot Sharing enabled.\nThey can steal all your bags.\n \n"
 	}
 	"ffa loot (major)"
 	{
-		"en"				"Loot Mode: FFA (major)\nYou can steal loot from players with FFA loot enabled.\nThey can steal your minor and major bags."
+		"en"				"Loot Sharing: MAJOR\nYou can steal loot from players with Loot Sharing enabled.\nThey can steal your minor and major bags.\n \n"
 	}
 	"ffa loot (minor)"
 	{
-		"en"				"Loot Mode: FFA (minor)\nYou can steal loot from players with FFA loot enabled.\nThey can steal your minor bags."
+		"en"				"Loot Sharing: MINOR\nYou can steal loot from players with Loot Sharing enabled.\nThey can steal your minor bags.\n \n"
 	}
 	"noob mode (disabled)"
 	{
@@ -2101,11 +2259,6 @@
 		"#format"			"{1:i},{2:i},{3:s}"
 		"en"				"Prestige Lv.{1} {3}"
 	}
-	"Player Level Text"
-	{						// Inventory limit: {9}/{10}\t\tMaterials: {7}
-		"#format"			"{1:i},{2:i},{3:s},{4:s},{5:s},{6:s},{7:s},{8:s},{9:i},{10:i}"
-		"en"				"Lv.{1}/{2}\t\t\t\t Augment Lv.{8}\n{3}xp {4} {5}xp\nScore:\t\t{6}\n \n"
-	}
 	"XP Level Cap"
 	{
 		"#format"			"{1:s},{2:i}"
@@ -2133,9 +2286,9 @@
 	}
 	"RPG Layer Eligible"
 	{
-		"#format"			"{1:s},{2:i},{3:i},{4:i}"
+		"#format"			"{1:s},{2:i},{3:i},{4:i},{5:i}"
 		//"en"				"{1}\n \n{3}/{4} required unlocks in Talent Tree {2}."
-		"en"				"{1}\nTalent Tree {2} talents required: {3}/{4}"
+		"en"				"{1}\nTalent Tree {2} talents required: {3}/{4}\nLevel Up points: {5}"
 	}
 	"RPG Layer Not Eligible"
 	{
@@ -2181,7 +2334,11 @@
 	}
 	"RPG Menu"
 	{
-		"en"				"Talents"
+		"en"				"Talents\n{LUA} Level Ups Available"
+	}
+	"RPG Talent Menu"
+	{
+		"en"				"Talent Menu"
 	}
 	"Show Trees"
 	{
@@ -2603,7 +2760,7 @@
 	}
 	"Character Sheet"
 	{
-		"en"				"Infected Info & Character sheet"
+		"en"				"Infected Info/Character sheet"
 	}
 	"Handicap Sheet"
 	{
@@ -6555,7 +6712,7 @@
 	}
 	"Equip Action Bar"
 	{
-		"en"				"Edit Actionbar\n!abilitybar toggles the ability bar on/off"
+		"en"				"Equip Actionbar\nsay !abilitybar in chat to\ntoggle the Action bar\nmenu on/off during live rounds."
 	}
 	"Aoe Spell Talents"
 	{
@@ -7558,7 +7715,7 @@
 	}
 	"access profile editor"
 	{
-		"en"				"Profile Editor"
+		"en"				"Profile Editor\nsay !loadoutname in chat for more info."
 	}
 	"profile editor"
 	{
@@ -7697,7 +7854,7 @@
 	}
 	"Spawn Loadout"
 	{
-		"en"				"Current Profile Weapons\nThe Weapons this profile loads with."
+		"en"				"Your Spawn Weapons"
 	}
 	"Save Profile"
 	{
@@ -8734,12 +8891,17 @@
 	"V Active Ability"
 	{
 		"#format"			"{1:3.2f},{2:s}"
-		"en"				"Increases your maximum health by {1}{2}"
+		"en"				"Increases your total health by {1}{2}"
 	}
 	"V Passive Ability"
 	{
 		"#format"			"{1:3.2f},{2:s}"
 		"en"				"Increases your total health by {1}{2}"
+	}
+	"V Cooldown Ability"
+	{
+		"#format"			"{1:3.2f},{2:s}"
+		"en"				"Increases your maximum health by {1}{2}"
 	}
 	"E Active Ability"
 	{
@@ -9152,13 +9314,13 @@
 	}
 	"respawn queue"
 	{
-		"#format"			"{1:i}"
-		"en"				"Respawning in {1} second(s)"
+		"#format"			"{1:i},{2:i}"
+		"en"				"You will respawn in...\n{1}min {2}sec(s)"
 	}
 	"respawn queue paused"
 	{	
-		"#format"			"{1:i}"
-		"en"				"Respawn Queue paused at {1} second(s)\nSearching for a safe survivor..."
+		"#format"			"{1:i},{2:i}"
+		"en"				"Respawn Timer paused...\nNo healthy survivors found."
 	}
 	"health potion (lo)"
 	{

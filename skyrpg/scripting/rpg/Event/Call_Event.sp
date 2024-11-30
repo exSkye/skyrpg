@@ -128,6 +128,7 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			Rating[victim] = oldrating;
 			handicapLevel[victim] = oldhandicap;
 			RoundExperienceMultiplier[victim] = oldmultiplier;
+			playerRespawnCounter[victim] = 0;
 			PrintToChatAll("%t", "rise again", white, orange, white);
 		}
 		if (StrEqual(event_name, "ammo_pickup")) {
@@ -166,15 +167,18 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 	if (StrEqual(event_name, "player_spawn")) {
 		if (IsLegitimateClientAttacker) {
 			myCurrentTeam[attacker] = GetClientTeam(attacker);
-			if (myCurrentTeam[attacker] != TEAM_SPECTATOR && !b_IsHooked[attacker]) ChangeHook(attacker, true);
-			if (attackerTeam == TEAM_SURVIVOR) {
+			attackerTeam = myCurrentTeam[attacker];
+			if (myCurrentTeam[attacker] == TEAM_SURVIVOR && !b_IsHooked[attacker]) {
+				ChangeHook(attacker, true);
 				ClearArray(ActiveStatuses[attacker]);
 				RefreshSurvivor(attacker);
 				RaidInfectedBotLimit();
 				ResetContributionTracker(attacker);
 			}
-			else {
-				//if (IsFakeClientAttacker) BuildArraysOnClientFirstLoad(attacker);
+			else if (myCurrentTeam[attacker] == TEAM_INFECTED) {
+				SDKHook(attacker, SDKHook_OnTakeDamage, OnTakeDamage);
+				SDKHook(attacker, SDKHook_TraceAttack, OnTraceAttack);
+
 				int damagePos = FindListPositionByEntity(attacker, damageOfSpecialInfected);
 				if (damagePos == -1) {
 					damagePos = GetArraySize(damageOfSpecialInfected);
@@ -198,12 +202,11 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 					bHasTeleported[attacker] = false;
 					if (iTanksPreset == 1) {
 						int iRand = GetRandomInt(1, 3);
-						if (iRand == 1) ChangeTankState(attacker, "hulk");
-						else if (iRand == 2) ChangeTankState(attacker, "death");
-						else if (iRand == 3) ChangeTankState(attacker, "burn");
+						if (iRand == 1) ChangeTankState(attacker, TANKSTATE_HULK);
+						else if (iRand == 2) ChangeTankState(attacker, TANKSTATE_DEATH);
+						else if (iRand == 3) ChangeTankState(attacker, TANKSTATE_FIRE);
 					}
 				}
-				//InitInfectedHealthForSurvivors(attacker);
 			}
 		}
 	}
@@ -318,6 +321,7 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 	if (tagability == 1 && victimType == 2) {
 		if (!ISBILED[victim]) CreateTimer(15.0, Timer_RemoveBileStatus, victim, TIMER_FLAG_NO_MAPCHANGE);
 		ISBILED[victim] = true;
+		PlayerWhoBiledMe[victim] = attacker;
 	}
 	if (tagability == 2 && IsLegitimateClientAttacker) ISBILED[attacker] = false;
 	if (isdamageaward == 1) {
@@ -348,28 +352,13 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			RemoveFromTrie(currentEquippedWeapon[attacker], curEquippedWeapon);
 		}
 	}
-	if (StrEqual(event_name, "player_spawn") && IsLegitimateClientAttacker && attackerTeam == TEAM_INFECTED) {
+	if (StrEqual(event_name, "player_spawn") && IsLegitimateClientAttacker && myCurrentTeam[attacker] == TEAM_INFECTED) {
+		fSurvivorsNearCheck[attacker] = 0.0;
 		if (IsFakeClientAttacker) {
-			int changeClassId = 0;
 			if (iSpecialsAllowed == 0 && attackerZombieClass != ZOMBIECLASS_TANK) {
 				ForcePlayerSuicide(attacker);
 			}
 			else SetClientTalentStrength(attacker, true);
-			if (iSpecialsAllowed == 1 && !StrEqual(sSpecialsAllowed, "-1")) {
-				char myClass[5];
-				Format(myClass, sizeof(myClass), "%d", attackerZombieClass);
-				if (StrContains(sSpecialsAllowed, myClass) == -1) {
-					while (StrContains(sSpecialsAllowed, myClass) == -1) {
-						changeClassId = GetRandomInt(1,6);
-						Format(myClass, sizeof(myClass), "%d", changeClassId);
-					}
-					ChangeInfectedClass(attacker, changeClassId);
-					for (int i = 1; i <= MaxClients; i++) {
-						if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-						AddSpecialInfectedDamage(i, attacker, -1);
-					}
-				}
-			}
 			// In solo games, we restrict the number of ensnarement infected.
 			IsAirborne[attacker] = false;
 			b_GroundRequired[attacker] = false;
@@ -386,7 +375,8 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 			if (attackerZombieClass == ZOMBIECLASS_TANK) {
 				if (b_IsFinaleActive && b_IsFinaleTanks) {
 					b_IsFinaleTanks = false;
-					int numTanksToSpawnOnFinale = LivingHumanSurvivors()/2;
+					int livingSerfs = LivingHumanSurvivors();
+					int numTanksToSpawnOnFinale = (livingSerfs > 1) ? livingSerfs/2 : 1;
 					if (numTanksToSpawnOnFinale > 4) numTanksToSpawnOnFinale = 4;
 					else if (numTanksToSpawnOnFinale < 1) numTanksToSpawnOnFinale = 1;
 					for (int i = 0; i + iTankCount < numTanksToSpawnOnFinale; i++) {
@@ -414,39 +404,52 @@ public Call_Event(Handle event, char[] event_name, bool dontBroadcast, pos) {
 				int iEnsnaredCount = EnsnaredInfected();
 				int livingSurvivors = LivingHumanSurvivors();
 				int ensnareBonus = RaidCommonBoost(_, true);
-				if (ensnareBonus < 1) ensnareBonus = 1;
+				if (ensnareBonus < 0) ensnareBonus = 0;
 				if (IsEnsnarer(attacker)) {
-					if (iInfectedLimit == -3 && iEnsnaredCount > RoundToCeil((livingSurvivors * 1.0) / 2.0) ||
+					int ensnareAllowed = RoundToCeil((livingSurvivors * 1.0) / 2.0);
+					if (iInfectedLimit == -3 && iEnsnaredCount > ensnareAllowed ||
 					iInfectedLimit == -2 && iEnsnaredCount > ensnareBonus ||
 					iInfectedLimit == -1 ||
 					iInfectedLimit == 0 && iEnsnaredCount > livingSurvivors ||
 					iInfectedLimit > 0 && iEnsnaredCount > iInfectedLimit ||
 					iIsLifelink > 1 && iLivSurvs < iIsLifelink && iLivSurvs < iMinSurvivors) {
-						while (IsEnsnarer(attacker, changeClassId)) {
-							changeClassId = GetRandomInt(1,6);
-						}
+						int changeClassId = GetRandomInt(1,2);
+						if (changeClassId == 1) changeClassId = ZOMBIECLASS_BOOMER;
+						else changeClassId = ZOMBIECLASS_SPITTER;
 						ChangeInfectedClass(attacker, changeClassId);
-						for (int i = 1; i <= MaxClients; i++) {
-							if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
-							AddSpecialInfectedDamage(i, attacker, -1);
-						}
+						// for (int i = 1; i <= MaxClients; i++) {
+						// 	if (!IsLegitimateClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) continue;
+						// 	AddSpecialInfectedDamage(i, attacker, -1);
+						// }
 					}
-					else ChangeInfectedClass(attacker, _, true);	// doesn't change class but sets base health and speeds.
+					else SetSpawnStuffForInfectedBots(attacker);	// doesn't change class but sets base health and speeds.
 				}
-				else ChangeInfectedClass(attacker, _, true);
+				else SetSpawnStuffForInfectedBots(attacker);
 			}
-			else ChangeInfectedClass(attacker, _, true);
+			else SetSpawnStuffForInfectedBots(attacker);
 		}
 		else SetSpecialInfectedHealth(attacker, attackerZombieClass);
+		if (attackerZombieClass == ZOMBIECLASS_TANK) {
+			CreateTimer(1.0, Timer_CheckIfStuck, attacker, TIMER_FLAG_NO_MAPCHANGE);
+
+			int numSurvivorsNear = NearbySurvivors(attacker, 1024.0);
+			//if there are no nearby survivors (tank spawned ahead or people are rushing)
+			if (numSurvivorsNear < 1) {
+				// if we've been around for a while, kill the tank
+				SetSpeedMultiplierBase(attacker, fEnrageTankMovementSpeed);	// otherwise make him super fast so he can catch the survivors.
+			}	// but if survivors are nearby, reset the tanks speed based on his current mutation.
+			else CheckTankSubroutine(attacker);
+		}
 	}
 	if (StrEqual(event_name, "ability_use")) {
 		if (attackerTeam == TEAM_INFECTED) {
 			GetAbilityStrengthByTrigger(attacker, victim, TRIGGER_infected_abilityuse);
 			GetEventString(event, "ability", AbilityUsed, sizeof(AbilityUsed));
 			if (StrContains(AbilityUsed, "ability_throw") != -1) {
-				if (!(GetEntityFlags(attacker) & FL_ONFIRE) && !SurvivorsInRange(attacker, 1024.0)) ChangeTankState(attacker, "burn");
+				currentRockOwner = attacker;
+				if (!(GetEntityFlags(attacker) & FL_ONFIRE) && !SurvivorsInRange(attacker, 512.0)) ChangeTankState(attacker, TANKSTATE_FIRE);
 				else {
-					ChangeTankState(attacker, "hulk");
+					ChangeTankState(attacker, TANKSTATE_HULK);
 					if (!SurvivorsInRange(attacker, fForceTankJumpRange)) ForceClientJump(attacker, fForceTankJumpHeight);
 				}
 			}

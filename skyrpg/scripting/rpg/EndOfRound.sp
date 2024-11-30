@@ -10,7 +10,7 @@ stock CallRoundIsOver() {
 			GetArrayString(persistentCirculation, i, text, sizeof(text));
 			ExplodeString(text, ":", pText, 2, 64);
 			pEnt = StringToInt(pText[0]);
-			if (IsValidEntity(pEnt)) AcceptEntityInput(pEnt, "Kill");
+			if (IsValidEntityEx(pEnt)) RemoveEntity(pEnt);//AcceptEntityInput(pEnt, "Kill");
 		}
 		ClearArray(persistentCirculation);
 		for (int i = 1; i <= MaxClients; i++) {
@@ -91,19 +91,19 @@ stock CallRoundIsOver() {
 		ClearArray(damageOfSpecialInfected);
 		ClearArray(damageOfWitch);
 		ClearArray(damageOfCommonInfected);
+		ClearArray(ActiveTankRocks);
 		if (!b_IsMissionFailed) {
 			//InfectedLevel = HumanSurvivorLevels();
 			if (!IsSurvivalMode) {
-				int livingSurvs = LivingSurvivors() - 1;
-				float fRoundExperienceBonus = (livingSurvs > 0) ? fCoopSurvBon * livingSurvs : 0.0;
+				int livingSurvs = LivingSurvivors();
+				float fExperienceBonus = 0.0;
+				if (livingSurvs > 1) fExperienceBonus = fCoopSurvBon * (livingSurvs-1);
+				else if (TotalHumanSurvivors() == 1) fExperienceBonus = fCoopSoloSurvBon;
 				char pct[4];
 				Format(pct, sizeof(pct), "%");
 				//RoundExperienceMultiplier[i] += FinSurvBon;
-				float fExperienceBonus = fRoundExperienceBonus;
 				if (b_IsRescueVehicleArrived) fExperienceBonus += FinSurvBon;
-				// if (fRoundExperienceBonus > 0.0) {
-				// 	PrintToChatAll("%t", "living survivors experience bonus", orange, blue, orange, white, blue, fExperienceBonus * 100.0, white, pct, orange);
-				// }
+
 				for (int i = 1; i <= MaxClients; i++) {
 					if (IsLegitimateClient(i)) {
 						ImmuneToAllDamage[i] = false;
@@ -111,6 +111,14 @@ stock CallRoundIsOver() {
 						bIsInCombat[i] = false;
 						fSlowSpeed[i] = 1.0;
 						if (myCurrentTeam[i] != TEAM_SURVIVOR || !IsPlayerAlive(i)) continue;
+						if (handicapLevel[i] < 0) {
+							handicapLevel[i] = 0;
+						}
+						if (iHandicapLevelsAreScoreBased != 1 && handicapLevel[i]+1 > handicapLevelAllowed[i]) {
+							handicapLevelAllowed[i] = handicapLevel[i]+1;
+							PrintToChat(i, "\x04Handicap \x05%d \x03unlocked.", handicapLevelAllowed[i]);
+						}
+
 						if (Rating[i] < 0 && CurrentMapPosition != 1) VerifyMinimumRating(i);
 						if (RoundExperienceMultiplier[i] < 0.0) RoundExperienceMultiplier[i] = 0.0;
 						if (fExperienceBonus > 0.0) {
@@ -140,6 +148,7 @@ stock CallRoundIsOver() {
 						RoundExperienceMultiplier[i] = 0.0;
 						if (IsPlayerAlive(i)) CheckForRatingLossOnDeath(i);
 					}
+					bIsGiveProfileItems[i] = false;
 				}
 				SavePlayerData(i);
 			}

@@ -292,9 +292,11 @@ public BuildPointsMenuHandle(Handle menu, MenuAction action, client, slot) {
 					else if (StrEqual(Command, "melee")) {
 						L4D_RemoveWeaponSlot(client, L4DWeaponSlot_Secondary);
 						int ent			= CreateEntityByName("weapon_melee");
-						DispatchKeyValue(ent, "melee_script_name", Parameter);
-						DispatchSpawn(ent);
-						EquipPlayerWeapon(client, ent);
+						if (IsValidEntityEx(ent)) {
+							DispatchKeyValue(ent, "melee_script_name", Parameter);
+							DispatchSpawn(ent);
+							EquipPlayerWeapon(client, ent);
+						}
 					}
 					else {
 						if ((PointCost == 0.0 || (iPreGameFree == 1 && !b_IsActiveRound)) && GetClientTeam(client) == TEAM_SURVIVOR) {
