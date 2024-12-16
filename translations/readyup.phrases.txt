@@ -1,0 +1,193 @@
+﻿"Phrases"
+{
+	"i am ready"
+	{
+		"en"			"Ready!"
+	}
+	"i am not ready"
+	{
+		"en"			"Not Ready!"
+	}
+	"readyup panel info"
+	{
+		"#format"		"{1:s},{2:i},{3:i},{4:i},{5:i}"
+		"en"			" \nReady-Up! v.{1}\nSurvivors: ({2}) {3}/{4}\nReady: {5}\n "
+	}
+	"bot count adjusted"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:i}"
+		"en"			"{1}Survivor bots {2}have been changed to {3}{4}"
+	}
+	"bot adjustment aborted"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1}A majority of the human players have voted {2}against the survivor bot change."
+	}
+	"adjust bot count"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:i},{5:s},{6:s},{7:i},{8:s}"
+		"en"			"{1}Survivor Bot adjustment vote {2}to change the Survivor Bots to {3}{4} {5}will end in {6}{7} {8}seconds."
+	}
+	"no bot vote in progress"
+	{
+		"#format"		"{1:s},{2:s},{3:s}"
+		"en"			"{1}There is currently {2}no bot vote in progress{3}!"
+	}
+	"bot vote: yes"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1}You have voted {2}in favour of the vote."
+	}
+	"bot vote: no"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1}You have voted {2}against the vote."
+	}
+	"bot adjustment vote offer"
+	{
+		"#format"		"{1:s},{2:s},{3:i},{4:s},{5:s},{6:s}"
+		"en"			"{1}The current number of survivor bots is {2}{3}\n{4}You can start a vote to change this value with {5}!survivors {6}command."
+	}
+	"bot count restricted"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1}You cannote vote to change the bot count {2}after the round has begun."
+	}
+	"bot adjustment vote called"
+	{
+		"#format"		"{1:s},{2:s},{3:i},{4:s},{5:s},{6:i},{7:s},{8:s},{9:s},{10:s}"
+		"en"			"{1}A vote has been called to change the # of survivor bots from {2}{3} {4}to {5}{6}.\n{7}Say {8}!{9} {10}in chat to toggle your vote between yes/no."
+	}
+	"command sm_forcestart is unavailable"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1} Command sm_forcestart is unavailable."
+	}
+	"hud enabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Ready-Up! Menu Display {2}enabled"
+	}
+	"hud disabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Ready-Up! Menu Display {2}disabled"
+	}
+	"not ready"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Status set: {2}not ready"
+	}
+	"ready"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Status set: {2}ready"
+	}
+	"alltalk enabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Alltalk {2}enabled"
+	}
+	"alltalk disabled"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Alltalk {2}disabled"
+	}
+	"ready up time remaining"
+	{
+		"#format"		"{1:s},{2:s},{3:i},{4:s},{5:s},{6:i},{7:s}"
+		"en"			"{1} Ready up ends in {2}{3}{4}m {5}{6}{7}s"
+	}
+	"match ready up"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Ready Up Period: {2}active"
+	}
+	"match is live"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{1} Ready Up Period: {2}match is live"
+	}
+	"client connected"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s}"
+		"en"			"{1} {2}{3} {4}is loading in to the game..."
+	}
+	"client loaded"
+	{
+		"#format"		"{1:s},{2:s},{3:s},{4:s}"
+		"en"			"{1} {2}{3} {4}has entered the fray!"
+	}
+	"connection timeout"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"ready up period: starts in {i}m {2}s"
+	}
+	"warmup time remaining"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"ready up period: match live in {1}m {2}s"
+	}
+	"menu clients loading"
+	{
+		"#format"		"{1:i},{2:i},{3:i}"
+		"en"			"ready up starts in {1}m {2}s\nplayers loading: {3}"
+	}
+	"ready up countdown"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"ready up ends in {1}m {2}s\n"
+	}
+	"match begin notice"
+	{
+		"#format"		"{1:i}"
+		"en"			"match will begin when all\nclients have loaded.\nplayers loading: {1}"
+	}
+	"players waiting"
+	{
+		"en"			"players waiting:"
+	}
+	"players loading"
+	{
+		"en"			"players loading:"
+	}
+	"players ready"
+	{
+		"en"			"players ready:"
+	}
+	"players not ready"
+	{
+		"en"			"players not ready:"
+	}
+	"spectators"
+	{
+		"en"			"spectators:"
+	}
+	"toggle ready"
+	{
+		"en"			"toggle status: ready"
+	}
+	"toggle not ready"
+	{
+		"en"			"toggle status: not ready"
+	}
+	"hide hud"
+	{
+		"en"			"Hide this Ready-Up! Menu"
+	}
+	"intermission"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1} See you at the next intermission!"
+	}
+	"timer match countdown aborted"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1}Round-Start countdown aborted!"
+	}
+	"timer match countdown"
+	{
+		"#format"		"{1:i}"
+		"en"			"Round will begin in {1}"
+	}
+}

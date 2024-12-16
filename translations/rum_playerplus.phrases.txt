@@ -1,0 +1,18 @@
+﻿"Phrases"
+{
+	"Change Team Spectator"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}{2} {3}has joined {4}The Spectator Team"
+	}
+	"Change Team Survivor"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}{2} {3}has joined {4}The Survivor Team"
+	}
+	"Change Team Infected"
+	{
+		"#format"			"{1:s},{2:s},{3:s},{4:s}"
+		"en"				"{1}{2} {3}has joined {4}The Infected Team"
+	}
+}
